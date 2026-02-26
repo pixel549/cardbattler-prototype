@@ -1,0 +1,184 @@
+id,name,tier,stackable
+A-01,Residual Heat,A,true
+A-02,Cold Start,A,true
+A-03,Minor Underclock,A,true
+A-04,Dirty Registers,A,true
+A-05,Shallow Buffer,A,true
+A-06,Bleedthrough,A,true
+A-07,Latency Spike,A,true
+A-08,Backscatter,A,true
+A-09,Unstable Numbers,A,true
+A-10,Trace Decay,A,true
+B-01,Flat Degradation,B,true
+B-02,Mutation Acceleration,B,true
+B-03,Execution Recoil,B,true
+B-04,RAM Tax,B,true
+B-05,Signal Loss,B,true
+B-06,Diminishing Output,B,true
+B-07,Contaminated Logic,B,true
+B-08,Thermal Stress,B,true
+B-09,Data Leak,B,true
+B-10,Instability Marker,B,true
+C-01,Heavy Runtime,C,true
+C-02,Deferred Execution,C,true
+C-03,Mutation Spill,C,true
+C-04,Unstable Payment,C,true
+C-05,Corrupt Idle State,C,true
+C-06,Cross-Talk,C,true
+C-07,Destructive Precision,C,true
+C-08,RAM Bleed,C,true
+C-09,State Contamination,C,true
+C-10,Execution Debt,C,true
+D-01,RAM Collapse,D,true
+D-02,Execution Backblast,D,true
+D-03,Forced Priority,D,true
+D-04,Mutation Spike,D,true
+D-05,Volatile Copy,D,true
+D-06,Delayed Recoil,D,true
+D-07,Contagion Window,D,true
+D-08,Hostile Runtime,D,true
+D-09,System Lock,D,true
+D-10,Total Throughput Loss,D,true
+E-01,Turn Compression,E,true
+E-02,Shared Throughput,E,true
+E-03,Inverted Targeting,E,true
+E-04,Damage Dispersion,E,true
+E-05,Delayed Resolution,E,true
+F-01,Cost Scramble,F,true
+F-02,Reverse Commit,F,true
+F-03,Unstable Timing,F,true
+F-04,Choke If Unused,F,true
+F-05,Choke If Used,F,true
+G-01,Core Failure,G,true
+G-02,Effect Drift,G,true
+G-03,Ability Bleed,G,true
+G-04,False Familiarity,G,true
+G-05,Role Collapse,G,true
+H-01,Narrow Execution,H,true
+H-02,Conditional Safety,H,true
+H-03,Health Threshold Lock,H,true
+H-04,Enemy State Dependency,H,true
+H-05,Sequencing Trap,H,true
+H-06,Sequence Slot Lock,H,true
+H-07,Afterimage Window,H,true
+I-01,System Shock,I,true
+I-02,RAM Hemorrhage,I,true
+I-03,Execution Fallout,I,true
+I-04,Collateral Damage,I,true
+I-05,Terminal Instability,I,true
+I-06,Doubled Decay,I,true
+J-01,Bricked,J,true
+J-02,Deadweight Runtime,J,true
+J-03,Meltdown,J,true
+J-04,Network Hop,J,true
+J-05,Hand Lock,J,true
+A+01,Stabilised Registers,A,true
+A+02,Safe Execution,A,true
+A+03,Low-Friction Runtime,A,true
+A+04,Predictable Timing,A,true
+A+05,Quarantine Switch,A,true
+B+01,RAM Buffering,B,true
+B+02,Sequencing Anchor,B,true
+B+03,Mutation Sink,B,true
+B+04,Deferred Liability,B,true
+B+05,Rapid Troubleshooting,B,true
+C+01,Controlled Spillover,C,true
+C+02,Forced Ejection,C,true
+C+03,Deferred Finalisation,C,true
+C+04,State Conversion,C,true
+C+05,Functional Degradation,C,true
+D+01,System Stabiliser,D,true
+D+02,Perfect Recall,D,true
+D+03,Last Safe Commit,D,true
+D+04,Sacrificial Offload,D,true
+D+05,Rollback Protocol,D,true
+D+06,Unsafe Recovery,D,true
+E+01,Priority Channel,E,true
+E+02,Guaranteed Throughput,E,true
+E+03,Damage Reroute,E,true
+E+04,Temporal Override,E,true
+E+05,Shared Burden,E,true
+F+01,Sticky Handle,F,true
+F+02,Follow-Up Override,F,true
+F+03,Blood Runtime,F,true
+G+01,Functional Reassignment,G,true
+G+02,Flesh Economy,G,true
+G+03,Controlled Bleed,G,true
+G+25,Load Redistribution,G,true
+G+05,Irrelevant Suppression,G,true
+H+01,Exact Timing,H,true
+H+02,Condition Mastery,H,true
+H+03,Precision Spend,H,true
+H+04,Impact Dampening,H,true
+H+05,Conditional Extraction,H,true
+H+06,Overclocked Capacity,H,true
+I+01,Bleeding Shield,I,true
+I+02,Damage Sink,I,true
+I+03,Burning Output,I,true
+I+04,Total Sacrifice,I,true
+I+05,Terminal Loop,I,true
+I+06,Directed Stabilisation,I,true
+B+06,Firewall Primer,B,true
+B+07,Shield Injector,B,true
+B+08,Hot Patch,B,true
+B+09,Signal Jam,B,true
+B+10,Corrode Payload,B,true
+B+11,Nanoflow Tap,B,true
+B+12,Salvage Tag,B,true
+B-11,Firewall Backfeed,B,true
+B-12,Spillover Tax,B,true
+C+06,Rarity Injector,C,true
+C+07,Overvoltage,C,true
+C+08,Sympathetic Surge,C,true
+C+09,Hand Compiler,C,true
+C+10,Shield Bank,C,true
+C+11,Target Spoof Burst,C,true
+C-11,Entropy Tax,C,true
+C-12,Shield Scrubber,C,true
+D+07,Freeze Spend,D,true
+D+08,RAM Doubler,D,true
+E-06,Assimilate Weak,E,true
+E+06,Fragment Strong,E,true
+F+04,Hot Swap Patch,F,true
+G+26,Purge Contract,G,true
+G+27,Random Decompiler,G,true
+J-06,Bricked (Self-Purge),J,true
+J-07,Deadweight Runtime (Self-Purge),J,true
+J-08,Meltdown (Self-Purge),J,true
+J-09,Network Hop (Self-Purge),J,true
+J-10,Hand Lock (Self-Purge),J,true
+C-S01,Deterministic Hijack,C,true
+C-S02,Topdeck Echo,C,true
+C-S03,Cascade Misfire,C,true
+C-S04,Background Shielding,C,true
+C-S05,Forked Payload,C,true
+A-12,Soft Mirror,A,true
+A-13,Malware Hardening,A,true
+A-14,Hand Strain,A,true
+B-13,Beneficial Broadcast,B,true
+B-14,Malice Bounce,B,true
+B-16,Overclock Bonus,B,true
+B-17,Firewall Clean Run,B,true
+B-18,Exploit Window,B,true
+C-13,Protocol Transcode,C,true
+C-15,Security Rewrite,C,true
+C-17,Cache Splice,C,true
+C-18,Universal Echo,C,true
+C-19,Crosswire Mirror,C,true
+D-11,Broadcast Buffs,D,true
+D-13,Static Recode,D,true
+D-14,Dual Channel,D,true
+D-15,Purge Corruption,D,true
+E-07,Inversion Routing,E,true
+E-08,Status Gravity,E,true
+E-09,Kernel Condition,E,true
+F-06,Gain-to-Give,F,true
+F-07,Hurt-to-Harden,F,true
+F-08,Corrode-to-Jitter,F,true
+G-06,Decay Amplifier,G,true
+G-07,Packet Loop,G,true
+G-08,Siphon Circuit,G,true
+H-08,Perfect Storm,H,true
+I-07,Self-Desync,I,true
+J-11,Terminal Packet,J,true
+J-12,Rewrite: Status Reactor,J,true

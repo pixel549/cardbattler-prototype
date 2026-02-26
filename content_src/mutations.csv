@@ -1,0 +1,184 @@
+id,name,tier,stackable,ramCostDelta,useCounterDelta,finalCountdownDelta,patch
+A-01,Residual Heat,A,true,0,0,0,onPlay:DealSelfDamage:1
+A-02,Cold Start,A,true,0,0,0,passive:FirstPlayExtraCost:1
+A-03,Minor Underclock,A,true,1,0,0,passive:EffectMult:0.9
+A-04,Dirty Registers,A,true,0,0,0,onPlay:chance:0.2:ApplySelfStatus:Corrode:1
+A-05,Shallow Buffer,A,true,0,-1,0,passive:DrawMod:-1
+A-06,Bleedthrough,A,true,0,0,0,onPlay:chance:0.15:DealSelfDamage:1
+A-07,Latency Spike,A,true,0,0,0,onPlay:chance:0.2:Fizzle
+A-08,Backscatter,A,true,0,0,0,onPlay:chance:0.15:DealSelfDamage:1
+A-09,Unstable Numbers,A,true,0,0,0,passive:RandomizeEffectMult:0.8:1.2
+A-10,Trace Decay,A,true,0,0,-1,passive:MutationChanceMult:1.2
+B-01,Flat Degradation,B,true,0,0,0,passive:EffectFlatMod:-1
+B-02,Mutation Acceleration,B,true,0,-3,0,passive:MutationChanceMult:1.5
+B-03,Execution Recoil,B,true,0,0,0,onPlay:DealSelfDamage:2
+B-04,RAM Tax,B,true,2,0,0,
+B-05,Signal Loss,B,true,0,0,0,onPlay:chance:0.25:Fizzle
+B-06,Diminishing Output,B,true,0,0,0,passive:DamageMult:0.8
+B-07,Contaminated Logic,B,true,0,0,0,onPlay:chance:0.2:SwapTarget
+B-08,Thermal Stress,B,true,0,0,0,onPlay:ApplySelfStatus:Overheat:1
+B-09,Data Leak,B,true,0,0,0,onPlay:LoseRAM:1
+B-10,Instability Marker,B,true,0,-2,0,passive:MutationChanceMult:1.3
+C-01,Heavy Runtime,C,true,2,0,0,passive:NotFirst
+C-02,Deferred Execution,C,true,0,0,0,passive:DeferredPlay
+C-03,Mutation Spill,C,true,0,0,0,onMutate:SpreadMutation:1
+C-04,Unstable Payment,C,true,0,0,0,passive:RandomizeCost:-1:1
+C-05,Corrupt Idle State,C,true,0,0,0,onTurnStart:IfInHand:ApplySelfStatus:Corrode:1
+C-06,Cross-Talk,C,true,0,0,0,onPlay:chance:0.2:AffectAdjacentCard
+C-07,Destructive Precision,C,true,0,0,0,onPlay:IfExactKill:DealSelfDamage:3
+C-08,RAM Bleed,C,true,1,0,0,onPlay:IncreaseCostPermanent:1
+C-09,State Contamination,C,true,0,0,0,onMutate:chance:0.15:CopyMutationTo:RandomCard
+C-10,Execution Debt,C,true,0,0,-2,onPlay:AccelerateCountdown:1
+D-01,RAM Collapse,D,true,3,0,0,onApply:ReduceMaxRAM:1
+D-02,Execution Backblast,D,true,0,0,0,onPlay:DealSelfDamage:EffectHalf
+D-03,Forced Priority,D,true,0,0,0,passive:MustPlayFirst
+D-04,Mutation Spike,D,true,0,-5,0,passive:MutationChanceMult:2
+D-05,Volatile Copy,D,true,0,0,0,onPlay:AddCopyToHand:Volatile
+D-06,Delayed Recoil,D,true,0,0,0,onPlay:DelayedSelfDamage:3:1
+D-07,Contagion Window,D,true,0,0,0,onMutate:SpreadMutation:2
+D-08,Hostile Runtime,D,true,0,0,0,onPlay:DealSelfDamage:3
+D-09,System Lock,D,true,0,0,0,passive:LockedTurns:2
+D-10,Total Throughput Loss,D,true,0,0,0,passive:EffectMult:0.6
+E-01,Turn Compression,E,true,0,0,0,passive:MaxHandMod:-1
+E-02,Shared Throughput,E,true,0,0,0,onPlay:SplitDamageSelf:0.5
+E-03,Inverted Targeting,E,true,0,0,0,onPlay:chance:0.3:SwapTarget
+E-04,Damage Dispersion,E,true,0,0,0,passive:SplitDamageAOE
+E-05,Delayed Resolution,E,true,0,0,0,passive:DelayEffect:1
+F-01,Cost Scramble,F,true,0,0,0,passive:RandomizeCost:0:2x
+F-02,Reverse Commit,F,true,0,0,0,passive:InvertEffects
+F-03,Unstable Timing,F,true,0,0,0,passive:UnstableTiming:0.3
+F-04,Choke If Unused,F,true,0,0,0,passive:ChokePenalty:5:2
+F-05,Choke If Used,F,true,0,0,0,onPlay:DealSelfDamage:2
+G-01,Core Failure,G,true,0,0,0,onApply:ReduceMaxHP:5
+G-02,Effect Drift,G,true,0,0,0,passive:RandomizeEffectType
+G-03,Ability Bleed,G,true,0,0,0,onPlay:GrantEnemyEffect:1
+G-04,False Familiarity,G,true,0,0,0,passive:HiddenInvert
+G-05,Role Collapse,G,true,0,0,0,passive:LoseType
+H-01,Narrow Execution,H,true,0,0,0,passive:RequireHPAbove:50
+H-02,Conditional Safety,H,true,0,0,0,passive:ConditionalPenalty:4
+H-03,Health Threshold Lock,H,true,0,0,0,passive:DisabledBelowHP:30
+H-04,Enemy State Dependency,H,true,0,0,0,passive:RequireEnemyStatus
+H-05,Sequencing Trap,H,true,0,0,0,passive:CannotFollowPrevious
+H-06,Sequence Slot Lock,H,true,0,0,0,passive:LockedSlot
+H-07,Afterimage Window,H,true,0,0,0,passive:PlayWindowTurns:1
+I-01,System Shock,I,true,0,0,0,onApply:DealSelfDamage:8
+I-02,RAM Hemorrhage,I,true,0,0,0,onPlay:LoseRAM:3
+I-03,Execution Fallout,I,true,0,0,0,onPlay:DealSelfDamage:5
+I-04,Collateral Damage,I,true,0,0,0,passive:AOEHalfDamage
+I-05,Terminal Instability,I,true,0,0,0,onPlay:chance:0.5:SwapTarget
+I-06,Doubled Decay,I,true,0,0,-3,passive:CountdownMult:2
+J-01,Bricked,J,true,0,0,0,passive:Disabled
+J-02,Deadweight Runtime,J,true,2,0,0,passive:NoEffect
+J-03,Meltdown,J,true,0,0,0,onPlay:DealSelfDamage:10
+J-04,Network Hop,J,true,0,0,0,onApply:TransferToEnemy
+J-05,Hand Lock,J,true,0,0,0,onApply:LockHand
+A+01,Stabilised Registers,A,true,0,0,0,passive:MutationResist:0.2
+A+02,Safe Execution,A,true,0,0,0,passive:SelfDamageResist:0.1
+A+03,Low-Friction Runtime,A,true,-1,0,0,
+A+04,Predictable Timing,A,true,0,2,0,passive:MutationTierBias:Low
+A+05,Quarantine Switch,A,true,0,0,0,passive:MutationBlock:1
+B+01,RAM Buffering,B,true,-1,0,0,passive:RAMBufferMod:5
+B+02,Sequencing Anchor,B,true,0,0,0,passive:SequenceAnchor
+B+03,Mutation Sink,B,true,0,0,0,passive:AbsorbMutation:1
+B+04,Deferred Liability,B,true,0,0,0,passive:NextMutationFree
+B+05,Rapid Troubleshooting,B,true,0,0,0,passive:PurgeMutation:1
+C+01,Controlled Spillover,C,true,0,0,0,passive:SpilloverConvert:Bonus
+C+02,Forced Ejection,C,true,0,0,0,onPlay:PurgeNegMutation:1
+C+03,Deferred Finalisation,C,true,0,0,3,
+C+04,State Conversion,C,true,0,0,0,onPlay:ConvertNegStatus:1
+C+05,Functional Degradation,C,true,0,2,0,passive:EffectMult:0.8|passive:MutationChanceMult:0.6
+D+01,System Stabiliser,D,true,0,0,0,passive:MutationChanceMult:0.7
+D+02,Perfect Recall,D,true,0,0,0,onPlay:RecycleDiscard:2
+D+03,Last Safe Commit,D,true,0,0,0,onBrick:CopySelf
+D+04,Sacrificial Offload,D,true,0,0,0,passive:SacrificeDiscount:2
+D+05,Rollback Protocol,D,true,0,0,0,onPlay:RemoveLastMutation
+D+06,Unsafe Recovery,D,true,0,0,0,onPlay:chance:0.5:ClearMutations
+E+01,Priority Channel,E,true,0,0,0,passive:AlwaysFirst
+E+02,Guaranteed Throughput,E,true,0,0,0,passive:IgnoreResistance
+E+03,Damage Reroute,E,true,0,0,0,passive:DamageIncomingReduce:2
+E+04,Temporal Override,E,true,0,0,0,onPlay:NextCardFree
+E+05,Shared Burden,E,true,0,0,0,passive:CostHalf
+F+01,Sticky Handle,F,true,0,0,0,onDiscard:ReturnToHand
+F+02,Follow-Up Override,F,true,0,0,0,onPlay:NextCardDamageBonus:3
+F+03,Blood Runtime,F,true,0,0,0,onPlay:HPtoRAM:3:2
+G+01,Functional Reassignment,G,true,0,0,0,passive:AdaptiveType
+G+02,Flesh Economy,G,true,0,0,0,passive:LowDamageToHeal
+G+03,Controlled Bleed,G,true,0,0,0,onPlay:DealSelfDamage:3|onPlay:DealBonusDamage:6
+G+25,Load Redistribution,G,true,0,0,0,passive:AOEHalf
+G+05,Irrelevant Suppression,G,true,0,0,0,passive:SuppressNonCombat
+H+01,Exact Timing,H,true,0,0,0,passive:EarlyTurnBonus:1.5
+H+02,Condition Mastery,H,true,0,0,0,passive:AlwaysMeetCondition
+H+03,Precision Spend,H,true,0,0,0,passive:PrecisionRAMBonus:1
+H+04,Impact Dampening,H,true,0,0,0,passive:DamageIncomingReduce:2
+H+05,Conditional Extraction,H,true,0,0,0,passive:ConditionalDraw:1
+H+06,Overclocked Capacity,H,true,0,0,0,passive:MaxHandMod:2
+I+01,Bleeding Shield,I,true,0,0,0,passive:DamageToFirewall
+I+02,Damage Sink,I,true,0,0,0,passive:DamageSink:3
+I+03,Burning Output,I,true,0,0,0,onPlay:DealBonusDamage:3|onPlay:DealSelfDamage:2
+I+04,Total Sacrifice,I,true,0,0,0,passive:EffectMult:3|onPlay:RemoveFromRun
+I+05,Terminal Loop,I,true,0,0,0,passive:TerminalLoop
+I+06,Directed Stabilisation,I,true,0,0,0,onPlay:RemoveMutation:1|onPlay:GainFirewall:2
+B+06,Firewall Primer,B,true,0,0,0,onPlay:GainFirewall:2
+B+07,Shield Injector,B,true,0,0,0,onPlay:GainFirewall:3
+B+08,Hot Patch,B,true,0,0,0,onPlay:RemoveNegMutation:1
+B+09,Signal Jam,B,true,0,0,0,onPlay:ApplyEnemyStatus:Underclock:1
+B+10,Corrode Payload,B,true,0,0,0,onPlay:ApplyEnemyStatus:Corrode:2
+B+11,Nanoflow Tap,B,true,0,0,0,onPlay:ApplySelfStatus:Nanoflow:1
+B+12,Salvage Tag,B,true,0,0,0,onBrick:GainGold:20
+B-11,Firewall Backfeed,B,true,0,0,0,onPlay:LoseFirewall:2
+B-12,Spillover Tax,B,true,0,0,0,passive:SpilloverCost:1
+C+06,Rarity Injector,C,true,0,0,0,onMutate:UpgradeMutationTier:1
+C+07,Overvoltage,C,true,0,0,0,onPlay:EffectBoostOnce:1.3
+C+08,Sympathetic Surge,C,true,0,0,0,passive:ComboEffectBoost:1.2
+C+09,Hand Compiler,C,true,0,0,0,onPlay:DrawCards:1
+C+10,Shield Bank,C,true,0,0,0,passive:RetainFirewall
+C+11,Target Spoof Burst,C,true,0,0,0,passive:AOEHalf
+C-11,Entropy Tax,C,true,0,0,0,onPlay:ExileDraw:1
+C-12,Shield Scrubber,C,true,0,0,0,onPlay:ClearSelfFirewall
+D+07,Freeze Spend,D,true,0,0,0,onPlay:ApplyEnemyStatus:Freeze:1
+D+08,RAM Doubler,D,true,0,0,0,onPlay:RAMDoubleTurn
+E-06,Assimilate Weak,E,true,0,0,0,onPlay:IfEnemyWeak:Fizzle
+E+06,Fragment Strong,E,true,0,0,0,passive:HighHPBonus:1.5
+F+04,Hot Swap Patch,F,true,0,0,0,onPlay:SwapNegToPosMutation
+G+26,Purge Contract,G,true,0,0,0,onPlay:ClearMutations:TargetCard
+G+27,Random Decompiler,G,true,0,0,0,onPlay:DecompileRandom:GoldGain
+J-06,Bricked (Self-Purge),J,true,0,0,0,passive:Disabled|onPlay:RemoveSelf
+J-07,Deadweight Runtime (Self-Purge),J,true,2,0,0,passive:NoEffect|onPlay:RemoveSelf
+J-08,Meltdown (Self-Purge),J,true,0,0,0,onPlay:DealSelfDamage:10|onPlay:RemoveSelf
+J-09,Network Hop (Self-Purge),J,true,0,0,0,onApply:TransferToEnemy|onApply:RemoveSelf
+J-10,Hand Lock (Self-Purge),J,true,0,0,0,onApply:LockHand|onApply:RemoveSelf
+C-S01,Deterministic Hijack,C,true,0,0,0,passive:DeterministicEffect
+C-S02,Topdeck Echo,C,true,0,0,0,passive:TopdeckEcho
+C-S03,Cascade Misfire,C,true,0,0,0,passive:CascadeMisfire
+C-S04,Background Shielding,C,true,0,0,0,onTurnStart:GainFirewall:1
+C-S05,Forked Payload,C,true,0,0,0,passive:ForkEffect:2
+A-12,Soft Mirror,A,true,0,0,0,onPlay:SelfReflect:0.1
+A-13,Malware Hardening,A,true,0,0,0,passive:EnemyArmorOnPlay:1
+A-14,Hand Strain,A,true,0,0,0,passive:HandStrainCost:4
+B-13,Beneficial Broadcast,B,true,0,0,0,passive:InvertBeneficial
+B-14,Malice Bounce,B,true,0,0,0,passive:NegBounce:0.3
+B-16,Overclock Bonus,B,true,0,0,0,passive:OverclockCostMod:1
+B-17,Firewall Clean Run,B,true,0,0,0,passive:ClearFirewallOnTurnStart
+B-18,Exploit Window,B,true,0,0,0,passive:EnemyExploitResist
+C-13,Protocol Transcode,C,true,0,0,0,passive:RandomizeEffect
+C-15,Security Rewrite,C,true,0,0,0,passive:InvertMutationPolarity
+C-17,Cache Splice,C,true,0,0,0,passive:SpliceRandom
+C-18,Universal Echo,C,true,0,0,0,onPlay:EchoEffect:0.2
+C-19,Crosswire Mirror,C,true,0,0,0,passive:StatusCrosswire
+D-11,Broadcast Buffs,D,true,0,0,0,passive:ShareBuffsWithEnemy
+D-13,Static Recode,D,true,0,0,0,onCombatStart:RandomizeEffect
+D-14,Dual Channel,D,true,0,0,0,passive:SplitCard:0.5
+D-15,Purge Corruption,D,true,0,0,0,onPlay:PurgeMutation:Positive
+E-07,Inversion Routing,E,true,0,0,0,passive:InvertTargets
+E-08,Status Gravity,E,true,0,0,0,passive:StatusReflect:0.4
+E-09,Kernel Condition,E,true,0,0,0,passive:KernelCondition
+F-06,Gain-to-Give,F,true,0,0,0,passive:ResourceGain:Enemy
+F-07,Hurt-to-Harden,F,true,0,0,0,passive:SelfDamageToEnemyFirewall
+F-08,Corrode-to-Jitter,F,true,0,0,0,passive:CorrodeMutate:Jitter
+G-06,Decay Amplifier,G,true,0,0,0,passive:MutationChanceMult:1.5|passive:CountdownMult:1.5
+G-07,Packet Loop,G,true,0,0,0,onTurnStart:IfInHand:DealSelfDamage:1
+G-08,Siphon Circuit,G,true,0,0,0,onPlay:LoseGold:2
+H-08,Perfect Storm,H,true,0,0,0,passive:AllNegativePassives
+I-07,Self-Desync,I,true,0,0,0,passive:SkipEveryOther
+J-11,Terminal Packet,J,true,0,0,0,onPlay:DealDamage:15|onPlay:RemoveFromRun
+J-12,Rewrite: Status Reactor,J,true,0,0,0,onApply:RewriteAs:StatusReactor

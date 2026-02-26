@@ -1,0 +1,139 @@
+id,name,act,kind,compositionType,rewardMin,rewardMax,notes
+ENC_BOSS_ADMINISTRATOR_CIPHER_MAINFRAME,Administrator: Cipher Mainframe,1,boss,fixed,0,0,Boss encounter (fixed). Rewards handled by boss reward profile.
+ENC_BOSS_ADMINISTRATOR_KILO_CORE,Administrator: Kilo Core,1,boss,fixed,0,0,Boss encounter (fixed). Rewards handled by boss reward profile.
+ENC_BOSS_ADMINISTRATOR_NULL_GOLIATH,Administrator: Null Goliath,1,boss,fixed,0,0,Boss encounter (fixed). Rewards handled by boss reward profile.
+ENC_BOSS_ADMINISTRATOR_PULSE_CITADEL,Administrator: Pulse Citadel,1,boss,fixed,0,0,Boss encounter (fixed). Rewards handled by boss reward profile.
+ENC_BOSS_ARCHON_HOLO_ORACLE,Archon: Holo Oracle,1,boss,fixed,0,0,Boss encounter (fixed). Rewards handled by boss reward profile.
+ENC_BOSS_ARCHON_KILO_MAINFRAME,Archon: Kilo Mainframe,1,boss,fixed,0,0,Boss encounter (fixed). Rewards handled by boss reward profile.
+ENC_BOSS_ARCHON_NULL_GOLIATH,Archon: Null Goliath,1,boss,fixed,0,0,Boss encounter (fixed). Rewards handled by boss reward profile.
+ENC_BOSS_ARCHON_PULSE_HYDRA,Archon: Pulse Hydra,1,boss,fixed,0,0,Boss encounter (fixed). Rewards handled by boss reward profile.
+ENC_BOSS_BOSS_NEON_MAINFRAME,Boss: Neon Mainframe,1,boss,fixed,0,0,Boss encounter (fixed). Rewards handled by boss reward profile.
+ENC_BOSS_BOSS_VECTOR_MAINFRAME,Boss: Vector Mainframe,1,boss,fixed,0,0,Boss encounter (fixed). Rewards handled by boss reward profile.
+ENC_BOSS_DIRECTOR_CIRCUIT_HYDRA,Director: Circuit Hydra,1,boss,fixed,0,0,Boss encounter (fixed). Rewards handled by boss reward profile.
+ENC_BOSS_DIRECTOR_GHOST_ORACLE,Director: Ghost Oracle,1,boss,fixed,0,0,Boss encounter (fixed). Rewards handled by boss reward profile.
+ENC_BOSS_DIRECTOR_PULSE_MAINFRAME,Director: Pulse Mainframe,1,boss,fixed,0,0,Boss encounter (fixed). Rewards handled by boss reward profile.
+ENC_BOSS_LEVIATHAN_CHROME_ORACLE,Leviathan: Chrome Oracle,1,boss,fixed,0,0,Boss encounter (fixed). Rewards handled by boss reward profile.
+ENC_BOSS_LEVIATHAN_GHOST_GOLIATH,Leviathan: Ghost Goliath,1,boss,fixed,0,0,Boss encounter (fixed). Rewards handled by boss reward profile.
+ENC_BOSS_LEVIATHAN_GHOST_HYDRA,Leviathan: Ghost Hydra,1,boss,fixed,0,0,Boss encounter (fixed). Rewards handled by boss reward profile.
+ENC_BOSS_LEVIATHAN_NEON_APEX,Leviathan: Neon Apex,1,boss,fixed,0,0,Boss encounter (fixed). Rewards handled by boss reward profile.
+ENC_BOSS_LEVIATHAN_PULSE_CORE,Leviathan: Pulse Core,1,boss,fixed,0,0,Boss encounter (fixed). Rewards handled by boss reward profile.
+ENC_BOSS_LEVIATHAN_VANTA_CORE,Leviathan: Vanta Core,1,boss,fixed,0,0,Boss encounter (fixed). Rewards handled by boss reward profile.
+ENC_BOSS_NEXUS_CHROME_WARDEN,Nexus: Chrome Warden,1,boss,fixed,0,0,Boss encounter (fixed). Rewards handled by boss reward profile.
+ENC_BOSS_NEXUS_ION_GOLIATH,Nexus: Ion Goliath,1,boss,fixed,0,0,Boss encounter (fixed). Rewards handled by boss reward profile.
+ENC_BOSS_NEXUS_ROGUE_ORACLE,Nexus: Rogue Oracle,1,boss,fixed,0,0,Boss encounter (fixed). Rewards handled by boss reward profile.
+ENC_BOSS_OVERSEER_CHROME_ORACLE,Overseer: Chrome Oracle,1,boss,fixed,0,0,Boss encounter (fixed). Rewards handled by boss reward profile.
+ENC_BOSS_OVERSEER_ROGUE_APEX,Overseer: Rogue Apex,1,boss,fixed,0,0,Boss encounter (fixed). Rewards handled by boss reward profile.
+ENC_BOSS_OVERSEER_STATIC_CORE,Overseer: Static Core,1,boss,fixed,0,0,Boss encounter (fixed). Rewards handled by boss reward profile.
+ENC_BOSS_OVERSEER_STATIC_WARDEN,Overseer: Static Warden,1,boss,fixed,0,0,Boss encounter (fixed). Rewards handled by boss reward profile.
+ENC_BOSS_OVERSEER_VANTA_GOLIATH,Overseer: Vanta Goliath,1,boss,fixed,0,0,Boss encounter (fixed). Rewards handled by boss reward profile.
+ENC_BOSS_TITAN_HOLO_APEX,Titan: Holo Apex,1,boss,fixed,0,0,Boss encounter (fixed). Rewards handled by boss reward profile.
+ENC_A1_EL1_01,Act 1: Elite Single 1,1,elite,fixed,100,140,Structured elite: single high-threat unit.
+ENC_A1_EL1_02,Act 1: Elite Single 2,1,elite,fixed,100,140,Structured elite: single high-threat unit.
+ENC_A1_EL2_01,Act 1: Elite Pair 1,1,elite,fixed,100,140,Structured elite: two coordinated threats.
+ENC_A1_EL2_02,Act 1: Elite Pair 2,1,elite,fixed,100,140,Structured elite: two coordinated threats.
+ENC-004,Challenge Encounter,1,elite,generated,150,200,Converted from Encounters - Copy.csv template into generatorRules (active cap + optional waves).
+ENC_A1_SPEC_CONTROL,Act 1 Special: Control Stack,1,hard,fixed,60,100,Structured: control + support. Tests debuff management.
+ENC_A1_SPEC_DECAY,Act 1 Special: Corruption Pressure,1,hard,fixed,60,100,Structured: debuff+damage pairing. Punishes slow lines.
+ENC_A1_SPEC_SCREEN,Act 1 Special: Screen + Striker,1,hard,fixed,60,100,Structured: tank screens while striker pressures. Tests target priority.
+ENC_GEN_A1_CONTROL_FOCUS,Act 1 Random: Control Focus,1,hard,generated,60,100,Bias towards Control/Debuff enemies.
+ENC_GEN_A1_DAMAGE_FOCUS,Act 1 Random: Damage Focus,1,hard,generated,60,100,Bias towards Attack primaryPurpose.
+ENC_GEN_A1_LEAK_THEME,Act 1 Random: Leak Theme,1,hard,generated,60,100,Bias towards enemies referencing Leak.
+ENC_A1_N1_01,Act 1: Lone Process 1,1,normal,fixed,30,60,Highly structured: 1-enemy encounter. Baseline pacing.
+ENC_A1_N1_02,Act 1: Lone Process 2,1,normal,fixed,30,60,Highly structured: 1-enemy encounter. Baseline pacing.
+ENC_A1_N1_03,Act 1: Lone Process 3,1,normal,fixed,30,60,Highly structured: 1-enemy encounter. Baseline pacing.
+ENC_A1_N1_04,Act 1: Lone Process 4,1,normal,fixed,30,60,Highly structured: 1-enemy encounter. Baseline pacing.
+ENC_A1_N1_05,Act 1: Lone Process 5,1,normal,fixed,30,60,Highly structured: 1-enemy encounter. Baseline pacing.
+ENC_A1_N1_06,Act 1: Lone Process 6,1,normal,fixed,30,60,Highly structured: 1-enemy encounter. Baseline pacing.
+ENC_A1_N1_07,Act 1: Lone Process 7,1,normal,fixed,30,60,Highly structured: 1-enemy encounter. Baseline pacing.
+ENC_A1_N1_08,Act 1: Lone Process 8,1,normal,fixed,30,60,Highly structured: 1-enemy encounter. Baseline pacing.
+ENC_A1_N2_01,Act 1: Pair Routine 1,1,normal,fixed,30,60,"Structured: 2-enemy encounter, mixed roles."
+ENC_A1_N2_02,Act 1: Pair Routine 2,1,normal,fixed,30,60,"Structured: 2-enemy encounter, mixed roles."
+ENC_A1_N2_03,Act 1: Pair Routine 3,1,normal,fixed,30,60,"Structured: 2-enemy encounter, mixed roles."
+ENC_A1_N2_04,Act 1: Pair Routine 4,1,normal,fixed,30,60,"Structured: 2-enemy encounter, mixed roles."
+ENC_A1_N2_05,Act 1: Pair Routine 5,1,normal,fixed,30,60,"Structured: 2-enemy encounter, mixed roles."
+ENC_A1_N2_06,Act 1: Pair Routine 6,1,normal,fixed,30,60,"Structured: 2-enemy encounter, mixed roles."
+ENC_A1_N2_07,Act 1: Pair Routine 7,1,normal,fixed,30,60,"Structured: 2-enemy encounter, mixed roles."
+ENC_A1_N2_08,Act 1: Pair Routine 8,1,normal,fixed,30,60,"Structured: 2-enemy encounter, mixed roles."
+ENC_A1_N3_01,Act 1: Trio Loop 1,1,normal,fixed,60,100,Structured: 3-enemy encounter. Slightly higher payout to match pressure.
+ENC_A1_N3_02,Act 1: Trio Loop 2,1,normal,fixed,60,100,Structured: 3-enemy encounter. Slightly higher payout to match pressure.
+ENC_A1_N3_03,Act 1: Trio Loop 3,1,normal,fixed,60,100,Structured: 3-enemy encounter. Slightly higher payout to match pressure.
+ENC_A1_N3_04,Act 1: Trio Loop 4,1,normal,fixed,60,100,Structured: 3-enemy encounter. Slightly higher payout to match pressure.
+ENC_A1_N3_05,Act 1: Trio Loop 5,1,normal,fixed,60,100,Structured: 3-enemy encounter. Slightly higher payout to match pressure.
+ENC_A1_N3_06,Act 1: Trio Loop 6,1,normal,fixed,60,100,Structured: 3-enemy encounter. Slightly higher payout to match pressure.
+ENC-001,Standard Encounter (1 enemy),1,normal,generated,100,120,Converted from Encounters - Copy.csv template into generatorRules (active cap + optional waves).
+ENC-002,Standard Encounter (2 enemy),1,normal,generated,30,60,Converted from Encounters - Copy.csv template into generatorRules (active cap + optional waves).
+ENC-003,Standard Encounter (3 enemy),1,normal,generated,50,100,Converted from Encounters - Copy.csv template into generatorRules (active cap + optional waves).
+ENC-005,Damage-heavy encounter,1,normal,generated,80,120,Converted from Encounters - Copy.csv template into generatorRules (active cap + optional waves).
+ENC-006,Defensive encounter,1,normal,generated,80,120,Converted from Encounters - Copy.csv template into generatorRules (active cap + optional waves).
+ENC-007,Mixed encounter,1,normal,generated,100,120,Converted from Encounters - Copy.csv template into generatorRules (active cap + optional waves).
+ENC-008,Healing Support,1,normal,generated,120,150,Converted from Encounters - Copy.csv template into generatorRules (active cap + optional waves).
+ENC-009,Boss 1,1,normal,generated,0,0,Converted from Encounters - Copy.csv template into generatorRules (active cap + optional waves).
+ENC-010,Boss 2,1,normal,generated,0,0,Converted from Encounters - Copy.csv template into generatorRules (active cap + optional waves).
+ENC-011,Boss 3,1,normal,generated,0,0,Converted from Encounters - Copy.csv template into generatorRules (active cap + optional waves).
+ENC-012,Runner,1,normal,generated,80,120,Converted from Encounters - Copy.csv template into generatorRules (active cap + optional waves).
+ENC_GEN_A1_MIX_1_3,Act 1 Random: Mixed (1–3),1,normal,generated,30,60,"Broad pool, aims to avoid stagnation."
+ENC_A2_EL1_01,Act 2: Elite Single 1,2,elite,fixed,130,180,Structured elite: single high-threat unit.
+ENC_A2_EL1_02,Act 2: Elite Single 2,2,elite,fixed,130,180,Structured elite: single high-threat unit.
+ENC_A2_EL2_01,Act 2: Elite Pair 1,2,elite,fixed,130,180,Structured elite: two coordinated threats.
+ENC_A2_EL2_02,Act 2: Elite Pair 2,2,elite,fixed,130,180,Structured elite: two coordinated threats.
+ENC_A2_SPEC_CONTROL,Act 2 Special: Control Stack,2,hard,fixed,90,130,Structured: control + support. Tests debuff management.
+ENC_A2_SPEC_DECAY,Act 2 Special: Corruption Pressure,2,hard,fixed,90,130,Structured: debuff+damage pairing. Punishes slow lines.
+ENC_A2_SPEC_SCREEN,Act 2 Special: Screen + Striker,2,hard,fixed,90,130,Structured: tank screens while striker pressures. Tests target priority.
+ENC_GEN_A2_CONTROL_FOCUS,Act 2 Random: Control Focus,2,hard,generated,90,130,Bias towards Control/Debuff enemies.
+ENC_GEN_A2_DAMAGE_FOCUS,Act 2 Random: Damage Focus,2,hard,generated,90,130,Bias towards Attack primaryPurpose.
+ENC_GEN_A2_LEAK_THEME,Act 2 Random: Leak Theme,2,hard,generated,90,130,Bias towards enemies referencing Leak.
+ENC_A2_N1_01,Act 2: Lone Process 1,2,normal,fixed,50,90,Highly structured: 1-enemy encounter. Baseline pacing.
+ENC_A2_N1_02,Act 2: Lone Process 2,2,normal,fixed,50,90,Highly structured: 1-enemy encounter. Baseline pacing.
+ENC_A2_N1_03,Act 2: Lone Process 3,2,normal,fixed,50,90,Highly structured: 1-enemy encounter. Baseline pacing.
+ENC_A2_N1_04,Act 2: Lone Process 4,2,normal,fixed,50,90,Highly structured: 1-enemy encounter. Baseline pacing.
+ENC_A2_N1_05,Act 2: Lone Process 5,2,normal,fixed,50,90,Highly structured: 1-enemy encounter. Baseline pacing.
+ENC_A2_N1_06,Act 2: Lone Process 6,2,normal,fixed,50,90,Highly structured: 1-enemy encounter. Baseline pacing.
+ENC_A2_N1_07,Act 2: Lone Process 7,2,normal,fixed,50,90,Highly structured: 1-enemy encounter. Baseline pacing.
+ENC_A2_N1_08,Act 2: Lone Process 8,2,normal,fixed,50,90,Highly structured: 1-enemy encounter. Baseline pacing.
+ENC_A2_N2_01,Act 2: Pair Routine 1,2,normal,fixed,50,90,"Structured: 2-enemy encounter, mixed roles."
+ENC_A2_N2_02,Act 2: Pair Routine 2,2,normal,fixed,50,90,"Structured: 2-enemy encounter, mixed roles."
+ENC_A2_N2_03,Act 2: Pair Routine 3,2,normal,fixed,50,90,"Structured: 2-enemy encounter, mixed roles."
+ENC_A2_N2_04,Act 2: Pair Routine 4,2,normal,fixed,50,90,"Structured: 2-enemy encounter, mixed roles."
+ENC_A2_N2_05,Act 2: Pair Routine 5,2,normal,fixed,50,90,"Structured: 2-enemy encounter, mixed roles."
+ENC_A2_N2_06,Act 2: Pair Routine 6,2,normal,fixed,50,90,"Structured: 2-enemy encounter, mixed roles."
+ENC_A2_N2_07,Act 2: Pair Routine 7,2,normal,fixed,50,90,"Structured: 2-enemy encounter, mixed roles."
+ENC_A2_N2_08,Act 2: Pair Routine 8,2,normal,fixed,50,90,"Structured: 2-enemy encounter, mixed roles."
+ENC_A2_N3_01,Act 2: Trio Loop 1,2,normal,fixed,90,130,Structured: 3-enemy encounter. Slightly higher payout to match pressure.
+ENC_A2_N3_02,Act 2: Trio Loop 2,2,normal,fixed,90,130,Structured: 3-enemy encounter. Slightly higher payout to match pressure.
+ENC_A2_N3_03,Act 2: Trio Loop 3,2,normal,fixed,90,130,Structured: 3-enemy encounter. Slightly higher payout to match pressure.
+ENC_A2_N3_04,Act 2: Trio Loop 4,2,normal,fixed,90,130,Structured: 3-enemy encounter. Slightly higher payout to match pressure.
+ENC_A2_N3_05,Act 2: Trio Loop 5,2,normal,fixed,90,130,Structured: 3-enemy encounter. Slightly higher payout to match pressure.
+ENC_A2_N3_06,Act 2: Trio Loop 6,2,normal,fixed,90,130,Structured: 3-enemy encounter. Slightly higher payout to match pressure.
+ENC_GEN_A2_MIX_1_3,Act 2 Random: Mixed (1–3),2,normal,generated,50,90,"Broad pool, aims to avoid stagnation."
+ENC_A3_EL1_01,Act 3: Elite Single 1,3,elite,fixed,170,230,Structured elite: single high-threat unit.
+ENC_A3_EL1_02,Act 3: Elite Single 2,3,elite,fixed,170,230,Structured elite: single high-threat unit.
+ENC_A3_EL2_01,Act 3: Elite Pair 1,3,elite,fixed,170,230,Structured elite: two coordinated threats.
+ENC_A3_EL2_02,Act 3: Elite Pair 2,3,elite,fixed,170,230,Structured elite: two coordinated threats.
+ENC_A3_SPEC_DECAY,Act 3 Special: Corruption Pressure,3,hard,fixed,120,170,Structured: debuff+damage pairing. Punishes slow lines.
+ENC_A3_SPEC_SCREEN,Act 3 Special: Screen + Striker,3,hard,fixed,120,170,Structured: tank screens while striker pressures. Tests target priority.
+ENC_GEN_A3_CONTROL_FOCUS,Act 3 Random: Control Focus,3,hard,generated,120,170,Bias towards Control/Debuff enemies.
+ENC_GEN_A3_DAMAGE_FOCUS,Act 3 Random: Damage Focus,3,hard,generated,120,170,Bias towards Attack primaryPurpose.
+ENC_GEN_A3_LEAK_THEME,Act 3 Random: Leak Theme,3,hard,generated,120,170,Bias towards enemies referencing Leak.
+ENC_A3_N1_01,Act 3: Lone Process 1,3,normal,fixed,70,120,Highly structured: 1-enemy encounter. Baseline pacing.
+ENC_A3_N1_02,Act 3: Lone Process 2,3,normal,fixed,70,120,Highly structured: 1-enemy encounter. Baseline pacing.
+ENC_A3_N1_03,Act 3: Lone Process 3,3,normal,fixed,70,120,Highly structured: 1-enemy encounter. Baseline pacing.
+ENC_A3_N1_04,Act 3: Lone Process 4,3,normal,fixed,70,120,Highly structured: 1-enemy encounter. Baseline pacing.
+ENC_A3_N1_05,Act 3: Lone Process 5,3,normal,fixed,70,120,Highly structured: 1-enemy encounter. Baseline pacing.
+ENC_A3_N1_06,Act 3: Lone Process 6,3,normal,fixed,70,120,Highly structured: 1-enemy encounter. Baseline pacing.
+ENC_A3_N1_07,Act 3: Lone Process 7,3,normal,fixed,70,120,Highly structured: 1-enemy encounter. Baseline pacing.
+ENC_A3_N1_08,Act 3: Lone Process 8,3,normal,fixed,70,120,Highly structured: 1-enemy encounter. Baseline pacing.
+ENC_A3_N2_01,Act 3: Pair Routine 1,3,normal,fixed,70,120,"Structured: 2-enemy encounter, mixed roles."
+ENC_A3_N2_02,Act 3: Pair Routine 2,3,normal,fixed,70,120,"Structured: 2-enemy encounter, mixed roles."
+ENC_A3_N2_03,Act 3: Pair Routine 3,3,normal,fixed,70,120,"Structured: 2-enemy encounter, mixed roles."
+ENC_A3_N2_04,Act 3: Pair Routine 4,3,normal,fixed,70,120,"Structured: 2-enemy encounter, mixed roles."
+ENC_A3_N2_05,Act 3: Pair Routine 5,3,normal,fixed,70,120,"Structured: 2-enemy encounter, mixed roles."
+ENC_A3_N2_06,Act 3: Pair Routine 6,3,normal,fixed,70,120,"Structured: 2-enemy encounter, mixed roles."
+ENC_A3_N2_07,Act 3: Pair Routine 7,3,normal,fixed,70,120,"Structured: 2-enemy encounter, mixed roles."
+ENC_A3_N2_08,Act 3: Pair Routine 8,3,normal,fixed,70,120,"Structured: 2-enemy encounter, mixed roles."
+ENC_A3_N3_01,Act 3: Trio Loop 1,3,normal,fixed,120,170,Structured: 3-enemy encounter. Slightly higher payout to match pressure.
+ENC_A3_N3_02,Act 3: Trio Loop 2,3,normal,fixed,120,170,Structured: 3-enemy encounter. Slightly higher payout to match pressure.
+ENC_A3_N3_03,Act 3: Trio Loop 3,3,normal,fixed,120,170,Structured: 3-enemy encounter. Slightly higher payout to match pressure.
+ENC_A3_N3_04,Act 3: Trio Loop 4,3,normal,fixed,120,170,Structured: 3-enemy encounter. Slightly higher payout to match pressure.
+ENC_A3_N3_05,Act 3: Trio Loop 5,3,normal,fixed,120,170,Structured: 3-enemy encounter. Slightly higher payout to match pressure.
+ENC_A3_N3_06,Act 3: Trio Loop 6,3,normal,fixed,120,170,Structured: 3-enemy encounter. Slightly higher payout to match pressure.
+ENC_GEN_A3_MIX_1_3,Act 3 Random: Mixed (1–3),3,normal,generated,70,120,"Broad pool, aims to avoid stagnation."

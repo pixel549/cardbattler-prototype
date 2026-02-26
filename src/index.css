@@ -1,0 +1,231 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+/* ============================================================
+   CYBERPUNK CARD BATTLER - BASE STYLES
+   ============================================================ */
+
+:root {
+  /* Colors */
+  --color-bg: #0a0a0f;
+  --color-bg-card: #12121a;
+  --color-bg-dark: #0d0d14;
+  --color-border: #2a2a3a;
+  --color-neon-cyan: #00f0ff;
+  --color-neon-orange: #ff6b00;
+  --color-neon-red: #ff2a2a;
+  --color-neon-green: #00ff6b;
+  --color-neon-purple: #b44aff;
+  --color-neon-yellow: #ffe600;
+  --color-text-primary: #e0e0e0;
+  --color-text-secondary: #888888;
+  --color-text-dim: #555555;
+
+  /* Fonts */
+  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+}
+
+/* Base reset */
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+  overscroll-behavior: none;
+}
+
+/* Prevent rubber-banding on iOS */
+html {
+  overflow: hidden;
+  position: fixed;
+  width: 100%;
+}
+
+#root {
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-neon-cyan);
+}
+
+/* Selection */
+::selection {
+  background-color: var(--color-neon-cyan);
+  color: #000;
+}
+
+/* Focus states - visible only for keyboard nav */
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--color-neon-cyan);
+  outline-offset: 2px;
+}
+
+button:focus:not(:focus-visible),
+a:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* ============================================================
+   ANIMATIONS
+   ============================================================ */
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 10px currentColor; }
+  50% { box-shadow: 0 0 25px currentColor; }
+}
+
+@keyframes flicker {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.8; }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-down {
+  from { opacity: 0; transform: translateY(-20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slide-in-left {
+  from { opacity: 0; transform: translateX(-20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 50%, 90% { transform: translateX(-3px); }
+  30%, 70% { transform: translateX(3px); }
+}
+
+@keyframes neon-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+/* ── Enemy action animations ── */
+@keyframes enemy-act-attack {
+  0%   { transform: scale(1);     filter: brightness(1); }
+  20%  { transform: scale(1.13);  filter: brightness(2.4) saturate(2.5) drop-shadow(0 0 10px #ff4400); }
+  55%  { transform: scale(0.95);  filter: brightness(1.15); }
+  100% { transform: scale(1);     filter: brightness(1); }
+}
+@keyframes enemy-act-defend {
+  0%   { filter: brightness(1); }
+  40%  { filter: brightness(1.7) hue-rotate(175deg) saturate(2.5); }
+  100% { filter: brightness(1); }
+}
+@keyframes enemy-act-debuff {
+  0%   { filter: brightness(1); }
+  35%  { filter: brightness(1.8) hue-rotate(265deg) saturate(3); }
+  100% { filter: brightness(1); }
+}
+.enemy-act-attack { animation: enemy-act-attack 0.55s ease-out forwards; }
+.enemy-act-defend { animation: enemy-act-defend 0.55s ease-out forwards; }
+.enemy-act-debuff { animation: enemy-act-debuff 0.55s ease-out forwards; }
+
+.animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
+.animate-flicker { animation: flicker 0.1s ease-in-out infinite; }
+.animate-slide-up { animation: slide-up 0.3s ease-out; }
+.animate-slide-down { animation: slide-down 0.3s ease-out; }
+.animate-slide-in-right { animation: slide-in-right 0.3s ease-out; }
+.animate-slide-in-left { animation: slide-in-left 0.3s ease-out; }
+.animate-fade-in { animation: fade-in 0.2s ease-out; }
+.animate-scale-in { animation: scale-in 0.2s ease-out; }
+.animate-shake { animation: shake 0.3s ease-in-out; }
+.animate-neon-pulse { animation: neon-pulse 1.5s ease-in-out infinite; }
+.animate-pulse { animation: neon-pulse 1.5s ease-in-out infinite; }
+
+/* ============================================================
+   SAFE AREA (for notched phones)
+   ============================================================ */
+
+@supports (padding: env(safe-area-inset-top)) {
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* ============================================================
+   TOUCH TARGETS
+   ============================================================ */
+
+@media (pointer: coarse) {
+  button, a {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* ============================================================
+   LANDSCAPE HINT
+   ============================================================ */
+
+@media (orientation: landscape) and (max-height: 500px) and (pointer: coarse) {
+  body::after {
+    content: 'Rotate for best experience';
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 0.5rem;
+    background: var(--color-bg-dark);
+    color: var(--color-neon-cyan);
+    text-align: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    z-index: 9999;
+    border-top: 1px solid var(--color-border);
+  }
+}

@@ -1,0 +1,95 @@
+id,name,act,rarity,mp_cost,weight,special_flags
+EVENT_ACT1_CACHE_001,Forgotten Cache,1,Common,1-2,100,Non-repeating
+EVENT_ACT1_PATCH_002,Floating Patch Node,1,Common,1-2,90,Non-repeating
+EVENT_ACT1_AMBUSH_003,Drone Intercept,1,Common,1-2,85,Non-repeating
+EVENT_ACT1_BARGAIN_008,Signal Bargain,1,Uncommon,1-2,60,Non-repeating
+EVENT_ACT1_GLITCH_010,Firewall Glitch,1,Uncommon,1-2,70,Non-repeating
+EVENT_ACT1_CACHE_041,Data Cache Variant,1,Common,1-2,95,Non-repeating
+EVENT_ACT1_BARGAIN_044,Imp Deal,1,Uncommon,1-2,55,Non-repeating
+EVENT_ACT1_GLITCH_046,Pod Overload,1,Uncommon,1-2,65,Non-repeating
+EVENT_ACT1_AMBUSH_057,Wraith Haunt,1,Uncommon,2-3,40,Non-repeating
+EVENT_ACT1_CACHE_060,Anomaly Cache,1,Uncommon,2-3,35,Non-repeating
+EVENT_ACT1_BARGAIN_062,Drone Deal,1,Uncommon,1-2,50,Non-repeating
+EVENT_ACT1_GLITCH_064,Signal Glitch,1,Uncommon,1-2,45,Non-repeating
+EVENT_ACT1_CACHE_078,Surface Cache,1,Common,1-2,80,Non-repeating
+EVENT_ACT1_BARGAIN_080,Sprite Bargain,1,Uncommon,1-2,55,Non-repeating
+EVENT_ACT1_GLITCH_082,Rat Glitch,1,Uncommon,1-2,50,Non-repeating
+EVENT_ACT1_AMBUSH_093,Sapper Ambush,1,Uncommon,2-3,30,Non-repeating
+EVENT_ACT1_BARGAIN_098,Pod Bargain,1,Uncommon,1-2,40,Non-repeating
+EVENT_ACT1_GLITCH_100,Core Glitch,1,Uncommon,1-2,45,Non-repeating
+EVENT_ACT2_VENDOR_004,Corrupted Vendor,2,Uncommon,2-3,70,Non-repeating
+EVENT_ACT2_ECHO_005,Mutation Echo,2,Rare,2-3,35,Non-repeating
+EVENT_ACT2_PHANTOM_006,Leak Phantom,2,Uncommon,2-3,60,Non-repeating
+EVENT_ACT2_NEST_009,Corrode Nest,2,Uncommon,2-3,55,Non-repeating
+EVENT_ACT2_LOTTERY_014,Brick Lottery,2,Rare,2-3,25,Non-repeating
+EVENT_ACT2_MIRROR_018,Rewrite Echo,2,Uncommon,1-2,50,Non-repeating
+EVENT_ACT2_VENDOR_042,Glitched Merchant,2,Uncommon,2-3,65,Non-repeating
+EVENT_ACT2_NEST_045,Rat Infestation,2,Uncommon,2-3,50,Non-repeating
+EVENT_ACT2_ECHO_058,Chain Chamber,2,Rare,2-3,30,Non-repeating
+EVENT_ACT2_PHANTOM_059,Signal Haunt,2,Uncommon,2-3,45,Non-repeating
+EVENT_ACT2_NEST_063,Imp Nest,2,Uncommon,2-3,40,Non-repeating
+EVENT_ACT2_MIRROR_072,Echo Mirror,2,Uncommon,1-2,45,Non-repeating
+EVENT_ACT2_PHANTOM_077,Rat Phantom,2,Uncommon,2-3,35,Non-repeating
+EVENT_ACT2_ECHO_076,Dampen Echo,2,Uncommon,2-3,40,Non-repeating
+EVENT_ACT2_ECHO_094,Amplifier Echo,2,Rare,2-3,25,Non-repeating
+EVENT_ACT2_PHANTOM_095,Oracle Phantom,2,Rare,2-3,20,Non-repeating
+EVENT_ACT2_NEST_099,Drone Nest,2,Uncommon,2-3,30,Non-repeating
+EVENT_ACT2_TIME_LOOP_101,Temporal Anomaly: Act 1 Reset,2,Very Rare,2-3,5,Non-repeating
+EVENT_ACT3_REWRITE_007,Core Overwrite,3,Rare,2-3,30,Non-repeating
+EVENT_ACT3_VORTEX_015,Status Vortex,3,Rare,2-3,25,Non-repeating
+EVENT_ACT3_PROTOTYPE_016,Prototype Leak,3,Uncommon,2-3,40,Non-repeating
+EVENT_ACT3_OVERCHARGE_012,Pulse Overcharge,3,Uncommon,2-3,35,Non-repeating
+EVENT_ACT3_VISION_013,Oracle Vision,3,Rare,2-3,25,Non-repeating
+EVENT_ACT3_COLLAPSE_020,Vanta Collapse,3,Very Rare,3-4,8,Non-repeating
+EVENT_ACT3_BARGAIN_019,Citadel Bargain,3,Rare,2-3,20,Non-repeating
+EVENT_ACT3_REWRITE_043,Final Overwrite,3,Rare,2-3,25,Non-repeating
+EVENT_ACT3_VORTEX_051,Feedback Anomaly,3,Uncommon,2-3,35,Non-repeating
+EVENT_ACT3_PROTOTYPE_052,Leaked Sandbox,3,Uncommon,2-3,30,Non-repeating
+EVENT_ACT3_BARGAIN_055,Pulse Whisper,3,Rare,2-3,18,Non-repeating
+EVENT_ACT3_COLLAPSE_056,Core Implosion,3,Rare,3-4,15,Non-repeating
+EVENT_ACT3_BARGAIN_073,Hydra Bargain,3,Very Rare,2-3,10,Non-repeating
+EVENT_ACT3_COLLAPSE_074,Ghost Collapse,3,Very Rare,3-4,8,Non-repeating
+EVENT_ACT3_OVERCHARGE_084,Static Surge,3,Uncommon,2-3,30,Non-repeating
+EVENT_ACT3_VISION_085,Warden Vision,3,Rare,2-3,20,Non-repeating
+EVENT_ACT3_VORTEX_087,Gravity Vortex,3,Rare,2-3,15,Non-repeating
+EVENT_ACT3_PROTOTYPE_088,Flood Prototype,3,Uncommon,2-3,25,Non-repeating
+EVENT_ACT3_BARGAIN_091,Mainframe Bargain,3,Rare,2-3,18,Non-repeating
+EVENT_ACT3_COLLAPSE_092,Kilo Collapse,3,Rare,3-4,12,Non-repeating
+EVENT_ANY_ACT_RESET_102,Temporal Glitch: Current Act Reset,Any,Very Rare,2-3,4,Non-repeating
+EVENT_MUT_REMOVE_SPECIFIC,Mutation Purge Node,Any,Rare,2-3,20,Non-repeating
+EVENT_MUT_POOL_BAN,Mutation Ban Anomaly,Any,Very Rare,3-4,8,Non-repeating
+EVENT_RESOURCE_BOOST,System Upgrade Glitch,Any,Uncommon,2-3,40,Non-repeating
+EVENT_HP_RAM_TRADE,RAM Overclock Bargain,Any,Uncommon,1-2,50,Non-repeating
+EVENT_HEALTH_HALVE_HAND,Desperate Optimization,Any,Rare,2-3,25,Non-repeating
+EVENT_BRICK_GAMBLE_CARD,Volatile Acquisition,Any,Rare,2-3,20,Non-repeating
+EVENT_TRADE_RELIC_HP,Relic Sacrifice Altar,Any,Rare,2-3,15,Can trigger follow-up: EVENT_RELIC_RETURN in next act or two acts later
+EVENT_MUT_RAMP_PAYOFF,Mutation Acceleration Chamber,Any,Very Rare,3-4,10,Non-repeating
+EVENT_SACRIFICE_REWARD,Sacrifice Vortex,Any,Rare,2-3,18,Can trigger follow-up: EVENT_SACRIFICE_RETURN in next act or two acts later
+EVENT_MINIGAME_ACT1_MEMORY_021,Card Memory [Minigame],1,Uncommon,1-2,60,Non-repeating
+EVENT_MINIGAME_ACT3_TIMER_022,Bomb Defuse [Minigame],3,Rare,2-3,20,Non-repeating
+EVENT_MINIGAME_ACT2_SPEED_023,Signal Match [Minigame],2,Uncommon,2-3,50,Non-repeating
+EVENT_MINIGAME_ACT1_FIREWALL_024,Breach Layers [Minigame],1,Uncommon,1-2,55,Non-repeating
+EVENT_MINIGAME_ACT3_MAZE_025,Vanta Maze [Minigame],3,Rare,2-3,15,Non-repeating
+EVENT_MINIGAME_ACT2_STATUS_026,Status Puzzle [Minigame],2,Uncommon,2-3,45,Non-repeating
+EVENT_MINIGAME_ACT1_DODGE_027,Signal Dodge [Minigame],1,Uncommon,1-2,50,Non-repeating
+EVENT_MINIGAME_ACT2_RAM_028,RAM Allocation [Minigame],2,Uncommon,2-3,40,Non-repeating
+EVENT_MINIGAME_ACT3_DECK_029,Deck Sort [Minigame],3,Rare,2-3,18,Non-repeating
+EVENT_MINIGAME_ACT1_PREDICT_030,Enemy Prediction [Minigame],1,Uncommon,1-2,45,Non-repeating
+EVENT_MINIGAME_ACT2_RIDDLE_031,Oracle Riddle [Minigame],2,Uncommon,2-3,35,Non-repeating
+EVENT_MINIGAME_ACT1_LEAK_032,Leak Plug [Minigame],1,Uncommon,1-2,40,Non-repeating
+EVENT_MINIGAME_ACT3_HACK_033,Hacking Sequence [Minigame],3,Rare,2-3,15,Non-repeating
+EVENT_MINIGAME_ACT1_CHAIN_034,Status Chain [Minigame],1,Uncommon,1-2,35,Non-repeating
+EVENT_MINIGAME_ACT3_PATCH_035,Patch Assembly [Minigame],3,Rare,2-3,12,Non-repeating
+EVENT_MINIGAME_ACT2_MUTATION_036,Mutation Gamble [Minigame],2,Uncommon,2-3,30,Non-repeating
+EVENT_MINIGAME_ACT1_RHYTHM_037,Pulse Rhythm [Minigame],1,Uncommon,1-2,30,Non-repeating
+EVENT_MINIGAME_ACT3_SCRAP_038,Scrap Recycle [Minigame],3,Rare,2-3,10,Non-repeating
+EVENT_MINIGAME_ACT1_RACE_039,Corrode Race [Minigame],1,Uncommon,1-2,25,Non-repeating
+EVENT_MINIGAME_ACT1_CHASE_040,Drone Chase [Minigame],1,Uncommon,1-2,20,Non-repeating
+EVENT_ALL_SCRAP_011,Scrap Recycle,Any,Common,1-2,80,Non-repeating
+EVENT_ALL_SWARM_017,Minion Swarm,Any,Uncommon,2-3,50,Non-repeating
+EVENT_ALL_SCRAP_047,Minion Yard,Any,Common,1-2,70,Non-repeating
+EVENT_ALL_SWARM_053,Scrap Horde,Any,Uncommon,2-3,45,Non-repeating
+EVENT_ALL_SCRAP_065,Recycle Node,Any,Common,1-2,60,Non-repeating
+EVENT_ALL_SWARM_071,Imp Swarm,Any,Uncommon,2-3,40,Non-repeating
+EVENT_ALL_SCRAP_083,Yard Variant,Any,Common,1-2,55,Non-repeating
+EVENT_ALL_SWARM_089,Pod Swarm,Any,Uncommon,2-3,35,Non-repeating

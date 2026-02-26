@@ -1,0 +1,154 @@
+id,name,type,costRAM,tags
+C-001,Strike,Attack,1,Core
+C-002,Guard,Defense,1,Core;Firewall
+C-003,Patch,Support,1,Core;Nanoflow
+C-004,Scan,Utility,1,Core
+C-005,Ricochet,Attack,1,Core
+C-006,Charge Pack,Utility,0,Core
+C-007,Countermeasure,Defense,1,Core
+C-008,Sweep Pulse,Attack,1,Core
+C-009,Antivirus Lockout,Skill / Enemy interference,1,Core
+C-010,Scatterfire,Attack,1,Core
+NC-001,Burst Shot,Attack,2,
+NC-002,Ping Storm,Attack,2,
+NC-003,Firewall Patch,Defense,2,Firewall
+NC-004,Quick Patch,Support,2,Nanoflow
+NC-005,Corrode Dart,Attack,2,Corrode
+NC-006,Underclock Nudge,Utility,2,Underclock
+NC-007,Port Probe,Utility,2,Exposed Ports
+NC-008,Sensor Scramble,Utility,2,Sensor Glitch
+NC-009,Spoof Ping,Utility,2,Target Spoof
+NC-010,RAM Sip,Utility,0,
+NC-011,RAM Cache,Utility,2,
+NC-012,Stack Trace,Utility,2,
+NC-013,Reorder Buffer,Utility,2,
+NC-014,Shield Injector,Defense,2,Firewall
+NC-015,Overclock Ping,Utility,2,Overclocked
+NC-016,Hardening Routine,Defense,2,Firewall
+NC-017,Nano Drip,Support,2,Nanoflow
+NC-018,Leak Tap,Attack,2,Leak
+NC-019,Hook Script,Utility,1,
+NC-020,Focus Cycle,Utility,2,
+NC-021,Cleanup,Utility,2,
+NC-022,Firewall Top-Up,Defense,2,Firewall
+NC-023,RAM Transfusion,Utility / tradeoff,0,
+NC-024,Blood Battery,Utility / tradeoff,0,
+NC-025,Zero-Day Injector,Attack,2,Exploit;OneShot
+NC-026,Logic Bomb,Attack,1,Exploit;Volatile
+NC-027,Packet Spike,Attack,0,Exploit;Volatile
+NC-028,Rootkit Stab,Attack,1,Exploit;OneShot
+NC-029,Kill Switch,Attack,3,Exploit;OneShot;Tradeoff
+NC-030,Emergency Shield,Defense,0,Patch;Volatile
+NC-031,Disposable Barrier,Defense,1,Patch;OneShot
+NC-032,Failsafe Rollback,Defense,2,Patch;OneShot
+NC-033,Burn Notice,Utility,0,Exploit;Volatile
+NC-034,Crash Dump,Utility,1,Exploit;Volatile
+NC-035,Exploit Kit,Utility,1,Exploit;OneShot
+NC-036,Overclock Burst,Utility,0,Overclocked;OneShot;Tradeoff
+NC-037,Ghost Process,Utility,1,Exploit;Volatile
+NC-038,Blacksite Patch,Support,2,Patch;OneShot
+NC-039,Data Wipe,Utility,2,Exploit;OneShot
+NC-040,Deep Scan,Utility,1,Control;Scry
+NC-041,Packet Sniffer,Utility,0,Control;Scry
+NC-042,Kernel Trace,Utility,2,Control;Scry
+NC-043,Stack Reorder,Utility,1,Control;Topdeck
+NC-044,Hot Swap,Utility,1,Control;Cycle
+NC-045,Cache Line,Utility,0,Control;Topdeck
+NC-046,Index Cache,Utility,1,Control;Retrieve;Topdeck
+NC-047,Rapid Recompile,Utility,2,Control;Retrieve
+NC-048,Garbage Collect,Utility,1,Control;Purge
+NC-049,Targeted Pull,Utility,2,Control;Tutor
+NC-050,Patch Finder,Support,2,Control;Tutor
+NC-051,Firewall Lookup,Defense,2,Control;Tutor
+NC-052,Wildcard Query,Utility,3,Control;Tutor
+NC-053,Defrag,Utility,1,Control;Shuffle
+NC-054,Cold Boot,Utility,0,Control;Shuffle
+NC-055,Selective Buffer,Utility,1,Control;Filter
+NC-056,Commit / Revert,Utility,1,Control;Filter
+NC-057,Priority Interrupt,Utility,0,Control;Topdeck
+NC-058,Daemon Thread,Support,2,Power;RAM
+NC-059,Adaptive Firewall,Defense,2,Power;Firewall
+NC-060,Packet Leech,Support,1,Power;Debuff
+NC-061,Signal Amplifier,Support,1,Power;Draw
+NC-062,Heat Sink,Defense,1,Power;Firewall
+NC-063,Backdoor Cache,Support,1,Power;RAM
+NC-064,Patch Scheduler,Support,2,Power;Healing
+NC-065,Exploit Collector,Support,2,Power;Setup
+NC-066,Killchain Protocol,Support,3,Power;Attack
+NC-067,Quarantine Routine,Support,2,Power;Cleanse
+NC-068,Memory Compression,Support,1,Power;Hand
+NC-069,Recursive Loop,Support,2,Power;Deck
+NC-070,Dark Web Broker,Support,2,Power;Economy
+NC-071,System Watchdog,Support,1,Power;Control
+NC-072,I/O Prioritiser,Support,2,Power;Draw
+NC-073,RAM Lance,Attack,0,XCost;Exploit
+NC-074,Broadcast Surge,Attack,0,XCost;Exploit;AOE
+NC-075,Dynamic Firewall,Defense,0,XCost;Firewall
+NC-076,Adaptive Countermeasure,Attack,0,XCost;Hybrid
+NC-077,Nanite Flood,Support,0,XCost;Heal
+NC-078,Burst Read,Utility,0,XCost;Draw
+NC-079,Cache Investment,Utility,0,XCost;Setup
+NC-080,Thread Allocation,Utility,0,XCost;Setup
+NC-081,Throttle Protocol,Utility,0,XCost;Control
+NC-082,Packet Leech,Attack,0,XCost;DebuffSynergy
+NC-083,Emergency Reimage,Defense,0,XCost;Tradeoff
+NC-084,Hard Reset,Utility,0,XCost;Purge
+NC-085,Dazed Packet,Status,0,Status;Junk
+NC-086,Burn Stack,Status,0,Status;Junk
+NC-087,Wound Fragment,Status,0,Status;Junk
+NC-088,Trace Beacon,Status,0,Status;Junk;Debuff
+NC-089,Malware Stub,Status,0,Status;Junk
+NC-090,Null Pointer,Status,0,Status;Junk
+NC-091,Overheat,Status,0,Status;Junk
+NC-092,Corrupted Sector,Status,0,Status;Junk
+NC-093,Malware Seeder,Attack,1,Exploit;StatusGen
+NC-094,Trace Spoofer,Utility,1,Control;StatusGen
+NC-095,Heat Burst,Attack,0,AOE;StatusGen
+NC-096,Unsafe Cache,Utility,0,Draw;StatusGen
+NC-097,Packet Flood,Utility,1,Cycle;StatusGen
+NC-098,Controlled Burn,Support,1,Heal;Tradeoff;StatusGen
+NC-099,Garbage Collector+,Utility,1,Purge;Cleanup
+NC-100,System Quarantine,Defense,2,Firewall;Cleanup
+NC-101,Deep Clean,Support,2,Cleanup;Stabilise
+NC-102,Panic Purge,Utility,0,Cleanup;Emergency
+UC-001,Heavy Shot,Attack,3,
+UC-002,Chain Bolt,Attack,3,Exposed Ports
+UC-003,Firewall Mesh,Defense,3,Firewall
+UC-004,Firewall Bank,Defense,3,Firewall
+UC-005,Emergency Patch,Support,3,Nanoflow
+UC-006,Nano Surge,Support,3,Nanoflow
+UC-007,RAM Burst,Utility,2,
+UC-008,Battery Swap,Utility,2,
+UC-009,Corrode Payload,Attack,3,Corrode
+UC-010,Signal Jammer,Utility,3,Sensor Glitch
+UC-011,Spoof Field,Utility,3,Target Spoof
+UC-012,Overclock Self,Utility,3,Overclocked
+UC-013,Underclock Pulse,Utility,3,Underclock
+UC-014,Quarantine Protocol,Utility,3,
+UC-015,Commit Buffer,Utility,1,
+UC-016,Credit Skim,Utility,1,
+R-001,Plasma Lance,Attack,3,
+R-002,Firewall Bastion,Defense,3,Firewall
+R-003,System Reboot,Support,3,
+R-004,Freeze RAM Use,Utility,3,
+R-005,RAM Doubler,Utility,3,
+R-006,Hand Compiler,Utility,3,
+R-007,Hot Swap Patch,Utility,3,
+R-008,Stabilise Target,Utility,1,
+R-009,Mutation Sink,Utility,2,
+R-010,Credit Heist,Utility,2,
+P-001,Assimilate Weak,Utility,3,Overclocked
+P-002,Fragment Strong,Utility,3,Sensor Glitch
+P-003,Cachejack,Skill,2,
+P-004,Cachejack MkII,Skill,2,target-spoof
+P-005,Prime Seed,Utility,1,
+P-006,Forked Compiler,Utility,1,
+P-007,Hotwire Surge,Skill,0,
+P-008,Burst Cannon,Attack,3,
+P-009,Street Doc Patch,Skill,2,
+P-010,Instant Firewall,Skill,3,firewall
+P-011,Binary Staircase,Skill,2,
+P-012,Prime Ladder,Skill,4,
+P-013,Total Restore,Skill,0,
+P-014,RAM Flood,Skill,0,
+P-015,Sandbox Shot,Attack,0,

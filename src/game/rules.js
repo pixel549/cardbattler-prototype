@@ -1,0 +1,65 @@
+import { push } from "./log";
+
+function getStacks(target, id) {
+  return target.statuses?.find(s => s.id === id)?.stacks ?? 0;
+}
+
+export function applyDamage(state, sourceId, target, amount) {
+  const rawAmount = amount; // pre-modifier base amount
+
+  // Status modifiers (StS-ish)
+  const source = (sourceId === state.player.id)
+    ? state.player
+    : state.enemies.find(e => e.id === sourceId);
+
+  const weakStacks = source ? getStacks(source, "Weak") : 0;
+  if (weakStacks > 0) amount = Math.floor(amount * 0.75);
+
+  const vulnStacks = getStacks(target, "Vulnerable");
+  if (vulnStacks > 0) amount = Math.floor(amount * 1.5);
+
+  // Act scaling: enemies deal more damage
+  const isEnemy = sourceId !== state.player.id;
+  const enemyDmgMult = (isEnemy && state.balance?.enemyDmgMult) ? state.balance.enemyDmgMult : 1;
+  if (isEnemy && enemyDmgMult !== 1) {
+    amount = Math.floor(amount * enemyDmgMult);
+  }
+
+  const statusModdedAmount = amount; // after status mods, before block
+  const blocked = Math.min(target.block, amount);
+  target.block -= blocked;
+  const dmg = Math.max(0, amount - blocked);
+  target.hp = Math.max(0, target.hp - dmg);
+
+  // Emit structured damage event for analytics (replaces plain Info entry)
+  push(state.log, {
+    t: "DamageDealt",
+    msg: `${sourceId} dealt ${dmg} dmg`,
+    data: {
+      sourceId,
+      targetId: target.id,
+      rawAmount,
+      statusModdedAmount,
+      finalDamage: dmg,
+      blocked,
+      isPlayerSource: !isEnemy,
+      weakened: weakStacks > 0,
+      vulnerable: vulnStacks > 0,
+      enemyDmgMult: isEnemy ? enemyDmgMult : null,
+    },
+  });
+  return dmg;
+}
+
+export function gainBlock(state, target, amount) {
+  target.block += amount;
+  push(state.log, { t: "Info", msg: `${target.id} gained ${amount} block` });
+}
+
+export function addStatus(state, target, id, stacks) {
+  if (!target.statuses) target.statuses = [];
+  const existing = target.statuses.find(s => s.id === id);
+  if (existing) existing.stacks += stacks;
+  else target.statuses.push({ id, stacks });
+  push(state.log, { t: "Info", msg: `${target.id} gained ${id}(${stacks})` });
+}

@@ -139,6 +139,26 @@ function getIntentColor(intentType) {
 }
 
 // ============================================================
+// STATUS DESCRIPTIONS (shown in tooltips on hover/tap)
+// ============================================================
+const STATUS_DESCRIPTIONS = {
+  Firewall:     'Block that persists between turns (not reset each turn)',
+  Weak:         'Deal 25% less damage while active',
+  Vulnerable:   'Take 50% more incoming damage while active',
+  Leak:         'Enables enemy multi-hit preference; combo penalty',
+  ExposedPorts: 'Vulnerability-like debuff — increases damage taken',
+  SensorGlitch: 'Accuracy / targeting interference — may cause misses',
+  Corrode:      'Strips block each turn (armour decay) · stacks = block stripped',
+  Underclock:   'Reduces RAM regeneration each turn',
+  Overclock:    'Increases damage output or RAM regen',
+  Nanoflow:     'Regenerate HP equal to stacks at the start of each turn',
+  TargetSpoof:  'Misdirects enemy targeting',
+  Overheat:     'Deal stacks damage to self at the start of each turn',
+  Throttled:    'Reduces card draw or play speed',
+  TraceBeacon:  'Marks the entity — may trigger additional enemy effects',
+};
+
+// ============================================================
 // EFFECT COLOUR CODING (from player perspective)
 // ============================================================
 // Parses card effects (including RawText) and assigns green/red/neutral.
@@ -286,10 +306,15 @@ function formatEffectsLong(effects) {
 function StatusBadge({ status, size = 'normal' }) {
   const meta = getStatusMeta(status.id);
   const isSmall = size === 'small';
+  const desc = STATUS_DESCRIPTIONS[status.id];
+  const stackWord = status.stacks === 1 ? 'stack' : 'stacks';
+  const titleStr = desc
+    ? `${meta.name || status.id} (${status.stacks} ${stackWord})\n${desc}`
+    : `${meta.name || status.id}: ${status.stacks} ${stackWord}`;
 
   return (
     <div
-      title={`${status.id}: ${status.stacks} stacks`}
+      title={titleStr}
       style={{
         display: 'inline-flex',
         alignItems: 'center',
@@ -444,10 +469,10 @@ function EnemyCard({ enemy, isTargeted, onClick, actingType }) {
           alt={enemy.name ?? 'Enemy'}
           style={{
             display: 'block',
-            height: '32vh',
+            height: '26vh',
             width: 'auto',
-            maxWidth: '160px',
-            minWidth: '100px',
+            maxWidth: '150px',
+            minWidth: '80px',
           }}
         />
 
@@ -1500,12 +1525,12 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false }
         className="safe-area-top"
         style={{
           flex: '0 0 auto',
-          minHeight: '20vh',
-          maxHeight: '38vh',
+          minHeight: '18vh',
+          maxHeight: '30vh',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          padding: '10px 8px',
+          padding: '8px 8px',
           overflowX: 'auto',
           overflowY: 'hidden',
         }}

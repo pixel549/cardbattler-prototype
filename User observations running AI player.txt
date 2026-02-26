@@ -1,0 +1,60 @@
+Balanced is loading the least games - is this from survivability?
+Aggressive is now second best among mutation pusher, debuffs, default and aggro. previously low survivability not fully fixed but above others
+Enemy cards need animations for the types of moves they do - raw damage, inflict status, buff allies, heal allies, others? get claude to figure them all out.
+By 33 runs - aggro, debuff and mutation pusher are ALL on 33 restarts. default is still on 11. Run 11/12 - Winning run for Default AI? Claude - investigate.
+Aggro run ~45 - mutation pusher is still on 34. holding out well. Claude - investigate.
+
+--- EVENTS BACKLOG (implement later) ---
+Event ideas - player picks a card to remove from their deck permanently; a random card is removed with it. the player can choose to do this as many times as they want. only occurs when they get over 40 cards.
+Event ideas - player selects ALL the cards they want to remove at once. When they do, a random selection of the same amount of cards are also removed. Occurs when the player has over 50 cards.
+Event ideas - a vendor who will pay full price to buy all cards, and who sells relics and high value cards at a 400% (or something) mark-up.
+Event ideas - player can "feed" one of their cards into something. The required to play that card is then restored to the player as health.
+Event ideas - player can remove a mutation from a card. It costs them -1 Max HP each time.
+Event ideas - player can remove a mutation from a card. it costs them -10HP (not from max) each time.
+Event ideas - player can re-roll a card mutation. costs -2HP each roll.
+Even ideas: Player can reduce or buff mutation severity. Costs -5HP each time.
+
+--- ACTIVE ISSUES ---
+
+[CONTENT GAP — needs data work] enemies STILL only attack
+  INVESTIGATED: Confirmed data gap. Every single enemy in the game (all 125+) uses only card C-001
+  (Strike, DealDamage 6) in their rotation — a placeholder from content pipeline. The engine fully
+  supports diverse enemy actions (ApplyStatus, Heal, GainBlock, SummonEnemy, etc.) and intent
+  detection works correctly. Requires populating enemy ability cards in content_src CSV and re-running
+  build_content. No engine changes needed; this is purely a content authoring task.
+  TODO: define a handful of archetypal enemy cards (attack, debuff, heal, block) and assign them to
+  enemy rotations in the CSV. Start with at least 3 enemy archetypes.
+
+[FIXED — 2026-02-26] corrode doesn't do damage (is it supposed to?)
+  Corrode is armour decay, not direct damage. It now strips block equal to its stacks at the start of
+  each turn. Also implemented Nanoflow (heals stacks HP/turn) and Overheat (deals stacks damage/turn).
+  engine.js: processStatusEffects() added before tickStatuses() in StartTurn handler.
+
+[INVESTIGATED — 2026-02-26] mutations still don't apply
+  PARTIALLY RESOLVED: All starting cards (Strike/C-001, Guard/C-002, etc.) are tagged "Core" — core
+  cards intentionally NEVER mutate (by design, to keep the starter kit stable). Mutations only fire on
+  non-core cards acquired from the shop during runs. With a fresh deck of only core cards, zero
+  mutations will ever trigger. System appears correct.
+  FOLLOW UP: Verify that non-core shop cards DO mutate in practice once a run progresses far enough to
+  acquire them. Also consider adding a visual badge or glow on non-core cards to make them visually
+  distinct from core (so the player understands which cards can mutate).
+
+[FIXED — 2026-02-26] need a way to hide/minimise debug mode so I can play on a phone without that AI screen in the way
+  Added minimize button (_) to the AI panel header. Collapses to a small pill in the top-left corner.
+  State persists across sessions via localStorage. Click the pill to restore.
+
+[FIXED (partial) — 2026-02-26] mousing over / tapping status effects should explain what they do, not just name them
+  Added descriptive title tooltips to all status badges — shows on hover in desktop browsers.
+  Descriptions cover: Firewall, Weak, Vulnerable, Leak, ExposedPorts, SensorGlitch, Corrode,
+  Underclock, Overclock, Nanoflow, TargetSpoof, Overheat, Throttled, TraceBeacon.
+  FOLLOW UP: HTML title tooltips don't show on mobile tap. Need a proper tap-to-show tooltip
+  component for phones (a small floating div that appears on touch and disappears on next tap).
+
+[FIXED — 2026-02-26] Some UI overlap on my laptop - enemy cards block centre cards
+  Reduced enemy zone max-height: 38vh→30vh, image height: 32vh→26vh. Gives ~8vh more space to the
+  centre card zone. Let me know if still tight on your specific screen.
+
+[RESOLVED — 2026-02-26] need a simple way for claude to play the game - not through the fucking browser extension, it's shit
+  Claude can now test directly using the Preview MCP server tools (mcp__Claude_Preview__*). Works by
+  starting the local dev server, then taking screenshots and clicking through the game UI — no browser
+  extension required. Will use this for future testing.

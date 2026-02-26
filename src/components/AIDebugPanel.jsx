@@ -125,6 +125,14 @@ export default function AIDebugPanel({
   const [customOpen,     setCustomOpen]     = useState(false);
   const [cardFilter,     setCardFilter]     = useState('');
   const [showCardPicker, setShowCardPicker] = useState(false);
+  const [minimized,      setMinimized]      = useState(
+    () => localStorage.getItem('aiPanel_minimized') === 'true'
+  );
+  const toggleMinimized = () => setMinimized(v => {
+    const next = !v;
+    localStorage.setItem('aiPanel_minimized', String(next));
+    return next;
+  });
 
   // ── Derived mutation stats ──
   const cardInstances = currentState?.combat?.cardInstances ?? currentState?.deck?.cardInstances ?? {};
@@ -235,6 +243,38 @@ export default function AIDebugPanel({
     };
   }
 
+  // ── Minimized pill ──────────────────────────────────────────────────────────
+  if (minimized) {
+    return (
+      <button
+        onClick={toggleMinimized}
+        title="Expand AI panel"
+        style={{
+          position: 'fixed',
+          left: 8,
+          top: 8,
+          zIndex: 9999,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 5,
+          padding: '4px 10px',
+          borderRadius: 8,
+          fontFamily: MONO,
+          fontSize: 10,
+          fontWeight: 700,
+          border: `1px solid ${enabled ? psColor : BORDER}`,
+          backgroundColor: BG,
+          color: enabled ? psColor : DIM,
+          cursor: 'pointer',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.6)',
+          letterSpacing: '0.05em',
+        }}
+      >
+        ⚙ {enabled ? (paused ? '⏸' : '▶') : '—'} {enabled ? psColor === CYAN ? 'AI' : 'AI' : 'AI'}
+      </button>
+    );
+  }
+
   return (
     <div
       style={{
@@ -301,6 +341,25 @@ export default function AIDebugPanel({
             }}
           >
             {enabled ? 'ON' : 'OFF'}
+          </button>
+          {/* Minimize button — always shown */}
+          <button
+            onClick={toggleMinimized}
+            title="Minimise panel"
+            style={{
+              padding: '2px 7px',
+              borderRadius: 4,
+              border: '1px solid #3a3a5a',
+              backgroundColor: 'transparent',
+              color: DIM,
+              fontFamily: MONO,
+              fontSize: 10,
+              fontWeight: 700,
+              cursor: 'pointer',
+              lineHeight: 1,
+            }}
+          >
+            _
           </button>
         </div>
       </div>

@@ -82,6 +82,41 @@ function endTurnEthereal(state, data) {
   p.hand = keep;
 }
 
+// Apply active status effects at the START of an entity's turn (before tick/decay).
+// Each status that has a per-turn effect fires here.
+function processStatusEffects(state, entity) {
+  for (const s of (entity.statuses || [])) {
+    if (s.stacks <= 0) continue;
+    switch (s.id) {
+      case 'Corrode':
+        // Strips block each turn (armour decay — reduces existing block by stacks)
+        if (entity.block > 0) {
+          const stripped = Math.min(entity.block, s.stacks);
+          entity.block = Math.max(0, entity.block - stripped);
+          push(state.log, { t: 'Info', msg: `${entity.id} Corrode strips ${stripped} block` });
+        }
+        break;
+      case 'Nanoflow':
+        // Healing-over-time: restore HP equal to stacks (capped at maxHP)
+        if (entity.maxHP && entity.hp < entity.maxHP) {
+          const heal = Math.min(s.stacks, entity.maxHP - entity.hp);
+          entity.hp += heal;
+          push(state.log, { t: 'Info', msg: `${entity.id} Nanoflow heals ${heal}` });
+        }
+        break;
+      case 'Overheat':
+        // Deals stacks damage to the entity each turn (self-damage DoT)
+        if (s.stacks > 0) {
+          entity.hp = Math.max(0, entity.hp - s.stacks);
+          push(state.log, { t: 'Info', msg: `${entity.id} Overheat deals ${s.stacks} damage` });
+        }
+        break;
+      default:
+        break;
+    }
+  }
+}
+
 function tickStatuses(entity, dataRef) {
   const statusDefs = dataRef?.statuses || {};
   const fallbackTimed = new Set(["Weak", "Vulnerable"]);
@@ -1129,6 +1164,9 @@ export function dispatchCombat(state, data, action) {
       state.player.ram = Math.min(state.player.maxRAM, state.player.ram + state.player.ramRegen);
 
       drawCards(state, rng, 5 + (state.ruleMods?.drawPerTurnDelta || 0));
+      // Apply per-turn status effects (Corrode, Nanoflow, Overheat, …) before decaying stacks
+      processStatusEffects(state, state.player);
+      for (const e of state.enemies) processStatusEffects(state, e);
       tickStatuses(state.player, state.dataRef);
       for (const e of state.enemies) tickStatuses(e, state.dataRef);
 

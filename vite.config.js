@@ -46,26 +46,13 @@ export default defineConfig({
 
       // ── Workbox service-worker config ──────────────────────────────────────
       workbox: {
-        // Precache app shell. Skip PNGs — card images are ~2 MB × 300 files.
-        // They get cached on demand via runtimeCaching below.
-        globPatterns: ['**/*.{js,css,html,svg,ico,json,woff,woff2}'],
-
-        runtimeCaching: [
-          {
-            urlPattern: /\.png$/i,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'card-images-v1',
-              expiration: {
-                maxEntries: 500,
-                maxAgeSeconds: 60 * 60 * 24 * 60, // 60 days
-              },
-              cacheableResponse: {
-                statuses: [0, 200],
-              },
-            },
-          },
-        ],
+        // Precache the full app shell + all card art.
+        // Images were resized to ~60 KB JPEGs (total ~31 MB), so they are
+        // small enough to fully precache — the game is then playable offline
+        // after the very first load, even on a slow connection.
+        globPatterns: ['**/*.{js,css,html,svg,ico,json,woff,woff2,jpg,jpeg,png}'],
+        // 50 MB limit to accommodate the image set (~31 MB) + JS bundle
+        maximumFileSizeToCacheInBytes: 50 * 1024 * 1024,
       },
     }),
   ],

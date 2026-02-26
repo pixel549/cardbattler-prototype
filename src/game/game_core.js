@@ -411,6 +411,12 @@ export function dispatchGame(stateIn, data, action) {
           state.reward.relicChoices = makeRelicChoices(data, state.run.seed ^ state.run.floor, kind);
         }
 
+        // Drain gold earned via mutation patches during combat (GainGold / DecompileRandom ops)
+        if (state.combat._pendingGoldGain) {
+          state.run.gold += state.combat._pendingGoldGain;
+          log({ t: "Info", msg: `Mutation gold: +${state.combat._pendingGoldGain}` });
+        }
+
         state.combat = null;
         log({ t: "Info", msg: "Combat victory -> rewards" });
       }

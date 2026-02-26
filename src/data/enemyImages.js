@@ -162,5 +162,8 @@ const ENEMY_IMAGE_MAP = {
 export function getEnemyImage(enemyDefId) {
   const filename = ENEMY_IMAGE_MAP[enemyDefId];
   if (!filename) return null;
-  return imageByFilename[filename] ?? null;
+  // Prefer exact match; fall back to .jpg if the .png was converted
+  return imageByFilename[filename]
+      ?? imageByFilename[filename.replace(/\.(png|jpeg)$/i, '.jpg')]
+      ?? null;
 }

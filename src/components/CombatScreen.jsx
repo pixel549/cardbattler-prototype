@@ -992,7 +992,10 @@ function HandCard({ cardInstance, cardDef, isSelected, onSelect, canPlay, compac
   const isDecaying = countdown != null && countdown <= 3;
   const isBricked   = cardInstance?.finalMutationId === 'J_BRICK';
   const isRewritten  = cardInstance?.finalMutationId === 'J_REWRITE';
-  const isMutable = cardDef?.tags && !cardDef.tags.includes('Core') && !cardDef.tags.includes('EnemyCard');
+  const isMutable   = cardDef?.tags && !cardDef.tags.includes('Core') && !cardDef.tags.includes('EnemyCard');
+  const isVolatile  = (cardDef?.tags || []).includes('Volatile');
+  const isOneShot   = (cardDef?.tags || []).includes('OneShot');
+  const isExhaust   = (cardDef?.tags || []).includes('Exhaust') || (cardDef?.tags || []).includes('Ethereal');
 
   const w = compact ? 72 : 105;
   const h = compact ? 100 : 148;
@@ -1143,6 +1146,39 @@ function HandCard({ cardInstance, cardDef, isSelected, onSelect, canPlay, compac
           }}
         >
           ✦
+        </div>
+      )}
+
+      {/* Volatile / OneShot / Exhaust indicator strip (bottom-left) */}
+      {(isVolatile || isOneShot || isExhaust) && !compact && (
+        <div style={{
+          position: 'absolute', bottom: 3, left: 3,
+          display: 'flex', gap: 2, zIndex: 10,
+        }}>
+          {isVolatile && (
+            <span title="Volatile — discarded after use" style={{
+              fontFamily: MONO, fontSize: 6, fontWeight: 700, letterSpacing: '0.05em',
+              padding: '1px 3px', borderRadius: 3,
+              backgroundColor: `${C.neonOrange}22`, color: C.neonOrange,
+              border: `1px solid ${C.neonOrange}55`,
+            }}>VOL</span>
+          )}
+          {isOneShot && (
+            <span title="One-Shot — permanently removed after use" style={{
+              fontFamily: MONO, fontSize: 6, fontWeight: 700, letterSpacing: '0.05em',
+              padding: '1px 3px', borderRadius: 3,
+              backgroundColor: `${C.neonRed}22`, color: C.neonRed,
+              border: `1px solid ${C.neonRed}55`,
+            }}>1×</span>
+          )}
+          {isExhaust && !isOneShot && (
+            <span title="Exhaust — removed from deck this combat" style={{
+              fontFamily: MONO, fontSize: 6, fontWeight: 700, letterSpacing: '0.05em',
+              padding: '1px 3px', borderRadius: 3,
+              backgroundColor: `${C.neonPurple}22`, color: C.neonPurple,
+              border: `1px solid ${C.neonPurple}55`,
+            }}>EXH</span>
+          )}
         </div>
       )}
 

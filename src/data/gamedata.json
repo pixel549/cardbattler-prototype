@@ -1,6 +1,6 @@
 {
-  "version": 1,
-  "builtAt": "2026-02-27T04:22:11.067Z",
+  "version": 3,
+  "builtAt": "2026-02-27T07:09:46.116Z",
   "cards": {
     "C-001": {
       "id": "C-001",
@@ -5302,6 +5302,1180 @@
         "brickBehavior": "Exhaust",
         "rewritePoolDefIds": []
       }
+    },
+    "EC-A1": {
+      "id": "EC-A1",
+      "name": "Light Strike",
+      "type": "Attack",
+      "costRAM": 0,
+      "tags": [
+        "EnemyCard"
+      ],
+      "effects": [
+        {
+          "op": "DealDamage",
+          "target": "Enemy",
+          "amount": 6
+        }
+      ],
+      "finalMutation": {
+        "outcomeWeights": {
+          "brick": 1,
+          "rewrite": 0
+        },
+        "brickBehavior": "Exhaust",
+        "rewritePoolDefIds": []
+      },
+      "defaultUseCounter": 9999,
+      "defaultFinalMutationCountdown": 9999,
+      "mutationOdds": {
+        "triggerChance": 0,
+        "tiers": {}
+      }
+    },
+    "EC-A2": {
+      "id": "EC-A2",
+      "name": "Strike",
+      "type": "Attack",
+      "costRAM": 0,
+      "tags": [
+        "EnemyCard"
+      ],
+      "effects": [
+        {
+          "op": "DealDamage",
+          "target": "Enemy",
+          "amount": 8
+        }
+      ],
+      "finalMutation": {
+        "outcomeWeights": {
+          "brick": 1,
+          "rewrite": 0
+        },
+        "brickBehavior": "Exhaust",
+        "rewritePoolDefIds": []
+      },
+      "defaultUseCounter": 9999,
+      "defaultFinalMutationCountdown": 9999,
+      "mutationOdds": {
+        "triggerChance": 0,
+        "tiers": {}
+      }
+    },
+    "EC-A3": {
+      "id": "EC-A3",
+      "name": "Heavy Strike",
+      "type": "Attack",
+      "costRAM": 0,
+      "tags": [
+        "EnemyCard"
+      ],
+      "effects": [
+        {
+          "op": "DealDamage",
+          "target": "Enemy",
+          "amount": 11
+        }
+      ],
+      "finalMutation": {
+        "outcomeWeights": {
+          "brick": 1,
+          "rewrite": 0
+        },
+        "brickBehavior": "Exhaust",
+        "rewritePoolDefIds": []
+      },
+      "defaultUseCounter": 9999,
+      "defaultFinalMutationCountdown": 9999,
+      "mutationOdds": {
+        "triggerChance": 0,
+        "tiers": {}
+      }
+    },
+    "EC-A4": {
+      "id": "EC-A4",
+      "name": "Crushing Blow",
+      "type": "Attack",
+      "costRAM": 0,
+      "tags": [
+        "EnemyCard"
+      ],
+      "effects": [
+        {
+          "op": "DealDamage",
+          "target": "Enemy",
+          "amount": 18
+        }
+      ],
+      "finalMutation": {
+        "outcomeWeights": {
+          "brick": 1,
+          "rewrite": 0
+        },
+        "brickBehavior": "Exhaust",
+        "rewritePoolDefIds": []
+      },
+      "defaultUseCounter": 9999,
+      "defaultFinalMutationCountdown": 9999,
+      "mutationOdds": {
+        "triggerChance": 0,
+        "tiers": {}
+      }
+    },
+    "EC-A5": {
+      "id": "EC-A5",
+      "name": "Devastating Strike",
+      "type": "Attack",
+      "costRAM": 0,
+      "tags": [
+        "EnemyCard"
+      ],
+      "effects": [
+        {
+          "op": "DealDamage",
+          "target": "Enemy",
+          "amount": 24
+        }
+      ],
+      "finalMutation": {
+        "outcomeWeights": {
+          "brick": 1,
+          "rewrite": 0
+        },
+        "brickBehavior": "Exhaust",
+        "rewritePoolDefIds": []
+      },
+      "defaultUseCounter": 9999,
+      "defaultFinalMutationCountdown": 9999,
+      "mutationOdds": {
+        "triggerChance": 0,
+        "tiers": {}
+      }
+    },
+    "EC-A6": {
+      "id": "EC-A6",
+      "name": "Sniper Shot",
+      "type": "Attack",
+      "costRAM": 0,
+      "tags": [
+        "EnemyCard"
+      ],
+      "effects": [
+        {
+          "op": "DealDamage",
+          "target": "Enemy",
+          "amount": 14
+        }
+      ],
+      "finalMutation": {
+        "outcomeWeights": {
+          "brick": 1,
+          "rewrite": 0
+        },
+        "brickBehavior": "Exhaust",
+        "rewritePoolDefIds": []
+      },
+      "defaultUseCounter": 9999,
+      "defaultFinalMutationCountdown": 9999,
+      "mutationOdds": {
+        "triggerChance": 0,
+        "tiers": {}
+      }
+    },
+    "EC-A7": {
+      "id": "EC-A7",
+      "name": "Corrosive Bite",
+      "type": "Attack",
+      "costRAM": 0,
+      "tags": [
+        "EnemyCard"
+      ],
+      "effects": [
+        {
+          "op": "DealDamage",
+          "target": "Enemy",
+          "amount": 6
+        },
+        {
+          "op": "ApplyStatus",
+          "statusId": "Corrode",
+          "stacks": 3,
+          "target": "Enemy"
+        }
+      ],
+      "finalMutation": {
+        "outcomeWeights": {
+          "brick": 1,
+          "rewrite": 0
+        },
+        "brickBehavior": "Exhaust",
+        "rewritePoolDefIds": []
+      },
+      "defaultUseCounter": 9999,
+      "defaultFinalMutationCountdown": 9999,
+      "mutationOdds": {
+        "triggerChance": 0,
+        "tiers": {}
+      }
+    },
+    "EC-A8": {
+      "id": "EC-A8",
+      "name": "Vulnerable Slash",
+      "type": "Attack",
+      "costRAM": 0,
+      "tags": [
+        "EnemyCard"
+      ],
+      "effects": [
+        {
+          "op": "DealDamage",
+          "target": "Enemy",
+          "amount": 8
+        },
+        {
+          "op": "ApplyStatus",
+          "statusId": "Vulnerable",
+          "stacks": 1,
+          "target": "Enemy"
+        }
+      ],
+      "finalMutation": {
+        "outcomeWeights": {
+          "brick": 1,
+          "rewrite": 0
+        },
+        "brickBehavior": "Exhaust",
+        "rewritePoolDefIds": []
+      },
+      "defaultUseCounter": 9999,
+      "defaultFinalMutationCountdown": 9999,
+      "mutationOdds": {
+        "triggerChance": 0,
+        "tiers": {}
+      }
+    },
+    "EC-A9": {
+      "id": "EC-A9",
+      "name": "Weakening Blow",
+      "type": "Attack",
+      "costRAM": 0,
+      "tags": [
+        "EnemyCard"
+      ],
+      "effects": [
+        {
+          "op": "DealDamage",
+          "target": "Enemy",
+          "amount": 8
+        },
+        {
+          "op": "ApplyStatus",
+          "statusId": "Weak",
+          "stacks": 1,
+          "target": "Enemy"
+        }
+      ],
+      "finalMutation": {
+        "outcomeWeights": {
+          "brick": 1,
+          "rewrite": 0
+        },
+        "brickBehavior": "Exhaust",
+        "rewritePoolDefIds": []
+      },
+      "defaultUseCounter": 9999,
+      "defaultFinalMutationCountdown": 9999,
+      "mutationOdds": {
+        "triggerChance": 0,
+        "tiers": {}
+      }
+    },
+    "EC-A10": {
+      "id": "EC-A10",
+      "name": "Shield Bash",
+      "type": "Attack",
+      "costRAM": 0,
+      "tags": [
+        "EnemyCard"
+      ],
+      "effects": [
+        {
+          "op": "DealDamage",
+          "target": "Enemy",
+          "amount": 6
+        },
+        {
+          "op": "GainBlock",
+          "target": "Self",
+          "amount": 5
+        }
+      ],
+      "finalMutation": {
+        "outcomeWeights": {
+          "brick": 1,
+          "rewrite": 0
+        },
+        "brickBehavior": "Exhaust",
+        "rewritePoolDefIds": []
+      },
+      "defaultUseCounter": 9999,
+      "defaultFinalMutationCountdown": 9999,
+      "mutationOdds": {
+        "triggerChance": 0,
+        "tiers": {}
+      }
+    },
+    "EC-D1": {
+      "id": "EC-D1",
+      "name": "Raise Shield",
+      "type": "Defense",
+      "costRAM": 0,
+      "tags": [
+        "EnemyCard"
+      ],
+      "effects": [
+        {
+          "op": "GainBlock",
+          "target": "Self",
+          "amount": 6
+        }
+      ],
+      "finalMutation": {
+        "outcomeWeights": {
+          "brick": 1,
+          "rewrite": 0
+        },
+        "brickBehavior": "Exhaust",
+        "rewritePoolDefIds": []
+      },
+      "defaultUseCounter": 9999,
+      "defaultFinalMutationCountdown": 9999,
+      "mutationOdds": {
+        "triggerChance": 0,
+        "tiers": {}
+      }
+    },
+    "EC-D2": {
+      "id": "EC-D2",
+      "name": "Iron Wall",
+      "type": "Defense",
+      "costRAM": 0,
+      "tags": [
+        "EnemyCard"
+      ],
+      "effects": [
+        {
+          "op": "GainBlock",
+          "target": "Self",
+          "amount": 10
+        }
+      ],
+      "finalMutation": {
+        "outcomeWeights": {
+          "brick": 1,
+          "rewrite": 0
+        },
+        "brickBehavior": "Exhaust",
+        "rewritePoolDefIds": []
+      },
+      "defaultUseCounter": 9999,
+      "defaultFinalMutationCountdown": 9999,
+      "mutationOdds": {
+        "triggerChance": 0,
+        "tiers": {}
+      }
+    },
+    "EC-D3": {
+      "id": "EC-D3",
+      "name": "Fortify",
+      "type": "Defense",
+      "costRAM": 0,
+      "tags": [
+        "EnemyCard"
+      ],
+      "effects": [
+        {
+          "op": "GainBlock",
+          "target": "Self",
+          "amount": 8
+        }
+      ],
+      "finalMutation": {
+        "outcomeWeights": {
+          "brick": 1,
+          "rewrite": 0
+        },
+        "brickBehavior": "Exhaust",
+        "rewritePoolDefIds": []
+      },
+      "defaultUseCounter": 9999,
+      "defaultFinalMutationCountdown": 9999,
+      "mutationOdds": {
+        "triggerChance": 0,
+        "tiers": {}
+      }
+    },
+    "EC-H1": {
+      "id": "EC-H1",
+      "name": "Patch Routine",
+      "type": "Support",
+      "costRAM": 0,
+      "tags": [
+        "EnemyCard"
+      ],
+      "effects": [
+        {
+          "op": "Heal",
+          "target": "Self",
+          "amount": 7
+        }
+      ],
+      "finalMutation": {
+        "outcomeWeights": {
+          "brick": 1,
+          "rewrite": 0
+        },
+        "brickBehavior": "Exhaust",
+        "rewritePoolDefIds": []
+      },
+      "defaultUseCounter": 9999,
+      "defaultFinalMutationCountdown": 9999,
+      "mutationOdds": {
+        "triggerChance": 0,
+        "tiers": {}
+      }
+    },
+    "EC-H2": {
+      "id": "EC-H2",
+      "name": "System Restore",
+      "type": "Support",
+      "costRAM": 0,
+      "tags": [
+        "EnemyCard"
+      ],
+      "effects": [
+        {
+          "op": "Heal",
+          "target": "Self",
+          "amount": 11
+        }
+      ],
+      "finalMutation": {
+        "outcomeWeights": {
+          "brick": 1,
+          "rewrite": 0
+        },
+        "brickBehavior": "Exhaust",
+        "rewritePoolDefIds": []
+      },
+      "defaultUseCounter": 9999,
+      "defaultFinalMutationCountdown": 9999,
+      "mutationOdds": {
+        "triggerChance": 0,
+        "tiers": {}
+      }
+    },
+    "EC-H3": {
+      "id": "EC-H3",
+      "name": "Emergency Patch",
+      "type": "Support",
+      "costRAM": 0,
+      "tags": [
+        "EnemyCard"
+      ],
+      "effects": [
+        {
+          "op": "Heal",
+          "target": "Self",
+          "amount": 7
+        },
+        {
+          "op": "GainBlock",
+          "target": "Self",
+          "amount": 5
+        }
+      ],
+      "finalMutation": {
+        "outcomeWeights": {
+          "brick": 1,
+          "rewrite": 0
+        },
+        "brickBehavior": "Exhaust",
+        "rewritePoolDefIds": []
+      },
+      "defaultUseCounter": 9999,
+      "defaultFinalMutationCountdown": 9999,
+      "mutationOdds": {
+        "triggerChance": 0,
+        "tiers": {}
+      }
+    },
+    "EC-S1": {
+      "id": "EC-S1",
+      "name": "Corrode Pulse",
+      "type": "Attack",
+      "costRAM": 0,
+      "tags": [
+        "EnemyCard"
+      ],
+      "effects": [
+        {
+          "op": "ApplyStatus",
+          "statusId": "Corrode",
+          "stacks": 1,
+          "target": "Enemy"
+        }
+      ],
+      "finalMutation": {
+        "outcomeWeights": {
+          "brick": 1,
+          "rewrite": 0
+        },
+        "brickBehavior": "Exhaust",
+        "rewritePoolDefIds": []
+      },
+      "defaultUseCounter": 9999,
+      "defaultFinalMutationCountdown": 9999,
+      "mutationOdds": {
+        "triggerChance": 0,
+        "tiers": {}
+      }
+    },
+    "EC-S2": {
+      "id": "EC-S2",
+      "name": "Corrode Burst",
+      "type": "Attack",
+      "costRAM": 0,
+      "tags": [
+        "EnemyCard"
+      ],
+      "effects": [
+        {
+          "op": "ApplyStatus",
+          "statusId": "Corrode",
+          "stacks": 2,
+          "target": "Enemy"
+        }
+      ],
+      "finalMutation": {
+        "outcomeWeights": {
+          "brick": 1,
+          "rewrite": 0
+        },
+        "brickBehavior": "Exhaust",
+        "rewritePoolDefIds": []
+      },
+      "defaultUseCounter": 9999,
+      "defaultFinalMutationCountdown": 9999,
+      "mutationOdds": {
+        "triggerChance": 0,
+        "tiers": {}
+      }
+    },
+    "EC-S3": {
+      "id": "EC-S3",
+      "name": "Leak Tap",
+      "type": "Attack",
+      "costRAM": 0,
+      "tags": [
+        "EnemyCard"
+      ],
+      "effects": [
+        {
+          "op": "ApplyStatus",
+          "statusId": "Leak",
+          "stacks": 2,
+          "target": "Enemy"
+        }
+      ],
+      "finalMutation": {
+        "outcomeWeights": {
+          "brick": 1,
+          "rewrite": 0
+        },
+        "brickBehavior": "Exhaust",
+        "rewritePoolDefIds": []
+      },
+      "defaultUseCounter": 9999,
+      "defaultFinalMutationCountdown": 9999,
+      "mutationOdds": {
+        "triggerChance": 0,
+        "tiers": {}
+      }
+    },
+    "EC-S4": {
+      "id": "EC-S4",
+      "name": "Leak Flood",
+      "type": "Attack",
+      "costRAM": 0,
+      "tags": [
+        "EnemyCard"
+      ],
+      "effects": [
+        {
+          "op": "ApplyStatus",
+          "statusId": "Leak",
+          "stacks": 3,
+          "target": "Enemy"
+        }
+      ],
+      "finalMutation": {
+        "outcomeWeights": {
+          "brick": 1,
+          "rewrite": 0
+        },
+        "brickBehavior": "Exhaust",
+        "rewritePoolDefIds": []
+      },
+      "defaultUseCounter": 9999,
+      "defaultFinalMutationCountdown": 9999,
+      "mutationOdds": {
+        "triggerChance": 0,
+        "tiers": {}
+      }
+    },
+    "EC-S5": {
+      "id": "EC-S5",
+      "name": "Underclock Pulse",
+      "type": "Utility",
+      "costRAM": 0,
+      "tags": [
+        "EnemyCard"
+      ],
+      "effects": [
+        {
+          "op": "ApplyStatus",
+          "statusId": "Underclock",
+          "stacks": 1,
+          "target": "Enemy"
+        }
+      ],
+      "finalMutation": {
+        "outcomeWeights": {
+          "brick": 1,
+          "rewrite": 0
+        },
+        "brickBehavior": "Exhaust",
+        "rewritePoolDefIds": []
+      },
+      "defaultUseCounter": 9999,
+      "defaultFinalMutationCountdown": 9999,
+      "mutationOdds": {
+        "triggerChance": 0,
+        "tiers": {}
+      }
+    },
+    "EC-S6": {
+      "id": "EC-S6",
+      "name": "Vulnerability Scan",
+      "type": "Utility",
+      "costRAM": 0,
+      "tags": [
+        "EnemyCard"
+      ],
+      "effects": [
+        {
+          "op": "ApplyStatus",
+          "statusId": "Vulnerable",
+          "stacks": 1,
+          "target": "Enemy"
+        }
+      ],
+      "finalMutation": {
+        "outcomeWeights": {
+          "brick": 1,
+          "rewrite": 0
+        },
+        "brickBehavior": "Exhaust",
+        "rewritePoolDefIds": []
+      },
+      "defaultUseCounter": 9999,
+      "defaultFinalMutationCountdown": 9999,
+      "mutationOdds": {
+        "triggerChance": 0,
+        "tiers": {}
+      }
+    },
+    "EC-S7": {
+      "id": "EC-S7",
+      "name": "Weak Signal",
+      "type": "Utility",
+      "costRAM": 0,
+      "tags": [
+        "EnemyCard"
+      ],
+      "effects": [
+        {
+          "op": "ApplyStatus",
+          "statusId": "Weak",
+          "stacks": 1,
+          "target": "Enemy"
+        }
+      ],
+      "finalMutation": {
+        "outcomeWeights": {
+          "brick": 1,
+          "rewrite": 0
+        },
+        "brickBehavior": "Exhaust",
+        "rewritePoolDefIds": []
+      },
+      "defaultUseCounter": 9999,
+      "defaultFinalMutationCountdown": 9999,
+      "mutationOdds": {
+        "triggerChance": 0,
+        "tiers": {}
+      }
+    },
+    "EC-S8": {
+      "id": "EC-S8",
+      "name": "Port Expose",
+      "type": "Utility",
+      "costRAM": 0,
+      "tags": [
+        "EnemyCard"
+      ],
+      "effects": [
+        {
+          "op": "ApplyStatus",
+          "statusId": "ExposedPorts",
+          "stacks": 1,
+          "target": "Enemy"
+        }
+      ],
+      "finalMutation": {
+        "outcomeWeights": {
+          "brick": 1,
+          "rewrite": 0
+        },
+        "brickBehavior": "Exhaust",
+        "rewritePoolDefIds": []
+      },
+      "defaultUseCounter": 9999,
+      "defaultFinalMutationCountdown": 9999,
+      "mutationOdds": {
+        "triggerChance": 0,
+        "tiers": {}
+      }
+    },
+    "EC-S9": {
+      "id": "EC-S9",
+      "name": "Sensor Glitch",
+      "type": "Utility",
+      "costRAM": 0,
+      "tags": [
+        "EnemyCard"
+      ],
+      "effects": [
+        {
+          "op": "ApplyStatus",
+          "statusId": "SensorGlitch",
+          "stacks": 1,
+          "target": "Enemy"
+        }
+      ],
+      "finalMutation": {
+        "outcomeWeights": {
+          "brick": 1,
+          "rewrite": 0
+        },
+        "brickBehavior": "Exhaust",
+        "rewritePoolDefIds": []
+      },
+      "defaultUseCounter": 9999,
+      "defaultFinalMutationCountdown": 9999,
+      "mutationOdds": {
+        "triggerChance": 0,
+        "tiers": {}
+      }
+    },
+    "EC-S10": {
+      "id": "EC-S10",
+      "name": "Overheat Charge",
+      "type": "Attack",
+      "costRAM": 0,
+      "tags": [
+        "EnemyCard"
+      ],
+      "effects": [
+        {
+          "op": "ApplyStatus",
+          "statusId": "Overheat",
+          "stacks": 3,
+          "target": "Enemy"
+        }
+      ],
+      "finalMutation": {
+        "outcomeWeights": {
+          "brick": 1,
+          "rewrite": 0
+        },
+        "brickBehavior": "Exhaust",
+        "rewritePoolDefIds": []
+      },
+      "defaultUseCounter": 9999,
+      "defaultFinalMutationCountdown": 9999,
+      "mutationOdds": {
+        "triggerChance": 0,
+        "tiers": {}
+      }
+    },
+    "EC-B1": {
+      "id": "EC-B1",
+      "name": "Acid Assault",
+      "type": "Attack",
+      "costRAM": 0,
+      "tags": [
+        "EnemyCard"
+      ],
+      "effects": [
+        {
+          "op": "DealDamage",
+          "target": "Enemy",
+          "amount": 13
+        },
+        {
+          "op": "ApplyStatus",
+          "statusId": "Corrode",
+          "stacks": 3,
+          "target": "Enemy"
+        }
+      ],
+      "finalMutation": {
+        "outcomeWeights": {
+          "brick": 1,
+          "rewrite": 0
+        },
+        "brickBehavior": "Exhaust",
+        "rewritePoolDefIds": []
+      },
+      "defaultUseCounter": 9999,
+      "defaultFinalMutationCountdown": 9999,
+      "mutationOdds": {
+        "triggerChance": 0,
+        "tiers": {}
+      }
+    },
+    "EC-B2": {
+      "id": "EC-B2",
+      "name": "Expose Strike",
+      "type": "Attack",
+      "costRAM": 0,
+      "tags": [
+        "EnemyCard"
+      ],
+      "effects": [
+        {
+          "op": "DealDamage",
+          "target": "Enemy",
+          "amount": 11
+        },
+        {
+          "op": "ApplyStatus",
+          "statusId": "Vulnerable",
+          "stacks": 2,
+          "target": "Enemy"
+        }
+      ],
+      "finalMutation": {
+        "outcomeWeights": {
+          "brick": 1,
+          "rewrite": 0
+        },
+        "brickBehavior": "Exhaust",
+        "rewritePoolDefIds": []
+      },
+      "defaultUseCounter": 9999,
+      "defaultFinalMutationCountdown": 9999,
+      "mutationOdds": {
+        "triggerChance": 0,
+        "tiers": {}
+      }
+    },
+    "EC-B3": {
+      "id": "EC-B3",
+      "name": "Fortified Recovery",
+      "type": "Defense",
+      "costRAM": 0,
+      "tags": [
+        "EnemyCard"
+      ],
+      "effects": [
+        {
+          "op": "GainBlock",
+          "target": "Self",
+          "amount": 12
+        },
+        {
+          "op": "Heal",
+          "target": "Self",
+          "amount": 10
+        }
+      ],
+      "finalMutation": {
+        "outcomeWeights": {
+          "brick": 1,
+          "rewrite": 0
+        },
+        "brickBehavior": "Exhaust",
+        "rewritePoolDefIds": []
+      },
+      "defaultUseCounter": 9999,
+      "defaultFinalMutationCountdown": 9999,
+      "mutationOdds": {
+        "triggerChance": 0,
+        "tiers": {}
+      }
+    },
+    "EC-B4": {
+      "id": "EC-B4",
+      "name": "System Overload",
+      "type": "Utility",
+      "costRAM": 0,
+      "tags": [
+        "EnemyCard"
+      ],
+      "effects": [
+        {
+          "op": "ApplyStatus",
+          "statusId": "Corrode",
+          "stacks": 3,
+          "target": "Enemy"
+        },
+        {
+          "op": "ApplyStatus",
+          "statusId": "Underclock",
+          "stacks": 1,
+          "target": "Enemy"
+        }
+      ],
+      "finalMutation": {
+        "outcomeWeights": {
+          "brick": 1,
+          "rewrite": 0
+        },
+        "brickBehavior": "Exhaust",
+        "rewritePoolDefIds": []
+      },
+      "defaultUseCounter": 9999,
+      "defaultFinalMutationCountdown": 9999,
+      "mutationOdds": {
+        "triggerChance": 0,
+        "tiers": {}
+      }
+    },
+    "EC-B5": {
+      "id": "EC-B5",
+      "name": "Annihilate",
+      "type": "Attack",
+      "costRAM": 0,
+      "tags": [
+        "EnemyCard"
+      ],
+      "effects": [
+        {
+          "op": "DealDamage",
+          "target": "Enemy",
+          "amount": 16
+        },
+        {
+          "op": "ApplyStatus",
+          "statusId": "Weak",
+          "stacks": 2,
+          "target": "Enemy"
+        }
+      ],
+      "finalMutation": {
+        "outcomeWeights": {
+          "brick": 1,
+          "rewrite": 0
+        },
+        "brickBehavior": "Exhaust",
+        "rewritePoolDefIds": []
+      },
+      "defaultUseCounter": 9999,
+      "defaultFinalMutationCountdown": 9999,
+      "mutationOdds": {
+        "triggerChance": 0,
+        "tiers": {}
+      }
+    },
+    "EC-B6": {
+      "id": "EC-B6",
+      "name": "Cascade Leak",
+      "type": "Utility",
+      "costRAM": 0,
+      "tags": [
+        "EnemyCard"
+      ],
+      "effects": [
+        {
+          "op": "ApplyStatus",
+          "statusId": "Leak",
+          "stacks": 4,
+          "target": "Enemy"
+        },
+        {
+          "op": "ApplyStatus",
+          "statusId": "ExposedPorts",
+          "stacks": 2,
+          "target": "Enemy"
+        }
+      ],
+      "finalMutation": {
+        "outcomeWeights": {
+          "brick": 1,
+          "rewrite": 0
+        },
+        "brickBehavior": "Exhaust",
+        "rewritePoolDefIds": []
+      },
+      "defaultUseCounter": 9999,
+      "defaultFinalMutationCountdown": 9999,
+      "mutationOdds": {
+        "triggerChance": 0,
+        "tiers": {}
+      }
+    },
+    "EC-B7": {
+      "id": "EC-B7",
+      "name": "Null Strike",
+      "type": "Attack",
+      "costRAM": 0,
+      "tags": [
+        "EnemyCard"
+      ],
+      "effects": [
+        {
+          "op": "DealDamage",
+          "target": "Enemy",
+          "amount": 14
+        },
+        {
+          "op": "ApplyStatus",
+          "statusId": "SensorGlitch",
+          "stacks": 1,
+          "target": "Enemy"
+        }
+      ],
+      "finalMutation": {
+        "outcomeWeights": {
+          "brick": 1,
+          "rewrite": 0
+        },
+        "brickBehavior": "Exhaust",
+        "rewritePoolDefIds": []
+      },
+      "defaultUseCounter": 9999,
+      "defaultFinalMutationCountdown": 9999,
+      "mutationOdds": {
+        "triggerChance": 0,
+        "tiers": {}
+      }
+    },
+    "EC-B8": {
+      "id": "EC-B8",
+      "name": "Power Surge",
+      "type": "Attack",
+      "costRAM": 0,
+      "tags": [
+        "EnemyCard"
+      ],
+      "effects": [
+        {
+          "op": "DealDamage",
+          "target": "Enemy",
+          "amount": 20
+        }
+      ],
+      "finalMutation": {
+        "outcomeWeights": {
+          "brick": 1,
+          "rewrite": 0
+        },
+        "brickBehavior": "Exhaust",
+        "rewritePoolDefIds": []
+      },
+      "defaultUseCounter": 9999,
+      "defaultFinalMutationCountdown": 9999,
+      "mutationOdds": {
+        "triggerChance": 0,
+        "tiers": {}
+      }
+    },
+    "EC-B9": {
+      "id": "EC-B9",
+      "name": "Total Lockdown",
+      "type": "Utility",
+      "costRAM": 0,
+      "tags": [
+        "EnemyCard"
+      ],
+      "effects": [
+        {
+          "op": "ApplyStatus",
+          "statusId": "Underclock",
+          "stacks": 2,
+          "target": "Enemy"
+        },
+        {
+          "op": "ApplyStatus",
+          "statusId": "Weak",
+          "stacks": 1,
+          "target": "Enemy"
+        }
+      ],
+      "finalMutation": {
+        "outcomeWeights": {
+          "brick": 1,
+          "rewrite": 0
+        },
+        "brickBehavior": "Exhaust",
+        "rewritePoolDefIds": []
+      },
+      "defaultUseCounter": 9999,
+      "defaultFinalMutationCountdown": 9999,
+      "mutationOdds": {
+        "triggerChance": 0,
+        "tiers": {}
+      }
+    },
+    "EC-B10": {
+      "id": "EC-B10",
+      "name": "Final Reckoning",
+      "type": "Attack",
+      "costRAM": 0,
+      "tags": [
+        "EnemyCard"
+      ],
+      "effects": [
+        {
+          "op": "DealDamage",
+          "target": "Enemy",
+          "amount": 22
+        },
+        {
+          "op": "ApplyStatus",
+          "statusId": "Corrode",
+          "stacks": 4,
+          "target": "Enemy"
+        }
+      ],
+      "finalMutation": {
+        "outcomeWeights": {
+          "brick": 1,
+          "rewrite": 0
+        },
+        "brickBehavior": "Exhaust",
+        "rewritePoolDefIds": []
+      },
+      "defaultUseCounter": 9999,
+      "defaultFinalMutationCountdown": 9999,
+      "mutationOdds": {
+        "triggerChance": 0,
+        "tiers": {}
+      }
     }
   },
   "mutations": {
@@ -7347,9 +8521,12 @@
       "name": "Hacker Drone",
       "maxHP": 65,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A2",
+        "EC-A10",
+        "EC-A3",
+        "EC-A2",
+        "EC-D1",
+        "EC-A3"
       ],
       "passives": [],
       "ai": null,
@@ -7363,9 +8540,9 @@
       "name": "Firewall Pod",
       "maxHP": 51,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-D1",
+        "EC-A2",
+        "EC-D2"
       ],
       "passives": [],
       "ai": null,
@@ -7379,9 +8556,9 @@
       "name": "Patch Sprite",
       "maxHP": 35,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-H1",
+        "EC-A1",
+        "EC-H1"
       ],
       "passives": [],
       "ai": null,
@@ -7395,9 +8572,9 @@
       "name": "Signal Imp",
       "maxHP": 64,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-S5",
+        "EC-A2",
+        "EC-S5"
       ],
       "passives": [],
       "ai": null,
@@ -7411,9 +8588,9 @@
       "name": "Corrode Rat",
       "maxHP": 61,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-S1",
+        "EC-A1",
+        "EC-S2"
       ],
       "passives": [],
       "ai": null,
@@ -7427,9 +8604,9 @@
       "name": "Leak Wraith",
       "maxHP": 61,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-S3",
+        "EC-A1",
+        "EC-S4"
       ],
       "passives": [],
       "ai": null,
@@ -7443,8 +8620,8 @@
       "name": "Scrap Minion",
       "maxHP": 12,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-A1",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
@@ -7458,8 +8635,8 @@
       "name": "Pulse Sapper Array",
       "maxHP": 65,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-A2",
+        "EC-A3"
       ],
       "passives": [],
       "ai": null,
@@ -7473,8 +8650,8 @@
       "name": "Chrome Cleric Protocol",
       "maxHP": 41,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-S5",
+        "EC-A2"
       ],
       "passives": [],
       "ai": null,
@@ -7488,9 +8665,9 @@
       "name": "Vector Rat Mk III",
       "maxHP": 35,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-H1",
+        "EC-A1",
+        "EC-H1"
       ],
       "passives": [],
       "ai": null,
@@ -7504,9 +8681,9 @@
       "name": "Obsidian Bruiser Pack",
       "maxHP": 76,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-D1",
+        "EC-A2",
+        "EC-D2"
       ],
       "passives": [],
       "ai": null,
@@ -7520,9 +8697,12 @@
       "name": "Glitch Runner Node",
       "maxHP": 65,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A2",
+        "EC-A10",
+        "EC-A3",
+        "EC-A2",
+        "EC-D1",
+        "EC-A3"
       ],
       "passives": [],
       "ai": null,
@@ -7536,9 +8716,9 @@
       "name": "Pulse Shaman Mk I",
       "maxHP": 41,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-S5",
+        "EC-S6",
+        "EC-A2"
       ],
       "passives": [],
       "ai": null,
@@ -7552,8 +8732,8 @@
       "name": "Echo Imp Mk II",
       "maxHP": 35,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-H1",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
@@ -7567,8 +8747,8 @@
       "name": "Vanta Sentinel Protocol",
       "maxHP": 76,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-D1",
+        "EC-A2"
       ],
       "passives": [],
       "ai": null,
@@ -7582,9 +8762,12 @@
       "name": "Ghost Daemon Swarm",
       "maxHP": 43,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A2",
+        "EC-A10",
+        "EC-A3",
+        "EC-A2",
+        "EC-D1",
+        "EC-A3"
       ],
       "passives": [],
       "ai": null,
@@ -7598,9 +8781,10 @@
       "name": "Cipher Pod Shard",
       "maxHP": 85,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A8",
+        "EC-A2",
+        "EC-S6",
+        "EC-A3"
       ],
       "passives": [],
       "ai": null,
@@ -7614,10 +8798,12 @@
       "name": "Vanta Drone Mk III",
       "maxHP": 38,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A2",
+        "EC-A10",
+        "EC-A3",
+        "EC-A2",
+        "EC-D1",
+        "EC-A3"
       ],
       "passives": [],
       "ai": null,
@@ -7631,9 +8817,9 @@
       "name": "Vanta Scout Node",
       "maxHP": 145,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A2",
+        "EC-S6",
+        "EC-A3"
       ],
       "passives": [],
       "ai": null,
@@ -7647,8 +8833,8 @@
       "name": "Cipher Hacker Swarm",
       "maxHP": 84,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-S5",
+        "EC-A2"
       ],
       "passives": [],
       "ai": null,
@@ -7662,8 +8848,8 @@
       "name": "Circuit Bruiser Mk III",
       "maxHP": 56,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-H1",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
@@ -7677,9 +8863,9 @@
       "name": "Echo Enforcer Mk I",
       "maxHP": 61,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-S1",
+        "EC-A1",
+        "EC-S2"
       ],
       "passives": [],
       "ai": null,
@@ -7693,8 +8879,8 @@
       "name": "Chrome Sapper Crew",
       "maxHP": 65,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-A2",
+        "EC-A3"
       ],
       "passives": [],
       "ai": null,
@@ -7708,9 +8894,9 @@
       "name": "Static Pod Protocol",
       "maxHP": 64,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-S5",
+        "EC-A2",
+        "EC-S8"
       ],
       "passives": [],
       "ai": null,
@@ -7724,8 +8910,8 @@
       "name": "Pulse Bruiser Frame",
       "maxHP": 85,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-A3",
+        "EC-D1"
       ],
       "passives": [],
       "ai": null,
@@ -7739,9 +8925,9 @@
       "name": "Vector Courier Array",
       "maxHP": 59,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A2",
+        "EC-S6",
+        "EC-A3"
       ],
       "passives": [],
       "ai": null,
@@ -7755,8 +8941,8 @@
       "name": "Rogue Tech Array",
       "maxHP": 39,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-S5",
+        "EC-A2"
       ],
       "passives": [],
       "ai": null,
@@ -7770,9 +8956,9 @@
       "name": "Ghost Runner Protocol",
       "maxHP": 81,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-S9",
+        "EC-A2",
+        "EC-S8"
       ],
       "passives": [],
       "ai": null,
@@ -7786,9 +8972,9 @@
       "name": "Echo Sniper Pack",
       "maxHP": 65,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A6",
+        "EC-A2",
+        "EC-A6"
       ],
       "passives": [],
       "ai": null,
@@ -7802,10 +8988,10 @@
       "name": "Static Drone Mk II",
       "maxHP": 76,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-D1",
+        "EC-A2",
+        "EC-D2",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
@@ -7819,10 +9005,10 @@
       "name": "Razor Shaman Mk II",
       "maxHP": 38,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A2",
+        "EC-S6",
+        "EC-A3",
+        "EC-S7"
       ],
       "passives": [],
       "ai": null,
@@ -7836,9 +9022,9 @@
       "name": "Holo Shaman Crew",
       "maxHP": 76,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-D1",
+        "EC-A2",
+        "EC-D2"
       ],
       "passives": [],
       "ai": null,
@@ -7852,10 +9038,10 @@
       "name": "Vector Daemon Frame",
       "maxHP": 59,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-S1",
+        "EC-A2",
+        "EC-S6",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
@@ -7869,10 +9055,10 @@
       "name": "Vanta Enforcer Swarm",
       "maxHP": 59,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A2",
+        "EC-S6",
+        "EC-A3",
+        "EC-S7"
       ],
       "passives": [],
       "ai": null,
@@ -7886,10 +9072,12 @@
       "name": "Chrome Sapper Node",
       "maxHP": 65,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A2",
+        "EC-A10",
+        "EC-A3",
+        "EC-A2",
+        "EC-D1",
+        "EC-A3"
       ],
       "passives": [],
       "ai": null,
@@ -7903,9 +9091,9 @@
       "name": "Null Daemon Mk II",
       "maxHP": 56,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-H1",
+        "EC-A1",
+        "EC-H1"
       ],
       "passives": [],
       "ai": null,
@@ -7919,9 +9107,9 @@
       "name": "Kilo Enforcer Unit",
       "maxHP": 96,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-D1",
+        "EC-A2",
+        "EC-D2"
       ],
       "passives": [],
       "ai": null,
@@ -7935,8 +9123,8 @@
       "name": "Cipher Hacker Mk II",
       "maxHP": 81,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-S1",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
@@ -7950,9 +9138,9 @@
       "name": "Static Sapper Cell",
       "maxHP": 84,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-S5",
+        "EC-A2",
+        "EC-S5"
       ],
       "passives": [],
       "ai": null,
@@ -7966,9 +9154,9 @@
       "name": "Kilo Courier Array",
       "maxHP": 81,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-S1",
+        "EC-A1",
+        "EC-S2"
       ],
       "passives": [],
       "ai": null,
@@ -7982,9 +9170,9 @@
       "name": "Rogue Scout Swarm",
       "maxHP": 38,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A2",
+        "EC-S6",
+        "EC-A3"
       ],
       "passives": [],
       "ai": null,
@@ -7998,8 +9186,8 @@
       "name": "Vanta Bruiser Proxy",
       "maxHP": 59,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-A2",
+        "EC-S6"
       ],
       "passives": [],
       "ai": null,
@@ -8013,9 +9201,9 @@
       "name": "Kilo Sniper Unit",
       "maxHP": 81,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-S1",
+        "EC-A1",
+        "EC-S2"
       ],
       "passives": [],
       "ai": null,
@@ -8029,8 +9217,8 @@
       "name": "Cipher Drone Protocol",
       "maxHP": 64,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-S5",
+        "EC-A2"
       ],
       "passives": [],
       "ai": null,
@@ -8044,10 +9232,10 @@
       "name": "Obsidian Sniper Mk III",
       "maxHP": 51,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-D1",
+        "EC-A2",
+        "EC-D2",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
@@ -8061,8 +9249,8 @@
       "name": "Chrome Warden Swarm",
       "maxHP": 56,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-H1",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
@@ -8076,9 +9264,9 @@
       "name": "Quantum Hacker Pack",
       "maxHP": 51,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-D1",
+        "EC-A2",
+        "EC-D2"
       ],
       "passives": [],
       "ai": null,
@@ -8092,8 +9280,8 @@
       "name": "Ion Rat Suite",
       "maxHP": 59,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-A2",
+        "EC-S6"
       ],
       "passives": [],
       "ai": null,
@@ -8107,8 +9295,8 @@
       "name": "Glitch Warden Suite",
       "maxHP": 81,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-S1",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
@@ -8122,8 +9310,8 @@
       "name": "Holo Sniper Shard",
       "maxHP": 59,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-A2",
+        "EC-S6"
       ],
       "passives": [],
       "ai": null,
@@ -8137,8 +9325,8 @@
       "name": "Vector Marauder Proxy",
       "maxHP": 65,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-A3",
+        "EC-D1"
       ],
       "passives": [],
       "ai": null,
@@ -8152,9 +9340,9 @@
       "name": "Vanta Drone Frame",
       "maxHP": 56,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-H1",
+        "EC-A1",
+        "EC-H1"
       ],
       "passives": [],
       "ai": null,
@@ -8168,9 +9356,9 @@
       "name": "Ion Sentinel Node",
       "maxHP": 76,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-D1",
+        "EC-A2",
+        "EC-D2"
       ],
       "passives": [],
       "ai": null,
@@ -8184,9 +9372,9 @@
       "name": "Ghost Cleric Shard",
       "maxHP": 56,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-H1",
+        "EC-A1",
+        "EC-H1"
       ],
       "passives": [],
       "ai": null,
@@ -8200,8 +9388,8 @@
       "name": "Static Scout Mk II",
       "maxHP": 79,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-A2",
+        "EC-S6"
       ],
       "passives": [],
       "ai": null,
@@ -8215,9 +9403,9 @@
       "name": "Chrome Bruiser Shard",
       "maxHP": 64,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-S5",
+        "EC-A2",
+        "EC-S8"
       ],
       "passives": [],
       "ai": null,
@@ -8231,9 +9419,9 @@
       "name": "Glitch Bruiser Mk II",
       "maxHP": 65,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A3",
+        "EC-D1",
+        "EC-A2"
       ],
       "passives": [],
       "ai": null,
@@ -8247,8 +9435,8 @@
       "name": "Static Imp Rig",
       "maxHP": 61,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-S1",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
@@ -8262,10 +9450,10 @@
       "name": "Echo Sentinel Shard",
       "maxHP": 64,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-S5",
+        "EC-A2",
+        "EC-S8",
+        "EC-A2"
       ],
       "passives": [],
       "ai": null,
@@ -8279,9 +9467,9 @@
       "name": "Kilo Tech Swarm",
       "maxHP": 96,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-D1",
+        "EC-A2",
+        "EC-D2"
       ],
       "passives": [],
       "ai": null,
@@ -8295,9 +9483,9 @@
       "name": "Vector Goon Proxy",
       "maxHP": 96,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-D1",
+        "EC-A2",
+        "EC-D2"
       ],
       "passives": [],
       "ai": null,
@@ -8311,9 +9499,9 @@
       "name": "Ion Cleric Proxy",
       "maxHP": 79,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A2",
+        "EC-S6",
+        "EC-A3"
       ],
       "passives": [],
       "ai": null,
@@ -8327,8 +9515,8 @@
       "name": "Null Daemon Rig",
       "maxHP": 61,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-S1",
+        "EC-A2"
       ],
       "passives": [],
       "ai": null,
@@ -8342,10 +9530,10 @@
       "name": "Vanta Sapper Node",
       "maxHP": 56,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-H1",
+        "EC-A1",
+        "EC-H1",
+        "EC-A2"
       ],
       "passives": [],
       "ai": null,
@@ -8359,8 +9547,8 @@
       "name": "Flux Pod Shard",
       "maxHP": 59,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-A2",
+        "EC-S6"
       ],
       "passives": [],
       "ai": null,
@@ -8374,9 +9562,9 @@
       "name": "Vector Hacker Pack",
       "maxHP": 39,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-S1",
+        "EC-A1",
+        "EC-S2"
       ],
       "passives": [],
       "ai": null,
@@ -8390,8 +9578,8 @@
       "name": "Pulse Rat Mk II",
       "maxHP": 65,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-A2",
+        "EC-A3"
       ],
       "passives": [],
       "ai": null,
@@ -8405,9 +9593,9 @@
       "name": "Neon Pod Suite",
       "maxHP": 64,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-S5",
+        "EC-A2",
+        "EC-S8"
       ],
       "passives": [],
       "ai": null,
@@ -8421,9 +9609,9 @@
       "name": "Razor Enforcer Frame",
       "maxHP": 64,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-S5",
+        "EC-A2",
+        "EC-S8"
       ],
       "passives": [],
       "ai": null,
@@ -8437,8 +9625,8 @@
       "name": "Quantum Tech Node",
       "maxHP": 59,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-A2",
+        "EC-S6"
       ],
       "passives": [],
       "ai": null,
@@ -8452,8 +9640,8 @@
       "name": "Rogue Pod Protocol",
       "maxHP": 59,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-A2",
+        "EC-S6"
       ],
       "passives": [],
       "ai": null,
@@ -8467,9 +9655,9 @@
       "name": "Vanta Enforcer Mk I",
       "maxHP": 64,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-S5",
+        "EC-A2",
+        "EC-S8"
       ],
       "passives": [],
       "ai": null,
@@ -8483,8 +9671,8 @@
       "name": "Ion Sapper Rig",
       "maxHP": 96,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-D1",
+        "EC-A2"
       ],
       "passives": [],
       "ai": null,
@@ -8498,8 +9686,8 @@
       "name": "Razor Runner Proxy",
       "maxHP": 76,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-D1",
+        "EC-A2"
       ],
       "passives": [],
       "ai": null,
@@ -8513,8 +9701,8 @@
       "name": "Holo Sapper Cell",
       "maxHP": 65,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-A2",
+        "EC-A3"
       ],
       "passives": [],
       "ai": null,
@@ -8528,10 +9716,10 @@
       "name": "Rogue Sniper Unit",
       "maxHP": 59,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A2",
+        "EC-S6",
+        "EC-A3",
+        "EC-S7"
       ],
       "passives": [],
       "ai": null,
@@ -8545,9 +9733,9 @@
       "name": "Pulse Daemon Unit",
       "maxHP": 56,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-H1",
+        "EC-A1",
+        "EC-H1"
       ],
       "passives": [],
       "ai": null,
@@ -8561,8 +9749,8 @@
       "name": "Circuit Hacker Array",
       "maxHP": 81,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-S1",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
@@ -8576,9 +9764,12 @@
       "name": "Glitch Tech Protocol",
       "maxHP": 65,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A2",
+        "EC-A10",
+        "EC-A3",
+        "EC-A2",
+        "EC-D1",
+        "EC-A3"
       ],
       "passives": [],
       "ai": null,
@@ -8592,10 +9783,10 @@
       "name": "Chrome Marauder Cell",
       "maxHP": 35,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-H1",
+        "EC-A1",
+        "EC-H1",
+        "EC-A2"
       ],
       "passives": [],
       "ai": null,
@@ -8609,9 +9800,9 @@
       "name": "Cipher Cleric Shard",
       "maxHP": 56,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-H1",
+        "EC-A1",
+        "EC-H1"
       ],
       "passives": [],
       "ai": null,
@@ -8625,8 +9816,8 @@
       "name": "Ghost Goon Mk III",
       "maxHP": 64,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-S9",
+        "EC-A2"
       ],
       "passives": [],
       "ai": null,
@@ -8640,9 +9831,12 @@
       "name": "Razor Cleric Mk II",
       "maxHP": 43,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A2",
+        "EC-A10",
+        "EC-A3",
+        "EC-A2",
+        "EC-D1",
+        "EC-A3"
       ],
       "passives": [],
       "ai": null,
@@ -8656,9 +9850,11 @@
       "name": "Echo Shaman Swarm",
       "maxHP": 121,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-S5",
+        "EC-A1",
+        "EC-S6",
+        "EC-A1",
+        "EC-S5"
       ],
       "passives": [],
       "ai": null,
@@ -8672,10 +9868,10 @@
       "name": "Quantum Pod Suite",
       "maxHP": 96,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-D1",
+        "EC-A2",
+        "EC-D2",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
@@ -8689,8 +9885,8 @@
       "name": "Neon Sapper Mk II",
       "maxHP": 76,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-H1",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
@@ -8704,9 +9900,9 @@
       "name": "Holo Shaman Mk I",
       "maxHP": 76,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-D1",
+        "EC-A2",
+        "EC-D2"
       ],
       "passives": [],
       "ai": null,
@@ -8720,9 +9916,12 @@
       "name": "Holo Enforcer Mk I",
       "maxHP": 65,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A2",
+        "EC-A10",
+        "EC-A3",
+        "EC-A2",
+        "EC-D1",
+        "EC-A3"
       ],
       "passives": [],
       "ai": null,
@@ -8736,8 +9935,8 @@
       "name": "Vanta Marauder Mk I",
       "maxHP": 39,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-S1",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
@@ -8751,8 +9950,8 @@
       "name": "Pulse Shaman Suite",
       "maxHP": 59,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-A2",
+        "EC-S6"
       ],
       "passives": [],
       "ai": null,
@@ -8766,8 +9965,8 @@
       "name": "Holo Rat Mk II",
       "maxHP": 61,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-S1",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
@@ -8781,9 +9980,9 @@
       "name": "Holo Scout Proxy",
       "maxHP": 76,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-D1",
+        "EC-A2",
+        "EC-D2"
       ],
       "passives": [],
       "ai": null,
@@ -8797,9 +9996,9 @@
       "name": "Circuit Tech Rig",
       "maxHP": 76,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-D1",
+        "EC-A2",
+        "EC-D2"
       ],
       "passives": [],
       "ai": null,
@@ -8813,8 +10012,8 @@
       "name": "Static Daemon Swarm",
       "maxHP": 85,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-A2",
+        "EC-A3"
       ],
       "passives": [],
       "ai": null,
@@ -8828,8 +10027,8 @@
       "name": "Neon Warden Suite",
       "maxHP": 65,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-A2",
+        "EC-A3"
       ],
       "passives": [],
       "ai": null,
@@ -8843,9 +10042,9 @@
       "name": "Circuit Daemon Array",
       "maxHP": 38,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-S1",
+        "EC-A2",
+        "EC-S6"
       ],
       "passives": [],
       "ai": null,
@@ -8859,8 +10058,8 @@
       "name": "Obsidian Tech Rig",
       "maxHP": 39,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-S5",
+        "EC-A2"
       ],
       "passives": [],
       "ai": null,
@@ -8874,8 +10073,8 @@
       "name": "Razor Tech Node",
       "maxHP": 41,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-S5",
+        "EC-A2"
       ],
       "passives": [],
       "ai": null,
@@ -8889,8 +10088,8 @@
       "name": "Echo Daemon Crew",
       "maxHP": 61,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-S1",
+        "EC-A2"
       ],
       "passives": [],
       "ai": null,
@@ -8904,8 +10103,8 @@
       "name": "Obsidian Pod Mk I",
       "maxHP": 76,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-H1",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
@@ -8919,9 +10118,9 @@
       "name": "Ion Sniper Rig",
       "maxHP": 59,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A2",
+        "EC-S6",
+        "EC-A3"
       ],
       "passives": [],
       "ai": null,
@@ -8935,8 +10134,8 @@
       "name": "Null Shaman Unit",
       "maxHP": 56,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-H1",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
@@ -8950,8 +10149,8 @@
       "name": "Holo Sniper Suite",
       "maxHP": 127,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-S5",
+        "EC-A2"
       ],
       "passives": [],
       "ai": null,
@@ -8965,10 +10164,10 @@
       "name": "Flux Courier Proxy",
       "maxHP": 56,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-H1",
+        "EC-A1",
+        "EC-H1",
+        "EC-A2"
       ],
       "passives": [],
       "ai": null,
@@ -8982,10 +10181,10 @@
       "name": "Vanta Tech Node",
       "maxHP": 56,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-H1",
+        "EC-A1",
+        "EC-H1",
+        "EC-A2"
       ],
       "passives": [],
       "ai": null,
@@ -8999,8 +10198,8 @@
       "name": "Kilo Sniper Array",
       "maxHP": 64,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-S5",
+        "EC-A2"
       ],
       "passives": [],
       "ai": null,
@@ -9014,8 +10213,8 @@
       "name": "Obsidian Hacker Swarm",
       "maxHP": 145,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-S5",
+        "EC-A2"
       ],
       "passives": [],
       "ai": null,
@@ -9029,9 +10228,9 @@
       "name": "Holo Pod Node",
       "maxHP": 61,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-S1",
+        "EC-A1",
+        "EC-S2"
       ],
       "passives": [],
       "ai": null,
@@ -9045,9 +10244,9 @@
       "name": "Echo Sniper Pack 2",
       "maxHP": 76,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-D1",
+        "EC-A2",
+        "EC-D2"
       ],
       "passives": [],
       "ai": null,
@@ -9061,9 +10260,12 @@
       "name": "Flux Shaman Crew",
       "maxHP": 130,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-S1",
+        "EC-A2",
+        "EC-S2",
+        "EC-A1",
+        "EC-S1",
+        "EC-A2"
       ],
       "passives": [],
       "ai": null,
@@ -9077,9 +10279,9 @@
       "name": "Holo Runner Node",
       "maxHP": 35,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-H1",
+        "EC-A1",
+        "EC-H1"
       ],
       "passives": [],
       "ai": null,
@@ -9093,8 +10295,8 @@
       "name": "Pulse Sapper Cell",
       "maxHP": 85,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-A2",
+        "EC-A3"
       ],
       "passives": [],
       "ai": null,
@@ -9108,9 +10310,9 @@
       "name": "Razor Shaman Crew",
       "maxHP": 76,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-D1",
+        "EC-A2",
+        "EC-D2"
       ],
       "passives": [],
       "ai": null,
@@ -9124,8 +10326,8 @@
       "name": "Cipher Warden Node",
       "maxHP": 64,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-S5",
+        "EC-A2"
       ],
       "passives": [],
       "ai": null,
@@ -9139,9 +10341,12 @@
       "name": "Cipher Shaman Protocol",
       "maxHP": 65,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A2",
+        "EC-A10",
+        "EC-A3",
+        "EC-A2",
+        "EC-D1",
+        "EC-A3"
       ],
       "passives": [],
       "ai": null,
@@ -9155,8 +10360,8 @@
       "name": "Vanta Scout Pack",
       "maxHP": 59,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-A2",
+        "EC-S6"
       ],
       "passives": [],
       "ai": null,
@@ -9170,9 +10375,9 @@
       "name": "Static Warden Array",
       "maxHP": 61,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-S1",
+        "EC-A1",
+        "EC-S2"
       ],
       "passives": [],
       "ai": null,
@@ -9186,8 +10391,8 @@
       "name": "Neon Courier Crew",
       "maxHP": 79,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-A2",
+        "EC-S6"
       ],
       "passives": [],
       "ai": null,
@@ -9201,10 +10406,10 @@
       "name": "Rogue Tech Shard",
       "maxHP": 79,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A2",
+        "EC-S6",
+        "EC-A3",
+        "EC-S7"
       ],
       "passives": [],
       "ai": null,
@@ -9218,9 +10423,9 @@
       "name": "Vanta Sapper Shard",
       "maxHP": 59,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-S5",
+        "EC-A2",
+        "EC-S5"
       ],
       "passives": [],
       "ai": null,
@@ -9234,16 +10439,16 @@
       "name": "Administrator: Kilo Core",
       "maxHP": 230,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A4",
+        "EC-S1",
+        "EC-B1",
+        "EC-A4",
+        "EC-S2",
+        "EC-D3",
+        "EC-B4",
+        "EC-A4",
+        "EC-B5",
+        "EC-A5"
       ],
       "passives": [],
       "ai": null,
@@ -9257,13 +10462,13 @@
       "name": "Nexus: Rogue Oracle",
       "maxHP": 181,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-B9",
+        "EC-A4",
+        "EC-B4",
+        "EC-A4",
+        "EC-B6",
+        "EC-S5",
+        "EC-A4"
       ],
       "passives": [],
       "ai": null,
@@ -9277,12 +10482,12 @@
       "name": "Administrator: Null Goliath",
       "maxHP": 189,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A4",
+        "EC-D2",
+        "EC-B1",
+        "EC-A4",
+        "EC-D2",
+        "EC-B3"
       ],
       "passives": [],
       "ai": null,
@@ -9296,15 +10501,15 @@
       "name": "Overseer: Vanta Goliath",
       "maxHP": 202,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A4",
+        "EC-B5",
+        "EC-D2",
+        "EC-A4",
+        "EC-B8",
+        "EC-D2",
+        "EC-A5",
+        "EC-B5",
+        "EC-B3"
       ],
       "passives": [],
       "ai": null,
@@ -9318,14 +10523,14 @@
       "name": "Nexus: Ion Goliath",
       "maxHP": 150,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A4",
+        "EC-A4",
+        "EC-B5",
+        "EC-A5",
+        "EC-B8",
+        "EC-D2",
+        "EC-A4",
+        "EC-B2"
       ],
       "passives": [],
       "ai": null,
@@ -9339,15 +10544,15 @@
       "name": "Leviathan: Ghost Hydra",
       "maxHP": 215,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-B7",
+        "EC-S8",
+        "EC-A4",
+        "EC-B6",
+        "EC-S9",
+        "EC-A4",
+        "EC-B7",
+        "EC-B4",
+        "EC-A5"
       ],
       "passives": [],
       "ai": null,
@@ -9361,13 +10566,13 @@
       "name": "Titan: Holo Apex",
       "maxHP": 187,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-B3",
+        "EC-A4",
+        "EC-D2",
+        "EC-B2",
+        "EC-H2",
+        "EC-A4",
+        "EC-B5"
       ],
       "passives": [],
       "ai": null,
@@ -9381,15 +10586,15 @@
       "name": "Overseer: Static Core",
       "maxHP": 180,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-B4",
+        "EC-A4",
+        "EC-B9",
+        "EC-B6",
+        "EC-A4",
+        "EC-B4",
+        "EC-S1",
+        "EC-B2",
+        "EC-A5"
       ],
       "passives": [],
       "ai": null,
@@ -9403,15 +10608,15 @@
       "name": "Archon: Null Goliath",
       "maxHP": 250,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-B8",
+        "EC-B4",
+        "EC-D2",
+        "EC-B1",
+        "EC-A5",
+        "EC-B5",
+        "EC-B3",
+        "EC-B9",
+        "EC-A5"
       ],
       "passives": [],
       "ai": null,
@@ -9425,15 +10630,15 @@
       "name": "Boss: Neon Mainframe",
       "maxHP": 188,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-B6",
+        "EC-A4",
+        "EC-B2",
+        "EC-A4",
+        "EC-B4",
+        "EC-S2",
+        "EC-B7",
+        "EC-A4",
+        "EC-B10"
       ],
       "passives": [],
       "ai": null,
@@ -9447,13 +10652,13 @@
       "name": "Boss: Vector Mainframe",
       "maxHP": 184,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A4",
+        "EC-B1",
+        "EC-D3",
+        "EC-A4",
+        "EC-B2",
+        "EC-B3",
+        "EC-A5"
       ],
       "passives": [],
       "ai": null,
@@ -9467,14 +10672,14 @@
       "name": "Nexus: Chrome Warden",
       "maxHP": 197,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-D2",
+        "EC-A4",
+        "EC-D2",
+        "EC-B3",
+        "EC-A10",
+        "EC-D2",
+        "EC-B5",
+        "EC-A4"
       ],
       "passives": [],
       "ai": null,
@@ -9488,12 +10693,12 @@
       "name": "Overseer: Chrome Oracle",
       "maxHP": 150,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-B9",
+        "EC-A4",
+        "EC-B6",
+        "EC-A4",
+        "EC-B4",
+        "EC-A4"
       ],
       "passives": [],
       "ai": null,
@@ -9507,13 +10712,13 @@
       "name": "Director: Circuit Hydra",
       "maxHP": 165,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A4",
+        "EC-B7",
+        "EC-B4",
+        "EC-B1",
+        "EC-A4",
+        "EC-D2",
+        "EC-B5"
       ],
       "passives": [],
       "ai": null,
@@ -9527,13 +10732,13 @@
       "name": "Director: Pulse Mainframe",
       "maxHP": 181,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-B2",
+        "EC-A4",
+        "EC-B4",
+        "EC-A4",
+        "EC-B5",
+        "EC-S2",
+        "EC-B10"
       ],
       "passives": [],
       "ai": null,
@@ -9547,15 +10752,15 @@
       "name": "Administrator: Cipher Mainframe",
       "maxHP": 209,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-B2",
+        "EC-A4",
+        "EC-B1",
+        "EC-S2",
+        "EC-B4",
+        "EC-A4",
+        "EC-B2",
+        "EC-B3",
+        "EC-A5"
       ],
       "passives": [],
       "ai": null,
@@ -9569,14 +10774,14 @@
       "name": "Director: Ghost Oracle",
       "maxHP": 170,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-B9",
+        "EC-B7",
+        "EC-A4",
+        "EC-B6",
+        "EC-S9",
+        "EC-A4",
+        "EC-B4",
+        "EC-A5"
       ],
       "passives": [],
       "ai": null,
@@ -9590,16 +10795,16 @@
       "name": "Overseer: Rogue Apex",
       "maxHP": 236,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A4",
+        "EC-B5",
+        "EC-B1",
+        "EC-A5",
+        "EC-B9",
+        "EC-A4",
+        "EC-B10",
+        "EC-B3",
+        "EC-A5",
+        "EC-B5"
       ],
       "passives": [],
       "ai": null,
@@ -9613,14 +10818,14 @@
       "name": "Leviathan: Pulse Core",
       "maxHP": 206,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-B2",
+        "EC-A4",
+        "EC-B1",
+        "EC-B4",
+        "EC-A4",
+        "EC-D3",
+        "EC-B5",
+        "EC-A5"
       ],
       "passives": [],
       "ai": null,
@@ -9634,15 +10839,15 @@
       "name": "Leviathan: Neon Apex",
       "maxHP": 207,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-B6",
+        "EC-A4",
+        "EC-B2",
+        "EC-B4",
+        "EC-A4",
+        "EC-B7",
+        "EC-D2",
+        "EC-B5",
+        "EC-A5"
       ],
       "passives": [],
       "ai": null,
@@ -9656,14 +10861,14 @@
       "name": "Leviathan: Chrome Oracle",
       "maxHP": 214,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-B4",
+        "EC-A4",
+        "EC-B9",
+        "EC-A4",
+        "EC-B6",
+        "EC-B3",
+        "EC-A5",
+        "EC-B2"
       ],
       "passives": [],
       "ai": null,
@@ -9677,14 +10882,14 @@
       "name": "Archon: Pulse Hydra",
       "maxHP": 226,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-B1",
+        "EC-A4",
+        "EC-B4",
+        "EC-B2",
+        "EC-A4",
+        "EC-B5",
+        "EC-B3",
+        "EC-A5"
       ],
       "passives": [],
       "ai": null,
@@ -9698,14 +10903,14 @@
       "name": "Leviathan: Ghost Goliath",
       "maxHP": 223,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-B7",
+        "EC-A4",
+        "EC-B9",
+        "EC-B5",
+        "EC-A5",
+        "EC-D2",
+        "EC-B4",
+        "EC-A4"
       ],
       "passives": [],
       "ai": null,
@@ -9719,12 +10924,12 @@
       "name": "Overseer: Static Warden",
       "maxHP": 151,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-D2",
+        "EC-B4",
+        "EC-A4",
+        "EC-D2",
+        "EC-B3",
+        "EC-A4"
       ],
       "passives": [],
       "ai": null,
@@ -9738,14 +10943,14 @@
       "name": "Archon: Holo Oracle",
       "maxHP": 206,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-B9",
+        "EC-A4",
+        "EC-D2",
+        "EC-B2",
+        "EC-B6",
+        "EC-A4",
+        "EC-B5",
+        "EC-B3"
       ],
       "passives": [],
       "ai": null,
@@ -9759,16 +10964,16 @@
       "name": "Administrator: Pulse Citadel",
       "maxHP": 200,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-B6",
+        "EC-A4",
+        "EC-B9",
+        "EC-A4",
+        "EC-B4",
+        "EC-B6",
+        "EC-A5",
+        "EC-B2",
+        "EC-B9",
+        "EC-A4"
       ],
       "passives": [],
       "ai": null,
@@ -9782,15 +10987,15 @@
       "name": "Leviathan: Vanta Core",
       "maxHP": 212,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A4",
+        "EC-B5",
+        "EC-B4",
+        "EC-D2",
+        "EC-B1",
+        "EC-A5",
+        "EC-B9",
+        "EC-D2",
+        "EC-B10"
       ],
       "passives": [],
       "ai": null,
@@ -9804,12 +11009,12 @@
       "name": "Archon: Kilo Mainframe",
       "maxHP": 155,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-B1",
+        "EC-A4",
+        "EC-B2",
+        "EC-A4",
+        "EC-B4",
+        "EC-A4"
       ],
       "passives": [],
       "ai": null,
@@ -12301,8 +13506,8 @@
       "goldNormal": 25,
       "goldElite": 50,
       "goldBoss": 99,
-      "enemyHpMult": 0.6,
-      "enemyDmgMult": 0.9
+      "enemyHpMult": 0.52,
+      "enemyDmgMult": 0.7
     },
     {
       "act": 2,

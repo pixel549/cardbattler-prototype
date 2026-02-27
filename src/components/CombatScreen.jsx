@@ -305,34 +305,71 @@ function formatEffectsLong(effects) {
 // STATUS BADGE (reusable for player + enemies)
 // ============================================================
 function StatusBadge({ status, size = 'normal' }) {
+  const [tipVisible, setTipVisible] = React.useState(false);
+  const [tipPos, setTipPos] = React.useState({ x: 0, y: 0 });
   const meta = getStatusMeta(status.id);
   const isSmall = size === 'small';
   const desc = STATUS_DESCRIPTIONS[status.id];
   const stackWord = status.stacks === 1 ? 'stack' : 'stacks';
-  const titleStr = desc
-    ? `${meta.name || status.id} (${status.stacks} ${stackWord})\n${desc}`
-    : `${meta.name || status.id}: ${status.stacks} ${stackWord}`;
+  const tipTitle = `${meta.name || status.id} (${status.stacks} ${stackWord})`;
+
+  const handleInteract = (e) => {
+    e.stopPropagation();
+    setTipPos({ x: e.clientX, y: e.clientY });
+    setTipVisible(v => !v);
+  };
 
   return (
-    <div
-      title={titleStr}
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: isSmall ? '2px' : '3px',
-        padding: isSmall ? '1px 4px' : '2px 6px',
-        borderRadius: '4px',
-        fontFamily: MONO,
-        fontSize: isSmall ? 8 : 10,
-        fontWeight: 700,
-        backgroundColor: `${meta.color}18`,
-        color: meta.color,
-        border: `1px solid ${meta.color}35`,
-        whiteSpace: 'nowrap',
-      }}
-    >
-      <span style={{ fontSize: isSmall ? 9 : 11 }}>{meta.icon}</span>
-      {status.stacks > 1 && <span>{status.stacks}</span>}
+    <div style={{ position: 'relative', display: 'inline-flex' }}>
+      <div
+        title={tipTitle}
+        onClick={handleInteract}
+        onMouseEnter={(e) => { setTipPos({ x: e.clientX, y: e.clientY }); setTipVisible(true); }}
+        onMouseLeave={() => setTipVisible(false)}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: isSmall ? '2px' : '3px',
+          padding: isSmall ? '1px 4px' : '2px 6px',
+          borderRadius: '4px',
+          fontFamily: MONO,
+          fontSize: isSmall ? 8 : 10,
+          fontWeight: 700,
+          backgroundColor: `${meta.color}18`,
+          color: meta.color,
+          border: `1px solid ${meta.color}35`,
+          whiteSpace: 'nowrap',
+          cursor: 'help',
+        }}
+      >
+        <span style={{ fontSize: isSmall ? 9 : 11 }}>{meta.icon}</span>
+        {status.stacks > 1 && <span>{status.stacks}</span>}
+      </div>
+      {tipVisible && desc && (
+        <div
+          style={{
+            position: 'fixed',
+            left: Math.min(tipPos.x + 8, window.innerWidth - 210),
+            top: tipPos.y - 8,
+            transform: 'translateY(-100%)',
+            zIndex: 9999,
+            backgroundColor: '#0d0d18',
+            border: `1px solid ${meta.color}50`,
+            borderRadius: 8,
+            padding: '7px 10px',
+            maxWidth: 200,
+            boxShadow: `0 4px 20px rgba(0,0,0,0.85), 0 0 12px ${meta.color}20`,
+            pointerEvents: 'none',
+          }}
+        >
+          <div style={{ fontFamily: MONO, fontWeight: 700, fontSize: 9, color: meta.color, marginBottom: 4, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+            {meta.icon} {meta.name || status.id} ×{status.stacks}
+          </div>
+          <div style={{ fontFamily: MONO, fontSize: 9, color: '#b0b0b0', lineHeight: 1.5 }}>
+            {desc}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -433,10 +470,11 @@ function HealthBar({ current, max, height = 14, segmented = false, showText = tr
 // ============================================================
 // ENEMY CARD (prominent, top zone)
 // ============================================================
-function EnemyCard({ enemy, isTargeted, onClick, actingType }) {
+function EnemyCard({ enemy, isTargeted, onClick, actingType, data }) {
   const intentIcon  = getIntentIcon(enemy.intent?.type);
   const intentColor = getIntentColor(enemy.intent?.type);
   const imgSrc      = getEnemyImage(enemy.enemyDefId);
+  const intentCardDef = data?.cards?.[enemy.intent?.cardDefId];
   const actClass    = actingType === 'Attack'  ? 'enemy-act-attack'
                     : actingType === 'Debuff'  ? 'enemy-act-debuff'
                     : actingType               ? 'enemy-act-defend'
@@ -516,6 +554,20 @@ function EnemyCard({ enemy, isTargeted, onClick, actingType }) {
               whiteSpace: 'nowrap',
             }}>
               {enemy.intent.name}
+            </div>
+          )}
+          {intentCardDef?.effects?.length > 0 && (
+            <div style={{
+              padding: '2px 6px',
+              borderRadius: '4px',
+              backgroundColor: 'rgba(0,0,0,0.7)',
+              fontFamily: MONO,
+              fontSize: 7,
+              color: '#888',
+              maxWidth: 110,
+              lineHeight: 1.4,
+            }}>
+              {formatEffects(intentCardDef.effects)}
             </div>
           )}
         </div>
@@ -637,11 +689,18 @@ function EnemyCard({ enemy, isTargeted, onClick, actingType }) {
         </div>
       )}
       <StatusRow statuses={enemy.statuses} size="small" justify="center" />
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', padding: '4px 8px', borderRadius: '6px', backgroundColor: `${intentColor}12`, border: `1px solid ${intentColor}30` }}>
-        <span style={{ fontSize: 14 }}>{intentIcon}</span>
-        <span style={{ fontFamily: MONO, fontWeight: 700, color: intentColor, fontSize: 14 }}>{enemy.intent?.amount ?? '?'}</span>
-        {enemy.intent?.name && (
-          <span style={{ fontFamily: MONO, color: C.textDim, fontSize: 8, marginLeft: '2px' }}>{enemy.intent.name}</span>
+      <div style={{ borderRadius: '6px', backgroundColor: `${intentColor}12`, border: `1px solid ${intentColor}30`, padding: '4px 8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
+          <span style={{ fontSize: 14 }}>{intentIcon}</span>
+          <span style={{ fontFamily: MONO, fontWeight: 700, color: intentColor, fontSize: 14 }}>{enemy.intent?.amount ?? '?'}</span>
+          {enemy.intent?.name && (
+            <span style={{ fontFamily: MONO, color: C.textDim, fontSize: 8, marginLeft: '2px' }}>{enemy.intent.name}</span>
+          )}
+        </div>
+        {intentCardDef?.effects?.length > 0 && (
+          <div style={{ fontFamily: MONO, fontSize: 7.5, color: '#777', textAlign: 'center', marginTop: 2, lineHeight: 1.4 }}>
+            {formatEffects(intentCardDef.effects)}
+          </div>
         )}
       </div>
     </button>
@@ -933,6 +992,7 @@ function HandCard({ cardInstance, cardDef, isSelected, onSelect, canPlay, compac
   const isDecaying = countdown != null && countdown <= 3;
   const isBricked   = cardInstance?.finalMutationId === 'J_BRICK';
   const isRewritten  = cardInstance?.finalMutationId === 'J_REWRITE';
+  const isMutable = cardDef?.tags && !cardDef.tags.includes('Core') && !cardDef.tags.includes('EnemyCard');
 
   const w = compact ? 72 : 105;
   const h = compact ? 100 : 148;
@@ -1055,6 +1115,34 @@ function HandCard({ cardInstance, cardDef, isSelected, onSelect, canPlay, compac
           }}
         >
           {countdown}
+        </div>
+      )}
+
+      {/* Mutable indicator (non-Core cards that can receive mutations) */}
+      {isMutable && !hasMutations && (
+        <div
+          title="Non-core card — will mutate over time"
+          style={{
+            position: 'absolute',
+            bottom: 3,
+            right: 3,
+            width: compact ? 12 : 14,
+            height: compact ? 12 : 14,
+            borderRadius: '9999px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontWeight: 700,
+            fontFamily: MONO,
+            zIndex: 10,
+            backgroundColor: `${C.neonPurple}25`,
+            color: `${C.neonPurple}cc`,
+            border: `1px solid ${C.neonPurple}50`,
+            fontSize: compact ? 6 : 8,
+            lineHeight: 1,
+          }}
+        >
+          ✦
         </div>
       )}
 
@@ -1660,6 +1748,7 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false }
               isTargeted={i === targetedEnemyIndex}
               onClick={() => setTargetedEnemyIndex(i)}
               actingType={actingEnemies[enemy.id] || null}
+              data={data}
             />
           ))}
         </div>

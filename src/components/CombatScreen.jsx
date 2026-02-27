@@ -1484,6 +1484,7 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false }
   const [targetedEnemyIndex, setTargetedEnemyIndex] = useState(0);
   const [actingEnemies, setActingEnemies] = useState({});
   const [tooltip, setTooltip] = useState({ cardDef: null, x: 0, y: 0 });
+  const [scryDiscard, setScryDiscard] = useState(new Set());
   const [floats, setFloats] = useState([]);
   const handScrollRef = useRef(null);
   const lastLogLenRef = useRef(0);
@@ -1634,6 +1635,53 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false }
 
   if (!combat || combat.combatOver) {
     const victory = combat?.victory;
+    const accentColor = victory ? C.neonGreen : C.neonRed;
+
+    // ── Compute combat stats from structured log ───────────────────────────
+    const log = combat?.log || [];
+    let totalDmgDealt = 0;
+    let totalDmgTaken = 0;
+    let totalBlocked  = 0;
+    let cardsPlayedN  = 0;
+    let killerName    = null;
+    for (const entry of log) {
+      if (entry.t === 'DamageDealt') {
+        const d = entry.data || {};
+        if (d.isPlayerSource) {
+          totalDmgDealt += d.finalDamage || 0;
+        } else {
+          totalDmgTaken += d.finalDamage || 0;
+          totalBlocked  += d.blocked     || 0;
+          if (!victory) {
+            const attacker = (combat?.enemies || []).find(e => e.id === d.sourceId);
+            if (attacker) killerName = attacker.name;
+          }
+        }
+      } else if (entry.t === 'CardPlayed') {
+        cardsPlayedN++;
+      }
+    }
+    const turns           = combat?.turn || 0;
+    const hpFinal         = combat?.player?.hp ?? 0;
+    const hpMax           = combat?.player?.maxHP ?? 75;
+    const enemiesDefeated = (combat?.enemies || []).filter(e => e.hp <= 0).length;
+    const totalEnemies    = (combat?.enemies || []).length;
+    const blockEff        = (totalBlocked + totalDmgTaken) > 0
+      ? Math.round(100 * totalBlocked / (totalBlocked + totalDmgTaken))
+      : 0;
+
+    const StatRow = ({ label, value, valueColor }) => (
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        padding: '7px 0',
+        borderBottom: `1px solid ${C.neonCyan}12`,
+        fontFamily: MONO, fontSize: 13,
+      }}>
+        <span style={{ color: C.textDim }}>{label}</span>
+        <span style={{ color: valueColor || C.text, fontWeight: 700 }}>{value}</span>
+      </div>
+    );
+
     return (
       <div
         style={{
@@ -1644,38 +1692,89 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false }
           justifyContent: 'center',
           padding: '24px',
           backgroundColor: C.bg,
+          backgroundImage: `
+            linear-gradient(${C.neonCyan}03 1px, transparent 1px),
+            linear-gradient(90deg, ${C.neonCyan}03 1px, transparent 1px)
+          `,
+          backgroundSize: '24px 24px',
         }}
       >
+        {/* Header */}
         <div
           className="animate-slide-up"
           style={{
-            fontSize: '30px',
+            fontSize: '32px',
             fontFamily: MONO,
-            fontWeight: 700,
-            marginBottom: '8px',
-            color: victory ? C.neonGreen : C.neonRed,
+            fontWeight: 900,
+            marginBottom: '4px',
+            letterSpacing: '0.15em',
+            color: accentColor,
+            textShadow: `0 0 24px ${accentColor}80`,
           }}
         >
-          {victory ? 'VICTORY' : 'DEFEATED'}
+          {victory ? '✓ VICTORY' : '✗ DEFEATED'}
         </div>
-        <div style={{ fontFamily: MONO, marginBottom: '32px', color: C.textDim, fontSize: 13 }}>
-          {victory ? 'Systems operational' : 'Connection lost'}
+        <div style={{ fontFamily: MONO, marginBottom: '24px', color: C.textDim, fontSize: 12, letterSpacing: '0.06em', textAlign: 'center' }}>
+          {victory
+            ? 'All threats neutralised — systems operational'
+            : `Connection lost${killerName ? ` — terminated by ${killerName}` : ''}`}
         </div>
+
+        {/* Stats card */}
+        <div style={{
+          width: '100%', maxWidth: 340,
+          backgroundColor: C.bgCard,
+          border: `1px solid ${accentColor}30`,
+          borderRadius: 14,
+          padding: '16px 20px',
+          marginBottom: 28,
+          boxShadow: `0 0 30px ${accentColor}10`,
+        }}>
+          <div style={{
+            fontFamily: MONO, fontSize: 10, fontWeight: 700,
+            color: accentColor, letterSpacing: '0.14em', marginBottom: 10,
+          }}>
+            ▸ COMBAT REPORT
+          </div>
+          <StatRow label="Turns"              value={turns} />
+          <StatRow label="Cards played"       value={cardsPlayedN} />
+          <StatRow
+            label="HP remaining"
+            value={`${hpFinal} / ${hpMax}`}
+            valueColor={hpFinal > hpMax * 0.5 ? C.neonGreen : hpFinal > 0 ? C.neonOrange : C.neonRed}
+          />
+          <StatRow label="Enemies down"       value={`${enemiesDefeated} / ${totalEnemies}`} />
+          <StatRow label="Damage dealt"       value={totalDmgDealt.toLocaleString()} valueColor={C.neonRed} />
+          <StatRow
+            label="Damage taken"
+            value={totalDmgTaken.toLocaleString()}
+            valueColor={totalDmgTaken > hpMax * 2 ? C.neonRed : C.text}
+          />
+          <StatRow
+            label="Damage blocked"
+            value={`${totalBlocked.toLocaleString()}  (${blockEff}% eff.)`}
+            valueColor={C.neonCyan}
+          />
+        </div>
+
         <button
           onClick={() => onAction?.({ type: 'GoToMap' })}
           style={{
-            padding: '16px 32px',
+            padding: '14px 40px',
             borderRadius: '12px',
             fontFamily: MONO,
             fontWeight: 700,
-            fontSize: '18px',
+            fontSize: '16px',
+            letterSpacing: '0.08em',
             transition: 'all 0.2s ease',
-            backgroundColor: victory ? C.neonGreen : C.neonRed,
+            backgroundColor: accentColor,
             color: '#000',
-            boxShadow: `0 0 30px ${victory ? C.neonGreen : C.neonRed}40`,
+            border: 'none',
+            cursor: 'pointer',
+            boxShadow: `0 0 30px ${accentColor}40`,
           }}
         >
-          Continue
+          Continue →
         </button>
       </div>
     );
@@ -2018,6 +2117,100 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false }
           y={tooltip.y}
         />
       )}
+
+      {/* ── Scry modal ── */}
+      {combat._scryPending && (() => {
+        const { n, cards: scryCards } = combat._scryPending;
+        return (
+          <div style={{
+            position: 'fixed', inset: 0, zIndex: 800,
+            backgroundColor: 'rgba(0,0,0,0.88)',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            padding: '24px',
+          }}>
+            {/* Header */}
+            <div style={{ fontFamily: MONO, color: C.neonCyan, fontSize: 22, fontWeight: 900, letterSpacing: '0.12em', marginBottom: 4 }}>
+              SCRY {n}
+            </div>
+            <div style={{ fontFamily: MONO, color: C.textDim, fontSize: 12, marginBottom: 24, textAlign: 'center' }}>
+              Tap cards to discard · The rest return to top of draw pile in order
+            </div>
+
+            {/* Scry cards */}
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center', marginBottom: 28 }}>
+              {scryCards.map((cid) => {
+                const ci = cardInstances[cid];
+                const def = data?.cards?.[ci?.defId];
+                if (!def) return null;
+                const discarding = scryDiscard.has(cid);
+                return (
+                  <div
+                    key={cid}
+                    onClick={() => setScryDiscard(prev => {
+                      const next = new Set(prev);
+                      if (next.has(cid)) next.delete(cid); else next.add(cid);
+                      return next;
+                    })}
+                    style={{
+                      position: 'relative', cursor: 'pointer',
+                      opacity: discarding ? 0.45 : 1,
+                      transform: discarding ? 'scale(0.9) rotate(-2deg)' : 'scale(1)',
+                      transition: 'all 0.15s ease',
+                      outline: discarding ? `2px solid ${C.neonRed}` : `2px solid ${C.neonCyan}55`,
+                      outlineOffset: 3,
+                      borderRadius: 10,
+                    }}
+                  >
+                    <HandCard
+                      cardInstance={ci}
+                      cardDef={def}
+                      isSelected={false}
+                      canPlay={false}
+                      onSelect={() => {}}
+                      compact={false}
+                      showTooltip={false}
+                      onHover={() => {}}
+                    />
+                    {discarding && (
+                      <div style={{
+                        position: 'absolute', inset: 0, borderRadius: 10,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        backgroundColor: `${C.neonRed}18`, pointerEvents: 'none',
+                      }}>
+                        <span style={{
+                          fontFamily: MONO, fontWeight: 900, fontSize: 11,
+                          color: C.neonRed, letterSpacing: '0.15em',
+                          textShadow: `0 0 8px ${C.neonRed}`,
+                        }}>DISCARD</span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Confirm button */}
+            <button
+              onClick={() => {
+                const toDiscard = [...scryDiscard].filter(c => scryCards.includes(c));
+                const top = scryCards.filter(c => !toDiscard.includes(c));
+                onAction?.({ type: 'Combat_ScryResolve', discard: toDiscard, top });
+                setScryDiscard(new Set());
+              }}
+              style={{
+                padding: '12px 36px', borderRadius: 10, border: 'none',
+                fontFamily: MONO, fontWeight: 700, fontSize: 15,
+                backgroundColor: C.neonCyan, color: '#000',
+                cursor: 'pointer', letterSpacing: '0.08em',
+                boxShadow: `0 0 20px ${C.neonCyan}44`,
+                transition: 'all 0.15s ease',
+              }}
+            >
+              Confirm {scryDiscard.size > 0 ? `(discard ${scryDiscard.size})` : '(keep all)'}
+            </button>
+          </div>
+        );
+      })()}
     </div>
   );
 }

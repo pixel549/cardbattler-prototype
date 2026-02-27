@@ -31,7 +31,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-001",
+          "NC-002",
+          "NC-005",
+          "NC-018",
+          "NC-025",
+          "NC-026",
+          "NC-027",
+          "NC-028"
+        ]
       }
     },
     "C-002": {
@@ -63,7 +72,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-003",
+          "NC-014",
+          "NC-016",
+          "NC-022",
+          "NC-030",
+          "NC-031",
+          "NC-032",
+          "NC-051"
+        ]
       }
     },
     "C-003": {
@@ -95,7 +113,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-004",
+          "NC-017",
+          "NC-038",
+          "NC-050",
+          "NC-058",
+          "NC-060",
+          "NC-061",
+          "NC-063"
+        ]
       }
     },
     "C-004": {
@@ -128,7 +155,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-006",
+          "NC-007",
+          "NC-008",
+          "NC-009",
+          "NC-010",
+          "NC-011",
+          "NC-012",
+          "NC-013"
+        ]
       }
     },
     "C-005": {
@@ -161,7 +197,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-001",
+          "NC-002",
+          "NC-005",
+          "NC-018",
+          "NC-025",
+          "NC-026",
+          "NC-027",
+          "NC-028"
+        ]
       }
     },
     "C-006": {
@@ -194,7 +239,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-010",
+          "NC-019",
+          "NC-033",
+          "NC-034",
+          "NC-035",
+          "NC-036",
+          "NC-037",
+          "NC-040"
+        ]
       }
     },
     "C-007": {
@@ -227,7 +281,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-003",
+          "NC-014",
+          "NC-016",
+          "NC-022",
+          "NC-030",
+          "NC-031",
+          "NC-032",
+          "NC-051"
+        ]
       }
     },
     "C-008": {
@@ -260,7 +323,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-001",
+          "NC-002",
+          "NC-005",
+          "NC-018",
+          "NC-025",
+          "NC-026",
+          "NC-027",
+          "NC-028"
+        ]
       }
     },
     "C-009": {
@@ -291,7 +363,14 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-001",
+          "NC-002",
+          "NC-003",
+          "NC-004",
+          "NC-005",
+          "NC-006"
+        ]
       }
     },
     "C-010": {
@@ -324,7 +403,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-001",
+          "NC-002",
+          "NC-005",
+          "NC-018",
+          "NC-025",
+          "NC-026",
+          "NC-027",
+          "NC-028"
+        ]
       }
     },
     "NC-001": {
@@ -356,7 +444,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-002",
+          "NC-005",
+          "NC-018",
+          "NC-025",
+          "NC-026",
+          "NC-028",
+          "NC-029",
+          "NC-093"
+        ]
       }
     },
     "NC-002": {
@@ -388,7 +485,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-001",
+          "NC-005",
+          "NC-018",
+          "NC-025",
+          "NC-026",
+          "NC-028",
+          "NC-029",
+          "NC-093"
+        ]
       }
     },
     "NC-003": {
@@ -421,7 +527,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-014",
+          "NC-016",
+          "NC-022",
+          "NC-031",
+          "NC-032",
+          "NC-051",
+          "NC-059",
+          "NC-062"
+        ]
       }
     },
     "NC-004": {
@@ -454,7 +569,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-017",
+          "NC-038",
+          "NC-050",
+          "NC-058",
+          "NC-060",
+          "NC-061",
+          "NC-063",
+          "NC-064"
+        ]
       }
     },
     "NC-005": {
@@ -488,7 +612,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-001",
+          "NC-002",
+          "NC-018",
+          "NC-025",
+          "NC-026",
+          "NC-028",
+          "NC-029",
+          "NC-093"
+        ]
       }
     },
     "NC-006": {
@@ -521,7 +654,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-007",
+          "NC-008",
+          "NC-009",
+          "NC-011",
+          "NC-012",
+          "NC-013",
+          "NC-015",
+          "NC-019"
+        ]
       }
     },
     "NC-007": {
@@ -554,7 +696,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-006",
+          "NC-008",
+          "NC-009",
+          "NC-011",
+          "NC-012",
+          "NC-013",
+          "NC-015",
+          "NC-019"
+        ]
       }
     },
     "NC-008": {
@@ -588,7 +739,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-006",
+          "NC-007",
+          "NC-009",
+          "NC-011",
+          "NC-012",
+          "NC-013",
+          "NC-015",
+          "NC-019"
+        ]
       }
     },
     "NC-009": {
@@ -623,7 +783,16 @@
           "rewrite": 0.35
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-006",
+          "NC-007",
+          "NC-008",
+          "NC-011",
+          "NC-012",
+          "NC-013",
+          "NC-015",
+          "NC-019"
+        ]
       }
     },
     "NC-010": {
@@ -654,7 +823,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-019",
+          "NC-033",
+          "NC-034",
+          "NC-035",
+          "NC-036",
+          "NC-037",
+          "NC-040",
+          "NC-041"
+        ]
       }
     },
     "NC-011": {
@@ -685,7 +863,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-006",
+          "NC-007",
+          "NC-008",
+          "NC-009",
+          "NC-012",
+          "NC-013",
+          "NC-015",
+          "NC-019"
+        ]
       }
     },
     "NC-012": {
@@ -718,7 +905,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-006",
+          "NC-007",
+          "NC-008",
+          "NC-009",
+          "NC-011",
+          "NC-013",
+          "NC-015",
+          "NC-019"
+        ]
       }
     },
     "NC-013": {
@@ -750,7 +946,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-006",
+          "NC-007",
+          "NC-008",
+          "NC-009",
+          "NC-011",
+          "NC-012",
+          "NC-015",
+          "NC-019"
+        ]
       }
     },
     "NC-014": {
@@ -783,7 +988,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-003",
+          "NC-016",
+          "NC-022",
+          "NC-031",
+          "NC-032",
+          "NC-051",
+          "NC-059",
+          "NC-062"
+        ]
       }
     },
     "NC-015": {
@@ -816,7 +1030,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-006",
+          "NC-007",
+          "NC-008",
+          "NC-009",
+          "NC-011",
+          "NC-012",
+          "NC-013",
+          "NC-019"
+        ]
       }
     },
     "NC-016": {
@@ -849,7 +1072,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-003",
+          "NC-014",
+          "NC-022",
+          "NC-031",
+          "NC-032",
+          "NC-051",
+          "NC-059",
+          "NC-062"
+        ]
       }
     },
     "NC-017": {
@@ -882,7 +1114,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-004",
+          "NC-038",
+          "NC-050",
+          "NC-058",
+          "NC-060",
+          "NC-061",
+          "NC-063",
+          "NC-064"
+        ]
       }
     },
     "NC-018": {
@@ -916,7 +1157,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-001",
+          "NC-002",
+          "NC-005",
+          "NC-025",
+          "NC-026",
+          "NC-028",
+          "NC-029",
+          "NC-093"
+        ]
       }
     },
     "NC-019": {
@@ -948,7 +1198,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-006",
+          "NC-007",
+          "NC-008",
+          "NC-009",
+          "NC-010",
+          "NC-011",
+          "NC-012",
+          "NC-013"
+        ]
       }
     },
     "NC-020": {
@@ -979,7 +1238,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-006",
+          "NC-007",
+          "NC-008",
+          "NC-009",
+          "NC-011",
+          "NC-012",
+          "NC-013",
+          "NC-015"
+        ]
       }
     },
     "NC-021": {
@@ -1011,7 +1279,16 @@
           "rewrite": 0.65
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-006",
+          "NC-007",
+          "NC-008",
+          "NC-009",
+          "NC-011",
+          "NC-012",
+          "NC-013",
+          "NC-015"
+        ]
       }
     },
     "NC-022": {
@@ -1044,7 +1321,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-003",
+          "NC-014",
+          "NC-016",
+          "NC-031",
+          "NC-032",
+          "NC-051",
+          "NC-059",
+          "NC-062"
+        ]
       }
     },
     "NC-023": {
@@ -1075,7 +1361,9 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-024"
+        ]
       }
     },
     "NC-024": {
@@ -1107,7 +1395,9 @@
           "rewrite": 0.35
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-023"
+        ]
       }
     },
     "NC-025": {
@@ -1148,7 +1438,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-001",
+          "NC-002",
+          "NC-005",
+          "NC-018",
+          "NC-026",
+          "NC-028",
+          "NC-029",
+          "NC-093"
+        ]
       }
     },
     "NC-026": {
@@ -1183,7 +1482,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-001",
+          "NC-002",
+          "NC-005",
+          "NC-018",
+          "NC-025",
+          "NC-027",
+          "NC-028",
+          "NC-073"
+        ]
       }
     },
     "NC-027": {
@@ -1228,7 +1536,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-026",
+          "NC-028",
+          "NC-073",
+          "NC-074",
+          "NC-076",
+          "NC-082",
+          "NC-093",
+          "NC-095"
+        ]
       }
     },
     "NC-028": {
@@ -1264,7 +1581,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-001",
+          "NC-002",
+          "NC-005",
+          "NC-018",
+          "NC-025",
+          "NC-026",
+          "NC-027",
+          "NC-073"
+        ]
       }
     },
     "NC-029": {
@@ -1302,7 +1628,16 @@
           "rewrite": 0.35
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-001",
+          "NC-002",
+          "NC-005",
+          "NC-018",
+          "NC-025",
+          "UC-001",
+          "UC-002",
+          "UC-009"
+        ]
       }
     },
     "NC-030": {
@@ -1337,7 +1672,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-031",
+          "NC-062",
+          "NC-075",
+          "NC-083",
+          "NC-003",
+          "NC-014",
+          "NC-016",
+          "NC-022"
+        ]
       }
     },
     "NC-031": {
@@ -1372,7 +1716,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-003",
+          "NC-014",
+          "NC-016",
+          "NC-022",
+          "NC-030",
+          "NC-032",
+          "NC-051",
+          "NC-059"
+        ]
       }
     },
     "NC-032": {
@@ -1408,7 +1761,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-003",
+          "NC-014",
+          "NC-016",
+          "NC-022",
+          "NC-031",
+          "NC-051",
+          "NC-059",
+          "NC-062"
+        ]
       }
     },
     "NC-033": {
@@ -1449,7 +1811,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-010",
+          "NC-019",
+          "NC-034",
+          "NC-035",
+          "NC-036",
+          "NC-037",
+          "NC-040",
+          "NC-041"
+        ]
       }
     },
     "NC-034": {
@@ -1485,7 +1856,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-006",
+          "NC-007",
+          "NC-008",
+          "NC-009",
+          "NC-010",
+          "NC-011",
+          "NC-012",
+          "NC-013"
+        ]
       }
     },
     "NC-035": {
@@ -1521,7 +1901,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-006",
+          "NC-007",
+          "NC-008",
+          "NC-009",
+          "NC-010",
+          "NC-011",
+          "NC-012",
+          "NC-013"
+        ]
       }
     },
     "NC-036": {
@@ -1558,7 +1947,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-010",
+          "NC-019",
+          "NC-033",
+          "NC-034",
+          "NC-035",
+          "NC-037",
+          "NC-040",
+          "NC-041"
+        ]
       }
     },
     "NC-037": {
@@ -1598,7 +1996,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-006",
+          "NC-007",
+          "NC-008",
+          "NC-009",
+          "NC-010",
+          "NC-011",
+          "NC-012",
+          "NC-013"
+        ]
       }
     },
     "NC-038": {
@@ -1634,7 +2041,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-004",
+          "NC-017",
+          "NC-050",
+          "NC-058",
+          "NC-060",
+          "NC-061",
+          "NC-063",
+          "NC-064"
+        ]
       }
     },
     "NC-039": {
@@ -1670,7 +2086,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-006",
+          "NC-007",
+          "NC-008",
+          "NC-009",
+          "NC-011",
+          "NC-012",
+          "NC-013",
+          "NC-015"
+        ]
       }
     },
     "NC-040": {
@@ -1704,7 +2129,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-006",
+          "NC-007",
+          "NC-008",
+          "NC-009",
+          "NC-010",
+          "NC-011",
+          "NC-012",
+          "NC-013"
+        ]
       }
     },
     "NC-041": {
@@ -1738,7 +2172,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-010",
+          "NC-019",
+          "NC-033",
+          "NC-034",
+          "NC-035",
+          "NC-036",
+          "NC-037",
+          "NC-040"
+        ]
       }
     },
     "NC-042": {
@@ -1773,7 +2216,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-006",
+          "NC-007",
+          "NC-008",
+          "NC-009",
+          "NC-011",
+          "NC-012",
+          "NC-013",
+          "NC-015"
+        ]
       }
     },
     "NC-043": {
@@ -1808,7 +2260,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-006",
+          "NC-007",
+          "NC-008",
+          "NC-009",
+          "NC-010",
+          "NC-011",
+          "NC-012",
+          "NC-013"
+        ]
       }
     },
     "NC-044": {
@@ -1846,7 +2307,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-006",
+          "NC-007",
+          "NC-008",
+          "NC-009",
+          "NC-010",
+          "NC-011",
+          "NC-012",
+          "NC-013"
+        ]
       }
     },
     "NC-045": {
@@ -1884,7 +2354,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-010",
+          "NC-019",
+          "NC-033",
+          "NC-034",
+          "NC-035",
+          "NC-036",
+          "NC-037",
+          "NC-040"
+        ]
       }
     },
     "NC-046": {
@@ -1920,7 +2399,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-006",
+          "NC-007",
+          "NC-008",
+          "NC-009",
+          "NC-010",
+          "NC-011",
+          "NC-012",
+          "NC-013"
+        ]
       }
     },
     "NC-047": {
@@ -1955,7 +2443,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-006",
+          "NC-007",
+          "NC-008",
+          "NC-009",
+          "NC-011",
+          "NC-012",
+          "NC-013",
+          "NC-015"
+        ]
       }
     },
     "NC-048": {
@@ -1990,7 +2487,16 @@
           "rewrite": 0.65
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-006",
+          "NC-007",
+          "NC-008",
+          "NC-009",
+          "NC-010",
+          "NC-011",
+          "NC-012",
+          "NC-013"
+        ]
       }
     },
     "NC-049": {
@@ -2025,7 +2531,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-006",
+          "NC-007",
+          "NC-008",
+          "NC-009",
+          "NC-011",
+          "NC-012",
+          "NC-013",
+          "NC-015"
+        ]
       }
     },
     "NC-050": {
@@ -2060,7 +2575,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-004",
+          "NC-017",
+          "NC-038",
+          "NC-058",
+          "NC-060",
+          "NC-061",
+          "NC-063",
+          "NC-064"
+        ]
       }
     },
     "NC-051": {
@@ -2095,7 +2619,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-003",
+          "NC-014",
+          "NC-016",
+          "NC-022",
+          "NC-031",
+          "NC-032",
+          "NC-059",
+          "NC-062"
+        ]
       }
     },
     "NC-052": {
@@ -2131,7 +2664,16 @@
           "rewrite": 0.35
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-006",
+          "NC-007",
+          "NC-008",
+          "NC-009",
+          "NC-011",
+          "NC-012",
+          "NC-013",
+          "NC-015"
+        ]
       }
     },
     "NC-053": {
@@ -2170,7 +2712,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-006",
+          "NC-007",
+          "NC-008",
+          "NC-009",
+          "NC-010",
+          "NC-011",
+          "NC-012",
+          "NC-013"
+        ]
       }
     },
     "NC-054": {
@@ -2209,7 +2760,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-010",
+          "NC-019",
+          "NC-033",
+          "NC-034",
+          "NC-035",
+          "NC-036",
+          "NC-037",
+          "NC-040"
+        ]
       }
     },
     "NC-055": {
@@ -2247,7 +2807,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-006",
+          "NC-007",
+          "NC-008",
+          "NC-009",
+          "NC-010",
+          "NC-011",
+          "NC-012",
+          "NC-013"
+        ]
       }
     },
     "NC-056": {
@@ -2282,7 +2851,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-006",
+          "NC-007",
+          "NC-008",
+          "NC-009",
+          "NC-010",
+          "NC-011",
+          "NC-012",
+          "NC-013"
+        ]
       }
     },
     "NC-057": {
@@ -2320,7 +2898,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-010",
+          "NC-019",
+          "NC-033",
+          "NC-034",
+          "NC-035",
+          "NC-036",
+          "NC-037",
+          "NC-040"
+        ]
       }
     },
     "NC-058": {
@@ -2356,7 +2943,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-004",
+          "NC-017",
+          "NC-038",
+          "NC-050",
+          "NC-060",
+          "NC-061",
+          "NC-063",
+          "NC-064"
+        ]
       }
     },
     "NC-059": {
@@ -2391,7 +2987,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-003",
+          "NC-014",
+          "NC-016",
+          "NC-022",
+          "NC-031",
+          "NC-032",
+          "NC-051",
+          "NC-062"
+        ]
       }
     },
     "NC-060": {
@@ -2426,7 +3031,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-004",
+          "NC-017",
+          "NC-038",
+          "NC-050",
+          "NC-058",
+          "NC-061",
+          "NC-063",
+          "NC-064"
+        ]
       }
     },
     "NC-061": {
@@ -2461,7 +3075,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-004",
+          "NC-017",
+          "NC-038",
+          "NC-050",
+          "NC-058",
+          "NC-060",
+          "NC-063",
+          "NC-064"
+        ]
       }
     },
     "NC-062": {
@@ -2496,7 +3119,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-003",
+          "NC-014",
+          "NC-016",
+          "NC-022",
+          "NC-030",
+          "NC-031",
+          "NC-032",
+          "NC-051"
+        ]
       }
     },
     "NC-063": {
@@ -2531,7 +3163,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-004",
+          "NC-017",
+          "NC-038",
+          "NC-050",
+          "NC-058",
+          "NC-060",
+          "NC-061",
+          "NC-064"
+        ]
       }
     },
     "NC-064": {
@@ -2566,7 +3207,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-004",
+          "NC-017",
+          "NC-038",
+          "NC-050",
+          "NC-058",
+          "NC-060",
+          "NC-061",
+          "NC-063"
+        ]
       }
     },
     "NC-065": {
@@ -2601,7 +3251,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-004",
+          "NC-017",
+          "NC-038",
+          "NC-050",
+          "NC-058",
+          "NC-060",
+          "NC-061",
+          "NC-063"
+        ]
       }
     },
     "NC-066": {
@@ -2637,7 +3296,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-004",
+          "NC-017",
+          "NC-038",
+          "NC-050",
+          "NC-058",
+          "NC-064",
+          "NC-065",
+          "NC-067"
+        ]
       }
     },
     "NC-067": {
@@ -2672,7 +3340,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-004",
+          "NC-017",
+          "NC-038",
+          "NC-050",
+          "NC-058",
+          "NC-060",
+          "NC-061",
+          "NC-063"
+        ]
       }
     },
     "NC-068": {
@@ -2707,7 +3384,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-004",
+          "NC-017",
+          "NC-038",
+          "NC-050",
+          "NC-058",
+          "NC-060",
+          "NC-061",
+          "NC-063"
+        ]
       }
     },
     "NC-069": {
@@ -2742,7 +3428,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-004",
+          "NC-017",
+          "NC-038",
+          "NC-050",
+          "NC-058",
+          "NC-060",
+          "NC-061",
+          "NC-063"
+        ]
       }
     },
     "NC-070": {
@@ -2778,7 +3473,16 @@
           "rewrite": 0.35
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-004",
+          "NC-017",
+          "NC-038",
+          "NC-050",
+          "NC-058",
+          "NC-060",
+          "NC-061",
+          "NC-063"
+        ]
       }
     },
     "NC-071": {
@@ -2813,7 +3517,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-004",
+          "NC-017",
+          "NC-038",
+          "NC-050",
+          "NC-058",
+          "NC-060",
+          "NC-061",
+          "NC-063"
+        ]
       }
     },
     "NC-072": {
@@ -2848,7 +3561,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-004",
+          "NC-017",
+          "NC-038",
+          "NC-050",
+          "NC-058",
+          "NC-060",
+          "NC-061",
+          "NC-063"
+        ]
       }
     },
     "NC-073": {
@@ -2884,7 +3606,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-026",
+          "NC-027",
+          "NC-028",
+          "NC-074",
+          "NC-076",
+          "NC-082",
+          "NC-093",
+          "NC-095"
+        ]
       }
     },
     "NC-074": {
@@ -2921,7 +3652,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-026",
+          "NC-027",
+          "NC-028",
+          "NC-073",
+          "NC-076",
+          "NC-082",
+          "NC-093",
+          "NC-095"
+        ]
       }
     },
     "NC-075": {
@@ -2957,7 +3697,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-030",
+          "NC-031",
+          "NC-062",
+          "NC-083",
+          "NC-003",
+          "NC-014",
+          "NC-016",
+          "NC-022"
+        ]
       }
     },
     "NC-076": {
@@ -2993,7 +3742,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-026",
+          "NC-027",
+          "NC-028",
+          "NC-073",
+          "NC-074",
+          "NC-082",
+          "NC-093",
+          "NC-095"
+        ]
       }
     },
     "NC-077": {
@@ -3029,7 +3787,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-060",
+          "NC-061",
+          "NC-063",
+          "NC-068",
+          "NC-071",
+          "NC-098",
+          "NC-004",
+          "NC-017"
+        ]
       }
     },
     "NC-078": {
@@ -3065,7 +3832,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-010",
+          "NC-019",
+          "NC-033",
+          "NC-034",
+          "NC-035",
+          "NC-036",
+          "NC-037",
+          "NC-040"
+        ]
       }
     },
     "NC-079": {
@@ -3101,7 +3877,16 @@
           "rewrite": 0.35
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-010",
+          "NC-019",
+          "NC-033",
+          "NC-034",
+          "NC-035",
+          "NC-036",
+          "NC-037",
+          "NC-040"
+        ]
       }
     },
     "NC-080": {
@@ -3137,7 +3922,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-010",
+          "NC-019",
+          "NC-033",
+          "NC-034",
+          "NC-035",
+          "NC-036",
+          "NC-037",
+          "NC-040"
+        ]
       }
     },
     "NC-081": {
@@ -3173,7 +3967,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-010",
+          "NC-019",
+          "NC-033",
+          "NC-034",
+          "NC-035",
+          "NC-036",
+          "NC-037",
+          "NC-040"
+        ]
       }
     },
     "NC-082": {
@@ -3209,7 +4012,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-026",
+          "NC-027",
+          "NC-028",
+          "NC-073",
+          "NC-074",
+          "NC-076",
+          "NC-093",
+          "NC-095"
+        ]
       }
     },
     "NC-083": {
@@ -3245,7 +4057,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-030",
+          "NC-031",
+          "NC-062",
+          "NC-075",
+          "NC-003",
+          "NC-014",
+          "NC-016",
+          "NC-022"
+        ]
       }
     },
     "NC-084": {
@@ -3281,7 +4102,16 @@
           "rewrite": 0.35
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-010",
+          "NC-019",
+          "NC-033",
+          "NC-034",
+          "NC-035",
+          "NC-036",
+          "NC-037",
+          "NC-040"
+        ]
       }
     },
     "NC-085": {
@@ -3315,7 +4145,15 @@
           "rewrite": 0.8
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-086",
+          "NC-087",
+          "NC-088",
+          "NC-089",
+          "NC-090",
+          "NC-091",
+          "NC-092"
+        ]
       }
     },
     "NC-086": {
@@ -3350,7 +4188,15 @@
           "rewrite": 0.8
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-085",
+          "NC-087",
+          "NC-088",
+          "NC-089",
+          "NC-090",
+          "NC-091",
+          "NC-092"
+        ]
       }
     },
     "NC-087": {
@@ -3385,7 +4231,15 @@
           "rewrite": 0.2
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-085",
+          "NC-086",
+          "NC-088",
+          "NC-089",
+          "NC-090",
+          "NC-091",
+          "NC-092"
+        ]
       }
     },
     "NC-088": {
@@ -3421,7 +4275,15 @@
           "rewrite": 0.8
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-085",
+          "NC-086",
+          "NC-087",
+          "NC-089",
+          "NC-090",
+          "NC-091",
+          "NC-092"
+        ]
       }
     },
     "NC-089": {
@@ -3456,7 +4318,15 @@
           "rewrite": 0.8
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-085",
+          "NC-086",
+          "NC-087",
+          "NC-088",
+          "NC-090",
+          "NC-091",
+          "NC-092"
+        ]
       }
     },
     "NC-090": {
@@ -3491,7 +4361,15 @@
           "rewrite": 0.8
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-085",
+          "NC-086",
+          "NC-087",
+          "NC-088",
+          "NC-089",
+          "NC-091",
+          "NC-092"
+        ]
       }
     },
     "NC-091": {
@@ -3526,7 +4404,15 @@
           "rewrite": 0.8
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-085",
+          "NC-086",
+          "NC-087",
+          "NC-088",
+          "NC-089",
+          "NC-090",
+          "NC-092"
+        ]
       }
     },
     "NC-092": {
@@ -3561,7 +4447,15 @@
           "rewrite": 0.8
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-085",
+          "NC-086",
+          "NC-087",
+          "NC-088",
+          "NC-089",
+          "NC-090",
+          "NC-091"
+        ]
       }
     },
     "NC-093": {
@@ -3601,7 +4495,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-001",
+          "NC-002",
+          "NC-005",
+          "NC-018",
+          "NC-025",
+          "NC-026",
+          "NC-027",
+          "NC-028"
+        ]
       }
     },
     "NC-094": {
@@ -3636,7 +4539,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-006",
+          "NC-007",
+          "NC-008",
+          "NC-009",
+          "NC-010",
+          "NC-011",
+          "NC-012",
+          "NC-013"
+        ]
       }
     },
     "NC-095": {
@@ -3672,7 +4584,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-026",
+          "NC-027",
+          "NC-028",
+          "NC-073",
+          "NC-074",
+          "NC-076",
+          "NC-082",
+          "NC-093"
+        ]
       }
     },
     "NC-096": {
@@ -3713,7 +4634,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-010",
+          "NC-019",
+          "NC-033",
+          "NC-034",
+          "NC-035",
+          "NC-036",
+          "NC-037",
+          "NC-040"
+        ]
       }
     },
     "NC-097": {
@@ -3754,7 +4684,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-006",
+          "NC-007",
+          "NC-008",
+          "NC-009",
+          "NC-010",
+          "NC-011",
+          "NC-012",
+          "NC-013"
+        ]
       }
     },
     "NC-098": {
@@ -3791,7 +4730,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-004",
+          "NC-017",
+          "NC-038",
+          "NC-050",
+          "NC-058",
+          "NC-060",
+          "NC-061",
+          "NC-063"
+        ]
       }
     },
     "NC-099": {
@@ -3831,7 +4779,16 @@
           "rewrite": 0.65
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-006",
+          "NC-007",
+          "NC-008",
+          "NC-009",
+          "NC-010",
+          "NC-011",
+          "NC-012",
+          "NC-013"
+        ]
       }
     },
     "NC-100": {
@@ -3866,7 +4823,16 @@
           "rewrite": 0.65
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-003",
+          "NC-014",
+          "NC-016",
+          "NC-022",
+          "NC-031",
+          "NC-032",
+          "NC-051",
+          "NC-059"
+        ]
       }
     },
     "NC-101": {
@@ -3901,7 +4867,16 @@
           "rewrite": 0.65
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-004",
+          "NC-017",
+          "NC-038",
+          "NC-050",
+          "NC-058",
+          "NC-060",
+          "NC-061",
+          "NC-063"
+        ]
       }
     },
     "NC-102": {
@@ -3937,7 +4912,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-010",
+          "NC-019",
+          "NC-033",
+          "NC-034",
+          "NC-035",
+          "NC-036",
+          "NC-037",
+          "NC-040"
+        ]
       }
     },
     "UC-001": {
@@ -3970,7 +4954,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-001",
+          "NC-002",
+          "NC-005",
+          "NC-018",
+          "NC-025",
+          "NC-029",
+          "UC-002",
+          "UC-009"
+        ]
       }
     },
     "UC-002": {
@@ -4005,7 +4998,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-001",
+          "NC-002",
+          "NC-005",
+          "NC-018",
+          "NC-025",
+          "NC-029",
+          "UC-001",
+          "UC-009"
+        ]
       }
     },
     "UC-003": {
@@ -4039,7 +5041,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-003",
+          "NC-014",
+          "NC-016",
+          "NC-022",
+          "NC-032",
+          "NC-051",
+          "NC-059",
+          "NC-100"
+        ]
       }
     },
     "UC-004": {
@@ -4072,7 +5083,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-003",
+          "NC-014",
+          "NC-016",
+          "NC-022",
+          "NC-032",
+          "NC-051",
+          "NC-059",
+          "NC-100"
+        ]
       }
     },
     "UC-005": {
@@ -4106,7 +5126,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-004",
+          "NC-017",
+          "NC-038",
+          "NC-050",
+          "NC-058",
+          "NC-064",
+          "NC-065",
+          "NC-066"
+        ]
       }
     },
     "UC-006": {
@@ -4140,7 +5169,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-004",
+          "NC-017",
+          "NC-038",
+          "NC-050",
+          "NC-058",
+          "NC-064",
+          "NC-065",
+          "NC-066"
+        ]
       }
     },
     "UC-007": {
@@ -4172,7 +5210,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-006",
+          "NC-007",
+          "NC-008",
+          "NC-009",
+          "NC-011",
+          "NC-012",
+          "NC-013",
+          "NC-015"
+        ]
       }
     },
     "UC-008": {
@@ -4205,7 +5252,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-006",
+          "NC-007",
+          "NC-008",
+          "NC-009",
+          "NC-011",
+          "NC-012",
+          "NC-013",
+          "NC-015"
+        ]
       }
     },
     "UC-009": {
@@ -4239,7 +5295,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-001",
+          "NC-002",
+          "NC-005",
+          "NC-018",
+          "NC-025",
+          "NC-029",
+          "UC-001",
+          "UC-002"
+        ]
       }
     },
     "UC-010": {
@@ -4273,7 +5338,16 @@
           "rewrite": 0.35
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-006",
+          "NC-007",
+          "NC-008",
+          "NC-009",
+          "NC-011",
+          "NC-012",
+          "NC-013",
+          "NC-015"
+        ]
       }
     },
     "UC-011": {
@@ -4308,7 +5382,16 @@
           "rewrite": 0.2
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-006",
+          "NC-007",
+          "NC-008",
+          "NC-009",
+          "NC-011",
+          "NC-012",
+          "NC-013",
+          "NC-015"
+        ]
       }
     },
     "UC-012": {
@@ -4342,7 +5425,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-006",
+          "NC-007",
+          "NC-008",
+          "NC-009",
+          "NC-011",
+          "NC-012",
+          "NC-013",
+          "NC-015"
+        ]
       }
     },
     "UC-013": {
@@ -4376,7 +5468,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-006",
+          "NC-007",
+          "NC-008",
+          "NC-009",
+          "NC-011",
+          "NC-012",
+          "NC-013",
+          "NC-015"
+        ]
       }
     },
     "UC-014": {
@@ -4408,7 +5509,16 @@
           "rewrite": 0.65
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-006",
+          "NC-007",
+          "NC-008",
+          "NC-009",
+          "NC-011",
+          "NC-012",
+          "NC-013",
+          "NC-015"
+        ]
       }
     },
     "UC-015": {
@@ -4440,7 +5550,16 @@
           "rewrite": 0.35
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-006",
+          "NC-007",
+          "NC-008",
+          "NC-009",
+          "NC-010",
+          "NC-011",
+          "NC-012",
+          "NC-013"
+        ]
       }
     },
     "UC-016": {
@@ -4472,7 +5591,16 @@
           "rewrite": 0.35
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-006",
+          "NC-007",
+          "NC-008",
+          "NC-009",
+          "NC-010",
+          "NC-011",
+          "NC-012",
+          "NC-013"
+        ]
       }
     },
     "R-001": {
@@ -4506,7 +5634,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-001",
+          "NC-002",
+          "NC-005",
+          "NC-018",
+          "NC-025",
+          "NC-029",
+          "UC-001",
+          "UC-002"
+        ]
       }
     },
     "R-002": {
@@ -4541,7 +5678,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-003",
+          "NC-014",
+          "NC-016",
+          "NC-022",
+          "NC-032",
+          "NC-051",
+          "NC-059",
+          "NC-100"
+        ]
       }
     },
     "R-003": {
@@ -4574,7 +5720,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-004",
+          "NC-017",
+          "NC-038",
+          "NC-050",
+          "NC-058",
+          "NC-064",
+          "NC-065",
+          "NC-066"
+        ]
       }
     },
     "R-004": {
@@ -4607,7 +5762,16 @@
           "rewrite": 0.2
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-006",
+          "NC-007",
+          "NC-008",
+          "NC-009",
+          "NC-011",
+          "NC-012",
+          "NC-013",
+          "NC-015"
+        ]
       }
     },
     "R-005": {
@@ -4640,7 +5804,16 @@
           "rewrite": 0.35
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-006",
+          "NC-007",
+          "NC-008",
+          "NC-009",
+          "NC-011",
+          "NC-012",
+          "NC-013",
+          "NC-015"
+        ]
       }
     },
     "R-006": {
@@ -4673,7 +5846,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-006",
+          "NC-007",
+          "NC-008",
+          "NC-009",
+          "NC-011",
+          "NC-012",
+          "NC-013",
+          "NC-015"
+        ]
       }
     },
     "R-007": {
@@ -4706,7 +5888,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-006",
+          "NC-007",
+          "NC-008",
+          "NC-009",
+          "NC-011",
+          "NC-012",
+          "NC-013",
+          "NC-015"
+        ]
       }
     },
     "R-008": {
@@ -4739,7 +5930,16 @@
           "rewrite": 0.35
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-006",
+          "NC-007",
+          "NC-008",
+          "NC-009",
+          "NC-010",
+          "NC-011",
+          "NC-012",
+          "NC-013"
+        ]
       }
     },
     "R-009": {
@@ -4772,7 +5972,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-006",
+          "NC-007",
+          "NC-008",
+          "NC-009",
+          "NC-011",
+          "NC-012",
+          "NC-013",
+          "NC-015"
+        ]
       }
     },
     "R-010": {
@@ -4806,7 +6015,16 @@
           "rewrite": 0.35
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-006",
+          "NC-007",
+          "NC-008",
+          "NC-009",
+          "NC-011",
+          "NC-012",
+          "NC-013",
+          "NC-015"
+        ]
       }
     },
     "P-001": {
@@ -4842,7 +6060,16 @@
           "rewrite": 0.2
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-006",
+          "NC-007",
+          "NC-008",
+          "NC-009",
+          "NC-011",
+          "NC-012",
+          "NC-013",
+          "NC-015"
+        ]
       }
     },
     "P-002": {
@@ -4878,7 +6105,16 @@
           "rewrite": 0.2
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-006",
+          "NC-007",
+          "NC-008",
+          "NC-009",
+          "NC-011",
+          "NC-012",
+          "NC-013",
+          "NC-015"
+        ]
       }
     },
     "P-003": {
@@ -4909,7 +6145,16 @@
           "rewrite": 0.65
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "P-004",
+          "P-009",
+          "P-010",
+          "P-011",
+          "P-007",
+          "P-012",
+          "P-013",
+          "P-014"
+        ]
       }
     },
     "P-004": {
@@ -4944,7 +6189,16 @@
           "rewrite": 0.65
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "P-003",
+          "P-009",
+          "P-010",
+          "P-011",
+          "P-007",
+          "P-012",
+          "P-013",
+          "P-014"
+        ]
       }
     },
     "P-005": {
@@ -4974,7 +6228,16 @@
           "rewrite": 0.8
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-006",
+          "NC-007",
+          "NC-008",
+          "NC-009",
+          "NC-010",
+          "NC-011",
+          "NC-012",
+          "NC-013"
+        ]
       }
     },
     "P-006": {
@@ -5008,7 +6271,16 @@
           "rewrite": 0.35
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-006",
+          "NC-007",
+          "NC-008",
+          "NC-009",
+          "NC-010",
+          "NC-011",
+          "NC-012",
+          "NC-013"
+        ]
       }
     },
     "P-007": {
@@ -5041,7 +6313,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "P-013",
+          "P-014",
+          "P-003",
+          "P-004",
+          "P-009",
+          "P-010",
+          "P-011",
+          "P-012"
+        ]
       }
     },
     "P-008": {
@@ -5075,7 +6356,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-001",
+          "NC-002",
+          "NC-005",
+          "NC-018",
+          "NC-025",
+          "NC-029",
+          "UC-001",
+          "UC-002"
+        ]
       }
     },
     "P-009": {
@@ -5108,7 +6398,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "P-003",
+          "P-004",
+          "P-010",
+          "P-011",
+          "P-007",
+          "P-012",
+          "P-013",
+          "P-014"
+        ]
       }
     },
     "P-010": {
@@ -5143,7 +6442,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "P-003",
+          "P-004",
+          "P-009",
+          "P-011",
+          "P-012",
+          "P-007",
+          "P-013",
+          "P-014"
+        ]
       }
     },
     "P-011": {
@@ -5173,7 +6481,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "P-003",
+          "P-004",
+          "P-009",
+          "P-010",
+          "P-007",
+          "P-012",
+          "P-013",
+          "P-014"
+        ]
       }
     },
     "P-012": {
@@ -5203,7 +6520,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "P-010",
+          "P-003",
+          "P-004",
+          "P-007",
+          "P-009",
+          "P-011",
+          "P-013",
+          "P-014"
+        ]
       }
     },
     "P-013": {
@@ -5235,7 +6561,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "P-007",
+          "P-014",
+          "P-003",
+          "P-004",
+          "P-009",
+          "P-010",
+          "P-011",
+          "P-012"
+        ]
       }
     },
     "P-014": {
@@ -5267,7 +6602,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "P-007",
+          "P-013",
+          "P-003",
+          "P-004",
+          "P-009",
+          "P-010",
+          "P-011",
+          "P-012"
+        ]
       }
     },
     "P-015": {
@@ -5300,7 +6644,16 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
+        "rewritePoolDefIds": [
+          "NC-026",
+          "NC-027",
+          "NC-028",
+          "NC-073",
+          "NC-074",
+          "NC-076",
+          "NC-082",
+          "NC-093"
+        ]
       }
     },
     "EC-A1": {

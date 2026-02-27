@@ -360,13 +360,15 @@ export function dispatchGame(stateIn, data, action) {
     case "Combat_StartTurn":
     case "Combat_PlayCard":
     case "Combat_EndTurn":
-    case "Combat_Simulate": {
+    case "Combat_Simulate":
+    case "Combat_ScryResolve": {
       if (state.mode !== "Combat" || !state.combat || !state.run || !state.deck) return state;
 
       const combatAction =
         action.type === "Combat_StartTurn" ? { type: "StartTurn" } :
         action.type === "Combat_EndTurn" ? { type: "EndTurn" } :
         action.type === "Combat_PlayCard" ? { type: "PlayCard", cardInstanceId: action.cardInstanceId, targetEnemyId: action.targetEnemyId } :
+        action.type === "Combat_ScryResolve" ? { type: "ScryResolve", discard: action.discard, top: action.top } :
         { type: "SimulateEncounter", maxTurns: action.maxTurns };
 
       state.combat = dispatchCombat(state.combat, data, combatAction);

@@ -168,8 +168,70 @@ function parseRawText(text) {
   for (const s of sentences) {
     let m;
 
+    // === X-Cost ops: must precede regular patterns to avoid substring false-matches ===
+    // "Spend all remaining RAM"
+    if (/Spend all remaining RAM/i.test(s)) {
+      ops.push({ op: '_SpendAllRAM' });
+    }
+    // "Deal N damage to ALL enemies per RAM spent"
+    else if ((m = s.match(/Deal (\d+) damage to ALL enemies per RAM spent/i))) {
+      ops.push({ op: 'DealDamage', amount: parseInt(m[1]), target: 'AllEnemies', scaleByRAM: true });
+    }
+    // "For each RAM spent: Deal N damage and gain N Firewall"
+    else if ((m = s.match(/For each RAM spent: Deal (\d+) damage and gain (\d+) Firewall/i))) {
+      ops.push({ op: 'DealDamage', amount: parseInt(m[1]), target: 'Enemy', scaleByRAM: true });
+      ops.push({ op: 'GainBlock', amount: parseInt(m[2]), target: 'Self', scaleByRAM: true });
+    }
+    // "Deal N damage per RAM spent"
+    else if ((m = s.match(/Deal (\d+) damage per RAM spent/i))) {
+      ops.push({ op: 'DealDamage', amount: parseInt(m[1]), target: 'Enemy', scaleByRAM: true });
+    }
+    // "Gain N Firewall per RAM spent"
+    else if ((m = s.match(/Gain (\d+) Firewall per RAM spent/i))) {
+      ops.push({ op: 'GainBlock', amount: parseInt(m[1]), target: 'Self', scaleByRAM: true });
+    }
+    // "Heal N HP per RAM spent"
+    else if ((m = s.match(/Heal (\d+) HP per RAM spent/i))) {
+      ops.push({ op: 'Heal', amount: parseInt(m[1]), target: 'Self', scaleByRAM: true });
+    }
+    // "Draw N card(s) per RAM spent (max M)"
+    else if ((m = s.match(/Draw (\d+) cards? per RAM spent(?:\s*\(max (\d+)\))?/i))) {
+      ops.push({ op: 'DrawCards', amount: parseInt(m[1]), maxAmount: m[2] ? parseInt(m[2]) : 999, target: 'Self', scaleByRAM: true });
+    }
+    // "Next turn, gain N RAM per RAM spent"
+    else if ((m = s.match(/Next turn,? gain (\d+) RAM per RAM spent/i))) {
+      ops.push({ op: '_NextTurnRAMPerRAM', amount: parseInt(m[1]) });
+    }
+    // "Apply N stack(s) of X to (a/target) enemy per RAM spent"
+    else if ((m = s.match(/Apply (\d+) stack(?:s)? of ([A-Za-z ]+?) to (?:a )?(?:target )?enem(?:y|ies) per RAM spent/i))) {
+      const statusId = STATUS_NAMES[m[2].trim()] || m[2].trim().replace(/\s+/g, '');
+      ops.push({ op: 'ApplyStatus', statusId, stacks: parseInt(m[1]), target: 'Enemy', scaleByRAM: true });
+    }
+    // "At end of turn, lose N HP per RAM spent"
+    else if ((m = s.match(/At end of turn,? lose (\d+) HP per RAM spent/i))) {
+      ops.push({ op: '_EotLoseHPPerRAM', amount: parseInt(m[1]) });
+    }
+    // "If the target has any debuff, gain N RAM back per M RAM spent"
+    else if ((m = s.match(/If the target has any debuff, gain (\d+) RAM back per (\d+) RAM spent/i))) {
+      ops.push({ op: '_ConditionalRAMRefund', gainPerN: parseInt(m[1]), perN: parseInt(m[2]) });
+    }
+    // "Remove (Exhaust) N random non-core card from your hand per RAM spent"
+    else if (/Remove \(Exhaust\) \d+ random non-core card from your hand per RAM spent/i.test(s)) {
+      ops.push({ op: '_ExhaustHandPerRAM' });
+    }
+    // Follow-up text for NC-080 / NC-084 — handled by their respective ops above; skip to avoid misparse
+    else if (/Threads Exhaust|Draw that many cards|Add \d+ temporary/i.test(s)) {
+      // intentionally no-op
+    }
+
+    // === Scry ===
+    else if ((m = s.match(/^Scry (\d+)/i))) {
+      ops.push({ op: '_Scry', amount: parseInt(m[1]) });
+    }
+
+    // === Standard ops ===
     // "Restore X RAM" or "Gain X RAM" or "Gain +X RAM"
-    if ((m = s.match(/(?:Restore|Gain) \+?(\d+) RAM/i))) {
+    else if ((m = s.match(/(?:Restore|Gain) \+?(\d+) RAM/i))) {
       ops.push({ op: 'GainRAM', amount: parseInt(m[1]) });
     }
     // "Restore all RAM"
@@ -225,10 +287,6 @@ function parseRawText(text) {
     // "Draw X"
     else if ((m = s.match(/^Draw (\d+)/i))) {
       ops.push({ op: 'DrawCards', amount: parseInt(m[1]), target: 'Self' });
-    }
-    // Scry X (look at top cards) - simplified as draw for now
-    else if ((m = s.match(/^Scry (\d+)/i))) {
-      // Scry is complex; skip for now
     }
     // Unrecognized — skip (caller logs the full RawText)
   }
@@ -445,18 +503,109 @@ export function applyEffectOp(state, sourceId, op, rng) {
       // Parse common RawText patterns into executable ops
       const parsed = parseRawText(op.text || "");
       if (parsed.length > 0) {
+        // Track RAM spent by _SpendAllRAM within this card's resolution (local; doesn't leak into state)
+        let ramSpent = 0;
         for (const pOp of parsed) {
+          const self = (sourceId === "player" || sourceId === state.player.id) ? state.player : null;
+
           if (pOp.op === '_GainRAMFull') {
-            const self = (sourceId === "player" || sourceId === state.player.id) ? state.player : null;
             if (self) { self.ram = self.maxRAM; push(state.log, { t: "Info", msg: `RAM fully restored` }); }
+
           } else if (pOp.op === '_HealFull') {
-            const self = (sourceId === "player" || sourceId === state.player.id) ? state.player : null;
             if (self) { const before = self.hp; self.hp = self.maxHP; push(state.log, { t: "Info", msg: `Healed ${self.hp - before}` }); }
+
           } else if (pOp.op === '_LoseHP') {
-            const self = (sourceId === "player" || sourceId === state.player.id) ? state.player : null;
             if (self) { self.hp = Math.max(0, self.hp - (pOp.amount || 0)); push(state.log, { t: "Info", msg: `Lost ${pOp.amount} HP` }); }
+
+          } else if (pOp.op === '_SpendAllRAM') {
+            // Drain all player RAM; subsequent scaleByRAM ops scale by this amount
+            if (self) {
+              ramSpent = self.ram;
+              self.ram = 0;
+              push(state.log, { t: "Info", msg: `Spent all RAM (${ramSpent})` });
+            }
+
+          } else if (pOp.op === '_NextTurnRAMPerRAM') {
+            // Queue bonus RAM for next turn's StartTurn
+            const bonus = ramSpent * (pOp.amount || 1);
+            if (bonus > 0) {
+              state._nextTurnBonusRAM = (state._nextTurnBonusRAM || 0) + bonus;
+              push(state.log, { t: "Info", msg: `Next turn: +${bonus} RAM queued` });
+            }
+
+          } else if (pOp.op === '_EotLoseHPPerRAM') {
+            // Queue end-of-turn HP loss (consumed in EndTurn handler)
+            const dmg = ramSpent * (pOp.amount || 1);
+            if (dmg > 0) {
+              state._eotLoseHPPerRAM = (state._eotLoseHPPerRAM || 0) + dmg;
+              push(state.log, { t: "Info", msg: `End of turn: will lose ${dmg} HP` });
+            }
+
+          } else if (pOp.op === '_ConditionalRAMRefund') {
+            // Gain RAM back if target has any debuff (NC-082)
+            if (self && ramSpent > 0) {
+              const tgt = resolveTargets(state, sourceId, 'Enemy')[0];
+              const hasDebuff = tgt?.statuses?.some(s => isNegativeStatus(state, s.id));
+              if (hasDebuff) {
+                const refund = Math.floor(ramSpent / (pOp.perN || 2)) * (pOp.gainPerN || 1);
+                self.ram = Math.min(self.maxRAM, self.ram + refund);
+                push(state.log, { t: "Info", msg: `Conditional RAM refund: +${refund}` });
+              }
+            }
+
+          } else if (pOp.op === '_ExhaustHandPerRAM') {
+            // Exhaust 1 random non-core card per RAM spent, then draw that many (NC-084)
+            if (self && rng && ramSpent > 0) {
+              const maxExhaust = Math.min(ramSpent, state.player.piles.hand.length);
+              const toExhaust = [];
+              const handCopy = [...state.player.piles.hand];
+              for (let i = 0; i < maxExhaust; i++) {
+                const nonCore = handCopy.filter(cid => {
+                  const def = state.dataRef?.cards?.[state.cardInstances[cid]?.defId];
+                  return def && !def.tags?.includes('Core');
+                });
+                if (!nonCore.length) break;
+                const pick = nonCore[rng.int(nonCore.length)];
+                toExhaust.push(pick);
+                handCopy.splice(handCopy.indexOf(pick), 1);
+              }
+              for (const cid of toExhaust) {
+                state.player.piles.hand = state.player.piles.hand.filter(x => x !== cid);
+                state.player.piles.exhaust.push(cid);
+              }
+              if (toExhaust.length > 0) {
+                push(state.log, { t: "Info", msg: `Exhausted ${toExhaust.length} cards from hand` });
+                drawCards(state, rng, toExhaust.length);
+              }
+            }
+
+          } else if (pOp.op === '_Scry') {
+            // Take top N cards from draw pile; set scryPending for UI or AI to resolve
+            const n = Math.max(0, pOp.amount || 1);
+            const scryCards = state.player.piles.draw.slice(0, Math.min(n, state.player.piles.draw.length));
+            if (scryCards.length > 0) {
+              state._scryPending = { n, cards: [...scryCards] };
+              push(state.log, { t: "Info", msg: `Scrying ${scryCards.length} cards` });
+            }
+
           } else {
-            applyEffectOp(state, sourceId, pOp, rng);
+            // For scaleByRAM ops: multiply amount by ramSpent (skip if no RAM was spent)
+            if (pOp.scaleByRAM) {
+              if (ramSpent > 0) {
+                const scaledOp = { ...pOp };
+                if (scaledOp.op === 'DrawCards' && scaledOp.maxAmount !== undefined) {
+                  scaledOp.amount = Math.min(scaledOp.maxAmount, (scaledOp.amount || 1) * ramSpent);
+                } else {
+                  scaledOp.amount = (scaledOp.amount || 0) * ramSpent;
+                }
+                delete scaledOp.scaleByRAM;
+                delete scaledOp.maxAmount;
+                if (scaledOp.amount > 0) applyEffectOp(state, sourceId, scaledOp, rng);
+              }
+              // If ramSpent === 0, card had 0 RAM to spend — all per-RAM effects produce nothing
+            } else {
+              applyEffectOp(state, sourceId, pOp, rng);
+            }
           }
         }
       } else {
@@ -1182,6 +1331,13 @@ export function dispatchCombat(state, data, action) {
       state.player.block = 0;
       state.player.ram = Math.min(state.player.maxRAM, state.player.ram + state.player.ramRegen);
 
+      // Consume queued bonus RAM from X-cost cards (e.g. NC-079 "Next turn, gain N RAM per RAM spent")
+      if (state._nextTurnBonusRAM) {
+        state.player.ram = Math.min(state.player.maxRAM, state.player.ram + state._nextTurnBonusRAM);
+        push(state.log, { t: "Info", msg: `X-cost bonus: +${state._nextTurnBonusRAM} RAM this turn` });
+        delete state._nextTurnBonusRAM;
+      }
+
       drawCards(state, rng, 5 + (state.ruleMods?.drawPerTurnDelta || 0));
       // Reset transient per-turn combat flags before recomputing them
       state.player._underclockMult = undefined;
@@ -1218,6 +1374,9 @@ export function dispatchCombat(state, data, action) {
       if (state.player.ram < cost) { push(state.log, { t: "Info", msg: "Not enough RAM" }); return state; }
 
       state.player.ram -= cost;
+
+      // Emit structured card-played event for stats tracking
+      push(state.log, { t: "CardPlayed", data: { defId: ci.defId, cost, ramAfter: state.player.ram } });
 
       // Passive mutation modifiers for this play
       const mutPassives = computePassiveMods(state, data, cid);
@@ -1279,6 +1438,13 @@ export function dispatchCombat(state, data, action) {
       endTurnEthereal(state, data);
       discardHand(state);
 
+      // End-of-turn HP loss from X-cost cards (e.g. NC-083 "lose N HP per RAM spent")
+      if (state._eotLoseHPPerRAM) {
+        state.player.hp = Math.max(0, state.player.hp - state._eotLoseHPPerRAM);
+        push(state.log, { t: "Info", msg: `X-cost EOT: lost ${state._eotLoseHPPerRAM} HP` });
+        delete state._eotLoseHPPerRAM;
+      }
+
       // enemy actions
       for (const e of state.enemies) enemyTurn(state, data, rng, e.id);
 
@@ -1317,6 +1483,11 @@ export function dispatchCombat(state, data, action) {
         let played = true;
         while (played && !state.combatOver) {
           played = false;
+          // Auto-resolve any pending Scry: keep all cards (put them back in same order)
+          if (state._scryPending) {
+            const { cards } = state._scryPending;
+            dispatchCombat(state, data, { type: "ScryResolve", discard: [], top: cards });
+          }
           for (const cid of [...state.player.piles.hand]) {
             const ci = state.cardInstances[cid];
             const def = data.cards[ci.defId];
@@ -1330,6 +1501,34 @@ export function dispatchCombat(state, data, action) {
         }
         if (!state.combatOver) dispatchCombat(state, data, { type: "EndTurn" });
       }
+      return state;
+    }
+
+    case "ScryResolve": {
+      // action.discard = [cardInstanceIds to send to discard pile]
+      // action.top    = [cardInstanceIds to put back on top of draw, in order]
+      const pending = state._scryPending;
+      if (!pending) {
+        push(state.log, { t: "Info", msg: `ScryResolve: nothing pending` });
+        return state;
+      }
+      const { cards } = pending;
+
+      // Remove scried cards from the top of the draw pile (they were peeked, not drawn)
+      state.player.piles.draw = state.player.piles.draw.filter(c => !cards.includes(c));
+
+      // Discard the ones the player chose to discard (must be in scried set)
+      const toDiscard = Array.isArray(action.discard) ? action.discard.filter(c => cards.includes(c)) : [];
+      for (const cid of toDiscard) state.player.piles.discard.push(cid);
+
+      // Put kept cards back on top in specified order (or natural order if unspecified)
+      const kept = Array.isArray(action.top)
+        ? action.top.filter(c => cards.includes(c) && !toDiscard.includes(c))
+        : cards.filter(c => !toDiscard.includes(c));
+      state.player.piles.draw = [...kept, ...state.player.piles.draw];
+
+      delete state._scryPending;
+      push(state.log, { t: "Info", msg: `Scry resolved: discarded ${toDiscard.length}, kept ${kept.length}` });
       return state;
     }
 

@@ -2728,7 +2728,7 @@
       "id": "NC-054",
       "name": "Cold Boot",
       "type": "Utility",
-      "costRAM": 0,
+      "costRAM": 1,
       "tags": [
         "Control",
         "Shuffle"
@@ -2737,10 +2737,6 @@
         {
           "op": "RawText",
           "text": "Shuffle your hand into your draw pile. Draw 5."
-        },
-        {
-          "op": "DrawCards",
-          "amount": 5
         }
       ],
       "defaultUseCounter": 16,

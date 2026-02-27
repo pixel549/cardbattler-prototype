@@ -84,11 +84,22 @@ function clamp(n, lo, hi) { return Math.max(lo, Math.min(hi, n)); }
 
 // Called after reward completes: if the current map has no more selectable nodes,
 // advance to the next act and generate a fresh map.
+// After Act 3, the run ends in victory.
+const MAX_ACTS = 3;
 function maybeAdvanceAct(state, data, log) {
   if (!state.map || !state.run) return;
   if (state.map.selectableNext && state.map.selectableNext.length > 0) return;
 
   const prevAct = state.run.act;
+
+  // Win condition: cleared the final act
+  if (prevAct >= MAX_ACTS) {
+    state.run.victory = true;
+    state.mode = "GameOver";
+    log({ t: "Info", msg: `RUN COMPLETE — all ${MAX_ACTS} acts cleared!` });
+    return;
+  }
+
   state.run.act += 1;
   // Generate a new map seeded differently per act so layouts vary
   state.map = generateMap((state.run.seed ^ (state.run.act * 0x9E3779B9)) >>> 0);

@@ -1084,6 +1084,7 @@ function GameOverScreen({ state, onNewRun }) {
   const deck   = state.deck  || {};
   const quip   = DEATH_QUIPS[(run.floor ?? 0) % DEATH_QUIPS.length];
   const hpPct  = run.maxHP ? Math.round(((run.hp ?? 0) / run.maxHP) * 100) : 0;
+  const isVictory = !!run.victory;
 
   const stats = [
     { label: 'ACT',       value: run.act   ?? 1 },
@@ -1099,16 +1100,32 @@ function GameOverScreen({ state, onNewRun }) {
       <div className="animate-slide-up" style={{ textAlign: 'center', width: '100%', maxWidth: 360 }}>
 
         {/* Big title */}
-        <div
-          className="glitch-text"
-          data-text="GAME OVER"
-          style={{ fontFamily: MONO, fontWeight: 700, fontSize: 40, color: C.red, marginBottom: 8, textShadow: `0 0 40px ${C.red}80` }}
-        >
-          GAME OVER
-        </div>
-        <div style={{ fontFamily: MONO, fontSize: 13, color: C.textDim, marginBottom: 32, fontStyle: 'italic' }}>
-          {quip}
-        </div>
+        {isVictory ? (
+          <>
+            <div
+              style={{ fontFamily: MONO, fontWeight: 900, fontSize: 38, color: C.green, marginBottom: 8,
+                letterSpacing: '0.1em', textShadow: `0 0 40px ${C.green}80` }}
+            >
+              ✓ RUN COMPLETE
+            </div>
+            <div style={{ fontFamily: MONO, fontSize: 13, color: C.textDim, marginBottom: 32, fontStyle: 'italic' }}>
+              All three acts cleared. The network is silent.
+            </div>
+          </>
+        ) : (
+          <>
+            <div
+              className="glitch-text"
+              data-text="GAME OVER"
+              style={{ fontFamily: MONO, fontWeight: 700, fontSize: 40, color: C.red, marginBottom: 8, textShadow: `0 0 40px ${C.red}80` }}
+            >
+              GAME OVER
+            </div>
+            <div style={{ fontFamily: MONO, fontSize: 13, color: C.textDim, marginBottom: 32, fontStyle: 'italic' }}>
+              {quip}
+            </div>
+          </>
+        )}
 
         {/* Stats grid */}
         <div style={{

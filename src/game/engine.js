@@ -223,6 +223,10 @@ function parseRawText(text) {
     else if (/Threads Exhaust|Draw that many cards|Add \d+ temporary/i.test(s)) {
       // intentionally no-op
     }
+    // "Shuffle your hand into your draw pile" (NC-054 Cold Boot)
+    else if (/Shuffle your hand into your draw pile/i.test(s)) {
+      ops.push({ op: '_ShuffleHandIntoDraw' });
+    }
 
     // === Scry ===
     else if ((m = s.match(/^Scry (\d+)/i))) {
@@ -577,6 +581,25 @@ export function applyEffectOp(state, sourceId, op, rng) {
                 push(state.log, { t: "Info", msg: `Exhausted ${toExhaust.length} cards from hand` });
                 drawCards(state, rng, toExhaust.length);
               }
+            }
+
+          } else if (pOp.op === '_ShuffleHandIntoDraw') {
+            // Move all hand cards (except the currently-played one) to draw pile, shuffled in
+            if (rng) {
+              const currentCard = state.cardInstances[state._currentlyPlayingCard || ''];
+              const handToShuffle = state.player.piles.hand.filter(
+                cid => cid !== state._currentlyPlayingCard
+              );
+              // Remove from hand
+              state.player.piles.hand = state.player.piles.hand.filter(
+                cid => cid === state._currentlyPlayingCard
+              );
+              // Shuffle into draw pile (insert at random positions)
+              for (const cid of handToShuffle) {
+                const pos = rng.int(state.player.piles.draw.length + 1);
+                state.player.piles.draw.splice(pos, 0, cid);
+              }
+              push(state.log, { t: "Info", msg: `Shuffled ${handToShuffle.length} cards into draw` });
             }
 
           } else if (pOp.op === '_Scry') {
@@ -1378,6 +1401,9 @@ export function dispatchCombat(state, data, action) {
       // Emit structured card-played event for stats tracking
       push(state.log, { t: "CardPlayed", data: { defId: ci.defId, cost, ramAfter: state.player.ram } });
 
+      // Track currently-playing card so effects like _ShuffleHandIntoDraw can exclude it
+      state._currentlyPlayingCard = cid;
+
       // Passive mutation modifiers for this play
       const mutPassives = computePassiveMods(state, data, cid);
       state._cardMutMods = mutPassives;
@@ -1394,6 +1420,7 @@ export function dispatchCombat(state, data, action) {
 
       delete state._targetOverride;
       delete state._cardMutMods;
+      delete state._currentlyPlayingCard;
 
       // onPlay mutation patches
       runPatchTrigger(state, data, rng, cid, 'onPlay');

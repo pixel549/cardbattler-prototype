@@ -50,7 +50,12 @@ function generateMap(seed) {
 
 function makeCardRewards(data, seed) {
   const rng = new RNG(seed ^ 0x55CCAA11);
-  const all = Object.keys(data.cards);
+  // Only offer player-usable, non-Core cards — exclude enemy cards (EC-* / EnemyCard tag)
+  const all = Object.keys(data.cards).filter(id => {
+    const c = data.cards[id];
+    const tags = c.tags || [];
+    return !tags.includes('EnemyCard') && !tags.includes('Core') && !id.startsWith('EC-');
+  });
 
   // pick distinct
   const pool = [...all];

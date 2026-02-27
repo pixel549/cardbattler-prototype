@@ -242,11 +242,49 @@ export function getAIAction(state, data, playstyle = 'balanced') {
 
 // ─── Combat ──────────────────────────────────────────────────────────────────
 
+// AI auto-resolves Scry by scoring each card and discarding the bottom half
+function resolveScryAction(scryPending, cardInstances, data, playstyle) {
+  const ps = AI_PLAYSTYLES[playstyle] || AI_PLAYSTYLES.balanced;
+  const { cards } = scryPending;
+
+  const scored = cards.map(cid => {
+    const ci = cardInstances[cid];
+    const def = data.cards[ci?.defId];
+    let score = 0;
+    if (def) {
+      // Cheap cards are more playable
+      const cost = def.costRAM || 0;
+      score += Math.max(0, 3 - cost) * 2;
+      // Score by effect quality
+      for (const eff of (def.effects || [])) {
+        if (eff.op === 'DealDamage')   score += (eff.amount || 0) * 0.4 * ps.damageWeight;
+        if (eff.op === 'GainBlock')    score += (eff.amount || 0) * 0.3 * ps.blockWeight;
+        if (eff.op === 'DrawCards')    score += (eff.amount || 0) * 2.0 * ps.drawWeight;
+        if (eff.op === 'ApplyStatus')  score += (eff.stacks || 1) * 1.5 * ps.statusWeight;
+      }
+    }
+    return { cid, score };
+  });
+  scored.sort((a, b) => a.score - b.score); // ascending: worst first
+
+  // Discard the worst quarter (or any with clearly negative utility)
+  const discardCount = Math.floor(cards.length / 4);
+  const toDiscard = scored.slice(0, discardCount).map(x => x.cid);
+  const top = cards.filter(c => !toDiscard.includes(c)); // keep natural order
+
+  return { type: 'Combat_ScryResolve', discard: toDiscard, top };
+}
+
 function getCombatAction(combat, data, playstyle) {
   if (!combat) return null;
 
   if (combat.combatOver) {
     return { type: 'GoToMap' };
+  }
+
+  // If a Scry is pending, resolve it before doing anything else
+  if (combat._scryPending) {
+    return resolveScryAction(combat._scryPending, combat.cardInstances, data, playstyle);
   }
 
   const { player, enemies, cardInstances } = combat;
@@ -297,6 +335,21 @@ function enemyIsHealer(enemy, data) {
   return false;
 }
 
+// Per-status base score values: how many points each stack is worth as a raw number.
+// Multiplied by ps.statusWeight afterward.
+const STATUS_BASE_SCORES = {
+  Corrode:      9,   // DoT every player turn + strips block — compound value
+  Overheat:     7,   // Pure DoT, no block strip, still strong
+  Vulnerable:   8,   // +50% damage taken — huge multiplier effect
+  ExposedPorts: 8,   // Similar to Vulnerable
+  Weak:         5,   // −25% enemy attack — good but situational
+  Underclock:   5,   // −1 RAM/card — reduces enemy plays per turn
+  Leak:         4,   // Reduces enemy max-HP ceiling — good for healers
+  Firewall:     5,   // Gives player block each turn — solid sustained defense
+  Nanoflow:     6,   // Player heals each turn — strong when low HP
+  Surge:        4,   // Player deals +1 dmg — offensive bonus
+};
+
 function scoreCard(def, ci, target, aliveEnemies, player, playstyle, data) {
   const ps = AI_PLAYSTYLES[playstyle] || AI_PLAYSTYLES.balanced;
   const cost = Math.max(0, (def.costRAM || 0) + (ci.ramCostDelta || 0));
@@ -308,38 +361,67 @@ function scoreCard(def, ci, target, aliveEnemies, player, playstyle, data) {
     return sum + (intent?.type === 'Attack' && typeof intent.amount === 'number' ? intent.amount : 0);
   }, 0);
 
+  // Check if target has damage-amplifying debuffs (Vulnerable / ExposedPorts)
+  const targetAmpStacks = (target?.statuses || [])
+    .filter(s => s.id === 'Vulnerable' || s.id === 'ExposedPorts')
+    .reduce((n, s) => n + (s.stacks || 1), 0);
+  const dmgAmpMult = 1 + targetAmpStacks * 0.20; // roughly +20% effective damage per stack
+
   for (const effect of (def.effects || [])) {
     switch (effect.op) {
       case 'DealDamage': {
         const isAoE = effect.target === 'AllEnemies';
-        const dmg = effect.amount || 0;
+        const rawDmg = effect.amount || 0;
         if (isAoE) {
           for (const e of aliveEnemies) {
-            score += e.hp <= dmg
-              ? (1000 + aliveEnemies.length * 50) * ps.damageWeight
-              : dmg * 2 * ps.damageWeight;
+            // AoE pierces individual block (usually), but respect target block for scoring
+            const effDmg = Math.max(0, rawDmg - (e.block || 0)) * dmgAmpMult;
+            if (e.hp <= effDmg) {
+              score += (1000 + aliveEnemies.length * 50) * ps.damageWeight;
+            } else {
+              score += effDmg * 2 * ps.damageWeight;
+              score += (1 - e.hp / e.maxHP) * 15 * ps.damageWeight;
+            }
           }
         } else {
-          if (target.hp <= dmg) {
+          // Single-target: subtract enemy block to get effective damage
+          const effDmg = Math.max(0, rawDmg - (target.block || 0)) * dmgAmpMult;
+          if (target.hp <= effDmg) {
             score += (1000 + aliveEnemies.length * 50) * ps.damageWeight;
           } else {
-            score += dmg * 2 * ps.damageWeight;
-            // Prefer low-HP targets + bonus for targeting healers (kill them fast!)
+            score += effDmg * 2 * ps.damageWeight;
+            // Prefer targets that are: low on HP, healers, and already debuffed
             score += (1 - target.hp / target.maxHP) * 30;
             if (enemyIsHealer(target, data)) score += 40;
+            // Small bonus for following up on vulnerable targets
+            if (targetAmpStacks > 0) score += targetAmpStacks * 8;
           }
         }
         break;
       }
       case 'GainBlock': {
         const blockGain = effect.amount || 0;
+        // Block only useful up to total incoming; extra block has diminishing value
         const usefulBlock = Math.min(blockGain, Math.max(0, incoming - (player.block || 0)));
-        score += usefulBlock * 1.5 * ps.blockWeight;
+        const extraBlock  = Math.max(0, blockGain - usefulBlock);
+        score += usefulBlock * 1.5 * ps.blockWeight + extraBlock * 0.3 * ps.blockWeight;
         break;
       }
       case 'DrawCards':   score += (effect.amount || 0) * 5 * ps.drawWeight;   break;
       case 'GainRAM':     score += (effect.amount || 0) * 4 * ps.ramWeight;    break;
-      case 'ApplyStatus': score += (effect.stacks || 1) * 3 * ps.statusWeight; break;
+      case 'ApplyStatus': {
+        const statusId  = effect.statusId || '';
+        const stacks    = effect.stacks || 1;
+        const base      = STATUS_BASE_SCORES[statusId] ?? 3;
+        let statusScore = stacks * base * ps.statusWeight;
+        // Stacking bonus: existing stacks on same target amplify new stacks
+        if (effect.target === 'Enemy') {
+          const existingStacks = (target?.statuses || []).find(s => s.id === statusId)?.stacks || 0;
+          if (existingStacks > 0) statusScore *= 1 + existingStacks * 0.15;
+        }
+        score += statusScore;
+        break;
+      }
       case 'Heal': {
         const healNeed = (player.maxHP || 0) - (player.hp || 0);
         const urgency = player.hp < player.maxHP * 0.5 ? 2 : 0.5;
@@ -447,6 +529,26 @@ function getRewardAction(reward, data, playstyle) {
 
     // Type preference bonus
     score += (ps.rewardTypeWeights || {})[def.type] || 0;
+
+    // Cost efficiency: cheap cards are easier to play and combo
+    const cost = def.costRAM || 0;
+    score += Math.max(0, 3 - cost) * 4;  // 0-cost: +12, 1-cost: +8, 2-cost: +4, 3+: 0
+
+    // Effect quality: score the card's raw effects against a dummy context
+    for (const eff of (def.effects || [])) {
+      if (eff.op === 'DealDamage')   score += (eff.amount || 0) * 0.5 * (ps.damageWeight || 1);
+      if (eff.op === 'GainBlock')    score += (eff.amount || 0) * 0.4 * (ps.blockWeight  || 1);
+      if (eff.op === 'Heal')         score += (eff.amount || 0) * 0.3 * (ps.healWeight   || 1);
+      if (eff.op === 'DrawCards')    score += (eff.amount || 0) * 3   * (ps.drawWeight   || 1);
+      if (eff.op === 'GainRAM')      score += (eff.amount || 0) * 2.5 * (ps.ramWeight    || 1);
+      if (eff.op === 'ApplyStatus') {
+        const base = STATUS_BASE_SCORES[eff.statusId] ?? 3;
+        score += (eff.stacks || 1) * base * 0.5 * (ps.statusWeight || 1);
+      }
+    }
+
+    // Multi-effect cards are generally better (more value per play)
+    if ((def.effects || []).length > 1) score += 6;
 
     // Mutation risk cutoff for preservation playstyle
     if (ps.rewardMutRiskCutoff !== null) {

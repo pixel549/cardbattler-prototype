@@ -95,6 +95,11 @@ export function applyDamage(state, sourceId, target, amount) {
   const dmg = Math.max(0, amount - blocked);
   target.hp = Math.max(0, target.hp - dmg);
 
+  // Track whether player took damage this turn (for NC-064 Patch Scheduler)
+  if (dmg > 0 && target === state.player) {
+    state._tookDamageThisTurn = true;
+  }
+
   // Emit structured damage event for analytics
   push(state.log, {
     t: "DamageDealt",

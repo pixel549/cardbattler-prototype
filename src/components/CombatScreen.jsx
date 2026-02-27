@@ -713,13 +713,18 @@ function EnemyCard({ enemy, isTargeted, onClick, actingType, data }) {
 // ============================================================
 // PLAYER STATS PANEL (bottom-left)
 // ============================================================
-function PlayerPanel({ player, turn }) {
+function PlayerPanel({ player, turn, powerPile = [], cardInstances = {}, data }) {
   const hp = player?.hp ?? 0;
   const maxHp = player?.maxHP ?? 1;
   const block = player?.block ?? 0;
   // Firewall is now a persistent status, not regular block
   const firewallStacks = player?.statuses?.find(s => s.id === 'Firewall')?.stacks ?? 0;
   const nonFirewallStatuses = (player?.statuses || []).filter(s => s.id !== 'Firewall');
+  // Active Power cards
+  const activePowers = powerPile.map(cid => {
+    const ci = cardInstances[cid];
+    return ci ? data?.cards?.[ci.defId] : null;
+  }).filter(Boolean);
 
   return (
     <div
@@ -800,6 +805,26 @@ function PlayerPanel({ player, turn }) {
 
       {/* Player statuses (Firewall shown separately above) */}
       <StatusRow statuses={nonFirewallStatuses} size="small" justify="center" />
+
+      {/* Active Power cards */}
+      {activePowers.length > 0 && (
+        <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 4, marginTop: 2 }}>
+          <div style={{ fontFamily: MONO, fontSize: 6, color: '#aa66ff', letterSpacing: '0.08em', marginBottom: 3, textAlign: 'center' }}>
+            ⚡ POWERS
+          </div>
+          {activePowers.map((def, i) => (
+            <div key={i} title={def.effects?.find(e => e.op === 'RawText')?.text || ''} style={{
+              fontFamily: MONO, fontSize: 7, color: '#cc88ff',
+              backgroundColor: '#aa44ff12', border: '1px solid #aa44ff30',
+              borderRadius: 3, padding: '1px 4px', marginBottom: 2,
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+              maxWidth: '100%',
+            }}>
+              {def.name}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -1024,6 +1049,7 @@ function HandCard({ cardInstance, cardDef, isSelected, onSelect, canPlay, compac
   const isVolatile  = (cardDef?.tags || []).includes('Volatile');
   const isOneShot   = (cardDef?.tags || []).includes('OneShot');
   const isExhaust   = (cardDef?.tags || []).includes('Exhaust') || (cardDef?.tags || []).includes('Ethereal');
+  const isPower     = (cardDef?.tags || []).includes('Power') || cardDef?.type === 'Power';
 
   const w = compact ? 72 : 105;
   const h = compact ? 100 : 148;
@@ -1178,11 +1204,19 @@ function HandCard({ cardInstance, cardDef, isSelected, onSelect, canPlay, compac
       )}
 
       {/* Volatile / OneShot / Exhaust indicator strip (bottom-left) */}
-      {(isVolatile || isOneShot || isExhaust) && !compact && (
+      {(isVolatile || isOneShot || isExhaust || isPower) && !compact && (
         <div style={{
           position: 'absolute', bottom: 3, left: 3,
           display: 'flex', gap: 2, zIndex: 10,
         }}>
+          {isPower && (
+            <span title="Power — stays in play permanently, provides ongoing passive effects" style={{
+              fontFamily: MONO, fontSize: 6, fontWeight: 700, letterSpacing: '0.05em',
+              padding: '1px 3px', borderRadius: 3,
+              backgroundColor: '#aa44ff22', color: '#cc88ff',
+              border: '1px solid #aa44ff55',
+            }}>PWR</span>
+          )}
           {isVolatile && (
             <span title="Volatile — discarded after use" style={{
               fontFamily: MONO, fontSize: 6, fontWeight: 700, letterSpacing: '0.05em',
@@ -1979,6 +2013,9 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false }
         <PlayerPanel
           player={player}
           turn={combat.turn}
+          powerPile={combat.player?.piles?.power || []}
+          cardInstances={combat.cardInstances}
+          data={data}
         />
 
         {/* Right: Compact fanned hand cards */}

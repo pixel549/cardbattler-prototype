@@ -511,8 +511,42 @@ function getMapAction(map, run, playstyle) {
 
 // ─── Reward ──────────────────────────────────────────────────────────────────
 
+// Score a relic by how useful its mods are for this playstyle
+function scoreRelic(relic, playstyle) {
+  if (!relic?.mods) return 0;
+  const m = relic.mods;
+  let score = 0;
+  // Higher tier = base value
+  score += relic.tier === 'boss' ? 30 : relic.tier === 'rare' ? 20 : 10;
+  // Additive bonuses
+  if (m.maxRAMDelta)               score += m.maxRAMDelta * 15;
+  if (m.ramRegenDelta)             score += m.ramRegenDelta * 12;
+  if (m.drawPerTurnDelta)          score += m.drawPerTurnDelta * 10;
+  if (m.maxHPDelta)                score += m.maxHPDelta * 1.5;
+  if (m.travelHpCostDelta)         score += m.travelHpCostDelta * -5; // negative = good
+  if (m.mutationTriggerChanceMult) score += (m.mutationTriggerChanceMult - 1) * 20;
+  if (m.finalCountdownTickDelta)   score += m.finalCountdownTickDelta * -10; // negative = slower = better
+  if (m.mutationTierWeightMult) {
+    const boosts = Object.values(m.mutationTierWeightMult).reduce((a, v) => a + (v - 1), 0);
+    score += boosts * 5;
+  }
+  return score;
+}
+
 function getRewardAction(reward, data, playstyle) {
   if (!reward) return null;
+
+  // Handle relic choices first (before card choices)
+  const relicChoices = reward.relicChoices || [];
+  if (relicChoices.length > 0) {
+    let bestScore = -Infinity, bestRelicId = relicChoices[0];
+    for (const rid of relicChoices) {
+      const relic = data.relics?.[rid];
+      const s = scoreRelic(relic, playstyle);
+      if (s > bestScore) { bestScore = s; bestRelicId = rid; }
+    }
+    return { type: 'Reward_PickRelic', relicId: bestRelicId };
+  }
 
   const choices = reward.cardChoices || [];
   if (choices.length === 0) return { type: 'Reward_Skip' };

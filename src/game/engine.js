@@ -53,19 +53,29 @@ function reshuffleIfNeeded(state, rng) {
 }
 
 export function drawCards(state, rng, n) {
+  const isFirstDraw = !state._firstDrawDoneThisTurn && state.turn > 0;
   for (let i = 0; i < n; i++) {
     reshuffleIfNeeded(state, rng);
     if (state.player.piles.draw.length === 0) break;
     const top = state.player.piles.draw.shift();
     state.player.piles.hand.push(top);
   }
+  // POWER: NC-061 Signal Amplifier — first draw each turn gets +1 bonus card
+  if (isFirstDraw && n > 0) {
+    state._firstDrawDoneThisTurn = true;
+    runPowerTriggers(state, state.dataRef, rng, 'FirstDraw', {});
+  }
 }
 
-function discardHand(state) {
+function discardHand(state, keepCid) {
   const p = state.player.piles;
+  const toKeep = [];
   while (p.hand.length) {
-    p.discard.push(p.hand.pop());
+    const cid = p.hand.pop();
+    if (cid === keepCid) toKeep.push(cid); // NC-068 Memory Compression
+    else p.discard.push(cid);
   }
+  p.hand.push(...toKeep); // kept cards stay in hand for next turn
 }
 
 function endTurnEthereal(state, data) {
@@ -134,6 +144,185 @@ export function getTraceBeaconHandBonus(state, data) {
     if (m) bonus += parseInt(m[1]);
   }
   return bonus;
+}
+
+// ============================================================
+// POWER CARD TRIGGER SYSTEM
+// POWER cards go to piles.power when played (permanent zone).
+// runPowerTriggers fires on specific game events.
+// ============================================================
+function runPowerTriggers(state, data, rng, event, ctx = {}) {
+  for (const cid of (state.player.piles?.power || [])) {
+    const ci = state.cardInstances[cid];
+    if (!ci) continue;
+    const def = data.cards[ci.defId];
+    if (!def) continue;
+    const rawTexts = (def.effects || []).filter(e => e.op === 'RawText').map(e => e.text);
+    for (const rawText of rawTexts) {
+      if (!/POWER:/i.test(rawText)) continue;
+      const powerText = rawText.replace(/^POWER:\s*/i, '').trim();
+      _applyPowerEffect(state, data, rng, powerText, event, ctx);
+    }
+  }
+}
+
+function _applyPowerEffect(state, data, rng, text, event, ctx) {
+  // ── StartTurn triggers ──
+  if (event === 'StartTurn') {
+    // NC-058: At the start of your turn, gain +1 RAM
+    if (/start of your turn.*gain \+?1 ram/i.test(text)) {
+      state.player.ram = Math.min(state.player.maxRAM, state.player.ram + 1);
+      push(state.log, { t: 'Info', msg: 'Power: +1 RAM (Daemon Thread)' });
+    }
+    // NC-067: At the start of your turn, remove 1 Debuff from yourself
+    if (/start of your turn.*remove 1 debuff/i.test(text)) {
+      const debuffs = (state.player.statuses || []).filter(s => {
+        const def = state.dataRef?.statuses?.[s.id];
+        return def ? !!def.isNegative : false;
+      });
+      if (debuffs.length > 0) {
+        debuffs[0].stacks = Math.max(0, debuffs[0].stacks - 1);
+        push(state.log, { t: 'Info', msg: `Power: removed 1 ${debuffs[0].id} stack` });
+        state.player.statuses = state.player.statuses.filter(s => s.stacks > 0);
+      }
+    }
+    // NC-072: If your hand is empty, draw 2
+    if (/hand is empty.*draw 2/i.test(text)) {
+      if (state.player.piles.hand.length === 0) {
+        drawCards(state, rng, 2);
+        push(state.log, { t: 'Info', msg: 'Power: drew 2 (I/O Prioritiser, empty hand)' });
+      }
+    }
+  }
+
+  // ── EndTurn triggers ──
+  if (event === 'EndTurn') {
+    // NC-059: At the end of your turn, gain 4 Firewall
+    const fwMatch = text.match(/end of your turn.*gain (\d+) firewall/i);
+    if (fwMatch) {
+      addStatus(state, state.player, 'Firewall', parseInt(fwMatch[1]));
+      push(state.log, { t: 'Info', msg: `Power: +${fwMatch[1]} Firewall (Adaptive Firewall)` });
+    }
+    // NC-064: If you did not take damage this turn, heal N HP
+    const healMatch = text.match(/did not take damage this turn.*heal (\d+) hp/i);
+    if (healMatch && !state._tookDamageThisTurn) {
+      const amt = parseInt(healMatch[1]);
+      state.player.hp = Math.min(state.player.maxHP, state.player.hp + amt);
+      push(state.log, { t: 'Info', msg: `Power: healed ${amt} HP (Patch Scheduler, no damage taken)` });
+    }
+    // NC-069: Put top of discard on top of draw
+    if (/top card of your discard pile on top of your draw/i.test(text)) {
+      if (state.player.piles.discard.length > 0) {
+        const top = state.player.piles.discard.pop();
+        state.player.piles.draw.unshift(top);
+        const topDef = data.cards[state.cardInstances[top]?.defId];
+        push(state.log, { t: 'Info', msg: `Power: recycled ${topDef?.name || '?'} to draw (Recursive Loop)` });
+      }
+    }
+    // NC-068: Keep 1 card in hand (auto: keep highest-cost non-OneShot card)
+    if (/you may keep 1 card in your hand/i.test(text)) {
+      const hand = state.player.piles.hand;
+      if (hand.length > 0) {
+        // Score each card by cost descending; keep highest value
+        let best = hand[0], bestScore = -Infinity;
+        for (const c of hand) {
+          const d = data.cards[state.cardInstances[c]?.defId];
+          const score = (d?.costRAM || 0) * 10 + (d?.tags?.includes('OneShot') ? -5 : 0);
+          if (score > bestScore) { bestScore = score; best = c; }
+        }
+        state._keepOneCard = best;
+        const kDef = data.cards[state.cardInstances[best]?.defId];
+        push(state.log, { t: 'Info', msg: `Power: keeping ${kDef?.name || '?'} in hand (Memory Compression)` });
+      }
+    }
+  }
+
+  // ── PlayCard triggers ──
+  if (event === 'PlayAttack') {
+    // NC-063: Whenever you play an Attack, gain 1 RAM
+    if (/whenever you play an attack.*gain 1 ram/i.test(text)) {
+      if (state.player.ram < state.player.maxRAM) {
+        state.player.ram++;
+        push(state.log, { t: 'Info', msg: 'Power: +1 RAM (Backdoor Cache)' });
+      }
+    }
+  }
+
+  if (event === 'PlayOneShotOrVolatile') {
+    // NC-065: When you play a One-Shot or Volatile card, draw 1
+    if (/one-shot or volatile.*draw 1/i.test(text)) {
+      drawCards(state, rng, 1);
+      push(state.log, { t: 'Info', msg: 'Power: drew 1 (Exploit Collector)' });
+    }
+  }
+
+  // ── Debuff applied to enemy ──
+  if (event === 'ApplyDebuff') {
+    // NC-060: Whenever you apply a Debuff, deal 3 damage to that enemy
+    if (/whenever you apply a debuff.*deal (\d+) damage/i.test(text)) {
+      const target = ctx.target;
+      const dmg = parseInt(text.match(/deal (\d+) damage/i)?.[1] || '3');
+      if (target && target.hp > 0) {
+        applyDamage(state, state.player.id, target, dmg);
+        push(state.log, { t: 'Info', msg: `Power: ${dmg} bonus damage (Packet Leech)` });
+      }
+    }
+  }
+
+  // ── Gain Firewall ──
+  if (event === 'GainFirewall') {
+    // NC-062: Whenever you gain Firewall, gain +2 additional (guard against recursion)
+    if (/whenever you gain firewall.*gain \+(\d+) additional firewall/i.test(text) && !ctx._heatSinkLock) {
+      const bonus = parseInt(text.match(/gain \+(\d+) additional/i)?.[1] || '2');
+      ctx._heatSinkLock = true; // prevent recursion
+      addStatus(state, state.player, 'Firewall', bonus);
+      push(state.log, { t: 'Info', msg: `Power: +${bonus} Firewall bonus (Heat Sink)` });
+    }
+  }
+
+  // ── First draw each turn ──
+  if (event === 'FirstDraw') {
+    // NC-061: The first time you draw each turn, draw 1 additional card
+    if (/first time you draw each turn.*draw 1 additional/i.test(text)) {
+      drawCards(state, rng, 1);
+      push(state.log, { t: 'Info', msg: 'Power: +1 card draw (Signal Amplifier)' });
+    }
+  }
+
+  // ── First damage this turn ──
+  if (event === 'FirstDamage') {
+    // NC-066: First time each turn you deal damage, deal +6 additional
+    if (/first time each turn you deal damage.*deal \+(\d+) additional/i.test(text)) {
+      const bonus = parseInt(text.match(/\+(\d+) additional/i)?.[1] || '6');
+      const target = ctx.target;
+      if (target && target.hp > 0) {
+        applyDamage(state, state.player.id, target, bonus);
+        push(state.log, { t: 'Info', msg: `Power: +${bonus} killchain damage (Killchain Protocol)` });
+      }
+    }
+  }
+
+  // ── Enemy dies ──
+  if (event === 'EnemyDeath') {
+    // NC-070: When you defeat an enemy, gain +10 Credits
+    if (/defeat an enemy.*gain \+?(\d+) credits/i.test(text)) {
+      const gold = parseInt(text.match(/\+?(\d+) credits/i)?.[1] || '10');
+      state._pendingGoldGain = (state._pendingGoldGain || 0) + gold;
+      push(state.log, { t: 'Info', msg: `Power: +${gold}g on kill (Dark Web Broker)` });
+    }
+  }
+
+  // ── Enemy heal attempt ──
+  if (event === 'EnemyHeal') {
+    // NC-071: First time an enemy intends to heal, cancel that heal
+    if (/first time an enemy intends to heal.*cancel/i.test(text)) {
+      if (!state._watchdogUsedThisCombat) {
+        state._watchdogUsedThisCombat = true;
+        ctx.cancelHeal = true; // signal to cancel
+        push(state.log, { t: 'Info', msg: 'Power: enemy heal cancelled! (System Watchdog)' });
+      }
+    }
+  }
 }
 
 // Apply active status effects at the START of an entity's turn (before tick/decay).
@@ -471,15 +660,26 @@ export function applyEffectOp(state, sourceId, op, rng) {
 
   switch (op.op) {
     case "DealDamage": {
+      const isPlayerSource = sourceId === state.player.id;
       for (const target of targets) {
         const wasHp = target.hp;
         const dmgMult = (state._cardMutMods?.effectMult ?? 1) * (state._cardMutMods?.damageMult ?? 1);
+
+        // POWER: NC-066 Killchain Protocol — first damage this turn deals +6 bonus
+        if (isPlayerSource && !state._firstDamageThisTurn) {
+          state._firstDamageThisTurn = true;
+          runPowerTriggers(state, state.dataRef, rng, 'FirstDamage', { target });
+        }
+
         applyDamage(state, sourceId, target, Math.floor((op.amount || 0) * dmgMult));
+
         // Phase change + Enemy death passives
         if (target.id && String(target.id).startsWith("enemy_")) {
           checkPhaseChange(state, rng, target, wasHp);
           if (wasHp > 0 && target.hp <= 0) {
             runEnemyPassives(state, "Death", rng, target.id);
+            // POWER: NC-070 Dark Web Broker — gain gold on kill
+            runPowerTriggers(state, state.dataRef, rng, 'EnemyDeath', { target });
           }
         }
       }
@@ -501,6 +701,16 @@ export function applyEffectOp(state, sourceId, op, rng) {
             target.combatFlags.firstDebuffSeen = true;
             runEnemyPassives(state, "FirstDebuffAppliedToSelfThisCombat", rng, target.id);
           }
+          // POWER: NC-060 Packet Leech — debuff applied to enemy → deal 3 damage
+          if (sourceId === state.player.id) {
+            runPowerTriggers(state, state.dataRef, rng, 'ApplyDebuff', { target });
+          }
+        }
+
+        // POWER: NC-062 Heat Sink — gain Firewall → gain +2 more
+        if (op.statusId === 'Firewall' && target === state.player) {
+          const ctx = {};
+          runPowerTriggers(state, state.dataRef, rng, 'GainFirewall', ctx);
         }
       }
       return;
@@ -590,6 +800,12 @@ export function applyEffectOp(state, sourceId, op, rng) {
     case "Heal": {
       const amt = op.amount || 0;
       for (const target of targets) {
+        // POWER: NC-071 System Watchdog — cancel first enemy heal
+        if (target.id && String(target.id).startsWith("enemy_") && sourceId !== state.player.id) {
+          const ctx = { cancelHeal: false };
+          runPowerTriggers(state, state.dataRef, rng, 'EnemyHeal', ctx);
+          if (ctx.cancelHeal) continue;
+        }
         const before = target.hp;
         target.hp = Math.min(target.maxHP || target.hp + amt, target.hp + amt);
         push(state.log, { t: "Info", msg: `${target.id} healed ${target.hp - before}` });
@@ -1433,7 +1649,7 @@ export function startCombatFromRunDeck(params) {
       ram: playerMaxRAM,
       maxRAM: playerMaxRAM,
       ramRegen: playerRamRegen,
-      piles: { draw, hand: [], discard: [], exhaust: [] }
+      piles: { draw, hand: [], discard: [], exhaust: [], power: [] }
     },
     enemies,
     enemyAI: { cursorByEnemyId },
@@ -1488,6 +1704,13 @@ export function dispatchCombat(state, data, action) {
       _clearFlags(state.player);
       for (const e of state.enemies) _clearFlags(e);
 
+      // Reset per-turn POWER tracking flags
+      state._tookDamageThisTurn = false;
+      state._firstDrawDoneThisTurn = false;
+      state._firstDamageThisTurn = false;
+      state._killchainUsedThisTurn = false;
+      delete state._keepOneCard;
+
       // Apply per-turn status effects (Corrode, Nanoflow, Overheat, Underclock…) before decaying stacks
       processStatusEffects(state, state.player);
       for (const e of state.enemies) processStatusEffects(state, e);
@@ -1498,6 +1721,9 @@ export function dispatchCombat(state, data, action) {
       for (const cid of [...state.player.piles.hand]) {
         runPatchTrigger(state, data, rng, cid, 'onTurnStart');
       }
+
+      // POWER: StartTurn triggers (NC-058 +1 RAM, NC-067 remove debuff, NC-072 draw 2 if empty)
+      runPowerTriggers(state, data, rng, 'StartTurn', {});
 
       push(state.log, { t: "Info", msg: `Turn ${state.turn} start` });
       return state;
@@ -1563,10 +1789,25 @@ export function dispatchCombat(state, data, action) {
         }
       }
 
-      // move card to discard/exhaust
+      // move card to power/exhaust/discard
       state.player.piles.hand = state.player.piles.hand.filter(x => x !== cid);
-      if (def.tags?.includes("Exhaust") || ci.finalMutationId === "J_BRICK") state.player.piles.exhaust.push(cid);
-      else state.player.piles.discard.push(cid);
+      if (def.tags?.includes("Power") || def.type === "Power") {
+        // POWER cards stay in play permanently
+        state.player.piles.power = state.player.piles.power || [];
+        state.player.piles.power.push(cid);
+        push(state.log, { t: 'Info', msg: `${def.name} is now active (Power)` });
+      } else if (def.tags?.includes("Exhaust") || ci.finalMutationId === "J_BRICK") {
+        state.player.piles.exhaust.push(cid);
+      } else {
+        state.player.piles.discard.push(cid);
+      }
+
+      // POWER: fire PlayAttack trigger
+      if (def.type === 'Attack') runPowerTriggers(state, data, rng, 'PlayAttack', {});
+      // POWER: fire PlayOneShotOrVolatile trigger
+      if (def.tags?.includes('OneShot') || def.tags?.includes('Volatile')) {
+        runPowerTriggers(state, data, rng, 'PlayOneShotOrVolatile', {});
+      }
 
       // win check
       const alive = state.enemies.some(e => e.hp > 0);
@@ -1584,12 +1825,16 @@ export function dispatchCombat(state, data, action) {
       for (const cid of [...state.player.piles.hand]) {
         runPatchTrigger(state, data, rng, cid, 'onDiscard');
       }
+      // POWER: EndTurn triggers (NC-059 Firewall, NC-064 heal, NC-068 keep, NC-069 recycle)
+      runPowerTriggers(state, data, rng, 'EndTurn', {});
+
       endTurnEthereal(state, data);
 
       // Compute TraceBeacon hand-penalty BEFORE discarding (card was in hand this turn)
       state._traceBeaconHandBonus = getTraceBeaconHandBonus(state, data);
 
-      discardHand(state);
+      // NC-068 Memory Compression: keep one chosen card (exclude from discard)
+      discardHand(state, state._keepOneCard);
 
       // End-of-turn HP loss from X-cost cards (e.g. NC-083 "lose N HP per RAM spent")
       if (state._eotLoseHPPerRAM) {

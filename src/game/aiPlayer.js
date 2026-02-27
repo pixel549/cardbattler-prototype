@@ -270,7 +270,7 @@ function getCombatAction(combat, data, playstyle) {
     const targets = isAoE ? [aliveEnemies[0]] : aliveEnemies;
 
     for (const enemy of targets) {
-      const score = scoreCard(def, ci, enemy, aliveEnemies, player, playstyle);
+      const score = scoreCard(def, ci, enemy, aliveEnemies, player, playstyle, data);
       if (score > bestScore) {
         bestScore = score;
         bestAction = {
@@ -285,7 +285,19 @@ function getCombatAction(combat, data, playstyle) {
   return bestAction ?? { type: 'Combat_EndTurn' };
 }
 
-function scoreCard(def, ci, target, aliveEnemies, player, playstyle) {
+// Returns true if enemy has healing in its rotation (checks cardInstances via data)
+function enemyIsHealer(enemy, data) {
+  for (const cardId of (enemy.rotation || [])) {
+    const def = data?.cards?.[cardId];
+    if (!def) continue;
+    for (const eff of (def.effects || [])) {
+      if (eff.op === 'Heal' && eff.target === 'Self') return true;
+    }
+  }
+  return false;
+}
+
+function scoreCard(def, ci, target, aliveEnemies, player, playstyle, data) {
   const ps = AI_PLAYSTYLES[playstyle] || AI_PLAYSTYLES.balanced;
   const cost = Math.max(0, (def.costRAM || 0) + (ci.ramCostDelta || 0));
   let score = 0;
@@ -312,7 +324,9 @@ function scoreCard(def, ci, target, aliveEnemies, player, playstyle) {
             score += (1000 + aliveEnemies.length * 50) * ps.damageWeight;
           } else {
             score += dmg * 2 * ps.damageWeight;
-            score += (1 - target.hp / target.maxHP) * 20; // prefer low-HP targets
+            // Prefer low-HP targets + bonus for targeting healers (kill them fast!)
+            score += (1 - target.hp / target.maxHP) * 30;
+            if (enemyIsHealer(target, data)) score += 40;
           }
         }
         break;

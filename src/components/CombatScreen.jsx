@@ -143,20 +143,23 @@ function getIntentColor(intentType) {
 // STATUS DESCRIPTIONS (shown in tooltips on hover/tap)
 // ============================================================
 const STATUS_DESCRIPTIONS = {
-  Firewall:     'Block that persists between turns (not reset each turn)',
-  Weak:         'Deal 25% less damage while active',
-  Vulnerable:   'Take 50% more incoming damage while active',
-  Leak:         'Enables enemy multi-hit preference; combo penalty',
-  ExposedPorts: 'Vulnerability-like debuff — increases damage taken',
-  SensorGlitch: 'Accuracy / targeting interference — may cause misses',
-  Corrode:      'Strips block each turn (armour decay) · stacks = block stripped',
-  Underclock:   'Reduces RAM regeneration each turn',
-  Overclock:    'Increases damage output or RAM regen',
-  Nanoflow:     'Regenerate HP equal to stacks at the start of each turn',
-  TargetSpoof:  'Misdirects enemy targeting',
-  Overheat:     'Deal stacks damage to self at the start of each turn',
-  Throttled:    'Reduces card draw or play speed',
-  TraceBeacon:  'Marks the entity — may trigger additional enemy effects',
+  Firewall:        'Persistent shield — absorbs incoming damage before block/HP. Does NOT reset each turn.',
+  Weak:            'Deal 25% less damage while active. Decays 1/turn.',
+  Vulnerable:      'Take 50% more incoming damage while active. Decays 1/turn.',
+  Leak:            'DoT: 1 damage per stack each turn (data hemorrhage). Decays 1/turn.',
+  ExposedPorts:    'Take 40% more incoming damage while active. Decays 1/turn.',
+  SensorGlitch:    'Reduces outgoing damage −15% per stack (max 60%). Decays 1/turn.',
+  Corrode:         'Strips block AND deals 1 HP damage per stack each turn. Decays 1/turn.',
+  Underclock:      'Reduces outgoing damage −10% per stack (max 50%). Decays 1/turn.',
+  Overclock:       'Boosts outgoing damage +25% per stack (max +150%). Decays 1/turn.',
+  Nanoflow:        'Heals HP equal to stacks at start of each turn. Decays 1/turn.',
+  TargetSpoof:     'Confused targeting: −25% damage per stack (max 75%). Decays 1/turn.',
+  Overheat:        'DoT: deals stacks×HP damage to self each turn. Decays 1/turn.',
+  Throttled:       'Reduces outgoing damage −15% per stack (max 60%). Decays 1/turn.',
+  TraceBeacon:     'Tracking marker: take +20% damage per stack from all sources.',
+  Burn:            'DoT: 2 HP damage per stack each turn. Decays 1/turn.',
+  CorruptedSector: 'Cannot gain block this turn. Decays 1/turn.',
+  DazedPackets:    'Scrambled packets: −20% outgoing damage per stack (max 80%). Decays 1/turn.',
 };
 
 // ============================================================
@@ -714,6 +717,9 @@ function PlayerPanel({ player, turn }) {
   const hp = player?.hp ?? 0;
   const maxHp = player?.maxHP ?? 1;
   const block = player?.block ?? 0;
+  // Firewall is now a persistent status, not regular block
+  const firewallStacks = player?.statuses?.find(s => s.id === 'Firewall')?.stacks ?? 0;
+  const nonFirewallStatuses = (player?.statuses || []).filter(s => s.id !== 'Firewall');
 
   return (
     <div
@@ -749,29 +755,51 @@ function PlayerPanel({ player, turn }) {
       {/* HP bar - prominent */}
       <HealthBar current={hp} max={maxHp} height={14} showText={true} />
 
-      {/* Firewall (Block) badge - always visible */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '3px',
-          fontSize: 11,
-          fontFamily: MONO,
-          fontWeight: 700,
-          color: block > 0 ? C.neonCyan : C.textDim,
-          backgroundColor: block > 0 ? `${C.neonCyan}15` : `${C.textDim}10`,
-          borderRadius: '4px',
-          padding: '3px 8px',
-          border: `1px solid ${block > 0 ? `${C.neonCyan}30` : `${C.textDim}20`}`,
-          transition: 'all 0.3s ease',
-        }}
-      >
-        {'\u25A3'} <span style={{ fontSize: 8, letterSpacing: '0.05em' }}>FW</span> {block}
+      {/* Firewall shield badge (persistent) + Block badge (temporary) */}
+      <div style={{ display: 'flex', gap: '3px', justifyContent: 'center', flexWrap: 'wrap' }}>
+        <div
+          title={`Firewall: ${firewallStacks} (persistent shield — not reset each turn)`}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '2px',
+            fontSize: 11,
+            fontFamily: MONO,
+            fontWeight: 700,
+            color: firewallStacks > 0 ? C.neonCyan : C.textDim,
+            backgroundColor: firewallStacks > 0 ? `${C.neonCyan}15` : `${C.textDim}10`,
+            borderRadius: '4px',
+            padding: '3px 7px',
+            border: `1px solid ${firewallStacks > 0 ? `${C.neonCyan}40` : `${C.textDim}20`}`,
+            transition: 'all 0.3s ease',
+          }}
+        >
+          {'\u25A3'} <span style={{ fontSize: 8, letterSpacing: '0.05em' }}>FW</span> {firewallStacks}
+        </div>
+        {block > 0 && (
+          <div
+            title={`Block: ${block} (resets next turn)`}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '2px',
+              fontSize: 11,
+              fontFamily: MONO,
+              fontWeight: 700,
+              color: '#66aaff',
+              backgroundColor: '#66aaff15',
+              borderRadius: '4px',
+              padding: '3px 7px',
+              border: '1px solid #66aaff30',
+            }}
+          >
+            🛡 {block}
+          </div>
+        )}
       </div>
 
-      {/* Player statuses */}
-      <StatusRow statuses={player?.statuses} size="small" justify="center" />
+      {/* Player statuses (Firewall shown separately above) */}
+      <StatusRow statuses={nonFirewallStatuses} size="small" justify="center" />
     </div>
   );
 }

@@ -101,33 +101,75 @@ function MuteButton({ muted, onToggle }) {
 }
 
 /** Shared top bar showing run stats */
-function RunHeader({ run }) {
+function RunHeader({ run, data }) {
   if (!run) return null;
+  const MONO = "'JetBrains Mono', 'Fira Code', 'Consolas', monospace";
+  const relics = run.relicIds || [];
   return (
     <div
       className="safe-area-top"
       style={{
+        backgroundColor: C.bgBar,
+        borderBottom: `1px solid ${C.border}`,
+      }}
+    >
+      <div style={{
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingLeft: '16px',
         paddingRight: '16px',
         paddingTop: '8px',
-        paddingBottom: '8px',
-        backgroundColor: C.bgBar,
-        borderBottom: `1px solid ${C.border}`,
-      }}
-    >
-      <div style={{ fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace", color: C.cyan, fontSize: 11 }}>
-        <span style={{ opacity: 0.5 }}>ACT</span> {run.act}
-        <span style={{ marginLeft: '8px', marginRight: '8px', opacity: 0.3 }}>|</span>
-        <span style={{ opacity: 0.5 }}>FLOOR</span> {run.floor}
+        paddingBottom: relics.length > 0 ? '4px' : '8px',
+      }}>
+        <div style={{ fontFamily: MONO, color: C.cyan, fontSize: 11 }}>
+          <span style={{ opacity: 0.5 }}>ACT</span> {run.act}
+          <span style={{ marginLeft: '8px', marginRight: '8px', opacity: 0.3 }}>|</span>
+          <span style={{ opacity: 0.5 }}>FLOOR</span> {run.floor}
+        </div>
+        <div style={{ display: 'flex', gap: '12px', fontFamily: MONO, fontSize: 12 }}>
+          <span style={{ color: C.green }}>{run.hp}/{run.maxHP}</span>
+          <span style={{ color: C.yellow }}>{run.gold}g</span>
+          <span style={{ color: C.cyan }}>{run.mp}mp</span>
+        </div>
       </div>
-      <div style={{ display: 'flex', gap: '12px', fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace", fontSize: 12 }}>
-        <span style={{ color: C.green }}>{run.hp}/{run.maxHP}</span>
-        <span style={{ color: C.yellow }}>{run.gold}g</span>
-        <span style={{ color: C.cyan }}>{run.mp}mp</span>
-      </div>
+      {/* Relic chips */}
+      {relics.length > 0 && (
+        <div style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: '4px',
+          paddingLeft: '16px',
+          paddingRight: '16px',
+          paddingBottom: '6px',
+        }}>
+          {relics.map(rid => {
+            const relic = data?.relics?.[rid];
+            const tierColors = { boss: C.red, rare: C.purple, uncommon: C.yellow };
+            const col = tierColors[relic?.tier] || C.cyan;
+            return (
+              <div
+                key={rid}
+                title={`${relic?.name || rid}: ${relic?.description || ''}`}
+                style={{
+                  fontFamily: MONO,
+                  fontSize: 8,
+                  fontWeight: 700,
+                  color: col,
+                  backgroundColor: `${col}15`,
+                  border: `1px solid ${col}40`,
+                  borderRadius: '4px',
+                  padding: '2px 6px',
+                  letterSpacing: '0.05em',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                ◈ {relic?.name || rid}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -176,7 +218,7 @@ function MapScreen({ state, data, onAction }) {
 
   return (
     <ScreenShell>
-      <RunHeader run={state.run} />
+      <RunHeader run={state.run} data={data} />
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '8px 8px 0', overflowY: 'auto' }}>
 
@@ -336,6 +378,9 @@ function MapScreen({ state, data, onAction }) {
 // ============================================================
 function RewardScreen({ state, data, onAction }) {
   const choices = state.reward?.cardChoices || [];
+  const relicChoices = state.reward?.relicChoices || [];
+  const hasRelics = relicChoices.length > 0;
+  const MONO = "'JetBrains Mono', 'Fira Code', 'Consolas', monospace";
 
   return (
     <ScreenShell>
@@ -345,7 +390,7 @@ function RewardScreen({ state, data, onAction }) {
           <div
             className="animate-slide-up"
             style={{
-              fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace",
+              fontFamily: MONO,
               fontWeight: 700,
               fontSize: '24px',
               marginBottom: '4px',
@@ -354,10 +399,51 @@ function RewardScreen({ state, data, onAction }) {
           >
             VICTORY
           </div>
-          <div style={{ fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace", color: C.textMuted, fontSize: 12 }}>
-            Select a card reward
+          <div style={{ fontFamily: MONO, color: C.textMuted, fontSize: 12 }}>
+            {hasRelics ? 'Select a relic — then choose a card' : 'Select a card reward'}
           </div>
         </div>
+
+        {/* Relic choices (shown above card choices when available) */}
+        {hasRelics && (
+          <div style={{ marginBottom: '16px' }}>
+            <div style={{ fontFamily: MONO, fontSize: 9, color: C.yellow, letterSpacing: '0.1em', marginBottom: '8px', textAlign: 'center' }}>
+              ◈ RELIC REWARD — pick one
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {relicChoices.map(rid => {
+                const relic = data.relics?.[rid];
+                const tierColors = { boss: C.red, rare: C.purple, uncommon: C.yellow };
+                const col = tierColors[relic?.tier] || C.cyan;
+                return (
+                  <button
+                    key={rid}
+                    onClick={() => onAction({ type: 'Reward_PickRelic', relicId: rid })}
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      borderRadius: '10px',
+                      textAlign: 'left',
+                      backgroundColor: `${col}10`,
+                      border: `2px solid ${col}50`,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <div style={{ fontFamily: MONO, fontWeight: 700, color: col, fontSize: 13, marginBottom: '3px' }}>
+                      {relic?.name || rid}
+                      <span style={{ marginLeft: 6, fontSize: 9, fontWeight: 400, opacity: 0.7, textTransform: 'uppercase' }}>
+                        [{relic?.tier || '?'}]
+                      </span>
+                    </div>
+                    <div style={{ fontFamily: MONO, fontSize: 10, color: C.textDim }}>
+                      {relic?.description || ''}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Card choices */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -691,7 +777,7 @@ function EventScreen({ state, data, onAction }) {
   if (eventId === 'RestSite') {
     return (
       <ScreenShell>
-        <RunHeader run={state.run} />
+        <RunHeader run={state.run} data={data} />
         <div style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
           <div
             className="animate-slide-up"
@@ -787,7 +873,7 @@ function EventScreen({ state, data, onAction }) {
   if (!eventDef) {
     return (
       <ScreenShell>
-        <RunHeader run={state.run} />
+        <RunHeader run={state.run} data={data} />
         <div style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ fontFamily: MONO, fontWeight: 700, fontSize: '20px', marginBottom: '8px', color: C.cyan }}>
             UNKNOWN EVENT
@@ -822,7 +908,7 @@ function EventScreen({ state, data, onAction }) {
 
   return (
     <ScreenShell>
-      <RunHeader run={state.run} />
+      <RunHeader run={state.run} data={data} />
       <div style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column' }}>
 
         {/* Event card */}

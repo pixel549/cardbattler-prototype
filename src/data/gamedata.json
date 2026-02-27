@@ -338,7 +338,7 @@
     "C-009": {
       "id": "C-009",
       "name": "Antivirus Lockout",
-      "type": "Skill / Enemy interference",
+      "type": "Skill",
       "costRAM": 1,
       "tags": [
         "Core"
@@ -1336,7 +1336,7 @@
     "NC-023": {
       "id": "NC-023",
       "name": "RAM Transfusion",
-      "type": "Utility / tradeoff",
+      "type": "Utility",
       "costRAM": 0,
       "tags": [],
       "effects": [
@@ -1369,7 +1369,7 @@
     "NC-024": {
       "id": "NC-024",
       "name": "Blood Battery",
-      "type": "Utility / tradeoff",
+      "type": "Utility",
       "costRAM": 0,
       "tags": [],
       "effects": [
@@ -14187,7 +14187,182 @@
       ]
     }
   ],
-  "relics": {},
+  "relics": {
+    "R_U_OVERCLOCK_MODULE": {
+      "id": "R_U_OVERCLOCK_MODULE",
+      "name": "Overclock Module",
+      "description": "Gain +1 max RAM at the start of each run.",
+      "tier": "uncommon",
+      "mods": {
+        "maxRAMDelta": 1
+      }
+    },
+    "R_U_RAM_CACHE": {
+      "id": "R_U_RAM_CACHE",
+      "name": "RAM Cache",
+      "description": "Regenerate +1 extra RAM per turn.",
+      "tier": "uncommon",
+      "mods": {
+        "ramRegenDelta": 1
+      }
+    },
+    "R_U_EXPANDED_BUFFER": {
+      "id": "R_U_EXPANDED_BUFFER",
+      "name": "Expanded Buffer",
+      "description": "Draw 1 extra card per turn.",
+      "tier": "uncommon",
+      "mods": {
+        "drawPerTurnDelta": 1
+      }
+    },
+    "R_U_BIO_PLATING": {
+      "id": "R_U_BIO_PLATING",
+      "name": "Bio-Plating",
+      "description": "Start each combat with +5 max HP.",
+      "tier": "uncommon",
+      "mods": {
+        "maxHPDelta": 5
+      }
+    },
+    "R_U_SUBDERMAL_ARMOR": {
+      "id": "R_U_SUBDERMAL_ARMOR",
+      "name": "Subdermal Armor",
+      "description": "Travel costs 1 less HP.",
+      "tier": "uncommon",
+      "mods": {
+        "travelHpCostDelta": -1
+      }
+    },
+    "R_U_NANO_INJECTOR": {
+      "id": "R_U_NANO_INJECTOR",
+      "name": "Nano-Injector",
+      "description": "Mutations trigger 25% more often.",
+      "tier": "uncommon",
+      "mods": {
+        "mutationTriggerChanceMult": 1.25
+      }
+    },
+    "R_U_WATCHDOG_TIMER": {
+      "id": "R_U_WATCHDOG_TIMER",
+      "name": "Watchdog Timer",
+      "description": "Cards' final mutation countdown ticks 1 slower.",
+      "tier": "uncommon",
+      "mods": {
+        "finalCountdownTickDelta": -1
+      }
+    },
+    "R_R_NEURAL_INTERFACE": {
+      "id": "R_R_NEURAL_INTERFACE",
+      "name": "Neural Interface",
+      "description": "Draw 2 extra cards per turn.",
+      "tier": "rare",
+      "mods": {
+        "drawPerTurnDelta": 2
+      }
+    },
+    "R_R_QUANTUM_CORE": {
+      "id": "R_R_QUANTUM_CORE",
+      "name": "Quantum Core",
+      "description": "Gain +2 max RAM.",
+      "tier": "rare",
+      "mods": {
+        "maxRAMDelta": 2
+      }
+    },
+    "R_R_REACTOR_CORE": {
+      "id": "R_R_REACTOR_CORE",
+      "name": "Reactor Core",
+      "description": "Regenerate +2 extra RAM per turn.",
+      "tier": "rare",
+      "mods": {
+        "ramRegenDelta": 2
+      }
+    },
+    "R_R_EXPERIMENTAL_FIRMWARE": {
+      "id": "R_R_EXPERIMENTAL_FIRMWARE",
+      "name": "Experimental Firmware",
+      "description": "Mutations are skewed toward high tiers (A, B, C more likely).",
+      "tier": "rare",
+      "mods": {
+        "mutationTierWeightMult": {
+          "A": 2,
+          "B": 1.5,
+          "C": 1.2
+        }
+      }
+    },
+    "R_R_FULL_BODY_RIG": {
+      "id": "R_R_FULL_BODY_RIG",
+      "name": "Full-Body Rig",
+      "description": "Start each combat with +10 max HP.",
+      "tier": "rare",
+      "mods": {
+        "maxHPDelta": 10
+      }
+    },
+    "R_R_NEURAL_CATALYST": {
+      "id": "R_R_NEURAL_CATALYST",
+      "name": "Neural Catalyst",
+      "description": "Mutations trigger 50% more often.",
+      "tier": "rare",
+      "mods": {
+        "mutationTriggerChanceMult": 1.5
+      }
+    },
+    "R_B_APEX_OVERRIDE": {
+      "id": "R_B_APEX_OVERRIDE",
+      "name": "Apex Override",
+      "description": "+2 max RAM and draw 1 extra card per turn.",
+      "tier": "boss",
+      "mods": {
+        "maxRAMDelta": 2,
+        "drawPerTurnDelta": 1
+      }
+    },
+    "R_B_BLACK_MARKET_DECK": {
+      "id": "R_B_BLACK_MARKET_DECK",
+      "name": "Black Market Cyberdeck",
+      "description": "+1 RAM regen. Mutations trigger 75% more often.",
+      "tier": "boss",
+      "mods": {
+        "ramRegenDelta": 1,
+        "mutationTriggerChanceMult": 1.75
+      }
+    },
+    "R_B_STOLEN_PROTOCOL": {
+      "id": "R_B_STOLEN_PROTOCOL",
+      "name": "Stolen Protocol",
+      "description": "+5 max HP and +1 max RAM.",
+      "tier": "boss",
+      "mods": {
+        "maxHPDelta": 5,
+        "maxRAMDelta": 1
+      }
+    },
+    "R_B_ADMIN_KEY": {
+      "id": "R_B_ADMIN_KEY",
+      "name": "Corrupted Admin Key",
+      "description": "Draw 3 extra cards per turn.",
+      "tier": "boss",
+      "mods": {
+        "drawPerTurnDelta": 3
+      }
+    },
+    "R_B_CORP_IMPLANT": {
+      "id": "R_B_CORP_IMPLANT",
+      "name": "Corporate Implant",
+      "description": "Mutations strongly favor high tiers and trigger 50% more often.",
+      "tier": "boss",
+      "mods": {
+        "mutationTierWeightMult": {
+          "A": 3,
+          "B": 2,
+          "C": 1.5
+        },
+        "mutationTriggerChanceMult": 1.5
+      }
+    }
+  },
   "events": {
     "EVENT_ACT1_CACHE_001": {
       "id": "EVENT_ACT1_CACHE_001",
@@ -14968,5 +15143,31 @@
       "Shop": "shop",
       "Rest": "rest"
     }
+  },
+  "relicRewardPools": {
+    "uncommon": [
+      "R_U_OVERCLOCK_MODULE",
+      "R_U_RAM_CACHE",
+      "R_U_EXPANDED_BUFFER",
+      "R_U_BIO_PLATING",
+      "R_U_SUBDERMAL_ARMOR",
+      "R_U_NANO_INJECTOR",
+      "R_U_WATCHDOG_TIMER"
+    ],
+    "rare": [
+      "R_R_NEURAL_INTERFACE",
+      "R_R_QUANTUM_CORE",
+      "R_R_REACTOR_CORE",
+      "R_R_EXPERIMENTAL_FIRMWARE",
+      "R_R_FULL_BODY_RIG",
+      "R_R_NEURAL_CATALYST"
+    ],
+    "boss": [
+      "R_B_APEX_OVERRIDE",
+      "R_B_BLACK_MARKET_DECK",
+      "R_B_STOLEN_PROTOCOL",
+      "R_B_ADMIN_KEY",
+      "R_B_CORP_IMPLANT"
+    ]
   }
 }

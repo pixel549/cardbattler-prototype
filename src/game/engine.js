@@ -71,15 +71,69 @@ function discardHand(state) {
 function endTurnEthereal(state, data) {
   const p = state.player.piles;
   const keep = [];
+
   for (const cid of p.hand) {
     const ci = state.cardInstances[cid];
     const def = data.cards[ci.defId];
-    if (def.tags?.includes("Ethereal")) {
+    const tags = def.tags || [];
+    const rawText = (def.effects || []).filter(e => e.op === 'RawText').map(e => e.text).join(' ');
+
+    // --- Status/Junk end-of-turn effects ---
+
+    // NC-086 Burn Stack: deal 2 damage to player at end of turn
+    if (tags.includes('Status') || tags.includes('Junk')) {
+      if (/At end of turn.*take (\d+) damage/i.test(rawText)) {
+        const dmg = parseInt(rawText.match(/take (\d+) damage/i)?.[1] || '2');
+        state.player.hp = Math.max(0, state.player.hp - dmg);
+        push(state.log, { t: 'Info', msg: `${def.name} end-of-turn: dealt ${dmg} damage to player` });
+      }
+
+      // NC-091 Overheat: lose N Firewall at end of turn
+      if (/lose (\d+) Firewall/i.test(rawText)) {
+        const loseFW = parseInt(rawText.match(/lose (\d+) Firewall/i)?.[1] || '4');
+        const fwStatus = state.player.statuses?.find(s => s.id === 'Firewall');
+        if (fwStatus && fwStatus.stacks > 0) {
+          const lost = Math.min(fwStatus.stacks, loseFW);
+          fwStatus.stacks -= lost;
+          if (fwStatus.stacks <= 0) state.player.statuses = state.player.statuses.filter(s => s.id !== 'Firewall');
+          push(state.log, { t: 'Info', msg: `${def.name} end-of-turn: lost ${lost} Firewall` });
+        }
+      }
+
+      // NC-085 Dazed Packet / any Status tagged "auto-purge" at end of turn: exhaust instead of discard
+      if (/place this into Removed/i.test(rawText)) {
+        p.exhaust.push(cid);
+        push(state.log, { t: 'Info', msg: `${def.name} auto-purged from hand` });
+        continue; // skip keep — already exhausted
+      }
+    }
+
+    // Ethereal: exhaust instead of discard
+    if (tags.includes("Ethereal")) {
       p.exhaust.push(cid);
       push(state.log, { t: "Info", msg: `Ethereal exhausted: ${def.name}` });
-    } else keep.push(cid);
+    } else {
+      keep.push(cid);
+    }
   }
+
   p.hand = keep;
+}
+
+// Compute per-turn damage bonus from Trace Beacon status cards in hand
+// Called during enemy attacks to add passive hand-penalty damage
+export function getTraceBeaconHandBonus(state, data) {
+  let bonus = 0;
+  for (const cid of state.player.piles.hand) {
+    const ci = state.cardInstances?.[cid];
+    if (!ci) continue;
+    const def = data.cards[ci.defId];
+    if (!def) continue;
+    const rawText = (def.effects || []).filter(e => e.op === 'RawText').map(e => e.text).join(' ');
+    const m = rawText.match(/enemies deal \+(\d+) damage/i);
+    if (m) bonus += parseInt(m[1]);
+  }
+  return bonus;
 }
 
 // Apply active status effects at the START of an entity's turn (before tick/decay).
@@ -122,12 +176,67 @@ function processStatusEffects(state, entity) {
       case 'Underclock':
         // Sets a per-turn damage reduction flag consumed in applyDamage.
         // Each stack reduces the entity's outgoing damage by 10% (capped at 50%).
-        // We store this as a transient combat flag on the entity so applyDamage
-        // can read it without re-walking statuses.
         {
           const reduction = Math.min(0.5, s.stacks * 0.10);
           entity._underclockMult = 1 - reduction;
           push(state.log, { t: 'Info', msg: `${entity.id} Underclock: -${Math.round(reduction*100)}% damage` });
+        }
+        break;
+      case 'Burn':
+        // DoT: 2 damage per stack each turn (decays by 1 per turn via tickStatuses)
+        {
+          const burnDmg = s.stacks * 2;
+          entity.hp = Math.max(0, entity.hp - burnDmg);
+          push(state.log, { t: 'Info', msg: `${entity.id} Burn deals ${burnDmg} damage` });
+        }
+        break;
+      case 'Leak':
+        // DoT: 1 damage per stack each turn (data hemorrhage)
+        {
+          const leakDmg = s.stacks;
+          entity.hp = Math.max(0, entity.hp - leakDmg);
+          push(state.log, { t: 'Info', msg: `${entity.id} Leak deals ${leakDmg} damage` });
+        }
+        break;
+      case 'Overclock':
+        // Boosts outgoing damage +25% per stack (max +150%); flag consumed in applyDamage
+        {
+          const boost = Math.min(1.5, s.stacks * 0.25);
+          entity._overclockMult = 1 + boost;
+          push(state.log, { t: 'Info', msg: `${entity.id} Overclock: +${Math.round(boost*100)}% damage` });
+        }
+        break;
+      case 'TargetSpoof':
+        // Confuses attacker — reduces outgoing damage -25% per stack (max 75%)
+        {
+          const reduction = Math.min(0.75, s.stacks * 0.25);
+          entity._targetSpoofMult = 1 - reduction;
+          push(state.log, { t: 'Info', msg: `${entity.id} TargetSpoof: -${Math.round(reduction*100)}% damage` });
+        }
+        break;
+      case 'Throttled':
+        // Throttles outgoing damage -15% per stack (max 60%)
+        {
+          const reduction = Math.min(0.60, s.stacks * 0.15);
+          entity._throttledMult = 1 - reduction;
+          push(state.log, { t: 'Info', msg: `${entity.id} Throttled: -${Math.round(reduction*100)}% damage` });
+        }
+        break;
+      case 'TraceBeacon':
+        // Tracking beacon: target takes +20% damage per stack
+        entity._traceBeaconStacks = s.stacks;
+        break;
+      case 'CorruptedSector':
+        // Prevents block gain this turn
+        entity._corruptedSector = true;
+        push(state.log, { t: 'Info', msg: `${entity.id} CorruptedSector: no block gain this turn` });
+        break;
+      case 'DazedPackets':
+        // Scrambled targeting: -20% damage per stack (max 80%)
+        {
+          const reduction = Math.min(0.80, s.stacks * 0.20);
+          entity._dazedPacketsMult = 1 - reduction;
+          push(state.log, { t: 'Info', msg: `${entity.id} DazedPackets: -${Math.round(reduction*100)}% damage` });
         }
         break;
       default:
@@ -180,7 +289,7 @@ function parseRawText(text) {
     // "For each RAM spent: Deal N damage and gain N Firewall"
     else if ((m = s.match(/For each RAM spent: Deal (\d+) damage and gain (\d+) Firewall/i))) {
       ops.push({ op: 'DealDamage', amount: parseInt(m[1]), target: 'Enemy', scaleByRAM: true });
-      ops.push({ op: 'GainBlock', amount: parseInt(m[2]), target: 'Self', scaleByRAM: true });
+      ops.push({ op: 'ApplyStatus', statusId: 'Firewall', stacks: parseInt(m[2]), target: 'Self', scaleByRAM: true });
     }
     // "Deal N damage per RAM spent"
     else if ((m = s.match(/Deal (\d+) damage per RAM spent/i))) {
@@ -188,7 +297,7 @@ function parseRawText(text) {
     }
     // "Gain N Firewall per RAM spent"
     else if ((m = s.match(/Gain (\d+) Firewall per RAM spent/i))) {
-      ops.push({ op: 'GainBlock', amount: parseInt(m[1]), target: 'Self', scaleByRAM: true });
+      ops.push({ op: 'ApplyStatus', statusId: 'Firewall', stacks: parseInt(m[1]), target: 'Self', scaleByRAM: true });
     }
     // "Heal N HP per RAM spent"
     else if ((m = s.match(/Heal (\d+) HP per RAM spent/i))) {
@@ -246,9 +355,9 @@ function parseRawText(text) {
     else if (/Restore all health/i.test(s)) {
       ops.push({ op: '_HealFull' });
     }
-    // "Gain X Firewall"
+    // "Gain X Firewall" — Firewall is a persistent status shield (not regular block)
     else if ((m = s.match(/Gain (\d+) Firewall/i))) {
-      ops.push({ op: 'GainBlock', amount: parseInt(m[1]), target: 'Self' });
+      ops.push({ op: 'ApplyStatus', statusId: 'Firewall', stacks: parseInt(m[1]), target: 'Self' });
     }
     // "Gain X StatusName" (Overclock, Nanoflow, etc.)
     else if ((m = s.match(/Gain (\d+) (Overclock|Nanoflow|Underclock|Weak|Vulnerable)/i))) {
@@ -612,18 +721,22 @@ export function applyEffectOp(state, sourceId, op, rng) {
             }
 
           } else {
-            // For scaleByRAM ops: multiply amount by ramSpent (skip if no RAM was spent)
+            // For scaleByRAM ops: multiply amount/stacks by ramSpent (skip if no RAM was spent)
             if (pOp.scaleByRAM) {
               if (ramSpent > 0) {
                 const scaledOp = { ...pOp };
                 if (scaledOp.op === 'DrawCards' && scaledOp.maxAmount !== undefined) {
                   scaledOp.amount = Math.min(scaledOp.maxAmount, (scaledOp.amount || 1) * ramSpent);
+                } else if (scaledOp.op === 'ApplyStatus') {
+                  // ApplyStatus uses 'stacks' not 'amount'
+                  scaledOp.stacks = (scaledOp.stacks || 1) * ramSpent;
                 } else {
                   scaledOp.amount = (scaledOp.amount || 0) * ramSpent;
                 }
                 delete scaledOp.scaleByRAM;
                 delete scaledOp.maxAmount;
-                if (scaledOp.amount > 0) applyEffectOp(state, sourceId, scaledOp, rng);
+                const effectiveVal = scaledOp.op === 'ApplyStatus' ? scaledOp.stacks : scaledOp.amount;
+                if (effectiveVal > 0) applyEffectOp(state, sourceId, scaledOp, rng);
               }
               // If ramSpent === 0, card had 0 RAM to spend — all per-RAM effects produce nothing
             } else {
@@ -1362,9 +1475,18 @@ export function dispatchCombat(state, data, action) {
       }
 
       drawCards(state, rng, 5 + (state.ruleMods?.drawPerTurnDelta || 0));
-      // Reset transient per-turn combat flags before recomputing them
-      state.player._underclockMult = undefined;
-      for (const e of state.enemies) e._underclockMult = undefined;
+      // Reset transient per-turn combat flags before recomputing them via processStatusEffects
+      const _clearFlags = (ent) => {
+        ent._underclockMult = undefined;
+        ent._overclockMult = undefined;
+        ent._targetSpoofMult = undefined;
+        ent._throttledMult = undefined;
+        ent._traceBeaconStacks = undefined;
+        ent._corruptedSector = undefined;
+        ent._dazedPacketsMult = undefined;
+      };
+      _clearFlags(state.player);
+      for (const e of state.enemies) _clearFlags(e);
 
       // Apply per-turn status effects (Corrode, Nanoflow, Overheat, Underclock…) before decaying stacks
       processStatusEffects(state, state.player);
@@ -1463,6 +1585,10 @@ export function dispatchCombat(state, data, action) {
         runPatchTrigger(state, data, rng, cid, 'onDiscard');
       }
       endTurnEthereal(state, data);
+
+      // Compute TraceBeacon hand-penalty BEFORE discarding (card was in hand this turn)
+      state._traceBeaconHandBonus = getTraceBeaconHandBonus(state, data);
+
       discardHand(state);
 
       // End-of-turn HP loss from X-cost cards (e.g. NC-083 "lose N HP per RAM spent")
@@ -1472,8 +1598,9 @@ export function dispatchCombat(state, data, action) {
         delete state._eotLoseHPPerRAM;
       }
 
-      // enemy actions
+      // enemy actions (TraceBeacon bonus is active during enemy attacks)
       for (const e of state.enemies) enemyTurn(state, data, rng, e.id);
+      delete state._traceBeaconHandBonus;
 
       // defeat check
       if (state.player.hp <= 0) {

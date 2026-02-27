@@ -12,11 +12,29 @@ export function applyDamage(state, sourceId, target, amount) {
     ? state.player
     : state.enemies.find(e => e.id === sourceId);
 
+  // Weak: attacker deals 25% less damage
   const weakStacks = source ? getStacks(source, "Weak") : 0;
   if (weakStacks > 0) amount = Math.floor(amount * 0.75);
 
+  // SensorGlitch on the attacker: reduces outgoing damage (-15% per stack, max 60% reduction)
+  const sensorGlitchStacks = source ? getStacks(source, "SensorGlitch") : 0;
+  if (sensorGlitchStacks > 0) {
+    const reduction = Math.min(0.6, sensorGlitchStacks * 0.15);
+    amount = Math.floor(amount * (1 - reduction));
+  }
+
+  // Vulnerable: target takes 50% more damage
   const vulnStacks = getStacks(target, "Vulnerable");
   if (vulnStacks > 0) amount = Math.floor(amount * 1.5);
+
+  // ExposedPorts: target takes 40% more damage (like Vulnerable but from Port Probe)
+  const exposedPortsStacks = getStacks(target, "ExposedPorts");
+  if (exposedPortsStacks > 0) amount = Math.floor(amount * 1.4);
+
+  // Underclock: attacker's outgoing damage reduced (set each turn by processStatusEffects)
+  if (source?._underclockMult != null && source._underclockMult < 1) {
+    amount = Math.floor(amount * source._underclockMult);
+  }
 
   // Act scaling: enemies deal more damage
   const isEnemy = sourceId !== state.player.id;
@@ -44,7 +62,9 @@ export function applyDamage(state, sourceId, target, amount) {
       blocked,
       isPlayerSource: !isEnemy,
       weakened: weakStacks > 0,
+      sensorGlitched: sensorGlitchStacks > 0,
       vulnerable: vulnStacks > 0,
+      exposedPorts: exposedPortsStacks > 0,
       enemyDmgMult: isEnemy ? enemyDmgMult : null,
     },
   });

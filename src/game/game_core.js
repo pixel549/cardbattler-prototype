@@ -36,7 +36,9 @@ function generateMap(seed) {
   nodes[start].next = [a1, a2];
   nodes[a1].next = [b1, b2];
   nodes[a2].next = [b2];
-  nodes[b1].next = [c1];
+  // Both Shop and Combat paths can reach either Elite or Rest,
+  // so the player always has a strategic choice at the merge point.
+  nodes[b1].next = [c1, c2];
   nodes[b2].next = [c1, c2];
   nodes[c1].next = [d1];
   nodes[c2].next = [d1];

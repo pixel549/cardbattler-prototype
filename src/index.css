@@ -184,6 +184,101 @@ a:focus:not(:focus-visible) {
 .animate-neon-pulse { animation: neon-pulse 1.5s ease-in-out infinite; }
 .animate-pulse { animation: neon-pulse 1.5s ease-in-out infinite; }
 
+/* ── Floating damage / heal numbers ── */
+@keyframes float-dmg {
+  0%   { opacity: 1;   transform: translateY(0)    scale(1.1); }
+  20%  { opacity: 1;   transform: translateY(-14px) scale(1.3); }
+  100% { opacity: 0;   transform: translateY(-52px) scale(0.85); }
+}
+@keyframes float-heal {
+  0%   { opacity: 1;   transform: translateY(0)    scale(1); }
+  20%  { opacity: 1;   transform: translateY(-10px) scale(1.15); }
+  100% { opacity: 0;   transform: translateY(-44px) scale(0.9); }
+}
+@keyframes float-block {
+  0%   { opacity: 1;   transform: translateY(0)    scale(1); }
+  100% { opacity: 0;   transform: translateY(-30px) scale(0.9); }
+}
+.float-dmg   { animation: float-dmg   1.1s cubic-bezier(0.25,0.46,0.45,0.94) forwards; }
+.float-heal  { animation: float-heal  1.0s cubic-bezier(0.25,0.46,0.45,0.94) forwards; }
+.float-block { animation: float-block 0.9s ease-out forwards; }
+
+/* ── Card play flash ── */
+@keyframes card-play-flash {
+  0%   { opacity: 1; }
+  40%  { opacity: 0.3; filter: brightness(2.5); }
+  100% { opacity: 0; }
+}
+.card-play-flash { animation: card-play-flash 0.35s ease-out forwards; }
+
+/* ── Scanline CRT overlay ── */
+.scanlines::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,0,0,0.07) 2px,
+    rgba(0,0,0,0.07) 4px
+  );
+  z-index: 99998;
+}
+
+/* ── Glitch text effect ── */
+@keyframes glitch {
+  0%   { clip-path: inset(40% 0 61% 0); transform: skew(-0.1deg); }
+  5%   { clip-path: inset(92% 0 1%  0); transform: skew( 0.5deg); }
+  10%  { clip-path: inset(43% 0 1%  0); transform: skew(-0.5deg); }
+  15%  { clip-path: inset(25% 0 58% 0); transform: skew( 0.2deg); }
+  20%  { clip-path: inset(54% 0 7%  0); transform: skew( 0.0deg); }
+  25%  { clip-path: inset(58% 0 43% 0); transform: skew( 0.1deg); }
+  30%  { clip-path: inset(45% 0 55% 0); transform: skew( 0.5deg); }
+  35%  { clip-path: inset(76% 0 17% 0); transform: skew(-0.2deg); }
+  40%  { clip-path: inset(80% 0 14% 0); transform: skew(-0.4deg); }
+  45%  { clip-path: inset(50% 0 50% 0); transform: skew( 0.3deg); }
+  100% { clip-path: inset(50% 0 50% 0); transform: skew( 0.0deg); }
+}
+.glitch-text {
+  position: relative;
+}
+.glitch-text::before, .glitch-text::after {
+  content: attr(data-text);
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%;
+  height: 100%;
+}
+.glitch-text::before {
+  left: 2px;
+  text-shadow: -1px 0 var(--color-neon-red);
+  animation: glitch 2.5s infinite linear;
+  clip-path: inset(50% 0 50% 0);
+}
+.glitch-text::after {
+  left: -2px;
+  text-shadow: 1px 0 var(--color-neon-cyan);
+  animation: glitch 3s infinite linear reverse;
+  clip-path: inset(50% 0 50% 0);
+}
+
+/* ── Status badge apply flash ── */
+@keyframes status-pop {
+  0%   { transform: scale(0.5); opacity: 0; }
+  60%  { transform: scale(1.3); opacity: 1; }
+  100% { transform: scale(1);   opacity: 1; }
+}
+.status-pop { animation: status-pop 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+
+/* ── Mutation glow pulse ── */
+@keyframes mut-glow {
+  0%,100% { box-shadow: 0 0 6px currentColor; }
+  50%      { box-shadow: 0 0 20px currentColor, 0 0 40px currentColor; }
+}
+.mut-glow { animation: mut-glow 1.5s ease-in-out infinite; }
+
 /* ============================================================
    SAFE AREA (for notched phones)
    ============================================================ */

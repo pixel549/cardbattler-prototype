@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "builtAt": "2026-02-26T12:02:17.818Z",
+  "builtAt": "2026-02-27T04:22:11.067Z",
   "cards": {
     "C-001": {
       "id": "C-001",
@@ -10180,7 +10180,10 @@
       "act": 1,
       "kind": "elite",
       "compositionType": "generated",
-      "enemyIds": [],
+      "enemyIds": [
+        "E_ECHO_SHAMAN_SWARM",
+        "E_CIPHER_HACKER_MK_II"
+      ],
       "weight": 1
     },
     "ENC_A1_SPEC_CONTROL": {
@@ -10225,7 +10228,10 @@
       "act": 1,
       "kind": "hard",
       "compositionType": "generated",
-      "enemyIds": [],
+      "enemyIds": [
+        "E_ECHO_SENTINEL_SHARD",
+        "E_NEON_SAPPER_MK_II"
+      ],
       "weight": 1
     },
     "ENC_GEN_A1_DAMAGE_FOCUS": {
@@ -10234,7 +10240,10 @@
       "act": 1,
       "kind": "hard",
       "compositionType": "generated",
-      "enemyIds": [],
+      "enemyIds": [
+        "E_GLITCH_WARDEN_SUITE",
+        "E_PULSE_BRUISER_FRAME"
+      ],
       "weight": 1
     },
     "ENC_GEN_A1_LEAK_THEME": {
@@ -10243,7 +10252,10 @@
       "act": 1,
       "kind": "hard",
       "compositionType": "generated",
-      "enemyIds": [],
+      "enemyIds": [
+        "E_LEAK_WRAITH",
+        "E_CORRODE_RAT"
+      ],
       "weight": 1
     },
     "ENC_A1_N1_01": {
@@ -10514,7 +10526,9 @@
       "act": 1,
       "kind": "normal",
       "compositionType": "generated",
-      "enemyIds": [],
+      "enemyIds": [
+        "E_HOLO_SHAMAN_CREW"
+      ],
       "weight": 1
     },
     "ENC-002": {
@@ -10523,16 +10537,22 @@
       "act": 1,
       "kind": "normal",
       "compositionType": "generated",
-      "enemyIds": [],
+      "enemyIds": [
+        "E_HOLO_RAT_MK_II",
+        "E_HOLO_SCOUT_PROXY"
+      ],
       "weight": 1
     },
     "ENC-003": {
       "id": "ENC-003",
-      "name": "Standard Encounter (3 enemy)",
+      "name": "Standard Encounter (2 enemy)",
       "act": 1,
       "kind": "normal",
       "compositionType": "generated",
-      "enemyIds": [],
+      "enemyIds": [
+        "E_HOLO_RAT_MK_II",
+        "E_HOLO_SHAMAN_CREW"
+      ],
       "weight": 1
     },
     "ENC-005": {
@@ -10541,7 +10561,10 @@
       "act": 1,
       "kind": "normal",
       "compositionType": "generated",
-      "enemyIds": [],
+      "enemyIds": [
+        "E_PULSE_BRUISER_FRAME",
+        "E_ION_SNIPER_RIG"
+      ],
       "weight": 1
     },
     "ENC-006": {
@@ -10550,7 +10573,10 @@
       "act": 1,
       "kind": "normal",
       "compositionType": "generated",
-      "enemyIds": [],
+      "enemyIds": [
+        "E_GLITCH_WARDEN_SUITE",
+        "E_HOLO_POD_NODE"
+      ],
       "weight": 1
     },
     "ENC-007": {
@@ -10559,7 +10585,10 @@
       "act": 1,
       "kind": "normal",
       "compositionType": "generated",
-      "enemyIds": [],
+      "enemyIds": [
+        "E_HOLO_ENFORCER_MK_I",
+        "E_ION_RAT_SUITE"
+      ],
       "weight": 1
     },
     "ENC-008": {
@@ -10568,34 +10597,46 @@
       "act": 1,
       "kind": "normal",
       "compositionType": "generated",
-      "enemyIds": [],
+      "enemyIds": [
+        "E_HOLO_SHAMAN_MK_I",
+        "E_ION_CLERIC_PROXY"
+      ],
       "weight": 1
     },
     "ENC-009": {
       "id": "ENC-009",
       "name": "Boss 1",
       "act": 1,
-      "kind": "normal",
+      "kind": "elite",
       "compositionType": "generated",
-      "enemyIds": [],
+      "enemyIds": [
+        "E_ECHO_SHAMAN_SWARM",
+        "E_KILO_SNIPER_ARRAY"
+      ],
       "weight": 1
     },
     "ENC-010": {
       "id": "ENC-010",
       "name": "Boss 2",
       "act": 1,
-      "kind": "normal",
+      "kind": "elite",
       "compositionType": "generated",
-      "enemyIds": [],
+      "enemyIds": [
+        "E_FLUX_SHAMAN_CREW",
+        "E_CIPHER_POD_SHARD"
+      ],
       "weight": 1
     },
     "ENC-011": {
       "id": "ENC-011",
       "name": "Boss 3",
       "act": 1,
-      "kind": "normal",
+      "kind": "elite",
       "compositionType": "generated",
-      "enemyIds": [],
+      "enemyIds": [
+        "E_VECTOR_GOON_PROXY",
+        "E_ECHO_SENTINEL_SHARD"
+      ],
       "weight": 1
     },
     "ENC-012": {
@@ -10604,16 +10645,22 @@
       "act": 1,
       "kind": "normal",
       "compositionType": "generated",
-      "enemyIds": [],
+      "enemyIds": [
+        "E_HOLO_RUNNER_NODE",
+        "E_HOLO_SCOUT_PROXY"
+      ],
       "weight": 1
     },
     "ENC_GEN_A1_MIX_1_3": {
       "id": "ENC_GEN_A1_MIX_1_3",
-      "name": "Act 1 Random: Mixed (1–3)",
+      "name": "Act 1 Random: Mixed (1–2)",
       "act": 1,
       "kind": "normal",
       "compositionType": "generated",
-      "enemyIds": [],
+      "enemyIds": [
+        "E_HOLO_SAPPER_CELL",
+        "E_ION_RAT_SUITE"
+      ],
       "weight": 1
     },
     "ENC_A2_EL1_01": {
@@ -10704,7 +10751,10 @@
       "act": 2,
       "kind": "hard",
       "compositionType": "generated",
-      "enemyIds": [],
+      "enemyIds": [
+        "E_STATIC_SAPPER_CELL",
+        "E_CIRCUIT_BRUISER_MK_III"
+      ],
       "weight": 1
     },
     "ENC_GEN_A2_DAMAGE_FOCUS": {
@@ -10713,7 +10763,10 @@
       "act": 2,
       "kind": "hard",
       "compositionType": "generated",
-      "enemyIds": [],
+      "enemyIds": [
+        "E_VANTA_BRUISER_PROXY",
+        "E_VECTOR_MARAUDER_PROXY"
+      ],
       "weight": 1
     },
     "ENC_GEN_A2_LEAK_THEME": {
@@ -10722,7 +10775,11 @@
       "act": 2,
       "kind": "hard",
       "compositionType": "generated",
-      "enemyIds": [],
+      "enemyIds": [
+        "E_CORRODE_RAT",
+        "E_GLITCH_RUNNER_NODE",
+        "E_STATIC_IMP_RIG"
+      ],
       "weight": 1
     },
     "ENC_A2_N1_01": {
@@ -10993,7 +11050,11 @@
       "act": 2,
       "kind": "normal",
       "compositionType": "generated",
-      "enemyIds": [],
+      "enemyIds": [
+        "E_VANTA_DRONE_FRAME",
+        "E_VECTOR_COURIER_ARRAY",
+        "E_CHROME_SAPPER_CREW"
+      ],
       "weight": 1
     },
     "ENC_A3_EL1_01": {
@@ -11072,7 +11133,10 @@
       "act": 3,
       "kind": "hard",
       "compositionType": "generated",
-      "enemyIds": [],
+      "enemyIds": [
+        "E_OBSIDIAN_TECH_RIG",
+        "E_RAZOR_CLERIC_MK_II"
+      ],
       "weight": 1
     },
     "ENC_GEN_A3_DAMAGE_FOCUS": {
@@ -11081,7 +11145,10 @@
       "act": 3,
       "kind": "hard",
       "compositionType": "generated",
-      "enemyIds": [],
+      "enemyIds": [
+        "E_OBSIDIAN_BRUISER_PACK",
+        "E_RAZOR_ENFORCER_FRAME"
+      ],
       "weight": 1
     },
     "ENC_GEN_A3_LEAK_THEME": {
@@ -11090,7 +11157,10 @@
       "act": 3,
       "kind": "hard",
       "compositionType": "generated",
-      "enemyIds": [],
+      "enemyIds": [
+        "E_OBSIDIAN_SNIPER_MK_III",
+        "E_ROGUE_SCOUT_SWARM"
+      ],
       "weight": 1
     },
     "ENC_A3_N1_01": {
@@ -11361,7 +11431,11 @@
       "act": 3,
       "kind": "normal",
       "compositionType": "generated",
-      "enemyIds": [],
+      "enemyIds": [
+        "E_NEON_WARDEN_SUITE",
+        "E_STATIC_WARDEN_ARRAY",
+        "E_CHROME_SAPPER_CREW"
+      ],
       "weight": 1
     }
   },
@@ -11387,12 +11461,6 @@
         "ENC_A1_N2_06",
         "ENC_A1_N2_07",
         "ENC_A1_N2_08",
-        "ENC_A1_N3_01",
-        "ENC_A1_N3_02",
-        "ENC_A1_N3_03",
-        "ENC_A1_N3_04",
-        "ENC_A1_N3_05",
-        "ENC_A1_N3_06",
         "ENC-001",
         "ENC-002",
         "ENC-003",
@@ -11400,9 +11468,6 @@
         "ENC-006",
         "ENC-007",
         "ENC-008",
-        "ENC-009",
-        "ENC-010",
-        "ENC-011",
         "ENC-012",
         "ENC_GEN_A1_MIX_1_3"
       ]
@@ -11416,7 +11481,10 @@
         "ENC_A1_EL1_02",
         "ENC_A1_EL2_01",
         "ENC_A1_EL2_02",
-        "ENC-004"
+        "ENC-004",
+        "ENC-009",
+        "ENC-010",
+        "ENC-011"
       ]
     },
     {
@@ -11547,6 +11615,22 @@
       "act": 3,
       "kind": "boss",
       "encounterIds": []
+    },
+    {
+      "id": "ACT1_HARD",
+      "act": 1,
+      "kind": "hard",
+      "encounterIds": [
+        "ENC_A1_N3_01",
+        "ENC_A1_N3_02",
+        "ENC_A1_N3_03",
+        "ENC_A1_N3_04",
+        "ENC_A1_N3_05",
+        "ENC_A1_N3_06",
+        "ENC_GEN_A1_CONTROL_FOCUS",
+        "ENC_GEN_A1_DAMAGE_FOCUS",
+        "ENC_GEN_A1_LEAK_THEME"
+      ]
     }
   ],
   "relics": {},
@@ -12217,24 +12301,24 @@
       "goldNormal": 25,
       "goldElite": 50,
       "goldBoss": 99,
-      "enemyHpMult": 1,
-      "enemyDmgMult": 1
+      "enemyHpMult": 0.6,
+      "enemyDmgMult": 0.9
     },
     {
       "act": 2,
       "goldNormal": 30,
       "goldElite": 60,
       "goldBoss": 120,
-      "enemyHpMult": 1.3,
-      "enemyDmgMult": 1.2
+      "enemyHpMult": 1,
+      "enemyDmgMult": 1.1
     },
     {
       "act": 3,
       "goldNormal": 35,
       "goldElite": 70,
       "goldBoss": 150,
-      "enemyHpMult": 1.6,
-      "enemyDmgMult": 1.4
+      "enemyHpMult": 1.35,
+      "enemyDmgMult": 1.25
     }
   ],
   "mapRules": {

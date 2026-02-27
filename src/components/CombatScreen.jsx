@@ -1,5 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { getEnemyImage } from '../data/enemyImages';
+import { sfx } from '../game/sounds';
 
 /**
  * CombatScreen - Cyberpunk deckbuilder combat UI
@@ -1395,7 +1396,10 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false }
   const [targetedEnemyIndex, setTargetedEnemyIndex] = useState(0);
   const [actingEnemies, setActingEnemies] = useState({});
   const [tooltip, setTooltip] = useState({ cardDef: null, x: 0, y: 0 });
+  const [floats, setFloats] = useState([]);
   const handScrollRef = useRef(null);
+  const lastLogLenRef = useRef(0);
+  const floatIdRef = useRef(0);
 
   const combat = state?.combat;
   const player = combat?.player;
@@ -1425,6 +1429,81 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false }
     }
   }, [hand, selectedCardId]);
 
+  // ── Parse combat log for floating numbers + sound cues ──
+  useEffect(() => {
+    const log = combat?.log;
+    if (!log) return;
+    const newEntries = log.slice(lastLogLenRef.current);
+    lastLogLenRef.current = log.length;
+    if (!newEntries.length) return;
+
+    const newFloats = [];
+    for (const entry of newEntries) {
+      if (entry.t === 'DamageDealt') {
+        const { targetId, finalDamage, blocked } = entry.data || {};
+        const isPlayerTarget = targetId === 'player' || targetId === state?.run?.playerId;
+        if (finalDamage > 0) {
+          sfx.damage();
+          newFloats.push({
+            id: ++floatIdRef.current,
+            text: `-${finalDamage}`,
+            cssClass: 'float-dmg',
+            color: '#ff4433',
+            zone: isPlayerTarget ? 'player' : 'enemy',
+          });
+        }
+        if (blocked > 0) {
+          sfx.block();
+          newFloats.push({
+            id: ++floatIdRef.current,
+            text: `🛡 ${blocked}`,
+            cssClass: 'float-block',
+            color: '#00f0ff',
+            zone: isPlayerTarget ? 'player' : 'enemy',
+          });
+        }
+      } else if (entry.t === 'Info') {
+        const msg = entry.msg || '';
+        // Healing
+        const healMatch = msg.match(/healed? (\d+)/i);
+        if (healMatch) {
+          sfx.heal();
+          const isPlayerTarget = !msg.startsWith('enemy_');
+          newFloats.push({
+            id: ++floatIdRef.current,
+            text: `+${healMatch[1]}`,
+            cssClass: 'float-heal',
+            color: '#00ff6b',
+            zone: isPlayerTarget ? 'player' : 'enemy',
+          });
+        }
+        // Status applied
+        if (msg.includes('gained ') && msg.includes('(')) sfx.status();
+        // Block gained
+        const blockMatch = msg.match(/gained (\d+) block/i);
+        if (blockMatch) {
+          newFloats.push({
+            id: ++floatIdRef.current,
+            text: `🛡 ${blockMatch[1]}`,
+            cssClass: 'float-block',
+            color: '#00f0ff',
+            zone: msg.startsWith('enemy_') ? 'enemy' : 'player',
+          });
+        }
+      } else if (entry.t === 'MutationApplied' || entry.t === 'MutPatch') {
+        sfx.mutation();
+      }
+    }
+    if (newFloats.length) {
+      setFloats(prev => [...prev.slice(-12), ...newFloats]);
+      // Auto-expire after animation
+      setTimeout(() => {
+        setFloats(prev => prev.slice(newFloats.length));
+      }, 1400);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [combat?.log?.length]);
+
   const canPlayCard = (cid) => {
     const ci = cardInstances[cid];
     if (!ci) return false;
@@ -1436,12 +1515,14 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false }
 
   const handlePlayCard = () => {
     if (!selectedCardId || !canPlayCard(selectedCardId)) return;
+    sfx.unlock(); sfx.cardPlay();
     const target = enemies[targetedEnemyIndex]?.id ?? enemies[0]?.id;
     onAction?.({ type: 'Combat_PlayCard', cardInstanceId: selectedCardId, targetEnemyId: target });
     setSelectedCardId(null);
   };
 
   const handleEndTurn = () => {
+    sfx.endTurn();
     // Capture intents before the turn resolves — that's what enemies are about to do
     const snapshot = {};
     for (const enemy of enemies) {
@@ -1455,7 +1536,14 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false }
     }
   };
 
-  // Victory / Defeat
+  // Victory / Defeat sound (runs once when combatOver flips to true)
+  useEffect(() => {
+    if (!combat?.combatOver) return;
+    if (combat.victory) sfx.victory();
+    else sfx.defeat();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [combat?.combatOver]);
+
   if (!combat || combat.combatOver) {
     const victory = combat?.victory;
     return (
@@ -1518,8 +1606,37 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false }
           linear-gradient(90deg, ${C.neonCyan}03 1px, transparent 1px)
         `,
         backgroundSize: '24px 24px',
+        position: 'relative',
       }}
     >
+      {/* ── Floating damage / heal numbers overlay ── */}
+      {floats.length > 0 && (
+        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 500 }}>
+          {floats.map(f => (
+            <div
+              key={f.id}
+              className={f.cssClass}
+              style={{
+                position: 'absolute',
+                // Enemy zone ≈ top 30%, player zone ≈ bottom 35%
+                top: f.zone === 'enemy' ? '18%' : '62%',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                fontFamily: MONO,
+                fontWeight: 900,
+                fontSize: f.cssClass === 'float-dmg' ? 22 : 16,
+                color: f.color,
+                textShadow: `0 0 12px ${f.color}, 0 0 4px #000`,
+                letterSpacing: '0.05em',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {f.text}
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* ============ ZONE A: ENEMIES (top) ============ */}
       <div
         className="safe-area-top"

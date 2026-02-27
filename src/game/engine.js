@@ -89,11 +89,19 @@ function processStatusEffects(state, entity) {
     if (s.stacks <= 0) continue;
     switch (s.id) {
       case 'Corrode':
-        // Strips block each turn (armour decay — reduces existing block by stacks)
-        if (entity.block > 0) {
-          const stripped = Math.min(entity.block, s.stacks);
-          entity.block = Math.max(0, entity.block - stripped);
-          push(state.log, { t: 'Info', msg: `${entity.id} Corrode strips ${stripped} block` });
+        // Strips block each turn AND deals 1 direct damage per stack.
+        // The direct damage makes Corrode Dart and corrosion builds viable even
+        // against enemies that don't naturally build block.
+        {
+          if (entity.block > 0) {
+            const stripped = Math.min(entity.block, s.stacks);
+            entity.block = Math.max(0, entity.block - stripped);
+            push(state.log, { t: 'Info', msg: `${entity.id} Corrode strips ${stripped} block` });
+          }
+          // Deal 1 damage per Corrode stack (acid burn DoT)
+          const corrodeDmg = s.stacks;
+          entity.hp = Math.max(0, entity.hp - corrodeDmg);
+          push(state.log, { t: 'Info', msg: `${entity.id} Corrode burns ${corrodeDmg}` });
         }
         break;
       case 'Nanoflow':
@@ -109,6 +117,17 @@ function processStatusEffects(state, entity) {
         if (s.stacks > 0) {
           entity.hp = Math.max(0, entity.hp - s.stacks);
           push(state.log, { t: 'Info', msg: `${entity.id} Overheat deals ${s.stacks} damage` });
+        }
+        break;
+      case 'Underclock':
+        // Sets a per-turn damage reduction flag consumed in applyDamage.
+        // Each stack reduces the entity's outgoing damage by 10% (capped at 50%).
+        // We store this as a transient combat flag on the entity so applyDamage
+        // can read it without re-walking statuses.
+        {
+          const reduction = Math.min(0.5, s.stacks * 0.10);
+          entity._underclockMult = 1 - reduction;
+          push(state.log, { t: 'Info', msg: `${entity.id} Underclock: -${Math.round(reduction*100)}% damage` });
         }
         break;
       default:
@@ -1164,7 +1183,11 @@ export function dispatchCombat(state, data, action) {
       state.player.ram = Math.min(state.player.maxRAM, state.player.ram + state.player.ramRegen);
 
       drawCards(state, rng, 5 + (state.ruleMods?.drawPerTurnDelta || 0));
-      // Apply per-turn status effects (Corrode, Nanoflow, Overheat, …) before decaying stacks
+      // Reset transient per-turn combat flags before recomputing them
+      state.player._underclockMult = undefined;
+      for (const e of state.enemies) e._underclockMult = undefined;
+
+      // Apply per-turn status effects (Corrode, Nanoflow, Overheat, Underclock…) before decaying stacks
       processStatusEffects(state, state.player);
       for (const e of state.enemies) processStatusEffects(state, e);
       tickStatuses(state.player, state.dataRef);

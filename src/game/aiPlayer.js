@@ -375,10 +375,17 @@ function getMapAction(map, run, playstyle) {
 
     switch (node.type) {
       case 'Rest':
-        score = hpPct < ps.restThreshold ? 60 : (hpPct < 0.8 ? 10 : 3);
+        // Strongly prefer Rest when hurt; mild bonus when somewhat damaged.
+        score = hpPct < ps.restThreshold ? 70 : (hpPct < 0.8 ? 25 : 3);
         break;
       case 'Shop':
-        score = gold >= ps.shopGoldThreshold ? 35 : 8;
+        // Only strongly prefer Shop when healthy — damaged players need to
+        // keep combat options open so they can reach the Rest node.
+        if (gold >= ps.shopGoldThreshold) {
+          score = hpPct >= 0.8 ? 35 : (hpPct >= 0.55 ? 18 : 6);
+        } else {
+          score = 8;
+        }
         break;
       case 'Combat':
         score = 20;
@@ -387,10 +394,11 @@ function getMapAction(map, run, playstyle) {
         score = 15;
         break;
       case 'Elite':
-        score = 20 + (ps.eliteBonus || 0);
+        // Never rush an Elite at low HP — it's a death trap.
+        score = hpPct >= 0.75 ? (20 + (ps.eliteBonus || 0)) : 5;
         break;
       case 'Boss':
-        score = 30; // always prioritise boss
+        score = 30; // always prioritise boss (it's the goal)
         break;
       default:
         score = 10;

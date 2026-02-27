@@ -6,6 +6,11 @@ import CombatScreen from './components/CombatScreen';
 import AIDebugPanel from './components/AIDebugPanel';
 import { getAIAction, AI_PLAYSTYLES } from './game/aiPlayer';
 import { decodeDebugSeed, decodeSensibleDebugSeed, randomDebugSeed } from './game/debugSeed';
+import { createBasicEventRegistry } from './game/events';
+import { sfx } from './game/sounds';
+
+// Module-level event registry (created once)
+const EVENT_REG_UI = createBasicEventRegistry();
 
 // ============================================================
 // SHARED CONSTANTS
@@ -48,6 +53,7 @@ const NODE_ICONS = {
 function ScreenShell({ children, extraStyle = {} }) {
   return (
     <div
+      className="scanlines"
       style={{
         minHeight: '100vh',
         display: 'flex',
@@ -63,6 +69,34 @@ function ScreenShell({ children, extraStyle = {} }) {
     >
       {children}
     </div>
+  );
+}
+
+/** Floating mute/unmute button, always on top */
+function MuteButton({ muted, onToggle }) {
+  return (
+    <button
+      onClick={onToggle}
+      title={muted ? 'Unmute sound' : 'Mute sound'}
+      style={{
+        position: 'fixed',
+        top: 10,
+        right: 10,
+        zIndex: 99999,
+        background: 'rgba(10,10,20,0.88)',
+        border: `1px solid ${muted ? C.border : C.cyan + '55'}`,
+        borderRadius: 8,
+        color: muted ? C.textMuted : C.cyan,
+        fontSize: 16,
+        cursor: 'pointer',
+        padding: '4px 7px',
+        lineHeight: 1,
+        boxShadow: muted ? 'none' : `0 0 10px ${C.cyan}25`,
+        transition: 'all 0.15s',
+      }}
+    >
+      {muted ? '🔇' : '🔊'}
+    </button>
   );
 }
 
@@ -99,121 +133,198 @@ function RunHeader({ run }) {
 }
 
 // ============================================================
-// MAP SCREEN
+// MAP SCREEN — SVG node graph
 // ============================================================
+
+// The map has a fixed layout: 9 nodes at known (x, y) coords
+// x ∈ [-1, 2],  y ∈ [0, 5]   (y=0 = start, y=5 = boss)
+const SVG_MAP_W = 300;
+const SVG_MAP_H = 500;
+
+function mapNX(x) {
+  // x range [-1, 2] → [44, 256]
+  return 44 + ((x + 1) / 3) * 212;
+}
+function mapNY(y) {
+  // y=0 at bottom (y=464), y=5 at top (y=36)
+  return 464 - (y / 5) * 428;
+}
+
+const NODE_TYPE_DESCS = {
+  Combat: 'Standard fight',
+  Elite:  'Tough enemy, better loot',
+  Boss:   'Act boss — prepare',
+  Shop:   'Buy cards & services',
+  Rest:   'Heal, repair, or stabilise',
+  Event:  'Unknown encounter',
+};
+
 function MapScreen({ state, data, onAction }) {
-  const nodes = state.map?.nodes || {};
-  const currentNode = nodes[state.map?.currentNodeId];
-  const selectableNext = state.map?.selectableNext || [];
+  const nodes   = state.map?.nodes || {};
+  const curId   = state.map?.currentNodeId;
+  const selNext = state.map?.selectableNext || [];
+  const MONO    = "'JetBrains Mono', 'Fira Code', 'Consolas', monospace";
+  const nodeList = Object.values(nodes);
+
+  // Collect edges
+  const edges = [];
+  for (const node of nodeList) {
+    for (const toId of (node.next || [])) {
+      if (nodes[toId]) edges.push({ from: node, to: nodes[toId] });
+    }
+  }
 
   return (
     <ScreenShell>
       <RunHeader run={state.run} />
 
-      <div style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column' }}>
-        {/* Current location */}
-        <div
-          style={{
-            padding: '16px',
-            borderRadius: '12px',
-            marginBottom: '24px',
-            textAlign: 'center',
-            backgroundColor: C.bgCard,
-            border: `1px solid ${C.border}`,
-          }}
-        >
-          <div style={{ fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace", marginBottom: '4px', color: C.textMuted, fontSize: 10, letterSpacing: '0.1em' }}>
-            CURRENT LOCATION
-          </div>
-          <div style={{ fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace", fontWeight: 700, fontSize: '20px', color: C.cyan }}>
-            {currentNode?.type || 'Unknown'}
-          </div>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '8px 8px 0', overflowY: 'auto' }}>
+
+        <div style={{ fontFamily: MONO, fontSize: 10, color: C.textMuted, letterSpacing: '0.15em', marginBottom: 4, marginTop: 4 }}>
+          ACT {state.run?.act} — CHOOSE YOUR PATH
         </div>
 
-        {/* Section label */}
-        <div style={{ fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace", marginBottom: '12px', color: C.textMuted, fontSize: 10, letterSpacing: '0.1em' }}>
-          CHOOSE YOUR PATH
-        </div>
+        {/* ── SVG Map ─────────────────────────────────────── */}
+        <svg width="100%" viewBox={`0 0 ${SVG_MAP_W} ${SVG_MAP_H}`} style={{ maxWidth: 340, display: 'block' }}>
+          <defs>
+            <filter id="mglow" x="-60%" y="-60%" width="220%" height="220%">
+              <feGaussianBlur stdDeviation="4" result="b" />
+              <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+            </filter>
+            <filter id="mglow-sm" x="-60%" y="-60%" width="220%" height="220%">
+              <feGaussianBlur stdDeviation="2" result="b" />
+              <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+            </filter>
+          </defs>
 
-        {/* Path choices */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {selectableNext.map(nodeId => {
-            const node = nodes[nodeId];
-            const color = NODE_COLORS[node?.type] || '#888';
-            const icon = NODE_ICONS[node?.type] || '\u00B7';
+          {/* Edges */}
+          {edges.map(({ from, to }) => {
+            const isTraversed = from.cleared;
+            const isHot = (from.id === curId) && selNext.includes(to.id);
+            return (
+              <line
+                key={`${from.id}-${to.id}`}
+                x1={mapNX(from.x)} y1={mapNY(from.y)}
+                x2={mapNX(to.x)}   y2={mapNY(to.y)}
+                stroke={isTraversed ? `${C.cyan}50` : isHot ? `${C.cyan}35` : '#222233'}
+                strokeWidth={isTraversed ? 2 : isHot ? 1.5 : 1}
+                strokeDasharray={isTraversed || isHot ? 'none' : '3 5'}
+              />
+            );
+          })}
+
+          {/* Nodes */}
+          {nodeList.map(node => {
+            const cx   = mapNX(node.x);
+            const cy   = mapNY(node.y);
+            const isCur  = node.id === curId;
+            const isSel  = selNext.includes(node.id);
+            const isDone = node.cleared;
+            const col  = NODE_COLORS[node.type] || '#888';
+            const ico  = NODE_ICONS[node.type]  || '?';
+            const R    = isCur ? 23 : isSel ? 21 : 17;
 
             return (
-              <button
-                key={nodeId}
-                onClick={() => onAction({ type: 'SelectNextNode', nodeId })}
-                style={{
-                  width: '100%',
-                  padding: '16px',
-                  borderRadius: '12px',
-                  fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace",
-                  textAlign: 'left',
-                  transition: 'all 0.2s ease',
-                  backgroundColor: C.bgCard,
-                  border: `2px solid ${color}40`,
-                  boxShadow: `0 0 20px ${color}10`,
-                  cursor: 'pointer',
-                }}
+              <g key={node.id}
+                onClick={() => isSel && onAction({ type: 'SelectNextNode', nodeId: node.id })}
+                style={{ cursor: isSel ? 'pointer' : 'default' }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div
-                    style={{
-                      width: '40px',
-                      height: '40px',
-                      borderRadius: '8px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '18px',
-                      backgroundColor: `${color}15`,
-                      border: `1px solid ${color}40`,
-                    }}
+                {/* Outer glow ring */}
+                {(isCur || isSel) && (
+                  <circle cx={cx} cy={cy} r={R + (isCur ? 10 : 7)}
+                    fill={`${col}${isCur ? '10' : '08'}`}
+                    stroke={`${col}${isCur ? '40' : '50'}`}
+                    strokeWidth={1.5}
+                  />
+                )}
+                {/* Main circle */}
+                <circle cx={cx} cy={cy} r={R}
+                  fill={isCur ? `${col}28` : isSel ? `${col}18` : isDone ? '#131320' : '#0b0b12'}
+                  stroke={isCur ? col : isSel ? `${col}90` : isDone ? `${col}35` : '#202030'}
+                  strokeWidth={isCur ? 2.5 : isSel ? 2 : 1}
+                  filter={isCur ? 'url(#mglow)' : isSel ? 'url(#mglow-sm)' : 'none'}
+                />
+                {/* Icon */}
+                <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central"
+                  fontSize={isCur ? 15 : isSel ? 14 : isDone ? 11 : 12}
+                  fill={isDone ? `${col}40` : isCur || isSel ? col : `${col}55`}
+                  fontFamily="Arial, sans-serif"
+                >
+                  {isDone ? '✓' : ico}
+                </text>
+                {/* Type label */}
+                {(isCur || isSel || isDone) && (
+                  <text x={cx} y={cy + R + 13} textAnchor="middle"
+                    fontSize={8}
+                    fill={isCur ? col : isSel ? `${col}cc` : `${col}44`}
+                    fontFamily="JetBrains Mono, monospace"
+                    letterSpacing="0.3"
                   >
+                    {node.type.toUpperCase()}
+                  </text>
+                )}
+              </g>
+            );
+          })}
+        </svg>
+
+        {/* Quick-tap node buttons */}
+        {selNext.length > 0 && (
+          <div style={{ width: '100%', maxWidth: 340, display: 'flex', flexDirection: 'column', gap: 8, padding: '0 4px', marginTop: 4 }}>
+            <div style={{ fontFamily: MONO, fontSize: 10, color: C.textMuted, letterSpacing: '0.12em', marginBottom: 2 }}>
+              MOVE TO
+            </div>
+            {selNext.map(nodeId => {
+              const node  = nodes[nodeId];
+              const color = NODE_COLORS[node?.type] || '#888';
+              const icon  = NODE_ICONS[node?.type]  || '·';
+              const desc  = NODE_TYPE_DESCS[node?.type] || '';
+              return (
+                <button key={nodeId}
+                  onClick={() => onAction({ type: 'SelectNextNode', nodeId })}
+                  style={{
+                    width: '100%', padding: '12px 14px', borderRadius: '12px',
+                    fontFamily: MONO, textAlign: 'left', transition: 'all 0.15s',
+                    backgroundColor: `${color}0c`,
+                    border: `2px solid ${color}55`,
+                    boxShadow: `0 0 14px ${color}12`,
+                    cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', gap: 12,
+                  }}
+                >
+                  <div style={{
+                    width: 36, height: 36, borderRadius: 8, flexShrink: 0,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 18, backgroundColor: `${color}18`, border: `1px solid ${color}40`,
+                  }}>
                     {icon}
                   </div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 700, color, fontSize: 15 }}>
-                      {node?.type || 'Unknown'}
-                    </div>
-                    <div style={{ color: C.textMuted, fontSize: 11 }}>
-                      {node?.type === 'Combat' && 'Face enemies'}
-                      {node?.type === 'Elite' && 'Dangerous encounter'}
-                      {node?.type === 'Boss' && 'Act boss fight'}
-                      {node?.type === 'Shop' && 'Buy cards & services'}
-                      {node?.type === 'Rest' && 'Heal & repair'}
-                      {node?.type === 'Event' && 'Random encounter'}
-                    </div>
+                    <div style={{ fontWeight: 700, color, fontSize: 14 }}>{node?.type}</div>
+                    <div style={{ color: C.textMuted, fontSize: 11, marginTop: 2 }}>{desc}</div>
                   </div>
-                  <div style={{ color: C.textMuted, fontSize: 18 }}>{'\u203A'}</div>
-                </div>
-              </button>
-            );
-          })}
-        </div>
+                  <div style={{ color: C.textMuted, fontSize: 18 }}>›</div>
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {/* Deck button */}
         <button
           onClick={() => onAction({ type: 'OpenDeck' })}
+          className="safe-area-bottom"
           style={{
-            marginTop: '16px',
-            width: '100%',
-            padding: '12px',
-            borderRadius: '12px',
-            fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace",
-            textAlign: 'center',
-            transition: 'all 0.15s ease',
-            backgroundColor: C.bgCard,
-            border: `1px solid ${C.cyan}30`,
-            color: C.cyan,
-            fontSize: 12,
-            cursor: 'pointer',
+            width: '100%', maxWidth: 340,
+            padding: '12px', borderRadius: '12px',
+            fontFamily: MONO, textAlign: 'center',
+            transition: 'all 0.15s',
+            backgroundColor: C.bgCard, border: `1px solid ${C.cyan}30`,
+            color: C.cyan, fontSize: 12, cursor: 'pointer',
+            margin: '12px 4px 8px',
           }}
         >
-          View Deck ({state.deck?.master?.length || 0} cards)
+          📋 View Deck ({state.deck?.master?.length || 0} cards)
         </button>
       </div>
     </ScreenShell>
@@ -346,9 +457,34 @@ function RewardScreen({ state, data, onAction }) {
 // ============================================================
 // SHOP SCREEN
 // ============================================================
+
+const SHOP_SERVICE_INFO = {
+  Remove:     { icon: '🗑️', desc: 'Permanently remove a card from your deck', color: C.red },
+  Repair:     { icon: '🔧', desc: 'Restore a card\'s wear — adds back use counter', color: C.cyan },
+  Stabilise:  { icon: '◆',  desc: 'Reset a card\'s mutation countdown', color: C.purple },
+  Accelerate: { icon: '⚡', desc: 'Speed up a card\'s mutation trigger', color: C.orange },
+  Heal:       { icon: '💊', desc: 'Restore 40 HP', color: C.green },
+};
+
+function describeEffects(effects) {
+  if (!effects?.length) return '';
+  return effects.map(e => {
+    if (e.op === 'DealDamage')  return `Deal ${e.amount} dmg`;
+    if (e.op === 'GainBlock')   return `+${e.amount} Block`;
+    if (e.op === 'Heal')        return `Heal ${e.amount} HP`;
+    if (e.op === 'DrawCards')   return `Draw ${e.amount}`;
+    if (e.op === 'GainRAM')     return `+${e.amount} RAM`;
+    if (e.op === 'ApplyStatus') return `Apply ${e.statusId}×${e.stacks}`;
+    if (e.op === 'RawText')     return e.text;
+    return e.op;
+  }).join(' · ');
+}
+
 function ShopScreen({ state, data, onAction }) {
   const offers = state.shop?.offers || [];
   const gold = state.run?.gold || 0;
+  const MONO = "'JetBrains Mono', 'Fira Code', 'Consolas', monospace";
+  const typeColors = { Attack: C.red, Skill: C.green, Power: C.purple, Defense: C.cyan, Support: C.green, Utility: C.yellow };
 
   return (
     <ScreenShell>
@@ -367,106 +503,179 @@ function ShopScreen({ state, data, onAction }) {
           borderBottom: `1px solid ${C.border}`,
         }}
       >
-        <div style={{ fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace", fontWeight: 700, color: C.yellow, fontSize: 16 }}>
-          SHOP
+        <div style={{ fontFamily: MONO, fontWeight: 700, color: C.yellow, fontSize: 16 }}>
+          🛒 MARKET
         </div>
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '4px',
-            paddingLeft: '12px',
-            paddingRight: '12px',
-            paddingTop: '4px',
-            paddingBottom: '4px',
-            borderRadius: '8px',
-            fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace",
-            fontWeight: 700,
-            backgroundColor: `${C.yellow}15`,
-            border: `1px solid ${C.yellow}30`,
-            color: C.yellow,
-            fontSize: 14,
-          }}
-        >
-          {gold}g
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontFamily: MONO, color: C.textMuted, fontSize: 11 }}>
+            ACT {state.run?.act} · FLOOR {state.run?.floor}
+          </span>
+          <div
+            style={{
+              display: 'flex', alignItems: 'center', gap: '4px',
+              padding: '4px 12px', borderRadius: '8px',
+              fontFamily: MONO, fontWeight: 700,
+              backgroundColor: `${C.yellow}15`,
+              border: `1px solid ${C.yellow}40`,
+              color: C.yellow, fontSize: 14,
+            }}
+          >
+            {gold}g
+          </div>
         </div>
       </div>
 
-      <div style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column' }}>
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {offers.map((offer, i) => {
-            const canAfford = gold >= offer.price;
-            const card = offer.kind === 'Card' ? data.cards?.[offer.defId] : null;
-            const typeColors = { Attack: C.red, Skill: C.green, Power: C.purple, Defense: C.cyan, Support: C.green, Utility: C.yellow };
-            const color = card ? (typeColors[card.type] || C.cyan) : C.cyan;
+      <div style={{ flex: 1, padding: '16px', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
 
-            return (
-              <button
-                key={i}
-                onClick={() => canAfford && onAction({ type: 'Shop_BuyOffer', index: i })}
-                disabled={!canAfford}
-                style={{
-                  width: '100%',
-                  padding: '16px',
-                  borderRadius: '12px',
-                  textAlign: 'left',
-                  transition: 'all 0.2s ease',
-                  opacity: !canAfford ? 0.4 : 1,
-                  backgroundColor: C.bgCard,
-                  border: `1px solid ${canAfford ? `${C.yellow}40` : C.border}`,
-                  cursor: canAfford ? 'pointer' : 'default',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace", fontWeight: 700, color: canAfford ? color : C.textMuted, fontSize: 14 }}>
-                      {card?.name || offer.serviceId}
-                    </div>
-                    <div style={{ fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace", marginTop: '2px', color: C.textMuted, fontSize: 11 }}>
-                      {offer.kind === 'Card' ? card?.type : 'Service'}
-                    </div>
-                  </div>
-                  <div
+        {/* Cards section */}
+        {offers.some(o => o.kind === 'Card') && (
+          <div style={{ marginBottom: '20px' }}>
+            <div style={{ fontFamily: MONO, fontSize: 10, color: C.textMuted, letterSpacing: '0.1em', marginBottom: '10px' }}>
+              CARDS FOR SALE
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {offers.map((offer, i) => {
+                if (offer.kind !== 'Card') return null;
+                const card = data.cards?.[offer.defId];
+                const canAfford = gold >= offer.price;
+                const color = typeColors[card?.type] || C.cyan;
+                const fx = describeEffects(card?.effects);
+                return (
+                  <button
+                    key={i}
+                    onClick={() => canAfford && onAction({ type: 'Shop_BuyOffer', index: i })}
+                    disabled={!canAfford}
                     style={{
-                      paddingLeft: '12px',
-                      paddingRight: '12px',
-                      paddingTop: '4px',
-                      paddingBottom: '4px',
-                      borderRadius: '8px',
-                      fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace",
-                      fontWeight: 700,
-                      backgroundColor: canAfford ? `${C.yellow}15` : 'transparent',
-                      border: `1px solid ${canAfford ? C.yellow : C.border}40`,
-                      color: canAfford ? C.yellow : C.textMuted,
-                      fontSize: 13,
+                      width: '100%', padding: '14px', borderRadius: '12px',
+                      textAlign: 'left', transition: 'all 0.2s ease',
+                      opacity: !canAfford ? 0.45 : 1,
+                      backgroundColor: canAfford ? `${color}08` : C.bgCard,
+                      border: `2px solid ${canAfford ? `${color}50` : C.border}`,
+                      boxShadow: canAfford ? `0 0 16px ${color}10` : 'none',
+                      cursor: canAfford ? 'pointer' : 'default',
                     }}
                   >
-                    {offer.price}g
-                  </div>
-                </div>
-              </button>
-            );
-          })}
-        </div>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                      {/* RAM cost badge */}
+                      <div style={{
+                        width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontFamily: MONO, fontWeight: 700, fontSize: 13,
+                        backgroundColor: color, color: '#000',
+                      }}>
+                        {card?.costRAM ?? '?'}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', flexWrap: 'wrap' }}>
+                          <span style={{ fontFamily: MONO, fontWeight: 700, color: canAfford ? color : C.textMuted, fontSize: 14 }}>
+                            {card?.name || offer.defId}
+                          </span>
+                          <span style={{ fontFamily: MONO, fontSize: 10, color: C.textMuted, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                            {card?.type}
+                          </span>
+                        </div>
+                        {fx && (
+                          <div style={{ fontFamily: MONO, marginTop: 3, color: C.textDim, fontSize: 11 }}>
+                            {fx}
+                          </div>
+                        )}
+                        {card?.tags?.length > 0 && (
+                          <div style={{ fontFamily: MONO, marginTop: 3, color: C.textMuted, fontSize: 10 }}>
+                            {card.tags.filter(t => t !== 'Core' && t !== 'EnemyCard').map(t => (
+                              <span key={t} style={{ background: `${C.purple}18`, borderRadius: 4, padding: '1px 5px', marginRight: 4 }}>{t}</span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <div style={{
+                        padding: '4px 10px', borderRadius: '8px',
+                        fontFamily: MONO, fontWeight: 700,
+                        backgroundColor: canAfford ? `${C.yellow}18` : 'transparent',
+                        border: `1px solid ${canAfford ? `${C.yellow}50` : C.border}`,
+                        color: canAfford ? C.yellow : C.textMuted, fontSize: 13,
+                        flexShrink: 0, alignSelf: 'center',
+                      }}>
+                        {offer.price}g
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Services section */}
+        {offers.some(o => o.kind === 'Service') && (
+          <div style={{ marginBottom: '20px' }}>
+            <div style={{ fontFamily: MONO, fontSize: 10, color: C.textMuted, letterSpacing: '0.1em', marginBottom: '10px' }}>
+              SERVICES
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {offers.map((offer, i) => {
+                if (offer.kind !== 'Service') return null;
+                const canAfford = gold >= offer.price;
+                const svc = SHOP_SERVICE_INFO[offer.serviceId] || { icon: '⚙', desc: offer.serviceId, color: C.cyan };
+                return (
+                  <button
+                    key={i}
+                    onClick={() => canAfford && onAction({ type: 'Shop_BuyOffer', index: i })}
+                    disabled={!canAfford}
+                    style={{
+                      width: '100%', padding: '14px', borderRadius: '12px',
+                      textAlign: 'left', transition: 'all 0.2s ease',
+                      opacity: !canAfford ? 0.45 : 1,
+                      backgroundColor: canAfford ? `${svc.color}08` : C.bgCard,
+                      border: `2px solid ${canAfford ? `${svc.color}40` : C.border}`,
+                      cursor: canAfford ? 'pointer' : 'default',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div style={{
+                        width: 38, height: 38, borderRadius: '10px', flexShrink: 0,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: '18px',
+                        backgroundColor: `${svc.color}18`,
+                        border: `1px solid ${svc.color}40`,
+                      }}>
+                        {svc.icon}
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontFamily: MONO, fontWeight: 700, color: canAfford ? svc.color : C.textMuted, fontSize: 14 }}>
+                          {offer.serviceId}
+                        </div>
+                        <div style={{ fontFamily: MONO, marginTop: 2, color: C.textMuted, fontSize: 11 }}>
+                          {svc.desc}
+                        </div>
+                      </div>
+                      <div style={{
+                        padding: '4px 10px', borderRadius: '8px',
+                        fontFamily: MONO, fontWeight: 700,
+                        backgroundColor: canAfford ? `${C.yellow}18` : 'transparent',
+                        border: `1px solid ${canAfford ? `${C.yellow}50` : C.border}`,
+                        color: canAfford ? C.yellow : C.textMuted, fontSize: 13, flexShrink: 0,
+                      }}>
+                        {offer.price}g
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         <button
           onClick={() => onAction({ type: 'Shop_Exit' })}
           className="safe-area-bottom"
           style={{
-            width: '100%',
-            padding: '16px',
-            borderRadius: '12px',
-            fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace",
-            marginTop: '16px',
-            transition: 'all 0.15s ease',
-            backgroundColor: C.bgCard,
-            border: `1px solid ${C.border}`,
-            color: C.textMuted,
-            fontSize: 13,
-            cursor: 'pointer',
+            width: '100%', padding: '14px', borderRadius: '12px',
+            fontFamily: MONO, marginTop: '8px', transition: 'all 0.15s ease',
+            backgroundColor: C.bgCard, border: `1px solid ${C.border}`,
+            color: C.textMuted, fontSize: 13, cursor: 'pointer',
           }}
         >
-          Leave Shop
+          Leave Market
         </button>
       </div>
     </ScreenShell>
@@ -571,96 +780,383 @@ function EventScreen({ state, data, onAction }) {
     );
   }
 
-  // Generic event
+  // Registry-driven generic event
+  const MONO = "'JetBrains Mono', 'Fira Code', 'Consolas', monospace";
+  const eventDef = EVENT_REG_UI.events[eventId];
+
+  if (!eventDef) {
+    return (
+      <ScreenShell>
+        <RunHeader run={state.run} />
+        <div style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ fontFamily: MONO, fontWeight: 700, fontSize: '20px', marginBottom: '8px', color: C.cyan }}>
+            UNKNOWN EVENT
+          </div>
+          <div style={{ fontFamily: MONO, marginBottom: '32px', color: C.textMuted, fontSize: 13 }}>{eventId}</div>
+          <button
+            onClick={() => onAction({ type: 'GoToMap' })}
+            style={{ padding: '16px 32px', borderRadius: '12px', fontFamily: MONO, fontWeight: 700, backgroundColor: C.cyan, color: '#000', border: 'none', cursor: 'pointer' }}
+          >
+            Continue
+          </button>
+        </div>
+      </ScreenShell>
+    );
+  }
+
+  // Categorise choices for coloring
+  const choiceColor = (choice) => {
+    const ops = choice.ops.map(o => o.op);
+    if (ops.includes('LoseHP')) return C.red;
+    if (ops.includes('GainMaxHP')) return C.purple;
+    if (ops.includes('AccelerateSelectedCard')) return C.orange;
+    if (ops.includes('RemoveSelectedCard')) return C.red;
+    if (ops.includes('RepairSelectedCard')) return C.cyan;
+    if (ops.includes('StabiliseSelectedCard')) return C.purple;
+    if (ops.includes('GainGold')) return C.yellow;
+    if (ops.includes('GainMP')) return C.cyan;
+    if (ops.includes('Heal')) return C.green;
+    if (choice.ops.length === 0) return C.textMuted;
+    return C.text;
+  };
+
   return (
     <ScreenShell>
       <RunHeader run={state.run} />
-      <div style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column' }}>
+
+        {/* Event card */}
         <div
           className="animate-slide-up"
           style={{
-            fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace",
-            fontWeight: 700,
-            fontSize: '20px',
-            marginBottom: '8px',
-            color: C.cyan,
+            borderRadius: '16px', padding: '24px',
+            backgroundColor: C.bgCard,
+            border: `1px solid ${C.cyan}30`,
+            boxShadow: `0 0 40px ${C.cyan}08`,
+            marginBottom: '24px',
+            textAlign: 'center',
           }}
         >
-          EVENT
+          {/* Icon */}
+          <div style={{ fontSize: '52px', lineHeight: 1, marginBottom: '12px' }}>{eventDef.icon}</div>
+          {/* Title */}
+          <div style={{
+            fontFamily: MONO, fontWeight: 700, fontSize: '18px',
+            color: C.cyan, letterSpacing: '0.05em', marginBottom: '12px',
+          }}>
+            {eventDef.title.toUpperCase()}
+          </div>
+          {/* Flavour text */}
+          <div style={{
+            fontFamily: MONO, fontSize: '12px', color: C.textDim,
+            fontStyle: 'italic', lineHeight: 1.6, maxWidth: '360px', margin: '0 auto',
+          }}>
+            "{eventDef.text}"
+          </div>
         </div>
-        <div style={{ fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace", marginBottom: '32px', color: C.textMuted, fontSize: 13 }}>
-          {eventId}
+
+        {/* Choices */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', flex: 1 }}>
+          {eventDef.choices.map(choice => {
+            const col = choiceColor(choice);
+            const isLeave = choice.ops.length === 0;
+            return (
+              <button
+                key={choice.id}
+                onClick={() => onAction({ type: 'Event_Choose', choiceId: choice.id })}
+                style={{
+                  width: '100%', padding: isLeave ? '12px 16px' : '14px 16px',
+                  borderRadius: '12px', textAlign: 'left',
+                  fontFamily: MONO, fontWeight: isLeave ? 400 : 600,
+                  fontSize: isLeave ? 12 : 13,
+                  transition: 'all 0.15s ease',
+                  backgroundColor: isLeave ? 'transparent' : `${col}10`,
+                  border: `${isLeave ? 1 : 2}px solid ${isLeave ? C.border : `${col}50`}`,
+                  boxShadow: isLeave ? 'none' : `0 0 12px ${col}0a`,
+                  color: isLeave ? C.textMuted : col,
+                  cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: '10px',
+                }}
+              >
+                {!isLeave && (
+                  <div style={{
+                    width: 28, height: 28, borderRadius: '6px', flexShrink: 0,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '14px',
+                    backgroundColor: `${col}20`,
+                    border: `1px solid ${col}40`,
+                  }}>
+                    {choice.ops.some(o => o.op === 'GainGold') ? '💰'
+                      : choice.ops.some(o => o.op === 'Heal') ? '💊'
+                      : choice.ops.some(o => o.op === 'GainMaxHP') ? '⬆'
+                      : choice.ops.some(o => o.op === 'RemoveSelectedCard') ? '🗑'
+                      : choice.ops.some(o => o.op === 'RepairSelectedCard') ? '🔧'
+                      : choice.ops.some(o => o.op === 'StabiliseSelectedCard') ? '◆'
+                      : choice.ops.some(o => o.op === 'AccelerateSelectedCard') ? '⚡'
+                      : choice.ops.some(o => o.op === 'GainMP') ? '💾'
+                      : choice.ops.some(o => o.op === 'LoseHP') ? '⚠'
+                      : '▶'}
+                  </div>
+                )}
+                <span>{choice.label}</span>
+              </button>
+            );
+          })}
         </div>
-        <button
-          onClick={() => onAction({ type: 'GoToMap' })}
-          style={{
-            paddingLeft: '32px',
-            paddingRight: '32px',
-            paddingTop: '16px',
-            paddingBottom: '16px',
-            borderRadius: '12px',
-            fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace",
-            fontWeight: 700,
-            transition: 'all 0.15s ease',
-            backgroundColor: C.cyan,
-            color: '#000',
-            boxShadow: `0 0 20px ${C.cyan}40`,
-            fontSize: 14,
-            border: 'none',
-            cursor: 'pointer',
-          }}
-        >
-          Continue
-        </button>
+
       </div>
     </ScreenShell>
   );
 }
 
 // ============================================================
+// DECK PICKER OVERLAY
+// shown when state.deckView is set (shop service / event card op)
+// ============================================================
+
+const DECK_OP_LABELS = {
+  RemoveSelectedCard:    { label: 'REMOVE A CARD',    desc: 'The chosen card will be permanently deleted.', color: '#ff4444' },
+  RepairSelectedCard:    { label: 'REPAIR A CARD',    desc: 'Restore the chosen card\'s use counter.', color: '#00f0ff' },
+  StabiliseSelectedCard: { label: 'STABILISE A CARD', desc: 'Reset the chosen card\'s mutation countdown.', color: '#b44aff' },
+  AccelerateSelectedCard:{ label: 'ACCELERATE A CARD',desc: 'Speed up the chosen card\'s mutation trigger.', color: '#ff6b00' },
+};
+
+function DeckPickerOverlay({ state, data, onAction }) {
+  const dv = state.deckView;
+  if (!dv) return null;
+
+  const MONO = "'JetBrains Mono', 'Fira Code', 'Consolas', monospace";
+  const pendingOp = state.event?.pendingSelectOp || state.shop?.pendingService;
+  const opInfo = DECK_OP_LABELS[pendingOp] || { label: 'SELECT A CARD', desc: pendingOp || '', color: '#00f0ff' };
+
+  const master = state.deck?.master || [];
+  const instances = state.deck?.cardInstances || {};
+  const typeColors = { Attack: C.red, Skill: C.green, Power: C.purple, Defense: C.cyan, Support: C.green, Utility: C.yellow };
+
+  const cards = master
+    .map(iid => {
+      const ci = instances[iid];
+      if (!ci) return null;
+      const def = data?.cards?.[ci.defId];
+      if (!def) return null;
+      if (def.tags?.includes('EnemyCard')) return null;
+      return { iid, ci, def };
+    })
+    .filter(Boolean);
+
+  const canCancel = !pendingOp; // Can only cancel if just viewing deck, not mid-op
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 200,
+      backgroundColor: 'rgba(0,0,0,0.88)',
+      display: 'flex', flexDirection: 'column',
+    }}>
+      {/* Header */}
+      <div className="safe-area-top" style={{
+        padding: '16px',
+        backgroundColor: C.bgBar,
+        borderBottom: `1px solid ${opInfo.color}40`,
+      }}>
+        <div style={{ fontFamily: MONO, fontWeight: 700, fontSize: 15, color: opInfo.color, marginBottom: 4 }}>
+          {opInfo.label}
+        </div>
+        <div style={{ fontFamily: MONO, fontSize: 11, color: C.textMuted }}>
+          {opInfo.desc}
+        </div>
+        <div style={{ fontFamily: MONO, fontSize: 10, color: C.textDim, marginTop: 6 }}>
+          {cards.length} card{cards.length !== 1 ? 's' : ''} in deck
+        </div>
+      </div>
+
+      {/* Card list */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        {cards.map(({ iid, ci, def }) => {
+          const color = typeColors[def.type] || C.text;
+          const useRatio = def.defaultUseCounter ? ci.useCounter / def.defaultUseCounter : null;
+          const worn = useRatio !== null && useRatio < 0.35;
+          const mutated = !!ci.finalMutationId;
+          const hasMutation = !!ci.mutationId;
+
+          return (
+            <button
+              key={iid}
+              onClick={() => onAction({ type: 'SelectDeckCard', instanceId: iid })}
+              style={{
+                width: '100%', padding: '12px 14px', borderRadius: '10px',
+                textAlign: 'left', transition: 'all 0.15s ease',
+                backgroundColor: `${color}08`,
+                border: `2px solid ${color}35`,
+                boxShadow: `0 0 10px ${color}0a`,
+                cursor: 'pointer',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                {/* RAM cost */}
+                <div style={{
+                  width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontFamily: MONO, fontWeight: 700, fontSize: 12,
+                  backgroundColor: color, color: '#000',
+                }}>
+                  {def.costRAM ?? 0}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                    <span style={{ fontFamily: MONO, fontWeight: 700, fontSize: 13, color }}>
+                      {def.name}
+                    </span>
+                    {hasMutation && !mutated && (
+                      <span className="mut-glow" style={{
+                        fontFamily: MONO, fontSize: 9, padding: '1px 5px', borderRadius: 4,
+                        backgroundColor: `${C.purple}25`, color: C.purple, border: `1px solid ${C.purple}40`,
+                      }}>MUTATED</span>
+                    )}
+                    {mutated && (
+                      <span style={{
+                        fontFamily: MONO, fontSize: 9, padding: '1px 5px', borderRadius: 4,
+                        backgroundColor: `${C.red}25`, color: C.red, border: `1px solid ${C.red}40`,
+                      }}>BRICKED</span>
+                    )}
+                    {worn && !mutated && (
+                      <span style={{
+                        fontFamily: MONO, fontSize: 9, padding: '1px 5px', borderRadius: 4,
+                        backgroundColor: `${C.orange}25`, color: C.orange, border: `1px solid ${C.orange}40`,
+                      }}>WORN</span>
+                    )}
+                  </div>
+                  <div style={{ fontFamily: MONO, fontSize: 10, color: C.textMuted, marginTop: 2 }}>
+                    {def.type}
+                    {useRatio !== null && (
+                      <span style={{ marginLeft: 8, color: worn ? C.orange : C.textDim }}>
+                        {ci.useCounter}/{def.defaultUseCounter} uses
+                      </span>
+                    )}
+                    {ci.finalMutationCountdown !== undefined && !mutated && (
+                      <span style={{ marginLeft: 8, color: C.textDim }}>
+                        mutation in {ci.finalMutationCountdown}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div style={{ color: C.textMuted, fontSize: 18, flexShrink: 0 }}>›</div>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Cancel / close footer */}
+      <div className="safe-area-bottom" style={{ padding: '12px', backgroundColor: C.bgBar, borderTop: `1px solid ${C.border}` }}>
+        <button
+          onClick={() => onAction({ type: 'CloseDeck' })}
+          style={{
+            width: '100%', padding: '12px', borderRadius: '10px',
+            fontFamily: MONO, fontSize: 13,
+            backgroundColor: C.bgCard, border: `1px solid ${C.border}`,
+            color: C.textMuted, cursor: 'pointer',
+          }}
+        >
+          {canCancel ? 'Close' : 'Cancel'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
 // GAME OVER SCREEN
 // ============================================================
+const DEATH_QUIPS = [
+  'Connection terminated.',
+  'Process killed.',
+  'Signal lost.',
+  'System failure.',
+  'Neural link severed.',
+  'Firewall breach — fatal.',
+  'Memory corrupted beyond repair.',
+  'Runtime exception: fatal.',
+];
+
 function GameOverScreen({ state, onNewRun }) {
+  const MONO   = "'JetBrains Mono', 'Fira Code', 'Consolas', monospace";
+  const run    = state.run   || {};
+  const deck   = state.deck  || {};
+  const quip   = DEATH_QUIPS[(run.floor ?? 0) % DEATH_QUIPS.length];
+  const hpPct  = run.maxHP ? Math.round(((run.hp ?? 0) / run.maxHP) * 100) : 0;
+
+  const stats = [
+    { label: 'ACT',       value: run.act   ?? 1 },
+    { label: 'FLOOR',     value: run.floor ?? 0 },
+    { label: 'HP',        value: `${run.hp ?? 0}/${run.maxHP ?? 0}`, color: hpPct > 30 ? C.green : C.red },
+    { label: 'GOLD',      value: `${run.gold ?? 0}g`, color: C.yellow },
+    { label: 'DECK SIZE', value: deck.master?.length ?? 0 },
+    { label: 'MP',        value: `${run.mp ?? 0}mp`, color: C.cyan },
+  ];
+
   return (
     <ScreenShell extraStyle={{ alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
-      <div className="animate-slide-up" style={{ textAlign: 'center' }}>
+      <div className="animate-slide-up" style={{ textAlign: 'center', width: '100%', maxWidth: 360 }}>
+
+        {/* Big title */}
         <div
-          style={{
-            fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace",
-            fontWeight: 700,
-            marginBottom: '12px',
-            color: C.red,
-            fontSize: 36,
-          }}
+          className="glitch-text"
+          data-text="GAME OVER"
+          style={{ fontFamily: MONO, fontWeight: 700, fontSize: 40, color: C.red, marginBottom: 8, textShadow: `0 0 40px ${C.red}80` }}
         >
           GAME OVER
         </div>
-        <div style={{ fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace", marginBottom: '8px', color: C.textDim, fontSize: 14 }}>
-          Connection terminated
+        <div style={{ fontFamily: MONO, fontSize: 13, color: C.textDim, marginBottom: 32, fontStyle: 'italic' }}>
+          {quip}
         </div>
-        <div style={{ fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace", marginBottom: '40px', color: C.textMuted, fontSize: 12 }}>
-          Floor {state.run?.floor} {'\u00B7'} Act {state.run?.act}
+
+        {/* Stats grid */}
+        <div style={{
+          display: 'grid', gridTemplateColumns: '1fr 1fr 1fr',
+          gap: 8, marginBottom: 32,
+          padding: '16px', borderRadius: 14,
+          backgroundColor: C.bgCard, border: `1px solid ${C.border}`,
+        }}>
+          {stats.map(s => (
+            <div key={s.label} style={{ textAlign: 'center', padding: '8px 4px' }}>
+              <div style={{ fontFamily: MONO, fontSize: 9, color: C.textMuted, letterSpacing: '0.1em', marginBottom: 4 }}>
+                {s.label}
+              </div>
+              <div style={{ fontFamily: MONO, fontWeight: 700, fontSize: 16, color: s.color || C.text }}>
+                {s.value}
+              </div>
+            </div>
+          ))}
         </div>
+
+        {/* HP bar */}
+        <div style={{ marginBottom: 32 }}>
+          <div style={{ height: 4, borderRadius: 9999, backgroundColor: '#1a1a2a', overflow: 'hidden' }}>
+            <div style={{
+              height: '100%', borderRadius: 9999,
+              width: `${hpPct}%`,
+              backgroundColor: hpPct > 50 ? C.green : hpPct > 20 ? C.orange : C.red,
+              boxShadow: `0 0 8px ${hpPct > 50 ? C.green : C.red}`,
+              transition: 'width 0.4s ease',
+            }} />
+          </div>
+          <div style={{ fontFamily: MONO, fontSize: 10, color: C.textMuted, marginTop: 4 }}>
+            {hpPct}% HP remaining
+          </div>
+        </div>
+
         <button
           onClick={onNewRun}
           style={{
-            paddingLeft: '40px',
-            paddingRight: '40px',
-            paddingTop: '16px',
-            paddingBottom: '16px',
-            borderRadius: '12px',
-            fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace",
-            fontWeight: 700,
-            fontSize: '18px',
+            padding: '16px 48px', borderRadius: '12px',
+            fontFamily: MONO, fontWeight: 700, fontSize: 18,
             transition: 'all 0.15s ease',
-            backgroundColor: C.cyan,
-            color: '#000',
-            boxShadow: `0 0 30px ${C.cyan}40`,
-            border: 'none',
-            cursor: 'pointer',
+            backgroundColor: C.cyan, color: '#000',
+            boxShadow: `0 0 30px ${C.cyan}50`,
+            border: 'none', cursor: 'pointer',
           }}
         >
-          New Run
+          ▶ NEW RUN
         </button>
       </div>
     </ScreenShell>
@@ -897,6 +1393,21 @@ function App() {
   const [state, setState] = useState(null);
   const [error, setError] = useState(null);
   const [showLog, setShowLog] = useState(false);
+
+  // ── Sound mute toggle (persisted to localStorage) ────────────────────────
+  const [soundMuted, setSoundMuted] = useState(() => {
+    const stored = localStorage.getItem('cb_muted') === 'true';
+    sfx.setMuted(stored);
+    return stored;
+  });
+  function toggleMute() {
+    setSoundMuted(m => {
+      const next = !m;
+      sfx.setMuted(next);
+      localStorage.setItem('cb_muted', String(next));
+      return next;
+    });
+  }
 
   // ── URL params: read from global captured in index.html before React loaded ──
   const _up = (key) => window.__launchParams?.[key] ?? null;
@@ -1475,6 +1986,12 @@ function App() {
   return (
     <>
       {content}
+      {/* Persistent mute toggle */}
+      <MuteButton muted={soundMuted} onToggle={toggleMute} />
+      {/* Deck picker overlay — appears on top of any screen when card selection is needed */}
+      {state?.deckView && (
+        <DeckPickerOverlay state={state} data={data} onAction={handleAction} />
+      )}
       {state.run && (
         <>
           <DevButtons state={state} onDevAction={handleAction} onToggleLog={() => setShowLog(prev => !prev)} />

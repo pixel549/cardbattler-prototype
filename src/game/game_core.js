@@ -23,22 +23,42 @@ function generateMap(seed) {
     return id;
   };
 
+  // Randomise the "soft" node types so each run has a distinct layout.
+  // Hard structure: Start → [branch A, branch B] → [mid-left, mid-right] → [choice] → pre-boss → Boss
+  const branchTypes = rng.pick([
+    ['Combat', 'Event'],    // standard
+    ['Combat', 'Rest'],     // rest as early reward
+    ['Combat', 'Shop'],     // shop available earlier
+    ['Event',  'Combat'],   // event first variant
+  ]);
+  const midTypes = rng.pick([
+    ['Shop', 'Combat'],
+    ['Shop', 'Event'],
+    ['Rest', 'Combat'],
+    ['Event', 'Shop'],
+  ]);
+  const choiceTypes = rng.pick([
+    ['Elite', 'Rest'],
+    ['Elite', 'Shop'],
+    ['Elite', 'Event'],
+  ]);
+
   const start = makeNode("Start", 0, 0);
-  nodes[start].cleared = true;   // visual origin only — mark cleared so it shows as ✓, not an unclaimed combat
-  const a1 = makeNode("Combat", -1, 1);
-  const a2 = makeNode("Event", 1, 1);
-  const b1 = makeNode("Shop", -1, 2);
-  const b2 = makeNode("Combat", 1, 2);
-  const c1 = makeNode("Elite", 0, 3);
-  const c2 = makeNode("Rest", 2, 3);
+  nodes[start].cleared = true;   // visual origin only — mark cleared so it shows as ✓
+
+  const a1 = makeNode(branchTypes[0], -1, 1);
+  const a2 = makeNode(branchTypes[1],  1, 1);
+  const b1 = makeNode(midTypes[0],    -1, 2);
+  const b2 = makeNode(midTypes[1],     1, 2);
+  const c1 = makeNode(choiceTypes[0],  0, 3);
+  const c2 = makeNode(choiceTypes[1],  2, 3);
   const d1 = makeNode("Combat", 0, 4);
   const boss = makeNode("Boss", 0, 5);
 
   nodes[start].next = [a1, a2];
   nodes[a1].next = [b1, b2];
   nodes[a2].next = [b2];
-  // Both Shop and Combat paths can reach either Elite or Rest,
-  // so the player always has a strategic choice at the merge point.
+  // Both mid-left and mid-right paths reach either strategic choice node
   nodes[b1].next = [c1, c2];
   nodes[b2].next = [c1, c2];
   nodes[c1].next = [d1];
@@ -49,22 +69,58 @@ function generateMap(seed) {
   return { nodes, currentNodeId: start, selectableNext: [...nodes[start].next] };
 }
 
-function makeCardRewards(data, seed) {
+function makeCardRewards(data, seed, act = 1, nodeType = 'Combat') {
   const rng = new RNG(seed ^ 0x55CCAA11);
-  // Only offer player-usable, non-Core cards — exclude enemy cards (EC-* / EnemyCard tag)
-  const all = Object.keys(data.cards).filter(id => {
+
+  // Partition player-usable cards into POWER vs standard
+  const powerIds   = [];
+  const standardIds = [];
+  for (const id of Object.keys(data.cards)) {
     const c = data.cards[id];
     const tags = c.tags || [];
-    return !tags.includes('EnemyCard') && !tags.includes('Core') && !id.startsWith('EC-');
-  });
+    if (tags.includes('EnemyCard') || tags.includes('Core') || id.startsWith('EC-')) continue;
+    const isPower = tags.includes('Power') || c.type === 'Power';
+    if (isPower) powerIds.push(id);
+    else standardIds.push(id);
+  }
 
-  // pick distinct
-  const pool = [...all];
-  const choices = [];
-  while (choices.length < 3 && pool.length > 0) {
-    const idx = rng.int(pool.length);
-    choices.push(pool[idx]);
-    pool.splice(idx, 1);
+  // In Act 2+ bias toward higher-cost cards (costRAM >= act threshold)
+  // by duplicating qualifying cards in the pool for weighted selection
+  const costThreshold = act >= 3 ? 4 : act >= 2 ? 3 : 0;
+  const weightedStd = [];
+  for (const id of standardIds) {
+    weightedStd.push(id);
+    if (costThreshold > 0 && (data.cards[id].costRAM || 0) >= costThreshold) {
+      weightedStd.push(id); // double-weight strong cards in later acts
+    }
+  }
+
+  // Helper: pick N distinct from a pool (modifies a local copy)
+  function pickDistinct(pool, n) {
+    const p = [...pool];
+    const out = [];
+    while (out.length < n && p.length > 0) {
+      const idx = rng.int(p.length);
+      out.push(p[idx]);
+      p.splice(idx, 1);
+    }
+    return out;
+  }
+
+  let choices;
+  if ((nodeType === 'Elite' || nodeType === 'Boss') && powerIds.length > 0) {
+    // Elite / Boss: 1 guaranteed POWER card + 2 standard cards
+    const powerPick   = pickDistinct(powerIds, 1);
+    const standardPick = pickDistinct(weightedStd, 2);
+    // Shuffle so POWER card isn't always in the same slot
+    choices = [...powerPick, ...standardPick];
+    for (let i = choices.length - 1; i > 0; i--) {
+      const j = rng.int(i + 1);
+      [choices[i], choices[j]] = [choices[j], choices[i]];
+    }
+  } else {
+    // Normal combat: 3 standard cards (no POWER cards)
+    choices = pickDistinct(weightedStd, 3);
   }
 
   return { cardChoices: choices, canSkip: true };
@@ -429,7 +485,7 @@ export function dispatchGame(stateIn, data, action) {
         state.run.gold += gold;
 
         state.mode = "Reward";
-        state.reward = makeCardRewards(data, state.run.seed ^ (state.run.floor * 777));
+        state.reward = makeCardRewards(data, state.run.seed ^ (state.run.floor * 777), state.run.act, nodeType);
 
         // relic rewards
         if (nodeType === "Elite" || nodeType === "Boss") {

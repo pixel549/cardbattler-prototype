@@ -84,7 +84,9 @@ function endTurnEthereal(state, data) {
 
   for (const cid of p.hand) {
     const ci = state.cardInstances[cid];
+    if (!ci) { push(state.log, { t: 'Warn', msg: `endTurnEthereal: missing instance ${cid}` }); keep.push(cid); continue; }
     const def = data.cards[ci.defId];
+    if (!def) { push(state.log, { t: 'Warn', msg: `endTurnEthereal: missing def ${ci.defId}` }); keep.push(cid); continue; }
     const tags = def.tags || [];
     const rawText = (def.effects || []).filter(e => e.op === 'RawText').map(e => e.text).join(' ');
 

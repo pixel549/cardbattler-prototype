@@ -180,18 +180,19 @@ function RunHeader({ run, data }) {
 // MAP SCREEN — SVG node graph
 // ============================================================
 
-// The map has a fixed layout: 9 nodes at known (x, y) coords
-// x ∈ [-1, 2],  y ∈ [0, 5]   (y=0 = start, y=5 = boss)
+// 12-node layout:  x ∈ [-1, 1]  (full cols) + x = ±0.5 (fork cols)
+//                  y ∈ [0, 5]   (y=0 = Start, y=5 = Boss)
 const SVG_MAP_W = 300;
 const SVG_MAP_H = 500;
 
 function mapNX(x) {
-  // x range [-1, 2] → [44, 256]
-  return 44 + ((x + 1) / 3) * 212;
+  // x ∈ {-1, -0.5, 0, 0.5, 1} → pixel x, centred at 150
+  // -1→50, -0.5→100, 0→150, 0.5→200, 1→250
+  return 150 + x * 100;
 }
 function mapNY(y) {
-  // y=0 at bottom (y=464), y=5 at top (y=36)
-  return 464 - (y / 5) * 428;
+  // y=0 at top (y=36), y=5 at bottom (y=464) — Start visible first, Boss at end
+  return 36 + (y / 5) * 428;
 }
 
 const NODE_TYPE_DESCS = {

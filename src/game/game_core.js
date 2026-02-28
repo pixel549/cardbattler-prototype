@@ -23,47 +23,90 @@ function generateMap(seed) {
     return id;
   };
 
-  // Randomise the "soft" node types so each run has a distinct layout.
-  // Hard structure: Start → [branch A, branch B] → [mid-left, mid-right] → [choice] → pre-boss → Boss
-  const branchTypes = rng.pick([
-    ['Combat', 'Event'],    // standard
-    ['Combat', 'Rest'],     // rest as early reward
-    ['Combat', 'Shop'],     // shop available earlier
-    ['Event',  'Combat'],   // event first variant
-  ]);
-  const midTypes = rng.pick([
-    ['Shop', 'Combat'],
-    ['Shop', 'Event'],
-    ['Rest', 'Combat'],
-    ['Event', 'Shop'],
-  ]);
-  const choiceTypes = rng.pick([
-    ['Elite', 'Rest'],
-    ['Elite', 'Shop'],
-    ['Elite', 'Event'],
-  ]);
+  // ── Per-node type selection ─────────────────────────────────────────────
+  // Each position draws from its own distinct pool so left / right lanes
+  // always feel genuinely different regardless of seed.
 
-  const start = makeNode("Start", 0, 0);
-  nodes[start].cleared = true;   // visual origin only — mark cleared so it shows as ✓
+  // Row 1 — opening choices (3 nodes)
+  const r1L = rng.pick(['Combat', 'Event', 'Shop']);
+  const r1M = rng.pick(['Rest',   'Event', 'Combat']);
+  const r1R = rng.pick(['Shop',   'Combat', 'Event']);
 
-  const a1 = makeNode(branchTypes[0], -1, 1);
-  const a2 = makeNode(branchTypes[1],  1, 1);
-  const b1 = makeNode(midTypes[0],    -1, 2);
-  const b2 = makeNode(midTypes[1],     1, 2);
-  const c1 = makeNode(choiceTypes[0],  0, 3);
-  const c2 = makeNode(choiceTypes[1],  2, 3);
-  const d1 = makeNode("Combat", 0, 4);
-  const boss = makeNode("Boss", 0, 5);
+  // Row 2 — mid-game (3 nodes); re-roll if same as the same-column row-1 type
+  const r2Lraw = rng.pick(['Shop', 'Event', 'Rest', 'Combat']);
+  const r2L    = r2Lraw === r1L ? rng.pick(['Shop', 'Event', 'Rest', 'Combat'].filter(t => t !== r1L)) : r2Lraw;
+  const r2Mraw = rng.pick(['Combat', 'Event', 'Shop', 'Rest']);
+  const r2M    = r2Mraw === r1M ? rng.pick(['Combat', 'Event', 'Shop', 'Rest'].filter(t => t !== r1M)) : r2Mraw;
+  const r2Rraw = rng.pick(['Rest', 'Event', 'Combat', 'Shop']);
+  const r2R    = r2Rraw === r1R ? rng.pick(['Rest', 'Event', 'Combat', 'Shop'].filter(t => t !== r1R)) : r2Rraw;
 
-  nodes[start].next = [a1, a2];
-  nodes[a1].next = [b1, b2];
-  nodes[a2].next = [b2];
-  // Both mid-left and mid-right paths reach either strategic choice node
-  nodes[b1].next = [c1, c2];
-  nodes[b2].next = [c1, c2];
-  nodes[c1].next = [d1];
-  nodes[c2].next = [d1];
+  // Row 4 — pre-boss; ensure the two sides differ
+  const r4L    = rng.pick(['Rest', 'Shop', 'Event']);
+  const r4Rraw = rng.pick(['Combat', 'Rest', 'Event']);
+  const r4R    = r4Rraw === r4L
+    ? (['Combat', 'Rest', 'Event'].find(t => t !== r4L) ?? 'Combat')
+    : r4Rraw;
+
+  // ── Build node graph ────────────────────────────────────────────────────
+  // Layout (x, y):
+  //
+  //          Start  (0, 0)
+  //        /   |   \
+  //   L(-1,1) M(0,1) R(1,1)      ← Row 1: 3 opening choices
+  //      /\ /  |  \/ \
+  //  L2(-1,2) M2(0,2) R2(1,2)   ← Row 2: 3 mid nodes
+  //      \   / \  /  /
+  //    C1(-0.5,3) C2(0.5,3)      ← Row 3: both ELITE (path locks here)
+  //       |             |
+  //    D1(-0.5,4)  D2(0.5,4)     ← Row 4: pre-boss (distinct left/right types)
+  //        \           /
+  //           Boss(0,5)
+  //
+  // PATH-LOCKING:
+  //   L  → L2, M2       (can shift to centre but not far right)
+  //   M  → L2, M2, R2   (flexible, can go either way)
+  //   R  → M2, R2       (can shift to centre but not far left)
+  //   L2 → C1 only      (commits to LEFT elite)
+  //   M2 → C1, C2       (last fork choice)
+  //   R2 → C2 only      (commits to RIGHT elite)
+  //   C1 → D1           (left pre-boss)
+  //   C2 → D2           (right pre-boss)
+
+  const start = makeNode("Start",  0,    0);
+  nodes[start].cleared = true;
+
+  const a1  = makeNode(r1L,    -1,    1);
+  const a2  = makeNode(r1M,     0,    1);
+  const a3  = makeNode(r1R,     1,    1);
+
+  const b1  = makeNode(r2L,    -1,    2);
+  const b2  = makeNode(r2M,     0,    2);
+  const b3  = makeNode(r2R,     1,    2);
+
+  const c1  = makeNode("Elite", -0.5,  3);
+  const c2  = makeNode("Elite",  0.5,  3);
+
+  const d1  = makeNode(r4L,    -0.5,  4);
+  const d2  = makeNode(r4R,     0.5,  4);
+
+  const boss = makeNode("Boss",   0,   5);
+
+  // Connectivity
+  nodes[start].next = [a1, a2, a3];
+
+  nodes[a1].next = [b1, b2];        // left  → left or centre mid
+  nodes[a2].next = [b1, b2, b3];    // centre → any mid
+  nodes[a3].next = [b2, b3];        // right  → centre or right mid
+
+  nodes[b1].next = [c1];            // left mid   → left elite only
+  nodes[b2].next = [c1, c2];        // centre mid → either elite
+  nodes[b3].next = [c2];            // right mid  → right elite only
+
+  nodes[c1].next = [d1];            // left elite  → left pre-boss
+  nodes[c2].next = [d2];            // right elite → right pre-boss
+
   nodes[d1].next = [boss];
+  nodes[d2].next = [boss];
   nodes[boss].next = [];
 
   return { nodes, currentNodeId: start, selectableNext: [...nodes[start].next] };

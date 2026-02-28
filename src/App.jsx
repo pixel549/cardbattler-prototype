@@ -180,10 +180,10 @@ function RunHeader({ run, data }) {
 // MAP SCREEN — SVG node graph
 // ============================================================
 
-// 12-node layout:  x ∈ [-1, 1]  (full cols) + x = ±0.5 (fork cols)
-//                  y ∈ [0, 5]   (y=0 = Start, y=5 = Boss)
+// 25-node layout: x ∈ {-1, -0.5, 0, 0.5, 1}  y ∈ [0, 10]
+// y=0 = Start (top), y=10 = Boss (bottom). ~10 encounter nodes per path.
 const SVG_MAP_W = 300;
-const SVG_MAP_H = 500;
+const SVG_MAP_H = 920;
 
 function mapNX(x) {
   // x ∈ {-1, -0.5, 0, 0.5, 1} → pixel x, centred at 150
@@ -191,8 +191,8 @@ function mapNX(x) {
   return 150 + x * 100;
 }
 function mapNY(y) {
-  // y=0 at top (y=36), y=5 at bottom (y=464) — Start visible first, Boss at end
-  return 36 + (y / 5) * 428;
+  // y=0 at top (y=40), y=10 at bottom (y=880) — Start visible first, Boss at end
+  return 40 + (y / 10) * 840;
 }
 
 const NODE_TYPE_DESCS = {
@@ -1088,8 +1088,16 @@ function DeckPickerOverlay({ state, data, onAction }) {
           const color = typeColors[def.type] || C.text;
           const useRatio = def.defaultUseCounter ? ci.useCounter / def.defaultUseCounter : null;
           const worn = useRatio !== null && useRatio < 0.35;
-          const mutated = !!ci.finalMutationId;
-          const hasMutation = !!ci.mutationId;
+          const mutated     = !!ci.finalMutationId;
+          const isRewritten = ci.finalMutationId === 'J_REWRITE';
+          const isBricked   = ci.finalMutationId === 'J_BRICK';
+          const activeMuts  = ci.appliedMutations || [];
+          const hasMutation = activeMuts.length > 0;   // fixed: was ci.mutationId
+          const decaying    = !mutated && ci.finalMutationCountdown != null && ci.finalMutationCountdown <= 5;
+
+          // Tier → colour mapping for mutation chips
+          const TIER_COLS = { A:'#55ff99', B:'#44ddff', C:'#ffcc44', D:'#ff8844',
+                              E:'#ff5555', F:'#cc44ff', G:'#ff44aa', H:'#ffffff', I:'#ff2222' };
 
           return (
             <button
@@ -1099,8 +1107,8 @@ function DeckPickerOverlay({ state, data, onAction }) {
                 width: '100%', padding: '12px 14px', borderRadius: '10px',
                 textAlign: 'left', transition: 'all 0.15s ease',
                 backgroundColor: `${color}08`,
-                border: `2px solid ${color}35`,
-                boxShadow: `0 0 10px ${color}0a`,
+                border: `2px solid ${isBricked ? C.red : decaying ? C.orange : color}35`,
+                boxShadow: decaying ? `0 0 10px ${C.orange}18` : `0 0 10px ${color}0a`,
                 cursor: 'pointer',
               }}
             >
@@ -1119,35 +1127,67 @@ function DeckPickerOverlay({ state, data, onAction }) {
                     <span style={{ fontFamily: MONO, fontWeight: 700, fontSize: 13, color }}>
                       {def.name}
                     </span>
-                    {hasMutation && !mutated && (
-                      <span className="mut-glow" style={{
-                        fontFamily: MONO, fontSize: 9, padding: '1px 5px', borderRadius: 4,
-                        backgroundColor: `${C.purple}25`, color: C.purple, border: `1px solid ${C.purple}40`,
-                      }}>MUTATED</span>
-                    )}
-                    {mutated && (
+                    {isBricked && (
                       <span style={{
                         fontFamily: MONO, fontSize: 9, padding: '1px 5px', borderRadius: 4,
                         backgroundColor: `${C.red}25`, color: C.red, border: `1px solid ${C.red}40`,
                       }}>BRICKED</span>
                     )}
-                    {worn && !mutated && (
+                    {isRewritten && (
+                      <span style={{
+                        fontFamily: MONO, fontSize: 9, padding: '1px 5px', borderRadius: 4,
+                        backgroundColor: `${C.purple}25`, color: C.purple, border: `1px solid ${C.purple}40`,
+                      }}>REWRITTEN</span>
+                    )}
+                    {worn && !mutated && !decaying && (
                       <span style={{
                         fontFamily: MONO, fontSize: 9, padding: '1px 5px', borderRadius: 4,
                         backgroundColor: `${C.orange}25`, color: C.orange, border: `1px solid ${C.orange}40`,
                       }}>WORN</span>
                     )}
+                    {decaying && (
+                      <span style={{
+                        fontFamily: MONO, fontSize: 9, padding: '1px 5px', borderRadius: 4,
+                        backgroundColor: `${C.orange}30`, color: C.orange, border: `1px solid ${C.orange}60`,
+                      }}>DECAYING ⚠</span>
+                    )}
                   </div>
-                  <div style={{ fontFamily: MONO, fontSize: 10, color: C.textMuted, marginTop: 2 }}>
+
+                  {/* Mutation chips — one per active mutation, coloured by tier */}
+                  {hasMutation && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, marginTop: 4 }}>
+                      {activeMuts.slice(0, 6).map((mid, idx) => {
+                        const mut = data?.mutations?.[mid];
+                        const tier = mid?.charAt(0) ?? '?';
+                        const tc = TIER_COLS[tier] ?? '#aaa';
+                        return (
+                          <span key={`${mid}-${idx}`} style={{
+                            fontFamily: MONO, fontSize: 8, padding: '1px 4px', borderRadius: 3,
+                            backgroundColor: `${tc}18`, color: tc, border: `1px solid ${tc}35`,
+                          }}>
+                            {mut?.name ?? mid}
+                          </span>
+                        );
+                      })}
+                      {activeMuts.length > 6 && (
+                        <span style={{ fontFamily: MONO, fontSize: 8, color: C.textDim }}>
+                          +{activeMuts.length - 6}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Counters row */}
+                  <div style={{ fontFamily: MONO, fontSize: 10, color: C.textMuted, marginTop: 3 }}>
                     {def.type}
-                    {useRatio !== null && (
+                    {useRatio !== null && !mutated && (
                       <span style={{ marginLeft: 8, color: worn ? C.orange : C.textDim }}>
-                        {ci.useCounter}/{def.defaultUseCounter} uses
+                        {ci.useCounter} until mut
                       </span>
                     )}
-                    {ci.finalMutationCountdown !== undefined && !mutated && (
-                      <span style={{ marginLeft: 8, color: C.textDim }}>
-                        mutation in {ci.finalMutationCountdown}
+                    {ci.finalMutationCountdown != null && !mutated && (
+                      <span style={{ marginLeft: 8, color: decaying ? C.orange : C.textDim }}>
+                        · final in {ci.finalMutationCountdown}
                       </span>
                     )}
                   </div>

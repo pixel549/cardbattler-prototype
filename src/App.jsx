@@ -38,6 +38,7 @@ const NODE_COLORS = {
   Shop: C.yellow,
   Rest: C.green,
   Event: C.cyan,
+  Start: C.textMuted,
 };
 
 const NODE_ICONS = {
@@ -47,6 +48,7 @@ const NODE_ICONS = {
   Shop: '\uD83D\uDED2',
   Rest: '\u2665',
   Event: '?',
+  Start: '\u25CF',
 };
 
 /** Shared full-screen background wrapper */
@@ -611,7 +613,7 @@ function ShopScreen({ state, data, onAction }) {
         </div>
       </div>
 
-      <div style={{ flex: 1, padding: '16px', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ flex: 1, padding: '16px', paddingBottom: '8px', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
 
         {/* Cards section */}
         {offers.some(o => o.kind === 'Card') && (
@@ -751,12 +753,23 @@ function ShopScreen({ state, data, onAction }) {
           </div>
         )}
 
+      </div>
+
+      {/* Leave Market — always-visible sticky footer, outside the scrollable area */}
+      <div
+        className="safe-area-bottom"
+        style={{
+          flexShrink: 0,
+          padding: '10px 16px',
+          borderTop: `1px solid ${C.border}`,
+          backgroundColor: C.bgBar,
+        }}
+      >
         <button
           onClick={() => onAction({ type: 'Shop_Exit' })}
-          className="safe-area-bottom"
           style={{
             width: '100%', padding: '14px', borderRadius: '12px',
-            fontFamily: MONO, marginTop: '8px', transition: 'all 0.15s ease',
+            fontFamily: MONO, transition: 'all 0.15s ease',
             backgroundColor: C.bgCard, border: `1px solid ${C.border}`,
             color: C.textMuted, fontSize: 13, cursor: 'pointer',
           }}

@@ -1221,7 +1221,18 @@ function execPatchOp(state, data, rng, cardInstanceId, op, args, ctx) {
   switch (op) {
     // ---- damage / healing ----
     case 'DealSelfDamage': {
-      const amt = parseInt(args[0]) || 0;
+      let amt;
+      if (args[0] === 'EffectHalf') {
+        // Deal self-damage equal to half the card's base attack damage (D-02 Execution Backblast)
+        const def = data.cards[ci?.defId];
+        let baseDmg = 0;
+        for (const eff of (def?.effects || [])) {
+          if (eff.op === 'DealDamage' || eff.op === 'DealDamageX') baseDmg += (eff.amount || 0);
+        }
+        amt = Math.max(1, Math.floor(baseDmg / 2));
+      } else {
+        amt = parseInt(args[0]) || 0;
+      }
       if (amt > 0) { p.hp = Math.max(0, p.hp - amt); log(`DealSelfDamage ${amt}`); }
       break;
     }
@@ -1445,17 +1456,81 @@ function execPatchOp(state, data, rng, cardInstanceId, op, args, ctx) {
       if (ci && data.cards?.[newDefId]) { ci.defId = newDefId; log(`RewriteAs ${newDefId}`); }
       break;
     }
-    // ---- no-ops / stubs ----
+    // ---- fizzle (handled pre-effects in PlayCard; this is a post-check no-op) ----
     case 'Fizzle':
-    case 'TransferToEnemy':
-    case 'LockHand':
-    case 'CopySelf':
-    case 'SelfReflect':
-    case 'EchoEffect':
-    case 'DelayedSelfDamage':
-    case 'DealSelfDamage:EffectHalf':
-      push(state.log, { t: 'Info', msg: `MutPatch stub: ${op}` });
+      // fizzle was already resolved before card effects ran — nothing to do here
       break;
+
+    // ---- transfer card to enemy network (J-04 Network Hop) ----
+    case 'TransferToEnemy': {
+      // Card jumps to the enemy network — remove it from the player's deck and deal recoil damage
+      removeCardEverywhere(state, cardInstanceId);
+      if (ci) ci.removeFromRunOnCombatEnd = true;
+      const recoil = parseInt(args[0]) || 5;
+      p.hp = Math.max(0, p.hp - recoil);
+      log(`TransferToEnemy: card purged, ${recoil} recoil damage`);
+      break;
+    }
+
+    // ---- lock all cards currently in hand for this turn (J-05 Hand Lock) ----
+    case 'LockHand': {
+      state._lockedCards = new Set([...p.piles.hand]);
+      log(`LockHand: ${state._lockedCards.size} cards locked this turn`);
+      break;
+    }
+
+    // ---- copy this card into discard (D+03 Last Safe Commit, fires onBrick) ----
+    case 'CopySelf': {
+      if (!ci) break;
+      const copyCid = `${cardInstanceId}_cp${rng ? rng.int(99999) : Math.floor(Math.random() * 99999)}`;
+      state.cardInstances[copyCid] = {
+        defId: ci.defId,
+        appliedMutations: [],
+        useCounter: 3,
+        finalMutationCountdown: 5,
+        ramCostDelta: 0,
+      };
+      p.piles.discard.push(copyCid);
+      log(`CopySelf: copy of ${ci.defId} added to discard`);
+      break;
+    }
+
+    // ---- reflect a fraction of card damage back to the player (A-12 Soft Mirror) ----
+    case 'SelfReflect': {
+      const ratio = parseFloat(args[0]) || 0.1;
+      const sdef = data.cards[ci?.defId];
+      let baseDmg = 0;
+      for (const eff of (sdef?.effects || [])) {
+        if (eff.op === 'DealDamage' || eff.op === 'DealDamageX') baseDmg += (eff.amount || 0);
+      }
+      if (baseDmg > 0) {
+        const selfDmg = Math.max(1, Math.floor(baseDmg * ratio));
+        p.hp = Math.max(0, p.hp - selfDmg);
+        log(`SelfReflect: ${selfDmg} reflected`);
+      }
+      break;
+    }
+
+    // ---- chance to replay all card effects (C-18 Universal Echo) ----
+    case 'EchoEffect': {
+      const echoChance = parseFloat(args[0]) || 0.2;
+      if (!rng || rng.next() > echoChance) break;
+      const edef = data.cards[ci?.defId];
+      if (!edef) break;
+      log(`EchoEffect: replaying ${edef.name}`);
+      for (const eff of (edef.effects || [])) {
+        applyEffectOp(state, 'player', eff, rng);
+      }
+      break;
+    }
+
+    // ---- queue self-damage to fire at end of turn (D-06 Delayed Recoil) ----
+    case 'DelayedSelfDamage': {
+      const dmg = parseInt(args[0]) || 3;
+      state._pendingEndTurnSelfDamage = (state._pendingEndTurnSelfDamage || 0) + dmg;
+      log(`DelayedSelfDamage: ${dmg} queued for end of turn`);
+      break;
+    }
     default:
       push(state.log, { t: 'Info', msg: `MutPatch unknown op: ${op}` });
   }
@@ -1710,6 +1785,9 @@ export function dispatchCombat(state, data, action) {
       state._firstDamageThisTurn = false;
       state._killchainUsedThisTurn = false;
       delete state._keepOneCard;
+      // Clear mutation-patch per-turn flags
+      delete state._lockedCards;
+      state._pendingEndTurnSelfDamage = 0;
 
       // Apply per-turn status effects (Corrode, Nanoflow, Overheat, Underclock…) before decaying stacks
       processStatusEffects(state, state.player);
@@ -1737,6 +1815,9 @@ export function dispatchCombat(state, data, action) {
       // must be in hand
       if (!state.player.piles.hand.includes(cid)) { push(state.log, { t: "Info", msg: "Card not in hand" }); return state; }
 
+      // locked cards (J-05 Hand Lock) cannot be played this turn
+      if (state._lockedCards?.has(cid)) { push(state.log, { t: "Info", msg: "Card is locked this turn" }); return state; }
+
       const def = data.cards[ci.defId];
 
       // Compute RAM cost, accounting for NextCardFree flag
@@ -1759,8 +1840,24 @@ export function dispatchCombat(state, data, action) {
       // Set target override so effects hit the selected enemy
       if (action.targetEnemyId) state._targetOverride = action.targetEnemyId;
 
-      // play effects (skipped if card is disabled by mutation)
-      if (!mutPassives.disabled) {
+      // Pre-effects fizzle check (A-07 Latency Spike, B-05 Signal Loss)
+      // Fizzle must resolve BEFORE effects so the card's effects are skipped on proc
+      let fizzled = false;
+      for (const mid of (ci.appliedMutations || [])) {
+        if (fizzled) break;
+        const fmut = data.mutations?.[mid];
+        if (!fmut?.patch) continue;
+        for (const fe of parsePatch(fmut.patch)) {
+          if (fe.trigger !== 'onPlay' || fe.op !== 'Fizzle') continue;
+          if (fe.chance !== null && rng && rng.next() > fe.chance) continue;
+          fizzled = true;
+          push(state.log, { t: 'MutPatch', msg: `${def.name} fizzled!`, data: { cardInstanceId: cid, op: 'Fizzle' } });
+          break;
+        }
+      }
+
+      // play effects (skipped if card is disabled by mutation or fizzled)
+      if (!mutPassives.disabled && !fizzled) {
         for (const op of def.effects) {
           applyEffectOp(state, "player", op, rng);
         }
@@ -1841,6 +1938,13 @@ export function dispatchCombat(state, data, action) {
         state.player.hp = Math.max(0, state.player.hp - state._eotLoseHPPerRAM);
         push(state.log, { t: "Info", msg: `X-cost EOT: lost ${state._eotLoseHPPerRAM} HP` });
         delete state._eotLoseHPPerRAM;
+      }
+
+      // Delayed self-damage from mutation patches (D-06 Delayed Recoil)
+      if (state._pendingEndTurnSelfDamage > 0) {
+        state.player.hp = Math.max(0, state.player.hp - state._pendingEndTurnSelfDamage);
+        push(state.log, { t: "Info", msg: `Delayed recoil: ${state._pendingEndTurnSelfDamage} self-damage` });
+        state._pendingEndTurnSelfDamage = 0;
       }
 
       // enemy actions (TraceBeacon bonus is active during enemy attacks)

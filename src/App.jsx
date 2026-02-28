@@ -492,8 +492,20 @@ function RewardScreen({ state, data, onAction }) {
                     {cost}
                   </div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace", fontWeight: 700, color, fontSize: 14 }}>
-                      {card?.name || defId}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      <span style={{ fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace", fontWeight: 700, color, fontSize: 14 }}>
+                        {card?.name || defId}
+                      </span>
+                      {/* Tag chips */}
+                      {(card?.tags || []).filter(t => ['Power','OneShot','Volatile','Exhaust'].includes(t)).map(t => (
+                        <span key={t} style={{
+                          fontSize: 9, fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace",
+                          padding: '1px 5px', borderRadius: 4, fontWeight: 700,
+                          backgroundColor: t === 'Power' ? `${C.purple}25` : `${color}15`,
+                          color: t === 'Power' ? C.purple : color,
+                          border: `1px solid ${t === 'Power' ? C.purple : color}40`,
+                        }}>{t === 'Power' ? 'PWR' : t.toUpperCase()}</span>
+                      ))}
                     </div>
                     <div style={{ fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace", marginTop: '2px', color: C.textDim, fontSize: 11 }}>
                       {card?.type}
@@ -547,8 +559,9 @@ function RewardScreen({ state, data, onAction }) {
 // ============================================================
 
 const SHOP_SERVICE_INFO = {
+  RemoveCard: { icon: '🗑️', desc: 'Permanently remove a card from your deck', color: C.red },
   Remove:     { icon: '🗑️', desc: 'Permanently remove a card from your deck', color: C.red },
-  Repair:     { icon: '🔧', desc: 'Restore a card\'s wear — adds back use counter', color: C.cyan },
+  Repair:     { icon: '🔧', desc: 'Restore a card\'s use counter', color: C.cyan },
   Stabilise:  { icon: '◆',  desc: 'Reset a card\'s mutation countdown', color: C.purple },
   Accelerate: { icon: '⚡', desc: 'Speed up a card\'s mutation trigger', color: C.orange },
   Heal:       { icon: '💊', desc: 'Restore 40 HP', color: C.green },

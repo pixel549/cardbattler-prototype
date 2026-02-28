@@ -1795,6 +1795,20 @@ export function dispatchCombat(state, data, action) {
       tickStatuses(state.player, state.dataRef);
       for (const e of state.enemies) tickStatuses(e, state.dataRef);
 
+      // Win / defeat check after DoT — Burn/Leak can kill before the player acts
+      if (state.player.hp <= 0) {
+        state.combatOver = true;
+        state.victory = false;
+        push(state.log, { t: "Info", msg: "Player defeated by status DoT" });
+        return state;
+      }
+      if (!state.enemies.some(e => e.hp > 0)) {
+        state.combatOver = true;
+        state.victory = true;
+        push(state.log, { t: "Info", msg: "Combat victory (enemy killed by DoT)" });
+        return state;
+      }
+
       // onTurnStart patches for all cards in hand
       for (const cid of [...state.player.piles.hand]) {
         runPatchTrigger(state, data, rng, cid, 'onTurnStart');

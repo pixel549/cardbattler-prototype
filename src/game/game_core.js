@@ -23,7 +23,8 @@ function generateMap(seed) {
     return id;
   };
 
-  const start = makeNode("Combat", 0, 0);
+  const start = makeNode("Start", 0, 0);
+  nodes[start].cleared = true;   // visual origin only — mark cleared so it shows as ✓, not an unclaimed combat
   const a1 = makeNode("Combat", -1, 1);
   const a2 = makeNode("Event", 1, 1);
   const b1 = makeNode("Shop", -1, 2);
@@ -71,7 +72,12 @@ function makeCardRewards(data, seed) {
 
 function makeShop(data, seed) {
   const rng = new RNG(seed ^ 0x0F0F0F0F);
-  const ids = Object.keys(data.cards);
+  // Only offer player-usable cards (same filter as card rewards)
+  const ids = Object.keys(data.cards).filter(id => {
+    const c = data.cards[id];
+    const tags = c.tags || [];
+    return !tags.includes('EnemyCard') && !tags.includes('Core') && !id.startsWith('EC-');
+  });
   return {
     offers: [
       { kind: "Card", defId: rng.pick(ids), price: 50 },

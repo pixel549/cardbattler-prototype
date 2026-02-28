@@ -23,90 +23,192 @@ function generateMap(seed) {
     return id;
   };
 
-  // ── Per-node type selection ─────────────────────────────────────────────
-  // Each position draws from its own distinct pool so left / right lanes
-  // always feel genuinely different regardless of seed.
+  // Re-roll helper: pick from pool, avoiding `blocked` type for variety
+  function vary(pool, blocked) {
+    const raw = rng.pick(pool);
+    if (raw === blocked) {
+      const alt = pool.filter(t => t !== blocked);
+      return alt.length ? rng.pick(alt) : raw;
+    }
+    return raw;
+  }
 
-  // Row 1 — opening choices (3 nodes)
-  const r1L = rng.pick(['Combat', 'Event', 'Shop']);
-  const r1M = rng.pick(['Rest',   'Event', 'Combat']);
-  const r1R = rng.pick(['Shop',   'Combat', 'Event']);
+  // ── Per-row type selection ───────────────────────────────────────────────
+  // 10-row layout: rows 1-3 (opening), row 4 (converge), row 5 (Elite),
+  // row 6 (recovery), rows 7-8 (second half), row 9 (pre-Boss), row 10 (Boss)
+  //
+  // No Rest in rows 1-2 (too early).
+  // Guaranteed Rest/Shop in row 6 (post-Elite recovery).
+  // Guaranteed Rest on left in row 9 (last chance before Boss).
 
-  // Row 2 — mid-game (3 nodes); re-roll if same as the same-column row-1 type
-  const r2Lraw = rng.pick(['Shop', 'Event', 'Rest', 'Combat']);
-  const r2L    = r2Lraw === r1L ? rng.pick(['Shop', 'Event', 'Rest', 'Combat'].filter(t => t !== r1L)) : r2Lraw;
-  const r2Mraw = rng.pick(['Combat', 'Event', 'Shop', 'Rest']);
-  const r2M    = r2Mraw === r1M ? rng.pick(['Combat', 'Event', 'Shop', 'Rest'].filter(t => t !== r1M)) : r2Mraw;
-  const r2Rraw = rng.pick(['Rest', 'Event', 'Combat', 'Shop']);
-  const r2R    = r2Rraw === r1R ? rng.pick(['Rest', 'Event', 'Combat', 'Shop'].filter(t => t !== r1R)) : r2Rraw;
+  // Shuffle helper — Fisher-Yates in-place using seeded rng
+  function shuffle(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = rng.int(i + 1);
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
 
-  // Row 4 — pre-boss; ensure the two sides differ
-  const r4L    = rng.pick(['Rest', 'Shop', 'Event']);
-  const r4Rraw = rng.pick(['Combat', 'Rest', 'Event']);
-  const r4R    = r4Rraw === r4L
-    ? (['Combat', 'Rest', 'Event'].find(t => t !== r4L) ?? 'Combat')
-    : r4Rraw;
+  // Row 1 — opening (no Rest): always 3 DISTINCT types, random order
+  const [r1L, r1M, r1R] = shuffle(['Combat', 'Event', 'Shop']);
+
+  // Row 2 — early mid (no Rest; re-roll vs same-column row-1; dedup mid if all same)
+  let r2L = vary(['Combat', 'Shop', 'Event', 'Combat'], r1L);
+  let r2M = vary(['Combat', 'Event', 'Shop',  'Combat'], r1M);
+  let r2R = vary(['Combat', 'Event', 'Shop',  'Combat'], r1R);
+  if (r2L === r2M && r2M === r2R) r2M = vary(['Combat', 'Event', 'Shop'], r2M);
+
+  // Row 3 — mid-act (Rest now available)
+  const r3L = vary(['Combat', 'Event', 'Rest', 'Shop'], r2L);
+  const r3M = vary(['Event',  'Rest',  'Combat', 'Shop'], r2M);
+  const r3R = vary(['Rest',   'Combat', 'Event', 'Shop'], r2R);
+
+  // Row 4 — pre-Elite converge: 2 nodes, no Rest, must differ from each other
+  const r4L    = rng.pick(['Shop', 'Event', 'Combat']);
+  const r4Rraw = rng.pick(['Event', 'Combat', 'Shop']);
+  const r4R    = r4Rraw === r4L ? vary(['Event', 'Combat', 'Shop'], r4L) : r4Rraw;
+
+  // Row 5 — both ELITE (hard-coded)
+
+  // Row 6 — post-Elite recovery: GUARANTEED Rest on left, Rest or Shop on right
+  const r6L = 'Rest';
+  const r6R = rng.pick(['Rest', 'Shop']);
+
+  // Row 7 — second half opening (no Rest): 3 DISTINCT types, random order
+  const [r7L, r7M, r7R] = shuffle(['Combat', 'Event', 'Shop']);
+
+  // Row 8 — combat-heavy stretch (bias toward Combat; dedup if all same)
+  let r8L = vary(['Combat', 'Combat', 'Event', 'Shop'], r7L);
+  let r8M = vary(['Combat', 'Event',  'Combat', 'Shop'], r7M);
+  let r8R = vary(['Combat', 'Event',  'Shop', 'Combat'], r7R);
+  if (r8L === r8M && r8M === r8R) r8M = vary(['Combat', 'Event', 'Shop'], r8M);
+
+  // Row 9 — pre-Boss: guaranteed Rest on LEFT path, random on right
+  const r9L = 'Rest';
+  const r9R = rng.pick(['Shop', 'Event', 'Combat']);
 
   // ── Build node graph ────────────────────────────────────────────────────
-  // Layout (x, y):
   //
-  //          Start  (0, 0)
-  //        /   |   \
-  //   L(-1,1) M(0,1) R(1,1)      ← Row 1: 3 opening choices
-  //      /\ /  |  \/ \
-  //  L2(-1,2) M2(0,2) R2(1,2)   ← Row 2: 3 mid nodes
-  //      \   / \  /  /
-  //    C1(-0.5,3) C2(0.5,3)      ← Row 3: both ELITE (path locks here)
-  //       |             |
-  //    D1(-0.5,4)  D2(0.5,4)     ← Row 4: pre-boss (distinct left/right types)
-  //        \           /
-  //           Boss(0,5)
+  //                    Start (0,0)
+  //                  /     |     \
+  //           L(-1,1)   M(0,1)   R(1,1)        Row 1 — opening
+  //            /\ /       |       \/ \
+  //       L(-1,2) M(0,2)         M(0,2) R(1,2) Row 2 — early mid
+  //            /\ /       |       \/ \
+  //       L(-1,3) M(0,3)         M(0,3) R(1,3) Row 3 — mid-act (Rest ok)
+  //             \   /               \   /
+  //          CL(-0.5,4)          CR(0.5,4)      Row 4 — converge
+  //               |                   |
+  //          EL(-0.5,5)          ER(0.5,5)      Row 5 — both ELITE
+  //               |                   |
+  //          PL(-0.5,6)          PR(0.5,6)      Row 6 — post-Elite RECOVERY
+  //            /    \               /    \
+  //       L(-1,7)  M(0,7)       M(0,7)  R(1,7) Row 7 — second half
+  //            /\ /       |       \/ \
+  //       L(-1,8) M(0,8)         M(0,8) R(1,8) Row 8 — combat stretch
+  //             \   /               \   /
+  //          BL(-0.5,9)          BR(0.5,9)      Row 9 — pre-Boss
+  //                   \           /
+  //                    Boss (0,10)
   //
-  // PATH-LOCKING:
-  //   L  → L2, M2       (can shift to centre but not far right)
-  //   M  → L2, M2, R2   (flexible, can go either way)
-  //   R  → M2, R2       (can shift to centre but not far left)
-  //   L2 → C1 only      (commits to LEFT elite)
-  //   M2 → C1, C2       (last fork choice)
-  //   R2 → C2 only      (commits to RIGHT elite)
-  //   C1 → D1           (left pre-boss)
-  //   C2 → D2           (right pre-boss)
+  // PATH-LOCK (rows 1→2→3): L→L,M | M→L,M,R | R→M,R
+  // CONVERGE (row 3→4):     L→CL | M→CL,CR | R→CR
+  // ELITE (row 4→5):        CL→EL | CR→ER
+  // RECOVERY (row 5→6):     EL→PL | ER→PR
+  // REOPEN (row 6→7):       PL→L7,M7 | PR→M7,R7
+  // PATH-LOCK (rows 7→8):   L→L,M | M→L,M,R | R→M,R
+  // CONVERGE (row 8→9):     L→BL | M→BL,BR | R→BR
 
-  const start = makeNode("Start",  0,    0);
+  const start = makeNode("Start", 0, 0);
   nodes[start].cleared = true;
 
-  const a1  = makeNode(r1L,    -1,    1);
-  const a2  = makeNode(r1M,     0,    1);
-  const a3  = makeNode(r1R,     1,    1);
+  // Row 1
+  const a1 = makeNode(r1L, -1, 1);
+  const a2 = makeNode(r1M,  0, 1);
+  const a3 = makeNode(r1R,  1, 1);
 
-  const b1  = makeNode(r2L,    -1,    2);
-  const b2  = makeNode(r2M,     0,    2);
-  const b3  = makeNode(r2R,     1,    2);
+  // Row 2
+  const b1 = makeNode(r2L, -1, 2);
+  const b2 = makeNode(r2M,  0, 2);
+  const b3 = makeNode(r2R,  1, 2);
 
-  const c1  = makeNode("Elite", -0.5,  3);
-  const c2  = makeNode("Elite",  0.5,  3);
+  // Row 3
+  const c1 = makeNode(r3L, -1, 3);
+  const c2 = makeNode(r3M,  0, 3);
+  const c3 = makeNode(r3R,  1, 3);
 
-  const d1  = makeNode(r4L,    -0.5,  4);
-  const d2  = makeNode(r4R,     0.5,  4);
+  // Row 4 — converge to 2 (pre-Elite)
+  const d1 = makeNode(r4L, -0.5, 4);
+  const d2 = makeNode(r4R,  0.5, 4);
 
-  const boss = makeNode("Boss",   0,   5);
+  // Row 5 — both Elite
+  const e1 = makeNode("Elite", -0.5, 5);
+  const e2 = makeNode("Elite",  0.5, 5);
 
-  // Connectivity
+  // Row 6 — Recovery (guaranteed Rest/Shop)
+  const f1 = makeNode(r6L, -0.5, 6);
+  const f2 = makeNode(r6R,  0.5, 6);
+
+  // Row 7 — second half reopens to 3 cols
+  const g1 = makeNode(r7L, -1, 7);
+  const g2 = makeNode(r7M,  0, 7);
+  const g3 = makeNode(r7R,  1, 7);
+
+  // Row 8 — combat stretch
+  const h1 = makeNode(r8L, -1, 8);
+  const h2 = makeNode(r8M,  0, 8);
+  const h3 = makeNode(r8R,  1, 8);
+
+  // Row 9 — pre-Boss (Rest guaranteed left)
+  const i1 = makeNode(r9L, -0.5, 9);
+  const i2 = makeNode(r9R,  0.5, 9);
+
+  // Row 10 — Boss
+  const boss = makeNode("Boss", 0, 10);
+
+  // ── Connectivity ────────────────────────────────────────────────────────
   nodes[start].next = [a1, a2, a3];
 
-  nodes[a1].next = [b1, b2];        // left  → left or centre mid
-  nodes[a2].next = [b1, b2, b3];    // centre → any mid
-  nodes[a3].next = [b2, b3];        // right  → centre or right mid
+  // Rows 1 → 2 → 3  (path-locked: L→L,M | M→L,M,R | R→M,R)
+  nodes[a1].next = [b1, b2];
+  nodes[a2].next = [b1, b2, b3];
+  nodes[a3].next = [b2, b3];
 
-  nodes[b1].next = [c1];            // left mid   → left elite only
-  nodes[b2].next = [c1, c2];        // centre mid → either elite
-  nodes[b3].next = [c2];            // right mid  → right elite only
+  nodes[b1].next = [c1, c2];
+  nodes[b2].next = [c1, c2, c3];
+  nodes[b3].next = [c2, c3];
 
-  nodes[c1].next = [d1];            // left elite  → left pre-boss
-  nodes[c2].next = [d2];            // right elite → right pre-boss
+  // Row 3 → converge Row 4
+  nodes[c1].next = [d1];
+  nodes[c2].next = [d1, d2];
+  nodes[c3].next = [d2];
 
-  nodes[d1].next = [boss];
-  nodes[d2].next = [boss];
+  // Row 4 → Elite Row 5 (forced)
+  nodes[d1].next = [e1];
+  nodes[d2].next = [e2];
+
+  // Elite Row 5 → Recovery Row 6 (forced)
+  nodes[e1].next = [f1];
+  nodes[e2].next = [f2];
+
+  // Recovery Row 6 → Row 7 (paths broaden after elite)
+  nodes[f1].next = [g1, g2];   // left recovery  → left or centre
+  nodes[f2].next = [g2, g3];   // right recovery → centre or right
+
+  // Rows 7 → 8  (path-locked again)
+  nodes[g1].next = [h1, h2];
+  nodes[g2].next = [h1, h2, h3];
+  nodes[g3].next = [h2, h3];
+
+  // Row 8 → pre-Boss Row 9
+  nodes[h1].next = [i1];
+  nodes[h2].next = [i1, i2];
+  nodes[h3].next = [i2];
+
+  // Row 9 → Boss
+  nodes[i1].next = [boss];
+  nodes[i2].next = [boss];
   nodes[boss].next = [];
 
   return { nodes, currentNodeId: start, selectableNext: [...nodes[start].next] };

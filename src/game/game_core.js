@@ -7,6 +7,7 @@ import { startCombatFromRunDeck, dispatchCombat, forceNewMutation } from "./engi
 import { makeRelicChoices } from "./relic_rewards";
 import { getRunMods } from "./rules_mods";
 import { createBasicEventRegistry, pickRandomEventId, applyEventChoiceImmediate } from "./events";
+import { getMinigameRewards } from "./minigames";
 import { decodeDebugSeed, decodeSensibleDebugSeed } from "./debugSeed";
 
 const EVENT_REG = createBasicEventRegistry();
@@ -211,7 +212,45 @@ function generateMap(seed) {
   nodes[i2].next = [boss];
   nodes[boss].next = [];
 
-  return { nodes, currentNodeId: start, selectableNext: [...nodes[start].next] };
+  // ── Optional detour cross-paths (once per act half) ──────────────────────
+  // Gives players an optional extra 1–2 encounters by going sideways or
+  // diagonally backward across columns before converging.
+  //
+  // Two detour types:
+  //   sideways  — same-row cross (L↔R at row 3 or 7), adds 1 node
+  //   backward  — diagonal back to previous row's opposite column
+  //               (e.g. c1→b3→c3 or h1→g3→h3), adds 2 nodes
+  //
+  // detourEdges: [[fromId, toId], ...] — returned for amber dashed rendering.
+  const detourEdges = [];
+  function addDetour(from, to) {
+    nodes[from].next.push(to);
+    detourEdges.push([from, to]);
+  }
+
+  // Act 1 detour (rows 1–3 section)
+  if (rng.pick(['sideways', 'backward']) === 'sideways') {
+    // Sideways at row 3 — L↔R bidirectional (adds 1 node per detour)
+    addDetour(c1, c3);
+    addDetour(c3, c1);
+  } else {
+    // Backward diagonal — L-row3→R-row2 and R-row3→L-row2 (adds 2 nodes per detour)
+    addDetour(c1, b3);
+    addDetour(c3, b1);
+  }
+
+  // Act 2 detour (rows 7–8 section)
+  if (rng.pick(['sideways', 'backward']) === 'sideways') {
+    // Sideways at row 7 — L↔R bidirectional
+    addDetour(g1, g3);
+    addDetour(g3, g1);
+  } else {
+    // Backward diagonal — L-row8→R-row7 and R-row8→L-row7
+    addDetour(h1, g3);
+    addDetour(h3, g1);
+  }
+
+  return { nodes, currentNodeId: start, selectableNext: [...nodes[start].next], detourEdges };
 }
 
 function makeCardRewards(data, seed, act = 1, nodeType = 'Combat') {
@@ -745,6 +784,46 @@ export function dispatchGame(stateIn, data, action) {
         state.deckView = { selectedInstanceId: null, returnMode: "Event" };
         state.event.pendingSelectOp = res.needsDeckTarget.op;
         log({ t: "Info", msg: `Select a card for event op: ${res.needsDeckTarget.op}` });
+        return state;
+      }
+
+      state.mode = "Map";
+      state.event = null;
+      return state;
+    }
+
+    // ---------- Minigame complete ----------
+    case "Minigame_Complete": {
+      if (state.mode !== "Event" || !state.run) return state;
+
+      const { eventId, tier } = action; // tier: 'gold' | 'silver' | 'fail' | 'skip'
+      const ops = getMinigameRewards(eventId, tier);
+      log({ t: "Info", msg: `Minigame ${eventId}: ${tier}` });
+
+      for (const op of ops) {
+        if (op.op === "GainGold")   state.run.gold  = (state.run.gold  || 0) + op.amount;
+        if (op.op === "LoseGold")   state.run.gold  = Math.max(0, (state.run.gold || 0) - op.amount);
+        if (op.op === "Heal")       state.run.hp    = Math.min(state.run.maxHP, (state.run.hp || 0) + op.amount);
+        if (op.op === "LoseHP")     state.run.hp    = Math.max(0, (state.run.hp || 0) - op.amount);
+        if (op.op === "GainMaxHP")  state.run.maxHP = (state.run.maxHP || 0) + op.amount;
+        if (op.op === "GainMP")     state.run.mp    = (state.run.mp    || 0) + op.amount;
+
+        // Card ops — open deck picker for player to select a card
+        if (op.op === "AccelerateSelectedCard" || op.op === "StabiliseSelectedCard" ||
+            op.op === "RepairSelectedCard"     || op.op === "RemoveSelectedCard") {
+          state.deckView = { selectedInstanceId: null, returnMode: "Event" };
+          state.event = { eventId, step: 0, pendingSelectOp: op.op };
+          if (state.run.hp <= 0) {
+            state.mode = "GameOver";
+            log({ t: "Info", msg: "Run ended: died in minigame penalty" });
+          }
+          return state;
+        }
+      }
+
+      if (state.run.hp <= 0) {
+        state.mode = "GameOver";
+        log({ t: "Info", msg: "Run ended: died in minigame penalty" });
         return state;
       }
 

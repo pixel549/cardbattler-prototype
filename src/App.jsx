@@ -1350,6 +1350,8 @@ function EventScreen({ state, data, onAction }) {
     const ops = choice.ops.map(o => o.op);
     if (ops.includes('LoseHP')) return C.red;
     if (ops.includes('GainMaxHP')) return C.purple;
+    if (ops.includes('DuplicateSelectedCard')) return C.purple;
+    if (ops.includes('GainCard')) return C.cyan;
     if (ops.includes('AccelerateSelectedCard')) return C.orange;
     if (ops.includes('RemoveSelectedCard')) return C.red;
     if (ops.includes('RepairSelectedCard')) return C.cyan;
@@ -1370,29 +1372,46 @@ function EventScreen({ state, data, onAction }) {
         <div
           className="animate-slide-up"
           style={{
-            borderRadius: '16px', padding: '24px',
+            borderRadius: '16px',
             backgroundColor: C.bgCard,
             border: `1px solid ${C.cyan}30`,
             boxShadow: `0 0 40px ${C.cyan}08`,
             marginBottom: '24px',
             textAlign: 'center',
+            overflow: 'hidden',
           }}
         >
-          {/* Icon */}
-          <div style={{ fontSize: '52px', lineHeight: 1, marginBottom: '12px' }}>{eventDef.icon}</div>
-          {/* Title */}
-          <div style={{
-            fontFamily: MONO, fontWeight: 700, fontSize: '18px',
-            color: C.cyan, letterSpacing: '0.05em', marginBottom: '12px',
-          }}>
-            {eventDef.title.toUpperCase()}
-          </div>
-          {/* Flavour text */}
-          <div style={{
-            fontFamily: MONO, fontSize: '12px', color: C.textDim,
-            fontStyle: 'italic', lineHeight: 1.6, maxWidth: '360px', margin: '0 auto',
-          }}>
-            "{eventDef.text}"
+          {/* Banner image — shown when event has art */}
+          {eventDef.image && (
+            <img
+              src={eventDef.image}
+              alt={eventDef.title}
+              style={{
+                width: '100%', height: '150px',
+                objectFit: 'cover', display: 'block',
+                borderBottom: `1px solid ${C.cyan}20`,
+              }}
+            />
+          )}
+          <div style={{ padding: '20px 24px 24px' }}>
+            {/* Icon — hide if banner image present */}
+            {!eventDef.image && (
+              <div style={{ fontSize: '52px', lineHeight: 1, marginBottom: '12px' }}>{eventDef.icon}</div>
+            )}
+            {/* Title */}
+            <div style={{
+              fontFamily: MONO, fontWeight: 700, fontSize: '18px',
+              color: C.cyan, letterSpacing: '0.05em', marginBottom: '12px',
+            }}>
+              {eventDef.icon && eventDef.image ? `${eventDef.icon}  ` : ''}{eventDef.title.toUpperCase()}
+            </div>
+            {/* Flavour text */}
+            <div style={{
+              fontFamily: MONO, fontSize: '12px', color: C.textDim,
+              fontStyle: 'italic', lineHeight: 1.6, maxWidth: '360px', margin: '0 auto',
+            }}>
+              "{eventDef.text}"
+            </div>
           </div>
         </div>
 

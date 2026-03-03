@@ -139,6 +139,102 @@ export function createBasicEventRegistry() {
       ],
     },
 
+    "EchoChamber": {
+      id: "EchoChamber",
+      title: "Echo Chamber",
+      icon: "🔄",
+      text: "A recursive data loop — whatever enters, exits twice. Someone left it running.",
+      choices: [
+        { id: "duplicate", label: "Mirror the signal — Lose 20 HP: Duplicate a card", ops: [{ op: "LoseHP", amount: 20 }, { op: "DuplicateSelectedCard" }] },
+        { id: "extract",   label: "Extract the pattern — +35g",                        ops: [{ op: "GainGold", amount: 35 }] },
+        { id: "leave",     label: "Shut it down",                                      ops: [] },
+      ],
+    },
+
+    "RogueDrone": {
+      id: "RogueDrone",
+      title: "Rogue Drone",
+      icon: "🚁",
+      text: "A corp drone is off-leash and carrying a data package. High risk, high reward.",
+      choices: [
+        { id: "intercept", label: "Full intercept — Lose 18 HP: +90g",  ops: [{ op: "LoseHP", amount: 18 }, { op: "GainGold", amount: 90 }] },
+        { id: "clip",      label: "Clip it — Lose 8 HP: +40g",          ops: [{ op: "LoseHP", amount: 8  }, { op: "GainGold", amount: 40 }] },
+        { id: "avoid",     label: "Let it pass",                         ops: [] },
+      ],
+    },
+
+    "DataLoop": {
+      id: "DataLoop",
+      title: "Open Data Feed",
+      icon: "📡",
+      text: "An unencrypted data stream — free to access, full of useful patterns.",
+      choices: [
+        { id: "clone",  label: "Download a pattern — Add a card to deck",  ops: [{ op: "GainCard", pool: "standard" }] },
+        { id: "sell",   label: "Sell the access credentials — +55g",        ops: [{ op: "GainGold", amount: 55 }] },
+        { id: "ignore", label: "Move on",                                    ops: [] },
+      ],
+    },
+
+    "Extraction": {
+      id: "Extraction",
+      title: "Emergency Extraction",
+      icon: "🚑",
+      text: "A fixer offers fast evac and a clean-up service. Costs money. Saves skin.",
+      choices: [
+        { id: "full",    label: "Full package — Lose 35g: Heal 30 HP, Remove a card",  ops: [{ op: "LoseGold", amount: 35 }, { op: "Heal", amount: 30 }, { op: "RemoveSelectedCard" }] },
+        { id: "partial", label: "Patch job — Lose 20g: Heal 15 HP",                    ops: [{ op: "LoseGold", amount: 20 }, { op: "Heal", amount: 15 }] },
+        { id: "decline", label: "Handle it yourself",                                   ops: [] },
+      ],
+    },
+
+    "GhostTech": {
+      id: "GhostTech",
+      title: "Ghost Tech",
+      icon: "👻",
+      text: "A military-grade subdermal chip, still in the wrapper. No serial number. Very illegal.",
+      choices: [
+        { id: "install", label: "Install it — Lose 30g: +10 Max HP",  ops: [{ op: "LoseGold", amount: 30 }, { op: "GainMaxHP", amount: 10 }] },
+        { id: "fence",   label: "Fence it — +40g",                    ops: [{ op: "GainGold", amount: 40 }] },
+        { id: "leave",   label: "Don't touch it",                      ops: [] },
+      ],
+    },
+
+    "ShadowBroker": {
+      id: "ShadowBroker",
+      title: "Shadow Broker",
+      icon: "🕶️",
+      text: "They deal in data patterns. Trade something old for something new — sight unseen.",
+      choices: [
+        { id: "trade",   label: "Make the trade — Add a card, Remove a card",  ops: [{ op: "GainCard", pool: "standard" }, { op: "RemoveSelectedCard" }] },
+        { id: "browse",  label: "Just browsing — +30g",                         ops: [{ op: "GainGold", amount: 30 }] },
+        { id: "walk",    label: "Walk away",                                     ops: [] },
+      ],
+    },
+
+    "CorpAmbush": {
+      id: "CorpAmbush",
+      title: "Corp Ambush",
+      icon: "⚠️",
+      text: "A corporate security team has your position. You have three seconds to decide.",
+      choices: [
+        { id: "bribe",   label: "Bribe the captain — Lose 25g",          ops: [{ op: "LoseGold", amount: 25 }] },
+        { id: "fight",   label: "Break through — Lose 18 HP: +60g loot", ops: [{ op: "LoseHP", amount: 18 }, { op: "GainGold", amount: 60 }] },
+        { id: "flee",    label: "Emergency retreat",                      ops: [] },
+      ],
+    },
+
+    "ReconReport": {
+      id: "ReconReport",
+      title: "Recon Report",
+      icon: "🗺️",
+      text: "A runner left a stash with a full intel package on the area ahead. Costs to retrieve.",
+      choices: [
+        { id: "claim",   label: "Claim the intel — Lose 12 HP: Add a card",  ops: [{ op: "LoseHP", amount: 12 }, { op: "GainCard", pool: "standard" }] },
+        { id: "gold",    label: "Take the cash instead — +40g",               ops: [{ op: "GainGold", amount: 40 }] },
+        { id: "pass",    label: "Leave it",                                    ops: [] },
+      ],
+    },
+
   };
 
   return { events, pool: Object.keys(events) };
@@ -158,6 +254,7 @@ export function applyEventChoiceImmediate(state, data, reg, choiceId) {
   const deckOps = new Set([
     "RemoveSelectedCard", "RepairSelectedCard",
     "StabiliseSelectedCard", "AccelerateSelectedCard",
+    "DuplicateSelectedCard",
   ]);
 
   for (const op of choice.ops) {

@@ -58,3 +58,10 @@ Even ideas: Player can reduce or buff mutation severity. Costs -5HP each time.
   Claude can now test directly using the Preview MCP server tools (mcp__Claude_Preview__*). Works by
   starting the local dev server, then taking screenshots and clicking through the game UI — no browser
   extension required. Will use this for future testing.
+
+[FIXED — 2026-03-03] minigames never triggered during normal play
+  pickRandomEventId only picked from narrative events (EVENT_REG.pool). Minigame IDs
+  (EVENT_MINIGAME_*) were never included in the pool so players never encountered them.
+  Fix: added getMinigamePoolForAct(act) to minigames.js and updated event node resolution
+  in game_core.js to combine narrative events + act-appropriate minigame IDs when picking.
+  Each minigame entry now has an `act` property (1/2/3) for correct act-gating.

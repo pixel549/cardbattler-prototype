@@ -7,7 +7,7 @@ import { startCombatFromRunDeck, dispatchCombat, forceNewMutation } from "./engi
 import { makeRelicChoices } from "./relic_rewards";
 import { getRunMods } from "./rules_mods";
 import { createBasicEventRegistry, pickRandomEventId, applyEventChoiceImmediate } from "./events";
-import { getMinigameRewards } from "./minigames";
+import { getMinigameRewards, getMinigamePoolForAct } from "./minigames";
 import { decodeDebugSeed, decodeSensibleDebugSeed } from "./debugSeed";
 
 const EVENT_REG = createBasicEventRegistry();
@@ -339,7 +339,10 @@ function resolveCurrentNodeInternal(state, data, log) {
 
   if (node.type === "Event") {
     state.mode = "Event";
-    const eid = pickRandomEventId(EVENT_REG, state.run.seed ^ state.run.floor);
+    const minigameIds = getMinigamePoolForAct(state.run.act);
+    const allEventIds = [...EVENT_REG.pool, ...minigameIds];
+    const eventRng = new RNG((state.run.seed ^ state.run.floor ^ 0xE17E17) >>> 0);
+    const eid = eventRng.pick(allEventIds);
     state.event = { eventId: eid, step: 0 };
     log({ t: "Info", msg: `Entered event: ${eid}` });
     return state;

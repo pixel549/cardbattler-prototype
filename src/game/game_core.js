@@ -7,6 +7,7 @@ import { startCombatFromRunDeck, dispatchCombat, forceNewMutation } from "./engi
 import { makeRelicChoices } from "./relic_rewards";
 import { getRunMods } from "./rules_mods";
 import { createBasicEventRegistry, pickRandomEventId, applyEventChoiceImmediate } from "./events";
+import { getMinigameRewards, getMinigamePoolForAct } from "./minigames";
 import { decodeDebugSeed, decodeSensibleDebugSeed } from "./debugSeed";
 
 const EVENT_REG = createBasicEventRegistry();
@@ -17,48 +18,148 @@ function uid(rng, prefix) { return `${prefix}_${rng.nextUint().toString(16)}`; }
 function generateMap(seed) {
   const rng = new RNG(seed ^ 0xA5A5A5A5);
   const nodes = {};
-  const makeNode = (type, x, y) => {
+  function makeNode(type, x, y) {
     const id = uid(rng, "n");
     nodes[id] = { id, type, x, y, next: [], cleared: false };
     return id;
+  }
+
+  // ── StS-style path generation ───────────────────────────────────────────
+  // 6 columns (0-5), 15 rows (0=Start, 1-13=content, 14=Boss).
+  // 6 paths, each starting at a unique column. Each path meanders ±1 col/row.
+  // Sorted-order invariant: after each row, path columns are sorted ascending.
+  // This ensures edges never cross (planar graph).
+  // Nodes at the same (row, col) are shared between paths.
+  //
+  //  Start (2.5, 0)      ← single centred node
+  //  /  |  |  |  |  \   ← up to 6 row-1 nodes
+  //   ...14 rows of meandering content...
+  //  \  |  |  |  |  /   ← converge to Boss
+  //  Boss (2.5, 14)
+
+  const COLS   = 6;    // columns 0..5
+  const PATH_N = 6;    // one path per column
+
+  // Deterministic per-(row,col) type — independent of path iteration order
+  function rowColType(row, col) {
+    const tr = new RNG((seed ^ 0xDEADBEEF) ^ (row * 97 + col * 31) * 0x9E3779B1);
+    if (row === 6)  return 'Elite';
+    if (row === 7)  return tr.pick(['Rest', 'Rest', 'Shop']);
+    if (row === 12) return 'Elite';
+    if (row === 13) return tr.pick(['Rest', 'Shop', 'Event']);
+    if (row <= 2)   return tr.pick(['Combat', 'Combat', 'Event', 'Shop']);
+    if (row <= 5)   return tr.pick(['Combat', 'Event', 'Shop', 'Rest', 'Combat']);
+    return               tr.pick(['Combat', 'Event', 'Shop', 'Rest', 'Combat']);
+  }
+
+  // Grid cache: "row,col" → nodeId
+  const grid = {};
+  function getNode(row, col) {
+    const key = `${row},${col}`;
+    if (grid[key]) return grid[key];
+    grid[key] = makeNode(rowColType(row, col), col, row);
+    return grid[key];
+  }
+
+  // Start and Boss — centred at x=2.5
+  const startId = makeNode('Start', 2.5, 0);
+  nodes[startId].cleared = true;
+  const bossId = makeNode('Boss', 2.5, 14);
+  nodes[bossId].next = [];
+
+  // Generate paths — pathCols[p][r-1] = column for path p at row r (rows 1-13)
+  const pathCols = Array.from({ length: PATH_N }, (_, p) => [p]);
+  for (let r = 1; r <= 12; r++) {
+    const proposals = pathCols.map(p => {
+      const cur = p[r - 1];
+      const d = rng.pick([-1, 0, 0, 1]); // slight stay-bias
+      return Math.max(0, Math.min(COLS - 1, cur + d));
+    });
+    // Sort to maintain left-to-right order → edges never cross
+    const sorted = [...proposals].sort((a, b) => a - b);
+    pathCols.forEach((p, i) => p.push(sorted[i]));
+  }
+
+  // Build edges — deduplicated
+  const edgeSet = new Set();
+  function addEdge(fromId, toId) {
+    const k = `${fromId}|${toId}`;
+    if (!edgeSet.has(k)) { edgeSet.add(k); nodes[fromId].next.push(toId); }
+  }
+
+  // Start → row 1
+  for (let p = 0; p < PATH_N; p++) addEdge(startId, getNode(1, pathCols[p][0]));
+
+  // Row r → row r+1 (rows 1..12)
+  for (let r = 1; r <= 12; r++) {
+    for (let p = 0; p < PATH_N; p++) {
+      addEdge(getNode(r, pathCols[p][r - 1]), getNode(r + 1, pathCols[p][r]));
+    }
+  }
+
+  // Row 13 → Boss
+  for (let p = 0; p < PATH_N; p++) addEdge(getNode(13, pathCols[p][12]), bossId);
+
+  return {
+    nodes,
+    currentNodeId: startId,
+    selectableNext: [...nodes[startId].next],
+    detourEdges: [],
   };
-
-  const start = makeNode("Combat", 0, 0);
-  const a1 = makeNode("Combat", -1, 1);
-  const a2 = makeNode("Event", 1, 1);
-  const b1 = makeNode("Shop", -1, 2);
-  const b2 = makeNode("Combat", 1, 2);
-  const c1 = makeNode("Elite", 0, 3);
-  const c2 = makeNode("Rest", 2, 3);
-  const d1 = makeNode("Combat", 0, 4);
-  const boss = makeNode("Boss", 0, 5);
-
-  nodes[start].next = [a1, a2];
-  nodes[a1].next = [b1, b2];
-  nodes[a2].next = [b2];
-  // Both Shop and Combat paths can reach either Elite or Rest,
-  // so the player always has a strategic choice at the merge point.
-  nodes[b1].next = [c1, c2];
-  nodes[b2].next = [c1, c2];
-  nodes[c1].next = [d1];
-  nodes[c2].next = [d1];
-  nodes[d1].next = [boss];
-  nodes[boss].next = [];
-
-  return { nodes, currentNodeId: start, selectableNext: [...nodes[start].next] };
 }
 
-function makeCardRewards(data, seed) {
+function makeCardRewards(data, seed, act = 1, nodeType = 'Combat') {
   const rng = new RNG(seed ^ 0x55CCAA11);
-  const all = Object.keys(data.cards);
 
-  // pick distinct
-  const pool = [...all];
-  const choices = [];
-  while (choices.length < 3 && pool.length > 0) {
-    const idx = rng.int(pool.length);
-    choices.push(pool[idx]);
-    pool.splice(idx, 1);
+  // Partition player-usable cards into POWER vs standard
+  const powerIds   = [];
+  const standardIds = [];
+  for (const id of Object.keys(data.cards)) {
+    const c = data.cards[id];
+    const tags = c.tags || [];
+    if (tags.includes('EnemyCard') || tags.includes('Core') || id.startsWith('EC-')) continue;
+    const isPower = tags.includes('Power') || c.type === 'Power';
+    if (isPower) powerIds.push(id);
+    else standardIds.push(id);
+  }
+
+  // In Act 2+ bias toward higher-cost cards (costRAM >= act threshold)
+  // by duplicating qualifying cards in the pool for weighted selection
+  const costThreshold = act >= 3 ? 4 : act >= 2 ? 3 : 0;
+  const weightedStd = [];
+  for (const id of standardIds) {
+    weightedStd.push(id);
+    if (costThreshold > 0 && (data.cards[id].costRAM || 0) >= costThreshold) {
+      weightedStd.push(id); // double-weight strong cards in later acts
+    }
+  }
+
+  // Helper: pick N distinct from a pool (modifies a local copy)
+  function pickDistinct(pool, n) {
+    const p = [...pool];
+    const out = [];
+    while (out.length < n && p.length > 0) {
+      const idx = rng.int(p.length);
+      out.push(p[idx]);
+      p.splice(idx, 1);
+    }
+    return out;
+  }
+
+  let choices;
+  if ((nodeType === 'Elite' || nodeType === 'Boss') && powerIds.length > 0) {
+    // Elite / Boss: 1 guaranteed POWER card + 2 standard cards
+    const powerPick   = pickDistinct(powerIds, 1);
+    const standardPick = pickDistinct(weightedStd, 2);
+    // Shuffle so POWER card isn't always in the same slot
+    choices = [...powerPick, ...standardPick];
+    for (let i = choices.length - 1; i > 0; i--) {
+      const j = rng.int(i + 1);
+      [choices[i], choices[j]] = [choices[j], choices[i]];
+    }
+  } else {
+    // Normal combat: 3 standard cards (no POWER cards)
+    choices = pickDistinct(weightedStd, 3);
   }
 
   return { cardChoices: choices, canSkip: true };
@@ -66,7 +167,12 @@ function makeCardRewards(data, seed) {
 
 function makeShop(data, seed) {
   const rng = new RNG(seed ^ 0x0F0F0F0F);
-  const ids = Object.keys(data.cards);
+  // Only offer player-usable cards (same filter as card rewards)
+  const ids = Object.keys(data.cards).filter(id => {
+    const c = data.cards[id];
+    const tags = c.tags || [];
+    return !tags.includes('EnemyCard') && !tags.includes('Core') && !id.startsWith('EC-');
+  });
   return {
     offers: [
       { kind: "Card", defId: rng.pick(ids), price: 50 },
@@ -84,11 +190,22 @@ function clamp(n, lo, hi) { return Math.max(lo, Math.min(hi, n)); }
 
 // Called after reward completes: if the current map has no more selectable nodes,
 // advance to the next act and generate a fresh map.
+// After Act 3, the run ends in victory.
+const MAX_ACTS = 3;
 function maybeAdvanceAct(state, data, log) {
   if (!state.map || !state.run) return;
   if (state.map.selectableNext && state.map.selectableNext.length > 0) return;
 
   const prevAct = state.run.act;
+
+  // Win condition: cleared the final act
+  if (prevAct >= MAX_ACTS) {
+    state.run.victory = true;
+    state.mode = "GameOver";
+    log({ t: "Info", msg: `RUN COMPLETE — all ${MAX_ACTS} acts cleared!` });
+    return;
+  }
+
   state.run.act += 1;
   // Generate a new map seeded differently per act so layouts vary
   state.map = generateMap((state.run.seed ^ (state.run.act * 0x9E3779B9)) >>> 0);
@@ -128,6 +245,16 @@ function service_AccelerateCard(state) {
   const ci = state.deck.cardInstances[sel];
   if (!ci || ci.finalMutationId) return false;
   ci.finalMutationCountdown = clamp(ci.finalMutationCountdown - 2, 0, 999);
+  return true;
+}
+function service_DuplicateCard(state, rng) {
+  const sel = state.deckView?.selectedInstanceId;
+  if (!state.deck || !sel) return false;
+  const ci = state.deck.cardInstances[sel];
+  if (!ci) return false;
+  const newId = `ci_${rng.nextUint().toString(16)}`;
+  state.deck.cardInstances[newId] = { ...structuredClone(ci), id: newId };
+  state.deck.master.push(newId);
   return true;
 }
 function service_HealPlayer(state) {
@@ -212,7 +339,10 @@ function resolveCurrentNodeInternal(state, data, log) {
 
   if (node.type === "Event") {
     state.mode = "Event";
-    const eid = pickRandomEventId(EVENT_REG, state.run.seed ^ state.run.floor);
+    const minigameIds = getMinigamePoolForAct(state.run.act);
+    const allEventIds = [...EVENT_REG.pool, ...minigameIds];
+    const eventRng = new RNG((state.run.seed ^ state.run.floor ^ 0xE17E17) >>> 0);
+    const eid = eventRng.pick(allEventIds);
     state.event = { eventId: eid, step: 0 };
     log({ t: "Info", msg: `Entered event: ${eid}` });
     return state;
@@ -360,13 +490,15 @@ export function dispatchGame(stateIn, data, action) {
     case "Combat_StartTurn":
     case "Combat_PlayCard":
     case "Combat_EndTurn":
-    case "Combat_Simulate": {
+    case "Combat_Simulate":
+    case "Combat_ScryResolve": {
       if (state.mode !== "Combat" || !state.combat || !state.run || !state.deck) return state;
 
       const combatAction =
         action.type === "Combat_StartTurn" ? { type: "StartTurn" } :
         action.type === "Combat_EndTurn" ? { type: "EndTurn" } :
         action.type === "Combat_PlayCard" ? { type: "PlayCard", cardInstanceId: action.cardInstanceId, targetEnemyId: action.targetEnemyId } :
+        action.type === "Combat_ScryResolve" ? { type: "ScryResolve", discard: action.discard, top: action.top } :
         { type: "SimulateEncounter", maxTurns: action.maxTurns };
 
       state.combat = dispatchCombat(state.combat, data, combatAction);
@@ -405,7 +537,7 @@ export function dispatchGame(stateIn, data, action) {
         state.run.gold += gold;
 
         state.mode = "Reward";
-        state.reward = makeCardRewards(data, state.run.seed ^ (state.run.floor * 777));
+        state.reward = makeCardRewards(data, state.run.seed ^ (state.run.floor * 777), state.run.act, nodeType);
 
         // relic rewards
         if (nodeType === "Elite" || nodeType === "Boss") {
@@ -507,6 +639,27 @@ export function dispatchGame(stateIn, data, action) {
       // Rest Site is handled by dedicated actions
       if (state.event.eventId === "RestSite") return state;
 
+      // Pre-process GainCard ops (add random card to deck before applying other ops)
+      {
+        const evDef = EVENT_REG.events[state.event.eventId];
+        const evChoice = evDef?.choices.find(c => c.id === action.choiceId);
+        if (evChoice) {
+          for (const op of evChoice.ops) {
+            if (op.op === 'GainCard') {
+              const cardRng = new RNG((state.run.seed ^ state.run.floor ^ 0xCA4DCA4D) >>> 0);
+              const pool = Object.keys(data.cards).filter(id => {
+                const c = data.cards[id];
+                const tags = c.tags || [];
+                if (tags.includes('EnemyCard') || tags.includes('Core') || id.startsWith('EC-')) return false;
+                if (op.pool === 'power') return tags.includes('Power') || c.type === 'Power';
+                return !tags.includes('Power') && c.type !== 'Power';
+              });
+              if (pool.length) addCardToRunDeck(data, state.deck, cardRng, cardRng.pick(pool));
+            }
+          }
+        }
+      }
+
       const res = applyEventChoiceImmediate(state, data, EVENT_REG, action.choiceId);
       log({ t: "Info", msg: `Event choice: ${action.choiceId}` });
 
@@ -520,6 +673,46 @@ export function dispatchGame(stateIn, data, action) {
         state.deckView = { selectedInstanceId: null, returnMode: "Event" };
         state.event.pendingSelectOp = res.needsDeckTarget.op;
         log({ t: "Info", msg: `Select a card for event op: ${res.needsDeckTarget.op}` });
+        return state;
+      }
+
+      state.mode = "Map";
+      state.event = null;
+      return state;
+    }
+
+    // ---------- Minigame complete ----------
+    case "Minigame_Complete": {
+      if (state.mode !== "Event" || !state.run) return state;
+
+      const { eventId, tier } = action; // tier: 'gold' | 'silver' | 'fail' | 'skip'
+      const ops = getMinigameRewards(eventId, tier);
+      log({ t: "Info", msg: `Minigame ${eventId}: ${tier}` });
+
+      for (const op of ops) {
+        if (op.op === "GainGold")   state.run.gold  = (state.run.gold  || 0) + op.amount;
+        if (op.op === "LoseGold")   state.run.gold  = Math.max(0, (state.run.gold || 0) - op.amount);
+        if (op.op === "Heal")       state.run.hp    = Math.min(state.run.maxHP, (state.run.hp || 0) + op.amount);
+        if (op.op === "LoseHP")     state.run.hp    = Math.max(0, (state.run.hp || 0) - op.amount);
+        if (op.op === "GainMaxHP")  state.run.maxHP = (state.run.maxHP || 0) + op.amount;
+        if (op.op === "GainMP")     state.run.mp    = (state.run.mp    || 0) + op.amount;
+
+        // Card ops — open deck picker for player to select a card
+        if (op.op === "AccelerateSelectedCard" || op.op === "StabiliseSelectedCard" ||
+            op.op === "RepairSelectedCard"     || op.op === "RemoveSelectedCard") {
+          state.deckView = { selectedInstanceId: null, returnMode: "Event" };
+          state.event = { eventId, step: 0, pendingSelectOp: op.op };
+          if (state.run.hp <= 0) {
+            state.mode = "GameOver";
+            log({ t: "Info", msg: "Run ended: died in minigame penalty" });
+          }
+          return state;
+        }
+      }
+
+      if (state.run.hp <= 0) {
+        state.mode = "GameOver";
+        log({ t: "Info", msg: "Run ended: died in minigame penalty" });
         return state;
       }
 
@@ -569,6 +762,10 @@ export function dispatchGame(stateIn, data, action) {
         if (op === "RepairSelectedCard") ok = service_RepairCard(state, data);
         if (op === "StabiliseSelectedCard") ok = service_StabiliseCard(state, data);
         if (op === "AccelerateSelectedCard") ok = service_AccelerateCard(state);
+        if (op === "DuplicateSelectedCard") {
+          const dupRng = new RNG((state.run?.seed ^ state.run?.floor ^ 0xD0D0D0) >>> 0);
+          ok = service_DuplicateCard(state, dupRng);
+        }
         if (!ok) { log({ t: "Info", msg: `Event card op failed: ${op}` }); return state; }
         log({ t: "Info", msg: `Event: applied card op ${op}` });
         state.event.pendingSelectOp = undefined;

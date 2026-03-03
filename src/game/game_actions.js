@@ -8,6 +8,7 @@ export const Action = {
   Combat_PlayCard: "Combat_PlayCard",
   Combat_EndTurn: "Combat_EndTurn",
   Combat_Simulate: "Combat_Simulate",
+  Combat_ScryResolve: "Combat_ScryResolve",
 
   Reward_PickCard: "Reward_PickCard",
   Reward_Skip: "Reward_Skip",

@@ -143,20 +143,23 @@ function getIntentColor(intentType) {
 // STATUS DESCRIPTIONS (shown in tooltips on hover/tap)
 // ============================================================
 const STATUS_DESCRIPTIONS = {
-  Firewall:     'Block that persists between turns (not reset each turn)',
-  Weak:         'Deal 25% less damage while active',
-  Vulnerable:   'Take 50% more incoming damage while active',
-  Leak:         'Enables enemy multi-hit preference; combo penalty',
-  ExposedPorts: 'Vulnerability-like debuff — increases damage taken',
-  SensorGlitch: 'Accuracy / targeting interference — may cause misses',
-  Corrode:      'Strips block each turn (armour decay) · stacks = block stripped',
-  Underclock:   'Reduces RAM regeneration each turn',
-  Overclock:    'Increases damage output or RAM regen',
-  Nanoflow:     'Regenerate HP equal to stacks at the start of each turn',
-  TargetSpoof:  'Misdirects enemy targeting',
-  Overheat:     'Deal stacks damage to self at the start of each turn',
-  Throttled:    'Reduces card draw or play speed',
-  TraceBeacon:  'Marks the entity — may trigger additional enemy effects',
+  Firewall:        'Persistent shield — absorbs incoming damage before block/HP. Does NOT reset each turn.',
+  Weak:            'Deal 25% less damage while active. Decays 1/turn.',
+  Vulnerable:      'Take 50% more incoming damage while active. Decays 1/turn.',
+  Leak:            'DoT: 1 damage per stack each turn (data hemorrhage). Decays 1/turn.',
+  ExposedPorts:    'Take 40% more incoming damage while active. Decays 1/turn.',
+  SensorGlitch:    'Reduces outgoing damage −15% per stack (max 60%). Decays 1/turn.',
+  Corrode:         'Strips block AND deals 1 HP damage per stack each turn. Decays 1/turn.',
+  Underclock:      'Reduces outgoing damage −10% per stack (max 50%). Decays 1/turn.',
+  Overclock:       'Boosts outgoing damage +25% per stack (max +150%). Decays 1/turn.',
+  Nanoflow:        'Heals HP equal to stacks at start of each turn. Decays 1/turn.',
+  TargetSpoof:     'Confused targeting: −25% damage per stack (max 75%). Decays 1/turn.',
+  Overheat:        'DoT: deals stacks×HP damage to self each turn. Decays 1/turn.',
+  Throttled:       'Reduces outgoing damage −15% per stack (max 60%). Decays 1/turn.',
+  TraceBeacon:     'Tracking marker: take +20% damage per stack from all sources.',
+  Burn:            'DoT: 2 HP damage per stack each turn. Decays 1/turn.',
+  CorruptedSector: 'Cannot gain block this turn. Decays 1/turn.',
+  DazedPackets:    'Scrambled packets: −20% outgoing damage per stack (max 80%). Decays 1/turn.',
 };
 
 // ============================================================
@@ -710,10 +713,18 @@ function EnemyCard({ enemy, isTargeted, onClick, actingType, data }) {
 // ============================================================
 // PLAYER STATS PANEL (bottom-left)
 // ============================================================
-function PlayerPanel({ player, turn }) {
+function PlayerPanel({ player, turn, powerPile = [], cardInstances = {}, data }) {
   const hp = player?.hp ?? 0;
   const maxHp = player?.maxHP ?? 1;
   const block = player?.block ?? 0;
+  // Firewall is now a persistent status, not regular block
+  const firewallStacks = player?.statuses?.find(s => s.id === 'Firewall')?.stacks ?? 0;
+  const nonFirewallStatuses = (player?.statuses || []).filter(s => s.id !== 'Firewall');
+  // Active Power cards
+  const activePowers = powerPile.map(cid => {
+    const ci = cardInstances[cid];
+    return ci ? data?.cards?.[ci.defId] : null;
+  }).filter(Boolean);
 
   return (
     <div
@@ -749,29 +760,71 @@ function PlayerPanel({ player, turn }) {
       {/* HP bar - prominent */}
       <HealthBar current={hp} max={maxHp} height={14} showText={true} />
 
-      {/* Firewall (Block) badge - always visible */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '3px',
-          fontSize: 11,
-          fontFamily: MONO,
-          fontWeight: 700,
-          color: block > 0 ? C.neonCyan : C.textDim,
-          backgroundColor: block > 0 ? `${C.neonCyan}15` : `${C.textDim}10`,
-          borderRadius: '4px',
-          padding: '3px 8px',
-          border: `1px solid ${block > 0 ? `${C.neonCyan}30` : `${C.textDim}20`}`,
-          transition: 'all 0.3s ease',
-        }}
-      >
-        {'\u25A3'} <span style={{ fontSize: 8, letterSpacing: '0.05em' }}>FW</span> {block}
+      {/* Firewall shield badge (persistent) + Block badge (temporary) */}
+      <div style={{ display: 'flex', gap: '3px', justifyContent: 'center', flexWrap: 'wrap' }}>
+        <div
+          title={`Firewall: ${firewallStacks} (persistent shield — not reset each turn)`}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '2px',
+            fontSize: 11,
+            fontFamily: MONO,
+            fontWeight: 700,
+            color: firewallStacks > 0 ? C.neonCyan : C.textDim,
+            backgroundColor: firewallStacks > 0 ? `${C.neonCyan}15` : `${C.textDim}10`,
+            borderRadius: '4px',
+            padding: '3px 7px',
+            border: `1px solid ${firewallStacks > 0 ? `${C.neonCyan}40` : `${C.textDim}20`}`,
+            transition: 'all 0.3s ease',
+          }}
+        >
+          {'\u25A3'} <span style={{ fontSize: 8, letterSpacing: '0.05em' }}>FW</span> {firewallStacks}
+        </div>
+        {block > 0 && (
+          <div
+            title={`Block: ${block} (resets next turn)`}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '2px',
+              fontSize: 11,
+              fontFamily: MONO,
+              fontWeight: 700,
+              color: '#66aaff',
+              backgroundColor: '#66aaff15',
+              borderRadius: '4px',
+              padding: '3px 7px',
+              border: '1px solid #66aaff30',
+            }}
+          >
+            🛡 {block}
+          </div>
+        )}
       </div>
 
-      {/* Player statuses */}
-      <StatusRow statuses={player?.statuses} size="small" justify="center" />
+      {/* Player statuses (Firewall shown separately above) */}
+      <StatusRow statuses={nonFirewallStatuses} size="small" justify="center" />
+
+      {/* Active Power cards */}
+      {activePowers.length > 0 && (
+        <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 4, marginTop: 2 }}>
+          <div style={{ fontFamily: MONO, fontSize: 6, color: '#aa66ff', letterSpacing: '0.08em', marginBottom: 3, textAlign: 'center' }}>
+            ⚡ POWERS
+          </div>
+          {activePowers.map((def, i) => (
+            <div key={i} title={def.effects?.find(e => e.op === 'RawText')?.text || ''} style={{
+              fontFamily: MONO, fontSize: 7, color: '#cc88ff',
+              backgroundColor: '#aa44ff12', border: '1px solid #aa44ff30',
+              borderRadius: 3, padding: '1px 4px', marginBottom: 2,
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+              maxWidth: '100%',
+            }}>
+              {def.name}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -992,7 +1045,11 @@ function HandCard({ cardInstance, cardDef, isSelected, onSelect, canPlay, compac
   const isDecaying = countdown != null && countdown <= 3;
   const isBricked   = cardInstance?.finalMutationId === 'J_BRICK';
   const isRewritten  = cardInstance?.finalMutationId === 'J_REWRITE';
-  const isMutable = cardDef?.tags && !cardDef.tags.includes('Core') && !cardDef.tags.includes('EnemyCard');
+  const isMutable   = cardDef?.tags && !cardDef.tags.includes('Core') && !cardDef.tags.includes('EnemyCard');
+  const isVolatile  = (cardDef?.tags || []).includes('Volatile');
+  const isOneShot   = (cardDef?.tags || []).includes('OneShot');
+  const isExhaust   = (cardDef?.tags || []).includes('Exhaust') || (cardDef?.tags || []).includes('Ethereal');
+  const isPower     = (cardDef?.tags || []).includes('Power') || cardDef?.type === 'Power';
 
   const w = compact ? 72 : 105;
   const h = compact ? 100 : 148;
@@ -1143,6 +1200,47 @@ function HandCard({ cardInstance, cardDef, isSelected, onSelect, canPlay, compac
           }}
         >
           ✦
+        </div>
+      )}
+
+      {/* Volatile / OneShot / Exhaust indicator strip (bottom-left) */}
+      {(isVolatile || isOneShot || isExhaust || isPower) && !compact && (
+        <div style={{
+          position: 'absolute', bottom: 3, left: 3,
+          display: 'flex', gap: 2, zIndex: 10,
+        }}>
+          {isPower && (
+            <span title="Power — stays in play permanently, provides ongoing passive effects" style={{
+              fontFamily: MONO, fontSize: 6, fontWeight: 700, letterSpacing: '0.05em',
+              padding: '1px 3px', borderRadius: 3,
+              backgroundColor: '#aa44ff22', color: '#cc88ff',
+              border: '1px solid #aa44ff55',
+            }}>PWR</span>
+          )}
+          {isVolatile && (
+            <span title="Volatile — discarded after use" style={{
+              fontFamily: MONO, fontSize: 6, fontWeight: 700, letterSpacing: '0.05em',
+              padding: '1px 3px', borderRadius: 3,
+              backgroundColor: `${C.neonOrange}22`, color: C.neonOrange,
+              border: `1px solid ${C.neonOrange}55`,
+            }}>VOL</span>
+          )}
+          {isOneShot && (
+            <span title="One-Shot — permanently removed after use" style={{
+              fontFamily: MONO, fontSize: 6, fontWeight: 700, letterSpacing: '0.05em',
+              padding: '1px 3px', borderRadius: 3,
+              backgroundColor: `${C.neonRed}22`, color: C.neonRed,
+              border: `1px solid ${C.neonRed}55`,
+            }}>1×</span>
+          )}
+          {isExhaust && !isOneShot && (
+            <span title="Exhaust — removed from deck this combat" style={{
+              fontFamily: MONO, fontSize: 6, fontWeight: 700, letterSpacing: '0.05em',
+              padding: '1px 3px', borderRadius: 3,
+              backgroundColor: `${C.neonPurple}22`, color: C.neonPurple,
+              border: `1px solid ${C.neonPurple}55`,
+            }}>EXH</span>
+          )}
         </div>
       )}
 
@@ -1476,6 +1574,89 @@ function PileViewer({ title, cards, cardInstances, data, onClose }) {
 }
 
 // ============================================================
+// ARC HAND — semi-circle fan of cards at the bottom
+// ============================================================
+function ArcHand({ hand, cardInstances, data, selectedCardId, onSelect, canPlayCard, aiPaused, onHover }) {
+  const n = hand.length;
+
+  const CARD_W    = 72;
+  const CARD_H    = 100;
+  const MAX_ANGLE = Math.min(52, n * 8); // total spread in degrees
+  const ARC_DROP  = Math.min(28, n * 4); // edge cards drop below centre
+  const SEL_LIFT  = 24;                  // selected card lifts up
+
+  // Compress overlap so all cards fit within viewport with room for rotation
+  // rotated card top-edge can extend: CARD_H * sin(MAX_ANGLE/2) extra horizontally
+  const viewW    = typeof window !== 'undefined' ? window.innerWidth : 375;
+  const rotExtra = Math.ceil(CARD_H * Math.sin((MAX_ANGLE / 2) * Math.PI / 180));
+  const usable   = viewW - rotExtra * 2 - 16; // subtract rotation overhang + padding
+  const OVERLAP  = n > 1 ? Math.min(44, Math.max(20, (usable - CARD_W) / (n - 1))) : 44;
+
+  // Container tall enough for card body + arc drop + selected lift
+  const CONTAINER_H = CARD_H + ARC_DROP + SEL_LIFT + 8;
+
+  if (n === 0) {
+    return (
+      <div style={{ height: 80, borderTop: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <span style={{ fontFamily: MONO, fontSize: 11, color: C.textDim }}>— no cards —</span>
+      </div>
+    );
+  }
+
+  const centerIdx = (n - 1) / 2;
+  const fanSpan   = (n - 1) * OVERLAP;
+  // Offset 18% right of center — thumb-friendly for right-handed players
+  const fanLeft   = (viewW - fanSpan - CARD_W) / 2 + viewW * 0.18;
+
+  return (
+    // overflow: visible so rotated card edges are never clipped
+    <div style={{ borderTop: `1px solid ${C.border}`, position: 'relative', overflow: 'visible' }}>
+      <div style={{ position: 'relative', height: CONTAINER_H, overflow: 'visible' }}>
+        {hand.map((cid, idx) => {
+          const ci  = cardInstances[cid];
+          const def = data?.cards?.[ci?.defId];
+          const isSelected = selectedCardId === cid;
+
+          const t     = n > 1 ? (idx - centerIdx) / centerIdx : 0; // -1..+1
+          const angle = t * (MAX_ANGLE / 2);
+          const yDrop = t * t * ARC_DROP;
+          const yLift = isSelected ? SEL_LIFT : 0;
+          const xPos  = fanLeft + idx * OVERLAP;
+          const yPos  = SEL_LIFT + ARC_DROP - yLift + yDrop;
+          const zIdx  = isSelected ? 100 : Math.round(n - Math.abs(t) * n + 1);
+
+          return (
+            <div
+              key={cid}
+              style={{
+                position: 'absolute',
+                left: xPos,
+                top: yPos,
+                transformOrigin: 'bottom center',
+                transform: `rotate(${angle}deg)`,
+                zIndex: zIdx,
+                transition: 'top 0.18s ease, transform 0.18s ease',
+              }}
+            >
+              <HandCard
+                cardInstance={ci}
+                cardDef={def}
+                isSelected={isSelected}
+                canPlay={canPlayCard(cid)}
+                onSelect={() => onSelect(cid)}
+                compact={true}
+                showTooltip={aiPaused}
+                onHover={onHover}
+              />
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
 // MAIN COMBAT SCREEN
 // ============================================================
 export default function CombatScreen({ state, data, onAction, aiPaused = false }) {
@@ -1484,8 +1665,8 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false }
   const [targetedEnemyIndex, setTargetedEnemyIndex] = useState(0);
   const [actingEnemies, setActingEnemies] = useState({});
   const [tooltip, setTooltip] = useState({ cardDef: null, x: 0, y: 0 });
+  const [scryDiscard, setScryDiscard] = useState(new Set());
   const [floats, setFloats] = useState([]);
-  const handScrollRef = useRef(null);
   const lastLogLenRef = useRef(0);
   const floatIdRef = useRef(0);
 
@@ -1634,6 +1815,53 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false }
 
   if (!combat || combat.combatOver) {
     const victory = combat?.victory;
+    const accentColor = victory ? C.neonGreen : C.neonRed;
+
+    // ── Compute combat stats from structured log ───────────────────────────
+    const log = combat?.log || [];
+    let totalDmgDealt = 0;
+    let totalDmgTaken = 0;
+    let totalBlocked  = 0;
+    let cardsPlayedN  = 0;
+    let killerName    = null;
+    for (const entry of log) {
+      if (entry.t === 'DamageDealt') {
+        const d = entry.data || {};
+        if (d.isPlayerSource) {
+          totalDmgDealt += d.finalDamage || 0;
+        } else {
+          totalDmgTaken += d.finalDamage || 0;
+          totalBlocked  += d.blocked     || 0;
+          if (!victory) {
+            const attacker = (combat?.enemies || []).find(e => e.id === d.sourceId);
+            if (attacker) killerName = attacker.name;
+          }
+        }
+      } else if (entry.t === 'CardPlayed') {
+        cardsPlayedN++;
+      }
+    }
+    const turns           = combat?.turn || 0;
+    const hpFinal         = combat?.player?.hp ?? 0;
+    const hpMax           = combat?.player?.maxHP ?? 75;
+    const enemiesDefeated = (combat?.enemies || []).filter(e => e.hp <= 0).length;
+    const totalEnemies    = (combat?.enemies || []).length;
+    const blockEff        = (totalBlocked + totalDmgTaken) > 0
+      ? Math.round(100 * totalBlocked / (totalBlocked + totalDmgTaken))
+      : 0;
+
+    const StatRow = ({ label, value, valueColor }) => (
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        padding: '7px 0',
+        borderBottom: `1px solid ${C.neonCyan}12`,
+        fontFamily: MONO, fontSize: 13,
+      }}>
+        <span style={{ color: C.textDim }}>{label}</span>
+        <span style={{ color: valueColor || C.text, fontWeight: 700 }}>{value}</span>
+      </div>
+    );
+
     return (
       <div
         style={{
@@ -1644,38 +1872,89 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false }
           justifyContent: 'center',
           padding: '24px',
           backgroundColor: C.bg,
+          backgroundImage: `
+            linear-gradient(${C.neonCyan}03 1px, transparent 1px),
+            linear-gradient(90deg, ${C.neonCyan}03 1px, transparent 1px)
+          `,
+          backgroundSize: '24px 24px',
         }}
       >
+        {/* Header */}
         <div
           className="animate-slide-up"
           style={{
-            fontSize: '30px',
+            fontSize: '32px',
             fontFamily: MONO,
-            fontWeight: 700,
-            marginBottom: '8px',
-            color: victory ? C.neonGreen : C.neonRed,
+            fontWeight: 900,
+            marginBottom: '4px',
+            letterSpacing: '0.15em',
+            color: accentColor,
+            textShadow: `0 0 24px ${accentColor}80`,
           }}
         >
-          {victory ? 'VICTORY' : 'DEFEATED'}
+          {victory ? '✓ VICTORY' : '✗ DEFEATED'}
         </div>
-        <div style={{ fontFamily: MONO, marginBottom: '32px', color: C.textDim, fontSize: 13 }}>
-          {victory ? 'Systems operational' : 'Connection lost'}
+        <div style={{ fontFamily: MONO, marginBottom: '24px', color: C.textDim, fontSize: 12, letterSpacing: '0.06em', textAlign: 'center' }}>
+          {victory
+            ? 'All threats neutralised — systems operational'
+            : `Connection lost${killerName ? ` — terminated by ${killerName}` : ''}`}
         </div>
+
+        {/* Stats card */}
+        <div style={{
+          width: '100%', maxWidth: 340,
+          backgroundColor: C.bgCard,
+          border: `1px solid ${accentColor}30`,
+          borderRadius: 14,
+          padding: '16px 20px',
+          marginBottom: 28,
+          boxShadow: `0 0 30px ${accentColor}10`,
+        }}>
+          <div style={{
+            fontFamily: MONO, fontSize: 10, fontWeight: 700,
+            color: accentColor, letterSpacing: '0.14em', marginBottom: 10,
+          }}>
+            ▸ COMBAT REPORT
+          </div>
+          <StatRow label="Turns"              value={turns} />
+          <StatRow label="Cards played"       value={cardsPlayedN} />
+          <StatRow
+            label="HP remaining"
+            value={`${hpFinal} / ${hpMax}`}
+            valueColor={hpFinal > hpMax * 0.5 ? C.neonGreen : hpFinal > 0 ? C.neonOrange : C.neonRed}
+          />
+          <StatRow label="Enemies down"       value={`${enemiesDefeated} / ${totalEnemies}`} />
+          <StatRow label="Damage dealt"       value={totalDmgDealt.toLocaleString()} valueColor={C.neonRed} />
+          <StatRow
+            label="Damage taken"
+            value={totalDmgTaken.toLocaleString()}
+            valueColor={totalDmgTaken > hpMax * 2 ? C.neonRed : C.text}
+          />
+          <StatRow
+            label="Damage blocked"
+            value={`${totalBlocked.toLocaleString()}  (${blockEff}% eff.)`}
+            valueColor={C.neonCyan}
+          />
+        </div>
+
         <button
           onClick={() => onAction?.({ type: 'GoToMap' })}
           style={{
-            padding: '16px 32px',
+            padding: '14px 40px',
             borderRadius: '12px',
             fontFamily: MONO,
             fontWeight: 700,
-            fontSize: '18px',
+            fontSize: '16px',
+            letterSpacing: '0.08em',
             transition: 'all 0.2s ease',
-            backgroundColor: victory ? C.neonGreen : C.neonRed,
+            backgroundColor: accentColor,
             color: '#000',
-            boxShadow: `0 0 30px ${victory ? C.neonGreen : C.neonRed}40`,
+            border: 'none',
+            cursor: 'pointer',
+            boxShadow: `0 0 30px ${accentColor}40`,
           }}
         >
-          Continue
+          Continue →
         </button>
       </div>
     );
@@ -1802,62 +2081,50 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false }
         )}
       </div>
 
-      {/* ============ ZONE C: PLAYER PANEL + HAND CARDS ============ */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'stretch',
-          gap: '8px',
-          padding: '8px 8px 4px 8px',
-          borderTop: `1px solid ${C.border}`,
-        }}
-      >
-        {/* Left: Player Stats */}
-        <PlayerPanel
-          player={player}
-          turn={combat.turn}
-        />
-
-        {/* Right: Compact fanned hand cards */}
-        <div
-          ref={handScrollRef}
-          style={{
-            flex: 1,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'flex-end',
-            overflowX: 'auto',
-            paddingRight: '4px',
-            WebkitOverflowScrolling: 'touch',
-          }}
-        >
-          {hand.map((cid, idx) => {
-            const ci = cardInstances[cid];
-            const def = data?.cards?.[ci?.defId];
-            return (
-              <div
-                key={cid}
-                style={{
-                  marginLeft: idx > 0 ? '-10px' : 0,
-                  zIndex: selectedCardId === cid ? 20 : hand.length - idx,
-                  transition: 'all 0.2s ease',
-                }}
-              >
-                <HandCard
-                  cardInstance={ci}
-                  cardDef={def}
-                  isSelected={selectedCardId === cid}
-                  canPlay={canPlayCard(cid)}
-                  onSelect={() => setSelectedCardId(selectedCardId === cid ? null : cid)}
-                  compact={true}
-                  showTooltip={aiPaused}
-                  onHover={(cd, x, y) => setTooltip({ cardDef: cd, x, y })}
-                />
-              </div>
-            );
-          })}
+      {/* ============ ZONE C: COMPACT PLAYER STATS ============ */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        padding: '5px 10px',
+        borderTop: `1px solid ${C.border}`,
+        backgroundColor: C.bgDark,
+        flexShrink: 0,
+      }}>
+        {/* Turn badge */}
+        <span style={{ fontFamily: MONO, fontSize: 10, color: C.neonCyan, fontWeight: 700, letterSpacing: '0.05em', flexShrink: 0 }}>
+          T{combat.turn}
+        </span>
+        {/* HP */}
+        <div style={{ flex: 1, maxWidth: 140 }}>
+          <HealthBar current={player?.hp ?? 0} max={player?.maxHP ?? 1} height={12} showText={true} />
         </div>
+        {/* Firewall + block */}
+        {(player?.statuses?.find(s => s.id === 'Firewall')?.stacks ?? 0) > 0 && (
+          <span style={{ fontFamily: MONO, fontSize: 10, color: C.neonCyan, flexShrink: 0 }}>
+            🛡 {player.statuses.find(s => s.id === 'Firewall').stacks}
+          </span>
+        )}
+        {(player?.block ?? 0) > 0 && (
+          <span style={{ fontFamily: MONO, fontSize: 10, color: C.neonCyan, fontWeight: 700, flexShrink: 0 }}>
+            ⬡ {player.block}
+          </span>
+        )}
+        {/* Other statuses (compact) */}
+        <StatusRow statuses={(player?.statuses || []).filter(s => s.id !== 'Firewall')} size="small" />
       </div>
+
+      {/* ============ ZONE C2: ARC HAND ============ */}
+      <ArcHand
+        hand={hand}
+        cardInstances={cardInstances}
+        data={data}
+        selectedCardId={selectedCardId}
+        onSelect={(cid) => setSelectedCardId(selectedCardId === cid ? null : cid)}
+        canPlayCard={canPlayCard}
+        aiPaused={aiPaused}
+        onHover={(cd, x, y) => setTooltip({ cardDef: cd, x, y })}
+      />
 
       {/* ============ ZONE D: RAM BAR + ACTION BUTTONS (bottom) ============ */}
       <div
@@ -2018,6 +2285,100 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false }
           y={tooltip.y}
         />
       )}
+
+      {/* ── Scry modal ── */}
+      {combat._scryPending && (() => {
+        const { n, cards: scryCards } = combat._scryPending;
+        return (
+          <div style={{
+            position: 'fixed', inset: 0, zIndex: 800,
+            backgroundColor: 'rgba(0,0,0,0.88)',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            padding: '24px',
+          }}>
+            {/* Header */}
+            <div style={{ fontFamily: MONO, color: C.neonCyan, fontSize: 22, fontWeight: 900, letterSpacing: '0.12em', marginBottom: 4 }}>
+              SCRY {n}
+            </div>
+            <div style={{ fontFamily: MONO, color: C.textDim, fontSize: 12, marginBottom: 24, textAlign: 'center' }}>
+              Tap cards to discard · The rest return to top of draw pile in order
+            </div>
+
+            {/* Scry cards */}
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center', marginBottom: 28 }}>
+              {scryCards.map((cid) => {
+                const ci = cardInstances[cid];
+                const def = data?.cards?.[ci?.defId];
+                if (!def) return null;
+                const discarding = scryDiscard.has(cid);
+                return (
+                  <div
+                    key={cid}
+                    onClick={() => setScryDiscard(prev => {
+                      const next = new Set(prev);
+                      if (next.has(cid)) next.delete(cid); else next.add(cid);
+                      return next;
+                    })}
+                    style={{
+                      position: 'relative', cursor: 'pointer',
+                      opacity: discarding ? 0.45 : 1,
+                      transform: discarding ? 'scale(0.9) rotate(-2deg)' : 'scale(1)',
+                      transition: 'all 0.15s ease',
+                      outline: discarding ? `2px solid ${C.neonRed}` : `2px solid ${C.neonCyan}55`,
+                      outlineOffset: 3,
+                      borderRadius: 10,
+                    }}
+                  >
+                    <HandCard
+                      cardInstance={ci}
+                      cardDef={def}
+                      isSelected={false}
+                      canPlay={false}
+                      onSelect={() => {}}
+                      compact={false}
+                      showTooltip={false}
+                      onHover={() => {}}
+                    />
+                    {discarding && (
+                      <div style={{
+                        position: 'absolute', inset: 0, borderRadius: 10,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        backgroundColor: `${C.neonRed}18`, pointerEvents: 'none',
+                      }}>
+                        <span style={{
+                          fontFamily: MONO, fontWeight: 900, fontSize: 11,
+                          color: C.neonRed, letterSpacing: '0.15em',
+                          textShadow: `0 0 8px ${C.neonRed}`,
+                        }}>DISCARD</span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Confirm button */}
+            <button
+              onClick={() => {
+                const toDiscard = [...scryDiscard].filter(c => scryCards.includes(c));
+                const top = scryCards.filter(c => !toDiscard.includes(c));
+                onAction?.({ type: 'Combat_ScryResolve', discard: toDiscard, top });
+                setScryDiscard(new Set());
+              }}
+              style={{
+                padding: '12px 36px', borderRadius: 10, border: 'none',
+                fontFamily: MONO, fontWeight: 700, fontSize: 15,
+                backgroundColor: C.neonCyan, color: '#000',
+                cursor: 'pointer', letterSpacing: '0.08em',
+                boxShadow: `0 0 20px ${C.neonCyan}44`,
+                transition: 'all 0.15s ease',
+              }}
+            >
+              Confirm {scryDiscard.size > 0 ? `(discard ${scryDiscard.size})` : '(keep all)'}
+            </button>
+          </div>
+        );
+      })()}
     </div>
   );
 }

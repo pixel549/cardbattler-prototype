@@ -7,6 +7,7 @@ import AIDebugPanel from './components/AIDebugPanel';
 import { getAIAction, AI_PLAYSTYLES } from './game/aiPlayer';
 import { decodeDebugSeed, decodeSensibleDebugSeed, randomDebugSeed } from './game/debugSeed';
 import { createBasicEventRegistry } from './game/events';
+import { MINIGAME_REGISTRY, isMinigameEvent } from './game/minigames';
 import { sfx } from './game/sounds';
 
 // Module-level event registry (created once)
@@ -38,6 +39,7 @@ const NODE_COLORS = {
   Shop: C.yellow,
   Rest: C.green,
   Event: C.cyan,
+  Start: C.textMuted,
 };
 
 const NODE_ICONS = {
@@ -47,6 +49,7 @@ const NODE_ICONS = {
   Shop: '\uD83D\uDED2',
   Rest: '\u2665',
   Event: '?',
+  Start: '\u25CF',
 };
 
 /** Shared full-screen background wrapper */
@@ -101,33 +104,75 @@ function MuteButton({ muted, onToggle }) {
 }
 
 /** Shared top bar showing run stats */
-function RunHeader({ run }) {
+function RunHeader({ run, data }) {
   if (!run) return null;
+  const MONO = "'JetBrains Mono', 'Fira Code', 'Consolas', monospace";
+  const relics = run.relicIds || [];
   return (
     <div
       className="safe-area-top"
       style={{
+        backgroundColor: C.bgBar,
+        borderBottom: `1px solid ${C.border}`,
+      }}
+    >
+      <div style={{
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingLeft: '16px',
         paddingRight: '16px',
         paddingTop: '8px',
-        paddingBottom: '8px',
-        backgroundColor: C.bgBar,
-        borderBottom: `1px solid ${C.border}`,
-      }}
-    >
-      <div style={{ fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace", color: C.cyan, fontSize: 11 }}>
-        <span style={{ opacity: 0.5 }}>ACT</span> {run.act}
-        <span style={{ marginLeft: '8px', marginRight: '8px', opacity: 0.3 }}>|</span>
-        <span style={{ opacity: 0.5 }}>FLOOR</span> {run.floor}
+        paddingBottom: relics.length > 0 ? '4px' : '8px',
+      }}>
+        <div style={{ fontFamily: MONO, color: C.cyan, fontSize: 11 }}>
+          <span style={{ opacity: 0.5 }}>ACT</span> {run.act}
+          <span style={{ marginLeft: '8px', marginRight: '8px', opacity: 0.3 }}>|</span>
+          <span style={{ opacity: 0.5 }}>FLOOR</span> {run.floor}
+        </div>
+        <div style={{ display: 'flex', gap: '12px', fontFamily: MONO, fontSize: 12 }}>
+          <span style={{ color: C.green }}>{run.hp}/{run.maxHP}</span>
+          <span style={{ color: C.yellow }}>{run.gold}g</span>
+          <span style={{ color: C.cyan }}>{run.mp}mp</span>
+        </div>
       </div>
-      <div style={{ display: 'flex', gap: '12px', fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace", fontSize: 12 }}>
-        <span style={{ color: C.green }}>{run.hp}/{run.maxHP}</span>
-        <span style={{ color: C.yellow }}>{run.gold}g</span>
-        <span style={{ color: C.cyan }}>{run.mp}mp</span>
-      </div>
+      {/* Relic chips */}
+      {relics.length > 0 && (
+        <div style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: '4px',
+          paddingLeft: '16px',
+          paddingRight: '16px',
+          paddingBottom: '6px',
+        }}>
+          {relics.map(rid => {
+            const relic = data?.relics?.[rid];
+            const tierColors = { boss: C.red, rare: C.purple, uncommon: C.yellow };
+            const col = tierColors[relic?.tier] || C.cyan;
+            return (
+              <div
+                key={rid}
+                title={`${relic?.name || rid}: ${relic?.description || ''}`}
+                style={{
+                  fontFamily: MONO,
+                  fontSize: 8,
+                  fontWeight: 700,
+                  color: col,
+                  backgroundColor: `${col}15`,
+                  border: `1px solid ${col}40`,
+                  borderRadius: '4px',
+                  padding: '2px 6px',
+                  letterSpacing: '0.05em',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                ◈ {relic?.name || rid}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -136,18 +181,17 @@ function RunHeader({ run }) {
 // MAP SCREEN — SVG node graph
 // ============================================================
 
-// The map has a fixed layout: 9 nodes at known (x, y) coords
-// x ∈ [-1, 2],  y ∈ [0, 5]   (y=0 = start, y=5 = boss)
+// StS-style: 6 columns (x=0..5), 15 rows (y=0..14). x=2.5 = centre (Start/Boss).
 const SVG_MAP_W = 300;
-const SVG_MAP_H = 500;
+const SVG_MAP_H = 920;
 
 function mapNX(x) {
-  // x range [-1, 2] → [44, 256]
-  return 44 + ((x + 1) / 3) * 212;
+  // x=0→30, x=2.5→150 (centre), x=5→270
+  return 30 + x * 48;
 }
 function mapNY(y) {
-  // y=0 at bottom (y=464), y=5 at top (y=36)
-  return 464 - (y / 5) * 428;
+  // y=0 (Start)→40px, y=14 (Boss)→880px
+  return 40 + (y / 14) * 840;
 }
 
 const NODE_TYPE_DESCS = {
@@ -166,6 +210,9 @@ function MapScreen({ state, data, onAction }) {
   const MONO    = "'JetBrains Mono', 'Fira Code', 'Consolas', monospace";
   const nodeList = Object.values(nodes);
 
+  // Detour edge lookup (amber dashed lines)
+  const detourSet = new Set((state.map?.detourEdges || []).map(([f, t]) => `${f}-${t}`));
+
   // Collect edges
   const edges = [];
   for (const node of nodeList) {
@@ -176,7 +223,7 @@ function MapScreen({ state, data, onAction }) {
 
   return (
     <ScreenShell>
-      <RunHeader run={state.run} />
+      <RunHeader run={state.run} data={data} />
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '8px 8px 0', overflowY: 'auto' }}>
 
@@ -200,7 +247,24 @@ function MapScreen({ state, data, onAction }) {
           {/* Edges */}
           {edges.map(({ from, to }) => {
             const isTraversed = from.cleared;
-            const isHot = (from.id === curId) && selNext.includes(to.id);
+            const isHot      = (from.id === curId) && selNext.includes(to.id);
+            const isDetour   = detourSet.has(`${from.id}-${to.id}`);
+
+            if (isDetour) {
+              // Amber dashed detour lines — sideways or backward cross-paths
+              return (
+                <line
+                  key={`${from.id}-${to.id}`}
+                  x1={mapNX(from.x)} y1={mapNY(from.y)}
+                  x2={mapNX(to.x)}   y2={mapNY(to.y)}
+                  stroke={isTraversed ? '#FFAA0040' : isHot ? '#FFCC44' : '#FFAA0088'}
+                  strokeWidth={isTraversed ? 1.5 : isHot ? 2 : 1.5}
+                  strokeDasharray={isTraversed ? 'none' : '5 3'}
+                  filter={isHot ? 'url(#mglow-sm)' : undefined}
+                />
+              );
+            }
+
             return (
               <line
                 key={`${from.id}-${to.id}`}
@@ -336,6 +400,9 @@ function MapScreen({ state, data, onAction }) {
 // ============================================================
 function RewardScreen({ state, data, onAction }) {
   const choices = state.reward?.cardChoices || [];
+  const relicChoices = state.reward?.relicChoices || [];
+  const hasRelics = relicChoices.length > 0;
+  const MONO = "'JetBrains Mono', 'Fira Code', 'Consolas', monospace";
 
   return (
     <ScreenShell>
@@ -345,7 +412,7 @@ function RewardScreen({ state, data, onAction }) {
           <div
             className="animate-slide-up"
             style={{
-              fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace",
+              fontFamily: MONO,
               fontWeight: 700,
               fontSize: '24px',
               marginBottom: '4px',
@@ -354,10 +421,51 @@ function RewardScreen({ state, data, onAction }) {
           >
             VICTORY
           </div>
-          <div style={{ fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace", color: C.textMuted, fontSize: 12 }}>
-            Select a card reward
+          <div style={{ fontFamily: MONO, color: C.textMuted, fontSize: 12 }}>
+            {hasRelics ? 'Select a relic — then choose a card' : 'Select a card reward'}
           </div>
         </div>
+
+        {/* Relic choices (shown above card choices when available) */}
+        {hasRelics && (
+          <div style={{ marginBottom: '16px' }}>
+            <div style={{ fontFamily: MONO, fontSize: 9, color: C.yellow, letterSpacing: '0.1em', marginBottom: '8px', textAlign: 'center' }}>
+              ◈ RELIC REWARD — pick one
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {relicChoices.map(rid => {
+                const relic = data.relics?.[rid];
+                const tierColors = { boss: C.red, rare: C.purple, uncommon: C.yellow };
+                const col = tierColors[relic?.tier] || C.cyan;
+                return (
+                  <button
+                    key={rid}
+                    onClick={() => onAction({ type: 'Reward_PickRelic', relicId: rid })}
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      borderRadius: '10px',
+                      textAlign: 'left',
+                      backgroundColor: `${col}10`,
+                      border: `2px solid ${col}50`,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <div style={{ fontFamily: MONO, fontWeight: 700, color: col, fontSize: 13, marginBottom: '3px' }}>
+                      {relic?.name || rid}
+                      <span style={{ marginLeft: 6, fontSize: 9, fontWeight: 400, opacity: 0.7, textTransform: 'uppercase' }}>
+                        [{relic?.tier || '?'}]
+                      </span>
+                    </div>
+                    <div style={{ fontFamily: MONO, fontSize: 10, color: C.textDim }}>
+                      {relic?.description || ''}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Card choices */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -404,8 +512,20 @@ function RewardScreen({ state, data, onAction }) {
                     {cost}
                   </div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace", fontWeight: 700, color, fontSize: 14 }}>
-                      {card?.name || defId}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      <span style={{ fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace", fontWeight: 700, color, fontSize: 14 }}>
+                        {card?.name || defId}
+                      </span>
+                      {/* Tag chips */}
+                      {(card?.tags || []).filter(t => ['Power','OneShot','Volatile','Exhaust'].includes(t)).map(t => (
+                        <span key={t} style={{
+                          fontSize: 9, fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace",
+                          padding: '1px 5px', borderRadius: 4, fontWeight: 700,
+                          backgroundColor: t === 'Power' ? `${C.purple}25` : `${color}15`,
+                          color: t === 'Power' ? C.purple : color,
+                          border: `1px solid ${t === 'Power' ? C.purple : color}40`,
+                        }}>{t === 'Power' ? 'PWR' : t.toUpperCase()}</span>
+                      ))}
                     </div>
                     <div style={{ fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace", marginTop: '2px', color: C.textDim, fontSize: 11 }}>
                       {card?.type}
@@ -459,8 +579,9 @@ function RewardScreen({ state, data, onAction }) {
 // ============================================================
 
 const SHOP_SERVICE_INFO = {
+  RemoveCard: { icon: '🗑️', desc: 'Permanently remove a card from your deck', color: C.red },
   Remove:     { icon: '🗑️', desc: 'Permanently remove a card from your deck', color: C.red },
-  Repair:     { icon: '🔧', desc: 'Restore a card\'s wear — adds back use counter', color: C.cyan },
+  Repair:     { icon: '🔧', desc: 'Restore a card\'s use counter', color: C.cyan },
   Stabilise:  { icon: '◆',  desc: 'Reset a card\'s mutation countdown', color: C.purple },
   Accelerate: { icon: '⚡', desc: 'Speed up a card\'s mutation trigger', color: C.orange },
   Heal:       { icon: '💊', desc: 'Restore 40 HP', color: C.green },
@@ -525,7 +646,7 @@ function ShopScreen({ state, data, onAction }) {
         </div>
       </div>
 
-      <div style={{ flex: 1, padding: '16px', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ flex: 1, padding: '16px', paddingBottom: '8px', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
 
         {/* Cards section */}
         {offers.some(o => o.kind === 'Card') && (
@@ -665,12 +786,23 @@ function ShopScreen({ state, data, onAction }) {
           </div>
         )}
 
+      </div>
+
+      {/* Leave Market — always-visible sticky footer, outside the scrollable area */}
+      <div
+        className="safe-area-bottom"
+        style={{
+          flexShrink: 0,
+          padding: '10px 16px',
+          borderTop: `1px solid ${C.border}`,
+          backgroundColor: C.bgBar,
+        }}
+      >
         <button
           onClick={() => onAction({ type: 'Shop_Exit' })}
-          className="safe-area-bottom"
           style={{
             width: '100%', padding: '14px', borderRadius: '12px',
-            fontFamily: MONO, marginTop: '8px', transition: 'all 0.15s ease',
+            fontFamily: MONO, transition: 'all 0.15s ease',
             backgroundColor: C.bgCard, border: `1px solid ${C.border}`,
             color: C.textMuted, fontSize: 13, cursor: 'pointer',
           }}
@@ -683,15 +815,504 @@ function ShopScreen({ state, data, onAction }) {
 }
 
 // ============================================================
+// MINIGAME COMPONENTS
+// ============================================================
+
+// Shared symbols used across all minigame types
+const MG_SYMBOLS = ['⚡','🔥','💧','🌀','⭐','🔮','💀','🛡️','🧠','🔗'];
+const MONO = "'JetBrains Mono', 'Fira Code', 'Consolas', monospace";
+
+// ── Memory Match ──────────────────────────────────────────────────────────────
+function MemoryGame({ config, onComplete }) {
+  const { pairs = 3, cols = 3, goldMisses = 1, silverMisses = 3 } = config;
+  const [tiles, setTiles] = useState(() => {
+    const syms = MG_SYMBOLS.slice(0, pairs);
+    const arr  = [...syms, ...syms].map((s, i) => ({ id: i, sym: s, flipped: false, matched: false }));
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  });
+  const [selected, setSelected]   = useState([]); // indices currently flipped (unmatched)
+  const [misses, setMisses]        = useState(0);
+  const [locked, setLocked]        = useState(false);
+  const [done, setDone]            = useState(false);
+
+  const tap = (idx) => {
+    if (locked || done || tiles[idx].flipped || tiles[idx].matched) return;
+    const newSel = [...selected, idx];
+    setTiles(prev => prev.map((t, i) => i === idx ? { ...t, flipped: true } : t));
+    if (newSel.length < 2) { setSelected(newSel); return; }
+
+    // Two flipped — check match
+    setLocked(true);
+    const [a, b] = newSel;
+    setSelected([]);
+    if (tiles[a].sym === tiles[b].sym) {
+      setTimeout(() => {
+        setTiles(prev => {
+          const next = prev.map((t, i) => (i === a || i === b) ? { ...t, matched: true } : t);
+          if (next.every(t => t.matched)) {
+            setDone(true);
+            const tier = misses <= goldMisses ? 'gold' : misses <= silverMisses ? 'silver' : 'fail';
+            setTimeout(() => onComplete(tier), 400);
+          }
+          return next;
+        });
+        setLocked(false);
+      }, 300);
+    } else {
+      setMisses(m => m + 1);
+      setTimeout(() => {
+        setTiles(prev => prev.map((t, i) => (i === a || i === b) && !t.matched ? { ...t, flipped: false } : t));
+        setLocked(false);
+      }, 800);
+    }
+  };
+
+  const gridCols = cols === 4 ? 'repeat(4, 1fr)' : 'repeat(3, 1fr)';
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+      <div style={{ fontFamily: MONO, fontSize: 12, color: C.textDim }}>
+        Misses: {misses} / {silverMisses + 1}
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: gridCols, gap: 10, width: '100%', maxWidth: 320 }}>
+        {tiles.map((tile, idx) => (
+          <button key={tile.id} onClick={() => tap(idx)} style={{
+            height: 72, borderRadius: 14, fontSize: 28, border: 'none', cursor: tile.matched ? 'default' : 'pointer',
+            background: tile.matched ? '#0a2a18' : tile.flipped ? '#1a1a30' : '#1a1a24',
+            boxShadow: tile.matched ? `0 0 12px ${C.green}40` : tile.flipped ? `0 0 8px ${C.cyan}40` : 'none',
+            transition: 'all 0.15s',
+            transform: tile.flipped || tile.matched ? 'scale(1.05)' : 'scale(1)',
+          }}>
+            {tile.flipped || tile.matched ? tile.sym : '▪'}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Timing Tap ────────────────────────────────────────────────────────────────
+function TimingGame({ config, onComplete }) {
+  const { rounds = 4, goldHits, silverHits, duration = 2500, zoneWidth = 22 } = config;
+  const gHits = goldHits  ?? rounds;
+  const sHits = silverHits ?? Math.ceil(rounds / 2);
+
+  const [round, setRound]       = useState(0);
+  const [progress, setProgress] = useState(0);   // 0-100
+  const [zone, setZone]         = useState(null); // { start, end }
+  const [phase, setPhase]       = useState('countdown'); // 'countdown'|'running'|'feedback'|'done'
+  const [lastHit, setLastHit]   = useState(null);
+  const [countdown, setCountdown] = useState(2);
+
+  const scoreRef   = useRef(0);
+  const roundRef   = useRef(0);
+  const rafRef     = useRef(null);
+  const startRef   = useRef(null);
+  const progRef    = useRef(0);
+  const zoneRef    = useRef(null);
+  const phaseRef   = useRef('countdown');
+
+  const beginRound = () => {
+    const s = 18 + Math.floor(Math.random() * 52);
+    const z = { start: s, end: Math.min(94, s + zoneWidth) };
+    zoneRef.current = z;
+    setZone(z);
+    setProgress(0);
+    progRef.current = 0;
+    setLastHit(null);
+    phaseRef.current = 'running';
+    setPhase('running');
+    startRef.current = performance.now();
+
+    const tick = (now) => {
+      const p = Math.min(100, ((now - startRef.current) / duration) * 100);
+      progRef.current = p;
+      setProgress(p);
+      if (p >= 100) { resolve(false); }
+      else          { rafRef.current = requestAnimationFrame(tick); }
+    };
+    rafRef.current = requestAnimationFrame(tick);
+  };
+
+  const resolve = (hit) => {
+    cancelAnimationFrame(rafRef.current);
+    if (hit) scoreRef.current++;
+    setLastHit(hit);
+    phaseRef.current = 'feedback';
+    setPhase('feedback');
+    setTimeout(() => {
+      roundRef.current++;
+      if (roundRef.current >= rounds) {
+        setPhase('done');
+        const tier = scoreRef.current >= gHits ? 'gold' : scoreRef.current >= sHits ? 'silver' : 'fail';
+        setTimeout(() => onComplete(tier), 500);
+      } else {
+        setRound(roundRef.current);
+        beginRound();
+      }
+    }, 700);
+  };
+
+  const tap = () => { if (phaseRef.current !== 'running') return; resolve(progRef.current >= zoneRef.current.start && progRef.current <= zoneRef.current.end); };
+
+  // Countdown then start
+  useEffect(() => {
+    if (countdown <= 0) { beginRound(); return; }
+    const t = setTimeout(() => setCountdown(c => c - 1), 600);
+    return () => clearTimeout(t);
+  }, [countdown]);
+
+  useEffect(() => () => cancelAnimationFrame(rafRef.current), []);
+
+  const barColor  = phase === 'feedback' ? (lastHit ? C.green : C.red) : C.cyan;
+  const fillStyle = { width: `${progress}%`, height: '100%', background: barColor, borderRadius: 4, transition: phase === 'feedback' ? 'none' : undefined };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20 }}>
+      <div style={{ fontFamily: MONO, fontSize: 12, color: C.textDim }}>
+        Round {Math.min(round + 1, rounds)} / {rounds} · Hits: {scoreRef.current}
+      </div>
+
+      {countdown > 0 ? (
+        <div style={{ fontSize: 64, fontFamily: MONO, color: C.cyan }}>{countdown}</div>
+      ) : (
+        <>
+          {/* Progress bar */}
+          <div style={{ position: 'relative', width: '100%', maxWidth: 300, height: 28, background: '#1a1a2a', borderRadius: 6, overflow: 'hidden' }}>
+            <div style={fillStyle} />
+            {zone && (
+              <div style={{
+                position: 'absolute', top: 0, height: '100%',
+                left: `${zone.start}%`, width: `${zone.end - zone.start}%`,
+                background: `${C.green}35`, border: `1px solid ${C.green}80`,
+                borderRadius: 3, pointerEvents: 'none',
+              }} />
+            )}
+          </div>
+
+          {phase === 'feedback' && (
+            <div style={{ fontFamily: MONO, fontSize: 22, color: lastHit ? C.green : C.red }}>
+              {lastHit ? '✓ HIT' : '✗ MISS'}
+            </div>
+          )}
+
+          <button onClick={tap} disabled={phase !== 'running'} style={{
+            width: 140, height: 140, borderRadius: '50%', fontSize: 36, border: 'none', cursor: 'pointer',
+            background: phase === 'running' ? C.cyan : '#222233',
+            color: phase === 'running' ? '#000' : '#555',
+            boxShadow: phase === 'running' ? `0 0 32px ${C.cyan}60` : 'none',
+            transition: 'all 0.1s', fontFamily: MONO, fontWeight: 700,
+          }}>
+            TAP
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── Sequence Recall ───────────────────────────────────────────────────────────
+function SequenceGame({ config, onComplete }) {
+  const { length = 4, showMs = 2000, goldCorrect, silverCorrect } = config;
+  const gCorrect = goldCorrect  ?? length;
+  const sCorrect = silverCorrect ?? Math.ceil(length / 2);
+
+  const [sequence] = useState(() => {
+    const pool = [...MG_SYMBOLS];
+    const seq  = [];
+    for (let i = 0; i < length; i++) {
+      const idx = Math.floor(Math.random() * pool.length);
+      seq.push(pool.splice(idx, 1)[0]);
+    }
+    return seq;
+  });
+  const [grid] = useState(() => {
+    const g = [...MG_SYMBOLS].sort(() => Math.random() - 0.5);
+    return g;
+  });
+  const [phase, setPhase]   = useState('showing'); // 'showing'|'input'|'done'
+  const [tapped, setTapped] = useState([]);         // symbols tapped so far
+  const [wrong, setWrong]   = useState(false);
+
+  useEffect(() => {
+    if (phase !== 'showing') return;
+    const t = setTimeout(() => setPhase('input'), showMs);
+    return () => clearTimeout(t);
+  }, [phase, showMs]);
+
+  const tapSym = (sym) => {
+    if (phase !== 'input' || wrong) return;
+    const expected = sequence[tapped.length];
+    const newTapped = [...tapped, sym];
+    if (sym !== expected) {
+      setWrong(true);
+      setTapped(newTapped);
+      const tier = tapped.length >= gCorrect ? 'gold' : tapped.length >= sCorrect ? 'silver' : 'fail';
+      setTimeout(() => onComplete(tier), 800);
+      return;
+    }
+    setTapped(newTapped);
+    if (newTapped.length === sequence.length) {
+      setTimeout(() => onComplete('gold'), 400);
+    }
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+      {phase === 'showing' ? (
+        <>
+          <div style={{ fontFamily: MONO, fontSize: 12, color: C.textDim, letterSpacing: '0.1em' }}>MEMORISE THE SEQUENCE</div>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center', padding: '16px 0' }}>
+            {sequence.map((s, i) => (
+              <div key={i} style={{
+                width: 60, height: 60, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 30, background: '#1a1a30', border: `2px solid ${C.cyan}60`,
+                boxShadow: `0 0 12px ${C.cyan}30`,
+              }}>{s}</div>
+            ))}
+          </div>
+        </>
+      ) : (
+        <>
+          <div style={{ fontFamily: MONO, fontSize: 12, color: C.textDim }}>
+            Tap in order — {tapped.length}/{sequence.length}
+          </div>
+          {/* Progress row */}
+          <div style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
+            {sequence.map((s, i) => (
+              <div key={i} style={{
+                width: 36, height: 36, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 18,
+                background: i < tapped.length ? (wrong && i === tapped.length - 1 ? `${C.red}30` : `${C.green}30`) : '#1a1a24',
+                border: `1px solid ${i < tapped.length ? (wrong && i === tapped.length - 1 ? C.red : C.green) : '#2a2a3a'}`,
+              }}>
+                {i < tapped.length ? tapped[i] : '·'}
+              </div>
+            ))}
+          </div>
+          {/* Symbol grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8, width: '100%', maxWidth: 320 }}>
+            {grid.map((sym, i) => (
+              <button key={i} onClick={() => tapSym(sym)} style={{
+                height: 58, borderRadius: 12, fontSize: 24, border: `1px solid #2a2a3a`,
+                background: '#1a1a24', cursor: 'pointer',
+                boxShadow: tapped.includes(sym) ? `inset 0 0 8px #0005` : 'none',
+                opacity: tapped.includes(sym) ? 0.4 : 1,
+                transition: 'all 0.1s',
+              }}>{sym}</button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── Rapid Tap ────────────────────────────────────────────────────────────────
+function RapidGame({ config, onComplete }) {
+  const { duration = 5000, goldTaps, silverTaps } = config;
+  const [phase, setPhase]   = useState('ready');   // 'ready'|'playing'
+  const [countdown, setCd]  = useState(3);
+  const [count, setCount]   = useState(0);
+  const [timeLeft, setTime] = useState(duration);
+  const doneRef             = useRef(false);
+
+  // 3-2-1 countdown
+  useEffect(() => {
+    if (phase !== 'ready') return;
+    if (countdown <= 0) { setPhase('playing'); return; }
+    const t = setTimeout(() => setCd(c => c - 1), 900);
+    return () => clearTimeout(t);
+  }, [phase, countdown]);
+
+  // Play timer
+  useEffect(() => {
+    if (phase !== 'playing') return;
+    const id = setInterval(() => setTime(t => Math.max(0, t - 100)), 100);
+    return () => clearInterval(id);
+  }, [phase]);
+
+  // End detection
+  useEffect(() => {
+    if (phase === 'playing' && timeLeft === 0 && !doneRef.current) {
+      doneRef.current = true;
+      onComplete(count >= goldTaps ? 'gold' : count >= silverTaps ? 'silver' : 'fail');
+    }
+  }, [timeLeft, phase, count, goldTaps, silverTaps, onComplete]);
+
+  if (phase === 'ready') {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, gap: 8 }}>
+        <div style={{ fontFamily: MONO, fontSize: 11, color: C.textMuted, letterSpacing: '0.15em' }}>GET READY</div>
+        <div style={{ fontFamily: MONO, fontSize: 96, fontWeight: 700, color: C.cyan, lineHeight: 1 }}>
+          {countdown > 0 ? countdown : 'GO!'}
+        </div>
+      </div>
+    );
+  }
+
+  const pct = timeLeft / duration;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, padding: '4px 0' }}>
+      <div style={{ fontFamily: MONO, fontSize: 11, color: C.textMuted, letterSpacing: '0.15em' }}>TAP AS FAST AS YOU CAN</div>
+      {/* Timer bar */}
+      <div style={{ width: '100%', height: 8, background: '#1a1a28', borderRadius: 4, overflow: 'hidden' }}>
+        <div style={{
+          height: '100%', width: `${pct * 100}%`, borderRadius: 4,
+          background: pct > 0.5 ? C.cyan : pct > 0.25 ? C.orange : C.red,
+          transition: 'width 0.1s linear, background 0.3s',
+        }} />
+      </div>
+      {/* Count */}
+      <div style={{ fontFamily: MONO, fontSize: 80, fontWeight: 700, color: C.cyan, lineHeight: 1 }}>{count}</div>
+      <div style={{ fontFamily: MONO, fontSize: 10, color: C.textMuted }}>
+        ⭐ {goldTaps}+  ·  ✦ {silverTaps}+  ·  {(timeLeft / 1000).toFixed(1)}s
+      </div>
+      {/* Tap button */}
+      <button
+        onPointerDown={(e) => { e.preventDefault(); setCount(c => c + 1); }}
+        style={{
+          width: 180, height: 180, borderRadius: '50%',
+          background: `${C.cyan}12`, border: `3px solid ${C.cyan}50`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontFamily: MONO, fontSize: 22, fontWeight: 700, color: C.cyan,
+          cursor: 'pointer', userSelect: 'none', WebkitUserSelect: 'none',
+          touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent',
+          boxShadow: `0 0 40px ${C.cyan}15`,
+        }}
+      >
+        TAP
+      </button>
+    </div>
+  );
+}
+
+// ── Minigame wrapper (intro → play → result) ──────────────────────────────────
+const TIER_LABEL  = { gold: '⭐ GOLD',  silver: '✦ SILVER', fail: '✗ FAILED', skip: '— SKIPPED' };
+const TIER_COLOR  = { gold: C.yellow,   silver: '#aaa',     fail: C.red,       skip: C.textDim };
+
+function MinigameScreen({ state, onAction }) {
+  const eventId = state.event?.eventId;
+  const def     = MINIGAME_REGISTRY[eventId];
+  const [phase, setPhase]       = useState('intro');   // 'intro'|'playing'|'result'
+  const [resultTier, setResult] = useState(null);
+
+  const handleComplete = (tier) => { setResult(tier); setPhase('result'); };
+  const handleSkip     = ()     => onAction({ type: 'Minigame_Complete', eventId, tier: 'skip' });
+  const handleClaim    = ()     => onAction({ type: 'Minigame_Complete', eventId, tier: resultTier });
+
+  if (!def) {
+    return (
+      <ScreenShell>
+        <RunHeader run={state.run} data={null} />
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, gap: 16 }}>
+          <div style={{ fontFamily: MONO, fontSize: 18, color: C.cyan, fontWeight: 700 }}>MINIGAME</div>
+          <div style={{ fontFamily: MONO, fontSize: 11, color: C.textDim }}>{eventId}</div>
+          <button onClick={handleSkip} style={{ padding: '12px 32px', borderRadius: 12, fontFamily: MONO, fontWeight: 700, background: C.cyan, color: '#000', border: 'none', cursor: 'pointer' }}>Continue</button>
+        </div>
+      </ScreenShell>
+    );
+  }
+
+  const rewardLine = (ops) => ops.length === 0 ? 'No reward' : ops.map(o => {
+    if (o.op === 'GainGold') return `+${o.amount}g`;
+    if (o.op === 'Heal')     return `+${o.amount} HP`;
+    if (o.op === 'LoseHP')   return `-${o.amount} HP`;
+    if (o.op === 'GainMP')   return `+${o.amount} MP`;
+    if (o.op === 'GainMaxHP')   return `+${o.amount} Max HP`;
+    if (o.op === 'AccelerateSelectedCard') return 'Accelerate a card';
+    if (o.op === 'StabiliseSelectedCard')  return 'Stabilise a card';
+    if (o.op === 'RepairSelectedCard')     return 'Repair a card';
+    if (o.op === 'RemoveSelectedCard')     return 'Remove a card';
+    return o.op;
+  }).join(' · ');
+
+  if (phase === 'intro') {
+    return (
+      <ScreenShell>
+        <RunHeader run={state.run} data={null} />
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, gap: 20 }}>
+          <div style={{ fontSize: 52 }}>{def.icon}</div>
+          <div style={{ fontFamily: MONO, fontWeight: 700, fontSize: 20, color: C.cyan, textAlign: 'center' }}>{def.title}</div>
+          <div style={{ fontFamily: MONO, fontSize: 12, color: C.textDim, textAlign: 'center', maxWidth: 280 }}>{def.desc}</div>
+          <div style={{ width: '100%', maxWidth: 280, background: '#12121a', borderRadius: 12, padding: 14, border: '1px solid #2a2a3a' }}>
+            <div style={{ fontFamily: MONO, fontSize: 10, color: C.textMuted, marginBottom: 8, letterSpacing: '0.1em' }}>REWARDS</div>
+            {[['gold', C.yellow], ['silver', '#aaa'], ['fail', C.red]].map(([tier, col]) => (
+              <div key={tier} style={{ fontFamily: MONO, fontSize: 11, color: col, marginBottom: 4 }}>
+                {TIER_LABEL[tier]}: {rewardLine(def.rewards[tier] ?? [])}
+              </div>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: 12, width: '100%', maxWidth: 280 }}>
+            <button onClick={() => setPhase('playing')} style={{
+              flex: 1, padding: '14px 0', borderRadius: 12, fontFamily: MONO, fontWeight: 700, fontSize: 14,
+              background: C.cyan, color: '#000', border: 'none', cursor: 'pointer',
+            }}>PLAY</button>
+            <button onClick={handleSkip} style={{
+              padding: '14px 18px', borderRadius: 12, fontFamily: MONO, fontSize: 12,
+              background: 'transparent', color: C.textDim, border: `1px solid #2a2a3a`, cursor: 'pointer',
+            }}>Skip</button>
+          </div>
+        </div>
+      </ScreenShell>
+    );
+  }
+
+  if (phase === 'playing') {
+    return (
+      <ScreenShell>
+        <RunHeader run={state.run} data={null} />
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '16px 20px', overflowY: 'auto' }}>
+          <div style={{ fontFamily: MONO, fontWeight: 700, fontSize: 16, color: C.cyan, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span>{def.icon}</span><span>{def.title}</span>
+          </div>
+          {def.type === 'memory'   && <MemoryGame   config={def.config} onComplete={handleComplete} />}
+          {def.type === 'timing'   && <TimingGame   config={def.config} onComplete={handleComplete} />}
+          {def.type === 'sequence' && <SequenceGame config={def.config} onComplete={handleComplete} />}
+          {def.type === 'rapid'    && <RapidGame    config={def.config} onComplete={handleComplete} />}
+        </div>
+      </ScreenShell>
+    );
+  }
+
+  // Result screen
+  const col = TIER_COLOR[resultTier] || C.text;
+  return (
+    <ScreenShell>
+      <RunHeader run={state.run} data={null} />
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, gap: 20 }}>
+        <div style={{ fontSize: 52 }}>{def.icon}</div>
+        <div style={{ fontFamily: MONO, fontWeight: 700, fontSize: 28, color: col }}>{TIER_LABEL[resultTier]}</div>
+        <div style={{ fontFamily: MONO, fontSize: 13, color: C.textDim, textAlign: 'center' }}>
+          {rewardLine(def.rewards[resultTier] ?? [])}
+        </div>
+        <button onClick={handleClaim} style={{
+          padding: '14px 48px', borderRadius: 12, fontFamily: MONO, fontWeight: 700, fontSize: 15,
+          background: col, color: '#000', border: 'none', cursor: 'pointer',
+          boxShadow: `0 0 24px ${col}50`,
+        }}>CLAIM</button>
+      </div>
+    </ScreenShell>
+  );
+}
+
+// ============================================================
 // EVENT SCREEN
 // ============================================================
 function EventScreen({ state, data, onAction }) {
   const eventId = state.event?.eventId;
 
+  if (isMinigameEvent(eventId)) {
+    return <MinigameScreen state={state} onAction={onAction} />;
+  }
+
   if (eventId === 'RestSite') {
     return (
       <ScreenShell>
-        <RunHeader run={state.run} />
+        <RunHeader run={state.run} data={data} />
         <div style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
           <div
             className="animate-slide-up"
@@ -787,7 +1408,7 @@ function EventScreen({ state, data, onAction }) {
   if (!eventDef) {
     return (
       <ScreenShell>
-        <RunHeader run={state.run} />
+        <RunHeader run={state.run} data={data} />
         <div style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ fontFamily: MONO, fontWeight: 700, fontSize: '20px', marginBottom: '8px', color: C.cyan }}>
             UNKNOWN EVENT
@@ -809,6 +1430,8 @@ function EventScreen({ state, data, onAction }) {
     const ops = choice.ops.map(o => o.op);
     if (ops.includes('LoseHP')) return C.red;
     if (ops.includes('GainMaxHP')) return C.purple;
+    if (ops.includes('DuplicateSelectedCard')) return C.purple;
+    if (ops.includes('GainCard')) return C.cyan;
     if (ops.includes('AccelerateSelectedCard')) return C.orange;
     if (ops.includes('RemoveSelectedCard')) return C.red;
     if (ops.includes('RepairSelectedCard')) return C.cyan;
@@ -822,36 +1445,53 @@ function EventScreen({ state, data, onAction }) {
 
   return (
     <ScreenShell>
-      <RunHeader run={state.run} />
+      <RunHeader run={state.run} data={data} />
       <div style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column' }}>
 
         {/* Event card */}
         <div
           className="animate-slide-up"
           style={{
-            borderRadius: '16px', padding: '24px',
+            borderRadius: '16px',
             backgroundColor: C.bgCard,
             border: `1px solid ${C.cyan}30`,
             boxShadow: `0 0 40px ${C.cyan}08`,
             marginBottom: '24px',
             textAlign: 'center',
+            overflow: 'hidden',
           }}
         >
-          {/* Icon */}
-          <div style={{ fontSize: '52px', lineHeight: 1, marginBottom: '12px' }}>{eventDef.icon}</div>
-          {/* Title */}
-          <div style={{
-            fontFamily: MONO, fontWeight: 700, fontSize: '18px',
-            color: C.cyan, letterSpacing: '0.05em', marginBottom: '12px',
-          }}>
-            {eventDef.title.toUpperCase()}
-          </div>
-          {/* Flavour text */}
-          <div style={{
-            fontFamily: MONO, fontSize: '12px', color: C.textDim,
-            fontStyle: 'italic', lineHeight: 1.6, maxWidth: '360px', margin: '0 auto',
-          }}>
-            "{eventDef.text}"
+          {/* Banner image — shown when event has art */}
+          {eventDef.image && (
+            <img
+              src={eventDef.image}
+              alt={eventDef.title}
+              style={{
+                width: '100%', height: '150px',
+                objectFit: 'cover', display: 'block',
+                borderBottom: `1px solid ${C.cyan}20`,
+              }}
+            />
+          )}
+          <div style={{ padding: '20px 24px 24px' }}>
+            {/* Icon — hide if banner image present */}
+            {!eventDef.image && (
+              <div style={{ fontSize: '52px', lineHeight: 1, marginBottom: '12px' }}>{eventDef.icon}</div>
+            )}
+            {/* Title */}
+            <div style={{
+              fontFamily: MONO, fontWeight: 700, fontSize: '18px',
+              color: C.cyan, letterSpacing: '0.05em', marginBottom: '12px',
+            }}>
+              {eventDef.icon && eventDef.image ? `${eventDef.icon}  ` : ''}{eventDef.title.toUpperCase()}
+            </div>
+            {/* Flavour text */}
+            <div style={{
+              fontFamily: MONO, fontSize: '12px', color: C.textDim,
+              fontStyle: 'italic', lineHeight: 1.6, maxWidth: '360px', margin: '0 auto',
+            }}>
+              "{eventDef.text}"
+            </div>
           </div>
         </div>
 
@@ -975,8 +1615,16 @@ function DeckPickerOverlay({ state, data, onAction }) {
           const color = typeColors[def.type] || C.text;
           const useRatio = def.defaultUseCounter ? ci.useCounter / def.defaultUseCounter : null;
           const worn = useRatio !== null && useRatio < 0.35;
-          const mutated = !!ci.finalMutationId;
-          const hasMutation = !!ci.mutationId;
+          const mutated     = !!ci.finalMutationId;
+          const isRewritten = ci.finalMutationId === 'J_REWRITE';
+          const isBricked   = ci.finalMutationId === 'J_BRICK';
+          const activeMuts  = ci.appliedMutations || [];
+          const hasMutation = activeMuts.length > 0;   // fixed: was ci.mutationId
+          const decaying    = !mutated && ci.finalMutationCountdown != null && ci.finalMutationCountdown <= 5;
+
+          // Tier → colour mapping for mutation chips
+          const TIER_COLS = { A:'#55ff99', B:'#44ddff', C:'#ffcc44', D:'#ff8844',
+                              E:'#ff5555', F:'#cc44ff', G:'#ff44aa', H:'#ffffff', I:'#ff2222' };
 
           return (
             <button
@@ -986,8 +1634,8 @@ function DeckPickerOverlay({ state, data, onAction }) {
                 width: '100%', padding: '12px 14px', borderRadius: '10px',
                 textAlign: 'left', transition: 'all 0.15s ease',
                 backgroundColor: `${color}08`,
-                border: `2px solid ${color}35`,
-                boxShadow: `0 0 10px ${color}0a`,
+                border: `2px solid ${isBricked ? C.red : decaying ? C.orange : color}35`,
+                boxShadow: decaying ? `0 0 10px ${C.orange}18` : `0 0 10px ${color}0a`,
                 cursor: 'pointer',
               }}
             >
@@ -1006,35 +1654,67 @@ function DeckPickerOverlay({ state, data, onAction }) {
                     <span style={{ fontFamily: MONO, fontWeight: 700, fontSize: 13, color }}>
                       {def.name}
                     </span>
-                    {hasMutation && !mutated && (
-                      <span className="mut-glow" style={{
-                        fontFamily: MONO, fontSize: 9, padding: '1px 5px', borderRadius: 4,
-                        backgroundColor: `${C.purple}25`, color: C.purple, border: `1px solid ${C.purple}40`,
-                      }}>MUTATED</span>
-                    )}
-                    {mutated && (
+                    {isBricked && (
                       <span style={{
                         fontFamily: MONO, fontSize: 9, padding: '1px 5px', borderRadius: 4,
                         backgroundColor: `${C.red}25`, color: C.red, border: `1px solid ${C.red}40`,
                       }}>BRICKED</span>
                     )}
-                    {worn && !mutated && (
+                    {isRewritten && (
+                      <span style={{
+                        fontFamily: MONO, fontSize: 9, padding: '1px 5px', borderRadius: 4,
+                        backgroundColor: `${C.purple}25`, color: C.purple, border: `1px solid ${C.purple}40`,
+                      }}>REWRITTEN</span>
+                    )}
+                    {worn && !mutated && !decaying && (
                       <span style={{
                         fontFamily: MONO, fontSize: 9, padding: '1px 5px', borderRadius: 4,
                         backgroundColor: `${C.orange}25`, color: C.orange, border: `1px solid ${C.orange}40`,
                       }}>WORN</span>
                     )}
+                    {decaying && (
+                      <span style={{
+                        fontFamily: MONO, fontSize: 9, padding: '1px 5px', borderRadius: 4,
+                        backgroundColor: `${C.orange}30`, color: C.orange, border: `1px solid ${C.orange}60`,
+                      }}>DECAYING ⚠</span>
+                    )}
                   </div>
-                  <div style={{ fontFamily: MONO, fontSize: 10, color: C.textMuted, marginTop: 2 }}>
+
+                  {/* Mutation chips — one per active mutation, coloured by tier */}
+                  {hasMutation && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, marginTop: 4 }}>
+                      {activeMuts.slice(0, 6).map((mid, idx) => {
+                        const mut = data?.mutations?.[mid];
+                        const tier = mid?.charAt(0) ?? '?';
+                        const tc = TIER_COLS[tier] ?? '#aaa';
+                        return (
+                          <span key={`${mid}-${idx}`} style={{
+                            fontFamily: MONO, fontSize: 8, padding: '1px 4px', borderRadius: 3,
+                            backgroundColor: `${tc}18`, color: tc, border: `1px solid ${tc}35`,
+                          }}>
+                            {mut?.name ?? mid}
+                          </span>
+                        );
+                      })}
+                      {activeMuts.length > 6 && (
+                        <span style={{ fontFamily: MONO, fontSize: 8, color: C.textDim }}>
+                          +{activeMuts.length - 6}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Counters row */}
+                  <div style={{ fontFamily: MONO, fontSize: 10, color: C.textMuted, marginTop: 3 }}>
                     {def.type}
-                    {useRatio !== null && (
+                    {useRatio !== null && !mutated && (
                       <span style={{ marginLeft: 8, color: worn ? C.orange : C.textDim }}>
-                        {ci.useCounter}/{def.defaultUseCounter} uses
+                        {ci.useCounter} until mut
                       </span>
                     )}
-                    {ci.finalMutationCountdown !== undefined && !mutated && (
-                      <span style={{ marginLeft: 8, color: C.textDim }}>
-                        mutation in {ci.finalMutationCountdown}
+                    {ci.finalMutationCountdown != null && !mutated && (
+                      <span style={{ marginLeft: 8, color: decaying ? C.orange : C.textDim }}>
+                        · final in {ci.finalMutationCountdown}
                       </span>
                     )}
                   </div>
@@ -1084,6 +1764,7 @@ function GameOverScreen({ state, onNewRun }) {
   const deck   = state.deck  || {};
   const quip   = DEATH_QUIPS[(run.floor ?? 0) % DEATH_QUIPS.length];
   const hpPct  = run.maxHP ? Math.round(((run.hp ?? 0) / run.maxHP) * 100) : 0;
+  const isVictory = !!run.victory;
 
   const stats = [
     { label: 'ACT',       value: run.act   ?? 1 },
@@ -1099,16 +1780,32 @@ function GameOverScreen({ state, onNewRun }) {
       <div className="animate-slide-up" style={{ textAlign: 'center', width: '100%', maxWidth: 360 }}>
 
         {/* Big title */}
-        <div
-          className="glitch-text"
-          data-text="GAME OVER"
-          style={{ fontFamily: MONO, fontWeight: 700, fontSize: 40, color: C.red, marginBottom: 8, textShadow: `0 0 40px ${C.red}80` }}
-        >
-          GAME OVER
-        </div>
-        <div style={{ fontFamily: MONO, fontSize: 13, color: C.textDim, marginBottom: 32, fontStyle: 'italic' }}>
-          {quip}
-        </div>
+        {isVictory ? (
+          <>
+            <div
+              style={{ fontFamily: MONO, fontWeight: 900, fontSize: 38, color: C.green, marginBottom: 8,
+                letterSpacing: '0.1em', textShadow: `0 0 40px ${C.green}80` }}
+            >
+              ✓ RUN COMPLETE
+            </div>
+            <div style={{ fontFamily: MONO, fontSize: 13, color: C.textDim, marginBottom: 32, fontStyle: 'italic' }}>
+              All three acts cleared. The network is silent.
+            </div>
+          </>
+        ) : (
+          <>
+            <div
+              className="glitch-text"
+              data-text="GAME OVER"
+              style={{ fontFamily: MONO, fontWeight: 700, fontSize: 40, color: C.red, marginBottom: 8, textShadow: `0 0 40px ${C.red}80` }}
+            >
+              GAME OVER
+            </div>
+            <div style={{ fontFamily: MONO, fontSize: 13, color: C.textDim, marginBottom: 32, fontStyle: 'italic' }}>
+              {quip}
+            </div>
+          </>
+        )}
 
         {/* Stats grid */}
         <div style={{

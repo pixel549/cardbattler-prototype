@@ -18,179 +18,94 @@ function uid(rng, prefix) { return `${prefix}_${rng.nextUint().toString(16)}`; }
 function generateMap(seed) {
   const rng = new RNG(seed ^ 0xA5A5A5A5);
   const nodes = {};
-  const makeNode = (type, x, y) => {
+  function makeNode(type, x, y) {
     const id = uid(rng, "n");
     nodes[id] = { id, type, x, y, next: [], cleared: false };
     return id;
+  }
+
+  // ── StS-style path generation ───────────────────────────────────────────
+  // 6 columns (0-5), 15 rows (0=Start, 1-13=content, 14=Boss).
+  // 6 paths, each starting at a unique column. Each path meanders ±1 col/row.
+  // Sorted-order invariant: after each row, path columns are sorted ascending.
+  // This ensures edges never cross (planar graph).
+  // Nodes at the same (row, col) are shared between paths.
+  //
+  //  Start (2.5, 0)      ← single centred node
+  //  /  |  |  |  |  \   ← up to 6 row-1 nodes
+  //   ...14 rows of meandering content...
+  //  \  |  |  |  |  /   ← converge to Boss
+  //  Boss (2.5, 14)
+
+  const COLS   = 6;    // columns 0..5
+  const PATH_N = 6;    // one path per column
+
+  // Deterministic per-(row,col) type — independent of path iteration order
+  function rowColType(row, col) {
+    const tr = new RNG((seed ^ 0xDEADBEEF) ^ (row * 97 + col * 31) * 0x9E3779B1);
+    if (row === 6)  return 'Elite';
+    if (row === 7)  return tr.pick(['Rest', 'Rest', 'Shop']);
+    if (row === 12) return 'Elite';
+    if (row === 13) return 'Rest';
+    if (row <= 2)   return tr.pick(['Combat', 'Combat', 'Event', 'Shop']);
+    if (row <= 5)   return tr.pick(['Combat', 'Event', 'Shop', 'Rest', 'Combat']);
+    return               tr.pick(['Combat', 'Event', 'Shop', 'Rest', 'Combat']);
+  }
+
+  // Grid cache: "row,col" → nodeId
+  const grid = {};
+  function getNode(row, col) {
+    const key = `${row},${col}`;
+    if (grid[key]) return grid[key];
+    grid[key] = makeNode(rowColType(row, col), col, row);
+    return grid[key];
+  }
+
+  // Start and Boss — centred at x=2.5
+  const startId = makeNode('Start', 2.5, 0);
+  nodes[startId].cleared = true;
+  const bossId = makeNode('Boss', 2.5, 14);
+  nodes[bossId].next = [];
+
+  // Generate paths — pathCols[p][r-1] = column for path p at row r (rows 1-13)
+  const pathCols = Array.from({ length: PATH_N }, (_, p) => [p]);
+  for (let r = 1; r <= 12; r++) {
+    const proposals = pathCols.map(p => {
+      const cur = p[r - 1];
+      const d = rng.pick([-1, 0, 0, 1]); // slight stay-bias
+      return Math.max(0, Math.min(COLS - 1, cur + d));
+    });
+    // Sort to maintain left-to-right order → edges never cross
+    const sorted = [...proposals].sort((a, b) => a - b);
+    pathCols.forEach((p, i) => p.push(sorted[i]));
+  }
+
+  // Build edges — deduplicated
+  const edgeSet = new Set();
+  function addEdge(fromId, toId) {
+    const k = `${fromId}|${toId}`;
+    if (!edgeSet.has(k)) { edgeSet.add(k); nodes[fromId].next.push(toId); }
+  }
+
+  // Start → row 1
+  for (let p = 0; p < PATH_N; p++) addEdge(startId, getNode(1, pathCols[p][0]));
+
+  // Row r → row r+1 (rows 1..12)
+  for (let r = 1; r <= 12; r++) {
+    for (let p = 0; p < PATH_N; p++) {
+      addEdge(getNode(r, pathCols[p][r - 1]), getNode(r + 1, pathCols[p][r]));
+    }
+  }
+
+  // Row 13 → Boss
+  for (let p = 0; p < PATH_N; p++) addEdge(getNode(13, pathCols[p][12]), bossId);
+
+  return {
+    nodes,
+    currentNodeId: startId,
+    selectableNext: [...nodes[startId].next],
+    detourEdges: [],
   };
-
-  // Re-roll helper: pick from pool, avoiding `blocked` type for variety
-  function vary(pool, blocked) {
-    const raw = rng.pick(pool);
-    if (raw === blocked) {
-      const alt = pool.filter(t => t !== blocked);
-      return alt.length ? rng.pick(alt) : raw;
-    }
-    return raw;
-  }
-
-  // ── Per-row type selection ───────────────────────────────────────────────
-  // 2-lane layout: L and R columns only.
-  // Max 2 choices at any node. Detours are the only cross-path options.
-  //
-  // No Rest rows 1-2. Guaranteed Rest row 6 (post-Elite). Guaranteed Rest row 9.
-
-  function shuffle(arr) {
-    for (let i = arr.length - 1; i > 0; i--) {
-      const j = rng.int(i + 1);
-      [arr[i], arr[j]] = [arr[j], arr[i]];
-    }
-    return arr;
-  }
-
-  // Row 1 — opening: 2 distinct types (no Rest, no same type both lanes)
-  const [r1L, r1R] = shuffle(['Combat', 'Event', 'Shop']).slice(0, 2);
-
-  // Row 2 — vary from row 1 per lane
-  const r2L = vary(['Combat', 'Shop', 'Event', 'Combat'], r1L);
-  const r2R = vary(['Combat', 'Event', 'Shop',  'Combat'], r1R);
-
-  // Row 3 — mid-act (Rest now available)
-  const r3L = vary(['Combat', 'Event', 'Rest', 'Shop'], r2L);
-  const r3R = vary(['Rest',   'Combat', 'Event', 'Shop'], r2R);
-
-  // Row 4 — single converge node (pre-Elite): no Rest
-  const r4 = rng.pick(['Shop', 'Event', 'Combat']);
-
-  // Row 5 — Elite (hardcoded)
-
-  // Row 6 — post-Elite recovery: L=Rest, R=Rest or Shop
-  const r6L = 'Rest';
-  const r6R = rng.pick(['Rest', 'Shop']);
-
-  // Row 7 — second half opening: 2 distinct types
-  const [r7L, r7R] = shuffle(['Combat', 'Event', 'Shop']).slice(0, 2);
-
-  // Row 8 — combat-heavy stretch
-  const r8L = vary(['Combat', 'Combat', 'Event', 'Shop'], r7L);
-  const r8R = vary(['Combat', 'Event',  'Combat', 'Shop'], r7R);
-
-  // Row 9 — single pre-Boss node: guaranteed Rest (last chance)
-  const r9 = 'Rest';
-
-  // ── Build node graph ────────────────────────────────────────────────────
-  //
-  //              Start (0,0)
-  //             /           \
-  //         L(-1,1)         R(1,1)       Row 1 — choose lane
-  //             |               |
-  //         L(-1,2)         R(1,2)       Row 2
-  //             |               |
-  //         L(-1,3)         R(1,3)       Row 3 — detour opportunity (dashed)
-  //              \           /
-  //              D(0,4)                  Row 4 — pre-Elite converge
-  //                  |
-  //              E(0,5)                  Row 5 — Elite
-  //             /           \
-  //         L(-1,6)         R(1,6)       Row 6 — Recovery (choose lane)
-  //             |               |
-  //         L(-1,7)         R(1,7)       Row 7 — detour opportunity (dashed)
-  //             |               |
-  //         L(-1,8)         R(1,8)       Row 8
-  //              \           /
-  //              I(0,9)                  Row 9 — pre-Boss converge
-  //                  |
-  //              Boss(0,10)
-  //
-  // Max choices at any node: 2 (start, elite recovery).
-  // Detour edges add optional cross-lane paths — always rendered dashed amber.
-
-  const start = makeNode("Start", 0, 0);
-  nodes[start].cleared = true;
-
-  const a1 = makeNode(r1L, -1, 1);
-  const a3 = makeNode(r1R,  1, 1);
-
-  const b1 = makeNode(r2L, -1, 2);
-  const b3 = makeNode(r2R,  1, 2);
-
-  const c1 = makeNode(r3L, -1, 3);
-  const c3 = makeNode(r3R,  1, 3);
-
-  const d  = makeNode(r4,   0, 4);
-
-  const e  = makeNode("Elite", 0, 5);
-
-  const f1 = makeNode(r6L, -1, 6);
-  const f3 = makeNode(r6R,  1, 6);
-
-  const g1 = makeNode(r7L, -1, 7);
-  const g3 = makeNode(r7R,  1, 7);
-
-  const h1 = makeNode(r8L, -1, 8);
-  const h3 = makeNode(r8R,  1, 8);
-
-  const i  = makeNode(r9,   0, 9);
-
-  const boss = makeNode("Boss", 0, 10);
-
-  // ── Connectivity (forward-only, max 2 choices) ────────────────────────
-  nodes[start].next = [a1, a3];     // choose lane
-
-  nodes[a1].next = [b1];            // locked in lane
-  nodes[a3].next = [b3];
-
-  nodes[b1].next = [c1];
-  nodes[b3].next = [c3];
-
-  nodes[c1].next = [d];             // converge
-  nodes[c3].next = [d];
-
-  nodes[d].next  = [e];             // forced elite
-
-  nodes[e].next  = [f1, f3];       // choose recovery lane
-
-  nodes[f1].next = [g1];
-  nodes[f3].next = [g3];
-
-  nodes[g1].next = [h1];
-  nodes[g3].next = [h3];
-
-  nodes[h1].next = [i];             // converge
-  nodes[h3].next = [i];
-
-  nodes[i].next  = [boss];
-  nodes[boss].next = [];
-
-  // ── Optional detour cross-paths (once per act half) ──────────────────────
-  // Amber dashed lines — player can take a detour for extra encounters.
-  // sideways: cross to same row other lane (+1 node on detour path)
-  // backward: diagonal to previous row other lane (+2 nodes on detour path)
-  const detourEdges = [];
-  function addDetour(from, to) {
-    nodes[from].next.push(to);
-    detourEdges.push([from, to]);
-  }
-
-  // Act 1 detour: row 2 (sideways) or row 3→row2 (backward)
-  if (rng.pick(['sideways', 'backward']) === 'sideways') {
-    addDetour(b1, b3);   // L-row2 → R-row2
-    addDetour(b3, b1);   // R-row2 → L-row2
-  } else {
-    addDetour(c1, b3);   // L-row3 → R-row2 (go back + across)
-    addDetour(c3, b1);   // R-row3 → L-row2
-  }
-
-  // Act 2 detour: row 7 (sideways) or row 8→row7 (backward)
-  if (rng.pick(['sideways', 'backward']) === 'sideways') {
-    addDetour(g1, g3);
-    addDetour(g3, g1);
-  } else {
-    addDetour(h1, g3);
-    addDetour(h3, g1);
-  }
-
-  return { nodes, currentNodeId: start, selectableNext: [a1, a3], detourEdges };
 }
 
 function makeCardRewards(data, seed, act = 1, nodeType = 'Combat') {

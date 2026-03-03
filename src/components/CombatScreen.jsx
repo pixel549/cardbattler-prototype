@@ -1574,6 +1574,89 @@ function PileViewer({ title, cards, cardInstances, data, onClose }) {
 }
 
 // ============================================================
+// ARC HAND — semi-circle fan of cards at the bottom
+// ============================================================
+function ArcHand({ hand, cardInstances, data, selectedCardId, onSelect, canPlayCard, aiPaused, onHover }) {
+  const n = hand.length;
+
+  const CARD_W    = 72;
+  const CARD_H    = 100;
+  const MAX_ANGLE = Math.min(52, n * 8); // total spread in degrees
+  const ARC_DROP  = Math.min(28, n * 4); // edge cards drop below centre
+  const SEL_LIFT  = 24;                  // selected card lifts up
+
+  // Compress overlap so all cards fit within viewport with room for rotation
+  // rotated card top-edge can extend: CARD_H * sin(MAX_ANGLE/2) extra horizontally
+  const viewW    = typeof window !== 'undefined' ? window.innerWidth : 375;
+  const rotExtra = Math.ceil(CARD_H * Math.sin((MAX_ANGLE / 2) * Math.PI / 180));
+  const usable   = viewW - rotExtra * 2 - 16; // subtract rotation overhang + padding
+  const OVERLAP  = n > 1 ? Math.min(44, Math.max(20, (usable - CARD_W) / (n - 1))) : 44;
+
+  // Container tall enough for card body + arc drop + selected lift
+  const CONTAINER_H = CARD_H + ARC_DROP + SEL_LIFT + 8;
+
+  if (n === 0) {
+    return (
+      <div style={{ height: 80, borderTop: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <span style={{ fontFamily: MONO, fontSize: 11, color: C.textDim }}>— no cards —</span>
+      </div>
+    );
+  }
+
+  const centerIdx = (n - 1) / 2;
+  const fanSpan   = (n - 1) * OVERLAP;
+  // Offset 18% right of center — thumb-friendly for right-handed players
+  const fanLeft   = (viewW - fanSpan - CARD_W) / 2 + viewW * 0.18;
+
+  return (
+    // overflow: visible so rotated card edges are never clipped
+    <div style={{ borderTop: `1px solid ${C.border}`, position: 'relative', overflow: 'visible' }}>
+      <div style={{ position: 'relative', height: CONTAINER_H, overflow: 'visible' }}>
+        {hand.map((cid, idx) => {
+          const ci  = cardInstances[cid];
+          const def = data?.cards?.[ci?.defId];
+          const isSelected = selectedCardId === cid;
+
+          const t     = n > 1 ? (idx - centerIdx) / centerIdx : 0; // -1..+1
+          const angle = t * (MAX_ANGLE / 2);
+          const yDrop = t * t * ARC_DROP;
+          const yLift = isSelected ? SEL_LIFT : 0;
+          const xPos  = fanLeft + idx * OVERLAP;
+          const yPos  = SEL_LIFT + ARC_DROP - yLift + yDrop;
+          const zIdx  = isSelected ? 100 : Math.round(n - Math.abs(t) * n + 1);
+
+          return (
+            <div
+              key={cid}
+              style={{
+                position: 'absolute',
+                left: xPos,
+                top: yPos,
+                transformOrigin: 'bottom center',
+                transform: `rotate(${angle}deg)`,
+                zIndex: zIdx,
+                transition: 'top 0.18s ease, transform 0.18s ease',
+              }}
+            >
+              <HandCard
+                cardInstance={ci}
+                cardDef={def}
+                isSelected={isSelected}
+                canPlay={canPlayCard(cid)}
+                onSelect={() => onSelect(cid)}
+                compact={true}
+                showTooltip={aiPaused}
+                onHover={onHover}
+              />
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
 // MAIN COMBAT SCREEN
 // ============================================================
 export default function CombatScreen({ state, data, onAction, aiPaused = false }) {
@@ -1584,7 +1667,6 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false }
   const [tooltip, setTooltip] = useState({ cardDef: null, x: 0, y: 0 });
   const [scryDiscard, setScryDiscard] = useState(new Set());
   const [floats, setFloats] = useState([]);
-  const handScrollRef = useRef(null);
   const lastLogLenRef = useRef(0);
   const floatIdRef = useRef(0);
 
@@ -1999,65 +2081,50 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false }
         )}
       </div>
 
-      {/* ============ ZONE C: PLAYER PANEL + HAND CARDS ============ */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'stretch',
-          gap: '8px',
-          padding: '8px 8px 4px 8px',
-          borderTop: `1px solid ${C.border}`,
-        }}
-      >
-        {/* Left: Player Stats */}
-        <PlayerPanel
-          player={player}
-          turn={combat.turn}
-          powerPile={combat.player?.piles?.power || []}
-          cardInstances={combat.cardInstances}
-          data={data}
-        />
-
-        {/* Right: Compact fanned hand cards */}
-        <div
-          ref={handScrollRef}
-          style={{
-            flex: 1,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'flex-end',
-            overflowX: 'auto',
-            paddingRight: '4px',
-            WebkitOverflowScrolling: 'touch',
-          }}
-        >
-          {hand.map((cid, idx) => {
-            const ci = cardInstances[cid];
-            const def = data?.cards?.[ci?.defId];
-            return (
-              <div
-                key={cid}
-                style={{
-                  marginLeft: idx > 0 ? '-10px' : 0,
-                  zIndex: selectedCardId === cid ? 20 : hand.length - idx,
-                  transition: 'all 0.2s ease',
-                }}
-              >
-                <HandCard
-                  cardInstance={ci}
-                  cardDef={def}
-                  isSelected={selectedCardId === cid}
-                  canPlay={canPlayCard(cid)}
-                  onSelect={() => setSelectedCardId(selectedCardId === cid ? null : cid)}
-                  compact={true}
-                  showTooltip={aiPaused}
-                  onHover={(cd, x, y) => setTooltip({ cardDef: cd, x, y })}
-                />
-              </div>
-            );
-          })}
+      {/* ============ ZONE C: COMPACT PLAYER STATS ============ */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        padding: '5px 10px',
+        borderTop: `1px solid ${C.border}`,
+        backgroundColor: C.bgDark,
+        flexShrink: 0,
+      }}>
+        {/* Turn badge */}
+        <span style={{ fontFamily: MONO, fontSize: 10, color: C.neonCyan, fontWeight: 700, letterSpacing: '0.05em', flexShrink: 0 }}>
+          T{combat.turn}
+        </span>
+        {/* HP */}
+        <div style={{ flex: 1, maxWidth: 140 }}>
+          <HealthBar current={player?.hp ?? 0} max={player?.maxHP ?? 1} height={12} showText={true} />
         </div>
+        {/* Firewall + block */}
+        {(player?.statuses?.find(s => s.id === 'Firewall')?.stacks ?? 0) > 0 && (
+          <span style={{ fontFamily: MONO, fontSize: 10, color: C.neonCyan, flexShrink: 0 }}>
+            🛡 {player.statuses.find(s => s.id === 'Firewall').stacks}
+          </span>
+        )}
+        {(player?.block ?? 0) > 0 && (
+          <span style={{ fontFamily: MONO, fontSize: 10, color: C.neonCyan, fontWeight: 700, flexShrink: 0 }}>
+            ⬡ {player.block}
+          </span>
+        )}
+        {/* Other statuses (compact) */}
+        <StatusRow statuses={(player?.statuses || []).filter(s => s.id !== 'Firewall')} size="small" />
       </div>
+
+      {/* ============ ZONE C2: ARC HAND ============ */}
+      <ArcHand
+        hand={hand}
+        cardInstances={cardInstances}
+        data={data}
+        selectedCardId={selectedCardId}
+        onSelect={(cid) => setSelectedCardId(selectedCardId === cid ? null : cid)}
+        canPlayCard={canPlayCard}
+        aiPaused={aiPaused}
+        onHover={(cd, x, y) => setTooltip({ cardDef: cd, x, y })}
+      />
 
       {/* ============ ZONE D: RAM BAR + ACTION BUTTONS (bottom) ============ */}
       <div

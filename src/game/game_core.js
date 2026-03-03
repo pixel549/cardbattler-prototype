@@ -35,14 +35,11 @@ function generateMap(seed) {
   }
 
   // ── Per-row type selection ───────────────────────────────────────────────
-  // 10-row layout: rows 1-3 (opening), row 4 (converge), row 5 (Elite),
-  // row 6 (recovery), rows 7-8 (second half), row 9 (pre-Boss), row 10 (Boss)
+  // 2-lane layout: L and R columns only.
+  // Max 2 choices at any node. Detours are the only cross-path options.
   //
-  // No Rest in rows 1-2 (too early).
-  // Guaranteed Rest/Shop in row 6 (post-Elite recovery).
-  // Guaranteed Rest on left in row 9 (last chance before Boss).
+  // No Rest rows 1-2. Guaranteed Rest row 6 (post-Elite). Guaranteed Rest row 9.
 
-  // Shuffle helper — Fisher-Yates in-place using seeded rng
   function shuffle(arr) {
     for (let i = arr.length - 1; i > 0; i--) {
       const j = rng.int(i + 1);
@@ -51,206 +48,149 @@ function generateMap(seed) {
     return arr;
   }
 
-  // Row 1 — opening (no Rest): always 3 DISTINCT types, random order
-  const [r1L, r1M, r1R] = shuffle(['Combat', 'Event', 'Shop']);
+  // Row 1 — opening: 2 distinct types (no Rest, no same type both lanes)
+  const [r1L, r1R] = shuffle(['Combat', 'Event', 'Shop']).slice(0, 2);
 
-  // Row 2 — early mid (no Rest; re-roll vs same-column row-1; dedup mid if all same)
-  let r2L = vary(['Combat', 'Shop', 'Event', 'Combat'], r1L);
-  let r2M = vary(['Combat', 'Event', 'Shop',  'Combat'], r1M);
-  let r2R = vary(['Combat', 'Event', 'Shop',  'Combat'], r1R);
-  if (r2L === r2M && r2M === r2R) r2M = vary(['Combat', 'Event', 'Shop'], r2M);
+  // Row 2 — vary from row 1 per lane
+  const r2L = vary(['Combat', 'Shop', 'Event', 'Combat'], r1L);
+  const r2R = vary(['Combat', 'Event', 'Shop',  'Combat'], r1R);
 
   // Row 3 — mid-act (Rest now available)
   const r3L = vary(['Combat', 'Event', 'Rest', 'Shop'], r2L);
-  const r3M = vary(['Event',  'Rest',  'Combat', 'Shop'], r2M);
   const r3R = vary(['Rest',   'Combat', 'Event', 'Shop'], r2R);
 
-  // Row 4 — pre-Elite converge: 2 nodes, no Rest, must differ from each other
-  const r4L    = rng.pick(['Shop', 'Event', 'Combat']);
-  const r4Rraw = rng.pick(['Event', 'Combat', 'Shop']);
-  const r4R    = r4Rraw === r4L ? vary(['Event', 'Combat', 'Shop'], r4L) : r4Rraw;
+  // Row 4 — single converge node (pre-Elite): no Rest
+  const r4 = rng.pick(['Shop', 'Event', 'Combat']);
 
-  // Row 5 — both ELITE (hard-coded)
+  // Row 5 — Elite (hardcoded)
 
-  // Row 6 — post-Elite recovery: GUARANTEED Rest on left, Rest or Shop on right
+  // Row 6 — post-Elite recovery: L=Rest, R=Rest or Shop
   const r6L = 'Rest';
   const r6R = rng.pick(['Rest', 'Shop']);
 
-  // Row 7 — second half opening (no Rest): 3 DISTINCT types, random order
-  const [r7L, r7M, r7R] = shuffle(['Combat', 'Event', 'Shop']);
+  // Row 7 — second half opening: 2 distinct types
+  const [r7L, r7R] = shuffle(['Combat', 'Event', 'Shop']).slice(0, 2);
 
-  // Row 8 — combat-heavy stretch (bias toward Combat; dedup if all same)
-  let r8L = vary(['Combat', 'Combat', 'Event', 'Shop'], r7L);
-  let r8M = vary(['Combat', 'Event',  'Combat', 'Shop'], r7M);
-  let r8R = vary(['Combat', 'Event',  'Shop', 'Combat'], r7R);
-  if (r8L === r8M && r8M === r8R) r8M = vary(['Combat', 'Event', 'Shop'], r8M);
+  // Row 8 — combat-heavy stretch
+  const r8L = vary(['Combat', 'Combat', 'Event', 'Shop'], r7L);
+  const r8R = vary(['Combat', 'Event',  'Combat', 'Shop'], r7R);
 
-  // Row 9 — pre-Boss: guaranteed Rest on LEFT path, random on right
-  const r9L = 'Rest';
-  const r9R = rng.pick(['Shop', 'Event', 'Combat']);
+  // Row 9 — single pre-Boss node: guaranteed Rest (last chance)
+  const r9 = 'Rest';
 
   // ── Build node graph ────────────────────────────────────────────────────
   //
-  //                    Start (0,0)
-  //                  /     |     \
-  //           L(-1,1)   M(0,1)   R(1,1)        Row 1 — opening
-  //            /\ /       |       \/ \
-  //       L(-1,2) M(0,2)         M(0,2) R(1,2) Row 2 — early mid
-  //            /\ /       |       \/ \
-  //       L(-1,3) M(0,3)         M(0,3) R(1,3) Row 3 — mid-act (Rest ok)
-  //             \   /               \   /
-  //          CL(-0.5,4)          CR(0.5,4)      Row 4 — converge
-  //               |                   |
-  //          EL(-0.5,5)          ER(0.5,5)      Row 5 — both ELITE
-  //               |                   |
-  //          PL(-0.5,6)          PR(0.5,6)      Row 6 — post-Elite RECOVERY
-  //            /    \               /    \
-  //       L(-1,7)  M(0,7)       M(0,7)  R(1,7) Row 7 — second half
-  //            /\ /       |       \/ \
-  //       L(-1,8) M(0,8)         M(0,8) R(1,8) Row 8 — combat stretch
-  //             \   /               \   /
-  //          BL(-0.5,9)          BR(0.5,9)      Row 9 — pre-Boss
-  //                   \           /
-  //                    Boss (0,10)
+  //              Start (0,0)
+  //             /           \
+  //         L(-1,1)         R(1,1)       Row 1 — choose lane
+  //             |               |
+  //         L(-1,2)         R(1,2)       Row 2
+  //             |               |
+  //         L(-1,3)         R(1,3)       Row 3 — detour opportunity (dashed)
+  //              \           /
+  //              D(0,4)                  Row 4 — pre-Elite converge
+  //                  |
+  //              E(0,5)                  Row 5 — Elite
+  //             /           \
+  //         L(-1,6)         R(1,6)       Row 6 — Recovery (choose lane)
+  //             |               |
+  //         L(-1,7)         R(1,7)       Row 7 — detour opportunity (dashed)
+  //             |               |
+  //         L(-1,8)         R(1,8)       Row 8
+  //              \           /
+  //              I(0,9)                  Row 9 — pre-Boss converge
+  //                  |
+  //              Boss(0,10)
   //
-  // PATH-LOCK (rows 1→2→3): L→L,M | M→L,M,R | R→M,R
-  // CONVERGE (row 3→4):     L→CL | M→CL,CR | R→CR
-  // ELITE (row 4→5):        CL→EL | CR→ER
-  // RECOVERY (row 5→6):     EL→PL | ER→PR
-  // REOPEN (row 6→7):       PL→L7,M7 | PR→M7,R7
-  // PATH-LOCK (rows 7→8):   L→L,M | M→L,M,R | R→M,R
-  // CONVERGE (row 8→9):     L→BL | M→BL,BR | R→BR
+  // Max choices at any node: 2 (start, elite recovery).
+  // Detour edges add optional cross-lane paths — always rendered dashed amber.
 
   const start = makeNode("Start", 0, 0);
   nodes[start].cleared = true;
 
-  // Row 1
   const a1 = makeNode(r1L, -1, 1);
-  const a2 = makeNode(r1M,  0, 1);
   const a3 = makeNode(r1R,  1, 1);
 
-  // Row 2
   const b1 = makeNode(r2L, -1, 2);
-  const b2 = makeNode(r2M,  0, 2);
   const b3 = makeNode(r2R,  1, 2);
 
-  // Row 3
   const c1 = makeNode(r3L, -1, 3);
-  const c2 = makeNode(r3M,  0, 3);
   const c3 = makeNode(r3R,  1, 3);
 
-  // Row 4 — converge to 2 (pre-Elite)
-  const d1 = makeNode(r4L, -0.5, 4);
-  const d2 = makeNode(r4R,  0.5, 4);
+  const d  = makeNode(r4,   0, 4);
 
-  // Row 5 — both Elite
-  const e1 = makeNode("Elite", -0.5, 5);
-  const e2 = makeNode("Elite",  0.5, 5);
+  const e  = makeNode("Elite", 0, 5);
 
-  // Row 6 — Recovery (guaranteed Rest/Shop)
-  const f1 = makeNode(r6L, -0.5, 6);
-  const f2 = makeNode(r6R,  0.5, 6);
+  const f1 = makeNode(r6L, -1, 6);
+  const f3 = makeNode(r6R,  1, 6);
 
-  // Row 7 — second half reopens to 3 cols
   const g1 = makeNode(r7L, -1, 7);
-  const g2 = makeNode(r7M,  0, 7);
   const g3 = makeNode(r7R,  1, 7);
 
-  // Row 8 — combat stretch
   const h1 = makeNode(r8L, -1, 8);
-  const h2 = makeNode(r8M,  0, 8);
   const h3 = makeNode(r8R,  1, 8);
 
-  // Row 9 — pre-Boss (Rest guaranteed left)
-  const i1 = makeNode(r9L, -0.5, 9);
-  const i2 = makeNode(r9R,  0.5, 9);
+  const i  = makeNode(r9,   0, 9);
 
-  // Row 10 — Boss
   const boss = makeNode("Boss", 0, 10);
 
-  // ── Connectivity ────────────────────────────────────────────────────────
-  nodes[start].next = [a1, a2, a3];
+  // ── Connectivity (forward-only, max 2 choices) ────────────────────────
+  nodes[start].next = [a1, a3];     // choose lane
 
-  // Rows 1 → 2 → 3  (path-locked: L→L,M | M→L,M,R | R→M,R)
-  nodes[a1].next = [b1, b2];
-  nodes[a2].next = [b1, b2, b3];
-  nodes[a3].next = [b2, b3];
+  nodes[a1].next = [b1];            // locked in lane
+  nodes[a3].next = [b3];
 
-  nodes[b1].next = [c1, c2];
-  nodes[b2].next = [c1, c2, c3];
-  nodes[b3].next = [c2, c3];
+  nodes[b1].next = [c1];
+  nodes[b3].next = [c3];
 
-  // Row 3 → converge Row 4
-  nodes[c1].next = [d1];
-  nodes[c2].next = [d1, d2];
-  nodes[c3].next = [d2];
+  nodes[c1].next = [d];             // converge
+  nodes[c3].next = [d];
 
-  // Row 4 → Elite Row 5 (forced)
-  nodes[d1].next = [e1];
-  nodes[d2].next = [e2];
+  nodes[d].next  = [e];             // forced elite
 
-  // Elite Row 5 → Recovery Row 6 (forced)
-  nodes[e1].next = [f1];
-  nodes[e2].next = [f2];
+  nodes[e].next  = [f1, f3];       // choose recovery lane
 
-  // Recovery Row 6 → Row 7 (paths broaden after elite)
-  nodes[f1].next = [g1, g2];   // left recovery  → left or centre
-  nodes[f2].next = [g2, g3];   // right recovery → centre or right
+  nodes[f1].next = [g1];
+  nodes[f3].next = [g3];
 
-  // Rows 7 → 8  (path-locked again)
-  nodes[g1].next = [h1, h2];
-  nodes[g2].next = [h1, h2, h3];
-  nodes[g3].next = [h2, h3];
+  nodes[g1].next = [h1];
+  nodes[g3].next = [h3];
 
-  // Row 8 → pre-Boss Row 9
-  nodes[h1].next = [i1];
-  nodes[h2].next = [i1, i2];
-  nodes[h3].next = [i2];
+  nodes[h1].next = [i];             // converge
+  nodes[h3].next = [i];
 
-  // Row 9 → Boss
-  nodes[i1].next = [boss];
-  nodes[i2].next = [boss];
+  nodes[i].next  = [boss];
   nodes[boss].next = [];
 
   // ── Optional detour cross-paths (once per act half) ──────────────────────
-  // Gives players an optional extra 1–2 encounters by going sideways or
-  // diagonally backward across columns before converging.
-  //
-  // Two detour types:
-  //   sideways  — same-row cross (L↔R at row 3 or 7), adds 1 node
-  //   backward  — diagonal back to previous row's opposite column
-  //               (e.g. c1→b3→c3 or h1→g3→h3), adds 2 nodes
-  //
-  // detourEdges: [[fromId, toId], ...] — returned for amber dashed rendering.
+  // Amber dashed lines — player can take a detour for extra encounters.
+  // sideways: cross to same row other lane (+1 node on detour path)
+  // backward: diagonal to previous row other lane (+2 nodes on detour path)
   const detourEdges = [];
   function addDetour(from, to) {
     nodes[from].next.push(to);
     detourEdges.push([from, to]);
   }
 
-  // Act 1 detour (rows 1–3 section)
+  // Act 1 detour: row 2 (sideways) or row 3→row2 (backward)
   if (rng.pick(['sideways', 'backward']) === 'sideways') {
-    // Sideways at row 3 — L↔R bidirectional (adds 1 node per detour)
-    addDetour(c1, c3);
-    addDetour(c3, c1);
+    addDetour(b1, b3);   // L-row2 → R-row2
+    addDetour(b3, b1);   // R-row2 → L-row2
   } else {
-    // Backward diagonal — L-row3→R-row2 and R-row3→L-row2 (adds 2 nodes per detour)
-    addDetour(c1, b3);
-    addDetour(c3, b1);
+    addDetour(c1, b3);   // L-row3 → R-row2 (go back + across)
+    addDetour(c3, b1);   // R-row3 → L-row2
   }
 
-  // Act 2 detour (rows 7–8 section)
+  // Act 2 detour: row 7 (sideways) or row 8→row7 (backward)
   if (rng.pick(['sideways', 'backward']) === 'sideways') {
-    // Sideways at row 7 — L↔R bidirectional
     addDetour(g1, g3);
     addDetour(g3, g1);
   } else {
-    // Backward diagonal — L-row8→R-row7 and R-row8→L-row7
     addDetour(h1, g3);
     addDetour(h3, g1);
   }
 
-  return { nodes, currentNodeId: start, selectableNext: [...nodes[start].next], detourEdges };
+  return { nodes, currentNodeId: start, selectableNext: [a1, a3], detourEdges };
 }
 
 function makeCardRewards(data, seed, act = 1, nodeType = 'Combat') {

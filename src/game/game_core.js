@@ -46,7 +46,7 @@ function generateMap(seed) {
     if (row === 6)  return 'Elite';
     if (row === 7)  return tr.pick(['Rest', 'Rest', 'Shop']);
     if (row === 12) return 'Elite';
-    if (row === 13) return 'Rest';
+    if (row === 13) return tr.pick(['Rest', 'Shop', 'Event']);
     if (row <= 2)   return tr.pick(['Combat', 'Combat', 'Event', 'Shop']);
     if (row <= 5)   return tr.pick(['Combat', 'Event', 'Shop', 'Rest', 'Combat']);
     return               tr.pick(['Combat', 'Event', 'Shop', 'Rest', 'Combat']);
@@ -245,6 +245,16 @@ function service_AccelerateCard(state) {
   const ci = state.deck.cardInstances[sel];
   if (!ci || ci.finalMutationId) return false;
   ci.finalMutationCountdown = clamp(ci.finalMutationCountdown - 2, 0, 999);
+  return true;
+}
+function service_DuplicateCard(state, rng) {
+  const sel = state.deckView?.selectedInstanceId;
+  if (!state.deck || !sel) return false;
+  const ci = state.deck.cardInstances[sel];
+  if (!ci) return false;
+  const newId = `ci_${rng.nextUint().toString(16)}`;
+  state.deck.cardInstances[newId] = { ...structuredClone(ci), id: newId };
+  state.deck.master.push(newId);
   return true;
 }
 function service_HealPlayer(state) {
@@ -626,6 +636,27 @@ export function dispatchGame(stateIn, data, action) {
       // Rest Site is handled by dedicated actions
       if (state.event.eventId === "RestSite") return state;
 
+      // Pre-process GainCard ops (add random card to deck before applying other ops)
+      {
+        const evDef = EVENT_REG.events[state.event.eventId];
+        const evChoice = evDef?.choices.find(c => c.id === action.choiceId);
+        if (evChoice) {
+          for (const op of evChoice.ops) {
+            if (op.op === 'GainCard') {
+              const cardRng = new RNG((state.run.seed ^ state.run.floor ^ 0xCA4DCA4D) >>> 0);
+              const pool = Object.keys(data.cards).filter(id => {
+                const c = data.cards[id];
+                const tags = c.tags || [];
+                if (tags.includes('EnemyCard') || tags.includes('Core') || id.startsWith('EC-')) return false;
+                if (op.pool === 'power') return tags.includes('Power') || c.type === 'Power';
+                return !tags.includes('Power') && c.type !== 'Power';
+              });
+              if (pool.length) addCardToRunDeck(data, state.deck, cardRng, cardRng.pick(pool));
+            }
+          }
+        }
+      }
+
       const res = applyEventChoiceImmediate(state, data, EVENT_REG, action.choiceId);
       log({ t: "Info", msg: `Event choice: ${action.choiceId}` });
 
@@ -728,6 +759,10 @@ export function dispatchGame(stateIn, data, action) {
         if (op === "RepairSelectedCard") ok = service_RepairCard(state, data);
         if (op === "StabiliseSelectedCard") ok = service_StabiliseCard(state, data);
         if (op === "AccelerateSelectedCard") ok = service_AccelerateCard(state);
+        if (op === "DuplicateSelectedCard") {
+          const dupRng = new RNG((state.run?.seed ^ state.run?.floor ^ 0xD0D0D0) >>> 0);
+          ok = service_DuplicateCard(state, dupRng);
+        }
         if (!ok) { log({ t: "Info", msg: `Event card op failed: ${op}` }); return state; }
         log({ t: "Info", msg: `Event: applied card op ${op}` });
         state.event.pendingSelectOp = undefined;

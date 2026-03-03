@@ -1111,6 +1111,85 @@ function SequenceGame({ config, onComplete }) {
   );
 }
 
+// ── Rapid Tap ────────────────────────────────────────────────────────────────
+function RapidGame({ config, onComplete }) {
+  const { duration = 5000, goldTaps, silverTaps } = config;
+  const [phase, setPhase]   = useState('ready');   // 'ready'|'playing'
+  const [countdown, setCd]  = useState(3);
+  const [count, setCount]   = useState(0);
+  const [timeLeft, setTime] = useState(duration);
+  const doneRef             = useRef(false);
+
+  // 3-2-1 countdown
+  useEffect(() => {
+    if (phase !== 'ready') return;
+    if (countdown <= 0) { setPhase('playing'); return; }
+    const t = setTimeout(() => setCd(c => c - 1), 900);
+    return () => clearTimeout(t);
+  }, [phase, countdown]);
+
+  // Play timer
+  useEffect(() => {
+    if (phase !== 'playing') return;
+    const id = setInterval(() => setTime(t => Math.max(0, t - 100)), 100);
+    return () => clearInterval(id);
+  }, [phase]);
+
+  // End detection
+  useEffect(() => {
+    if (phase === 'playing' && timeLeft === 0 && !doneRef.current) {
+      doneRef.current = true;
+      onComplete(count >= goldTaps ? 'gold' : count >= silverTaps ? 'silver' : 'fail');
+    }
+  }, [timeLeft, phase, count, goldTaps, silverTaps, onComplete]);
+
+  if (phase === 'ready') {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, gap: 8 }}>
+        <div style={{ fontFamily: MONO, fontSize: 11, color: C.textMuted, letterSpacing: '0.15em' }}>GET READY</div>
+        <div style={{ fontFamily: MONO, fontSize: 96, fontWeight: 700, color: C.cyan, lineHeight: 1 }}>
+          {countdown > 0 ? countdown : 'GO!'}
+        </div>
+      </div>
+    );
+  }
+
+  const pct = timeLeft / duration;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, padding: '4px 0' }}>
+      <div style={{ fontFamily: MONO, fontSize: 11, color: C.textMuted, letterSpacing: '0.15em' }}>TAP AS FAST AS YOU CAN</div>
+      {/* Timer bar */}
+      <div style={{ width: '100%', height: 8, background: '#1a1a28', borderRadius: 4, overflow: 'hidden' }}>
+        <div style={{
+          height: '100%', width: `${pct * 100}%`, borderRadius: 4,
+          background: pct > 0.5 ? C.cyan : pct > 0.25 ? C.orange : C.red,
+          transition: 'width 0.1s linear, background 0.3s',
+        }} />
+      </div>
+      {/* Count */}
+      <div style={{ fontFamily: MONO, fontSize: 80, fontWeight: 700, color: C.cyan, lineHeight: 1 }}>{count}</div>
+      <div style={{ fontFamily: MONO, fontSize: 10, color: C.textMuted }}>
+        ⭐ {goldTaps}+  ·  ✦ {silverTaps}+  ·  {(timeLeft / 1000).toFixed(1)}s
+      </div>
+      {/* Tap button */}
+      <button
+        onPointerDown={(e) => { e.preventDefault(); setCount(c => c + 1); }}
+        style={{
+          width: 180, height: 180, borderRadius: '50%',
+          background: `${C.cyan}12`, border: `3px solid ${C.cyan}50`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontFamily: MONO, fontSize: 22, fontWeight: 700, color: C.cyan,
+          cursor: 'pointer', userSelect: 'none', WebkitUserSelect: 'none',
+          touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent',
+          boxShadow: `0 0 40px ${C.cyan}15`,
+        }}
+      >
+        TAP
+      </button>
+    </div>
+  );
+}
+
 // ── Minigame wrapper (intro → play → result) ──────────────────────────────────
 const TIER_LABEL  = { gold: '⭐ GOLD',  silver: '✦ SILVER', fail: '✗ FAILED', skip: '— SKIPPED' };
 const TIER_COLOR  = { gold: C.yellow,   silver: '#aaa',     fail: C.red,       skip: C.textDim };
@@ -1193,6 +1272,7 @@ function MinigameScreen({ state, onAction }) {
           {def.type === 'memory'   && <MemoryGame   config={def.config} onComplete={handleComplete} />}
           {def.type === 'timing'   && <TimingGame   config={def.config} onComplete={handleComplete} />}
           {def.type === 'sequence' && <SequenceGame config={def.config} onComplete={handleComplete} />}
+          {def.type === 'rapid'    && <RapidGame    config={def.config} onComplete={handleComplete} />}
         </div>
       </ScreenShell>
     );

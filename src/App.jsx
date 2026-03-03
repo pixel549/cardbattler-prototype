@@ -181,19 +181,17 @@ function RunHeader({ run, data }) {
 // MAP SCREEN — SVG node graph
 // ============================================================
 
-// 25-node layout: x ∈ {-1, -0.5, 0, 0.5, 1}  y ∈ [0, 10]
-// y=0 = Start (top), y=10 = Boss (bottom). ~10 encounter nodes per path.
+// StS-style: 6 columns (x=0..5), 15 rows (y=0..14). x=2.5 = centre (Start/Boss).
 const SVG_MAP_W = 300;
 const SVG_MAP_H = 920;
 
 function mapNX(x) {
-  // x ∈ {-1, -0.5, 0, 0.5, 1} → pixel x, centred at 150
-  // -1→50, -0.5→100, 0→150, 0.5→200, 1→250
-  return 150 + x * 100;
+  // x=0→30, x=2.5→150 (centre), x=5→270
+  return 30 + x * 48;
 }
 function mapNY(y) {
-  // y=0 at top (y=40), y=10 at bottom (y=880) — Start visible first, Boss at end
-  return 40 + (y / 10) * 840;
+  // y=0 (Start)→40px, y=14 (Boss)→880px
+  return 40 + (y / 14) * 840;
 }
 
 const NODE_TYPE_DESCS = {

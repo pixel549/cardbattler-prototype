@@ -9,6 +9,7 @@ import { decodeDebugSeed, decodeSensibleDebugSeed, randomDebugSeed } from './gam
 import { createBasicEventRegistry } from './game/events';
 import { MINIGAME_REGISTRY, isMinigameEvent } from './game/minigames';
 import { sfx } from './game/sounds';
+import { getEventImage } from './data/eventImages';
 
 // Module-level event registry (created once)
 const EVENT_REG_UI = createBasicEventRegistry();
@@ -1404,7 +1405,11 @@ function EventScreen({ state, data, onAction }) {
 
   // Registry-driven generic event
   const MONO = "'JetBrains Mono', 'Fira Code', 'Consolas', monospace";
-  const eventDef = EVENT_REG_UI.events[eventId];
+  const _baseDef = EVENT_REG_UI.events[eventId];
+  // Inject background image from gamedata or our image mapping
+  const eventDef = _baseDef
+    ? { ..._baseDef, image: _baseDef.image || getEventImage(eventId) }
+    : _baseDef;
 
   if (!eventDef) {
     return (

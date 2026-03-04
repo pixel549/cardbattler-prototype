@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { getEnemyImage } from '../data/enemyImages';
+import { getCardImage } from '../data/cardImages';
 import { sfx } from '../game/sounds';
 
 /**
@@ -1055,7 +1056,8 @@ function HandCard({ cardInstance, cardDef, isSelected, onSelect, canPlay, compac
   const h = compact ? 100 : 148;
   const badgeSize = compact ? 18 : 24;
   const badgeOffset = compact ? '-4px' : '-6px';
-  const artH = compact ? 22 : 38;
+  const artH = compact ? 32 : 60;
+  const imgSrc = getCardImage(cardDef?.id);
 
   return (
     <button
@@ -1244,14 +1246,36 @@ function HandCard({ cardInstance, cardDef, isSelected, onSelect, canPlay, compac
         </div>
       )}
 
-      {/* Card art placeholder */}
-      <div
-        style={{
-          height: artH,
-          background: `linear-gradient(135deg, ${color}12 0%, ${C.bgCard} 50%, ${color}06 100%)`,
-          borderBottom: `1px solid ${color}20`,
-        }}
-      />
+      {/* Card artwork */}
+      <div style={{
+        height: artH, overflow: 'hidden',
+        borderBottom: `1px solid ${color}30`,
+        position: 'relative',
+        backgroundColor: `${color}08`,
+      }}>
+        {imgSrc ? (
+          <img
+            src={imgSrc}
+            alt=""
+            style={{
+              width: '100%', height: '100%',
+              objectFit: 'cover', objectPosition: 'top center',
+              display: 'block',
+            }}
+          />
+        ) : (
+          <div style={{
+            height: '100%',
+            background: `linear-gradient(135deg, ${color}15 0%, ${C.bgCard} 50%, ${color}08 100%)`,
+          }} />
+        )}
+        {/* Type colour tint overlay */}
+        <div style={{
+          position: 'absolute', inset: 0,
+          background: `linear-gradient(to bottom, transparent 60%, ${C.bgCard}dd 100%)`,
+          pointerEvents: 'none',
+        }} />
+      </div>
 
       {/* Card content */}
       <div style={{ padding: compact ? '4px 5px' : '6px 8px', display: 'flex', flexDirection: 'column', height: `calc(100% - ${artH}px)` }}>
@@ -1578,6 +1602,40 @@ function PileViewer({ title, cards, cardInstances, data, onClose }) {
 // ============================================================
 function ArcHand({ hand, cardInstances, data, selectedCardId, onSelect, canPlayCard, aiPaused, onHover }) {
   const n = hand.length;
+  const [hoveredIdx, setHoveredIdx] = useState(-1);
+
+  // Large hands (12+) render as horizontal scroll row instead of arc
+  if (n >= 12) {
+    return (
+      <div style={{
+        borderTop: `1px solid ${C.border}`,
+        overflowX: 'auto',
+        display: 'flex',
+        gap: '5px',
+        padding: '10px 12px 6px',
+        WebkitOverflowScrolling: 'touch',
+      }}>
+        {hand.map(cid => {
+          const ci  = cardInstances[cid];
+          const def = data?.cards?.[ci?.defId];
+          return (
+            <div key={cid} style={{ flexShrink: 0 }}>
+              <HandCard
+                cardInstance={ci}
+                cardDef={def}
+                isSelected={selectedCardId === cid}
+                canPlay={canPlayCard(cid)}
+                onSelect={() => onSelect(cid)}
+                compact={true}
+                showTooltip={aiPaused}
+                onHover={onHover}
+              />
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
 
   const CARD_W    = 72;
   const CARD_H    = 100;
@@ -1620,22 +1678,25 @@ function ArcHand({ hand, cardInstances, data, selectedCardId, onSelect, canPlayC
           const t     = n > 1 ? (idx - centerIdx) / centerIdx : 0; // -1..+1
           const angle = t * (MAX_ANGLE / 2);
           const yDrop = t * t * ARC_DROP;
-          const yLift = isSelected ? SEL_LIFT : 0;
+          const isHovered = hoveredIdx === idx && !isSelected;
+          const yLift = isSelected ? SEL_LIFT : isHovered ? SEL_LIFT * 0.55 : 0;
           const xPos  = fanLeft + idx * OVERLAP;
           const yPos  = SEL_LIFT + ARC_DROP - yLift + yDrop;
-          const zIdx  = isSelected ? 100 : Math.round(n - Math.abs(t) * n + 1);
+          const zIdx  = isSelected ? 100 : isHovered ? 50 : Math.round(n - Math.abs(t) * n + 1);
 
           return (
             <div
               key={cid}
+              onMouseEnter={() => setHoveredIdx(idx)}
+              onMouseLeave={() => setHoveredIdx(-1)}
               style={{
                 position: 'absolute',
                 left: xPos,
                 top: yPos,
                 transformOrigin: 'bottom center',
-                transform: `rotate(${angle}deg)`,
+                transform: `rotate(${angle}deg) scale(${isHovered ? 1.05 : 1})`,
                 zIndex: zIdx,
-                transition: 'top 0.18s ease, transform 0.18s ease',
+                transition: 'top 0.15s ease, transform 0.15s ease',
               }}
             >
               <HandCard

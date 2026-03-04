@@ -32,7 +32,7 @@ export const AI_PLAYSTYLES = {
     // shop
     shopGoldReserve: 40,         // won't buy if it leaves less than this gold
     shopBuyCards: true,
-    shopPreferCardTypes: ['Power', 'Skill'],
+    shopPreferCardTypes: ['Attack', 'Power', 'Skill', 'Defense'],
     shopAvoidCardTypes: [],
     shopBuyHeal: true,
     shopBuyRepair: false,
@@ -303,12 +303,30 @@ function getCombatAction(combat, data, playstyle) {
     const cost = Math.max(0, (def.costRAM || 0) + (ci.ramCostDelta || 0));
     if (player.ram < cost) continue;
 
-    const isAoE = (def.effects || []).some(e => e.target === 'AllEnemies');
+    const isAoE = (def.effects || []).some(e => e.target === 'AllEnemies'
+      || (e.op === 'RawText' && /to ALL/i.test(e.text || '')));
     // AoE cards score against first enemy (effects hit all anyway)
     const targets = isAoE ? [aliveEnemies[0]] : aliveEnemies;
 
+    // XCost penalty: cards that spend all remaining RAM (e.g. Broadcast Surge)
+    // should be deferred until no other playable cards remain in hand.
+    // Penalize proportional to how many other positive-cost cards we'd strand.
+    const isXCost = (def.tags || []).includes('XCost')
+      || (def.effects || []).some(e => e.op === 'RawText' && /spend all remaining RAM/i.test(e.text || ''));
+    let xCostPenalty = 0;
+    if (isXCost) {
+      for (const otherId of (player.piles.hand || [])) {
+        if (otherId === cid) continue;
+        const oci = cardInstances[otherId];
+        const odef = data.cards[oci?.defId];
+        if (!odef) continue;
+        const ocost = Math.max(0, (odef.costRAM || 0) + (oci?.ramCostDelta || 0));
+        if (ocost > 0 && ocost <= player.ram) xCostPenalty += 30;
+      }
+    }
+
     for (const enemy of targets) {
-      const score = scoreCard(def, ci, enemy, aliveEnemies, player, playstyle, data);
+      const score = scoreCard(def, ci, enemy, aliveEnemies, player, playstyle, data) - xCostPenalty;
       if (score > bestScore) {
         bestScore = score;
         bestAction = {
@@ -361,50 +379,67 @@ function scoreCard(def, ci, target, aliveEnemies, player, playstyle, data) {
     return sum + (intent?.type === 'Attack' && typeof intent.amount === 'number' ? intent.amount : 0);
   }, 0);
 
+  // HP urgency: block is more valuable when player is low on HP
+  const hpPct = player.hp / (player.maxHP || 75);
+  const blockUrgency = hpPct < 0.35 ? 2.2 : hpPct < 0.55 ? 1.5 : 1.0;
+
+  // Helper: score a block gain amount
+  const scoreBlockGain = (blockGain) => {
+    if (blockGain <= 0) return 0;
+    const existingBlock = player.block || 0;
+    let blockBase;
+    if (incoming > 0) {
+      const usefulBlock = Math.min(blockGain, Math.max(0, incoming - existingBlock));
+      const extraBlock  = Math.max(0, blockGain - usefulBlock);
+      blockBase = usefulBlock * 1.5 + extraBlock * 0.3;
+    } else {
+      // No known incoming: use a floor so block cards aren't penalized into never playing
+      blockBase = blockGain * 0.85;
+    }
+    return blockBase * ps.blockWeight * blockUrgency;
+  };
+
   // Check if target has damage-amplifying debuffs (Vulnerable / ExposedPorts)
   const targetAmpStacks = (target?.statuses || [])
     .filter(s => s.id === 'Vulnerable' || s.id === 'ExposedPorts')
     .reduce((n, s) => n + (s.stacks || 1), 0);
   const dmgAmpMult = 1 + targetAmpStacks * 0.20; // roughly +20% effective damage per stack
 
+  // Helper: score single-target or AoE damage
+  const scoreDamage = (rawDmg, isAoE) => {
+    if (isAoE) {
+      let dmgScore = 0;
+      for (const e of aliveEnemies) {
+        const effDmg = Math.max(0, rawDmg - (e.block || 0)) * dmgAmpMult;
+        if (e.hp <= effDmg) {
+          dmgScore += (1000 + aliveEnemies.length * 50) * ps.damageWeight;
+        } else {
+          dmgScore += effDmg * 2 * ps.damageWeight;
+          dmgScore += (1 - e.hp / e.maxHP) * 15 * ps.damageWeight;
+        }
+      }
+      return dmgScore;
+    } else {
+      const effDmg = Math.max(0, rawDmg - (target.block || 0)) * dmgAmpMult;
+      if (target.hp <= effDmg) {
+        return (1000 + aliveEnemies.length * 50) * ps.damageWeight;
+      }
+      let dmgScore = effDmg * 2 * ps.damageWeight;
+      dmgScore += (1 - target.hp / target.maxHP) * 30;
+      if (enemyIsHealer(target, data)) dmgScore += 40;
+      if (targetAmpStacks > 0) dmgScore += targetAmpStacks * 8;
+      return dmgScore;
+    }
+  };
+
   for (const effect of (def.effects || [])) {
     switch (effect.op) {
       case 'DealDamage': {
-        const isAoE = effect.target === 'AllEnemies';
-        const rawDmg = effect.amount || 0;
-        if (isAoE) {
-          for (const e of aliveEnemies) {
-            // AoE pierces individual block (usually), but respect target block for scoring
-            const effDmg = Math.max(0, rawDmg - (e.block || 0)) * dmgAmpMult;
-            if (e.hp <= effDmg) {
-              score += (1000 + aliveEnemies.length * 50) * ps.damageWeight;
-            } else {
-              score += effDmg * 2 * ps.damageWeight;
-              score += (1 - e.hp / e.maxHP) * 15 * ps.damageWeight;
-            }
-          }
-        } else {
-          // Single-target: subtract enemy block to get effective damage
-          const effDmg = Math.max(0, rawDmg - (target.block || 0)) * dmgAmpMult;
-          if (target.hp <= effDmg) {
-            score += (1000 + aliveEnemies.length * 50) * ps.damageWeight;
-          } else {
-            score += effDmg * 2 * ps.damageWeight;
-            // Prefer targets that are: low on HP, healers, and already debuffed
-            score += (1 - target.hp / target.maxHP) * 30;
-            if (enemyIsHealer(target, data)) score += 40;
-            // Small bonus for following up on vulnerable targets
-            if (targetAmpStacks > 0) score += targetAmpStacks * 8;
-          }
-        }
+        score += scoreDamage(effect.amount || 0, effect.target === 'AllEnemies');
         break;
       }
       case 'GainBlock': {
-        const blockGain = effect.amount || 0;
-        // Block only useful up to total incoming; extra block has diminishing value
-        const usefulBlock = Math.min(blockGain, Math.max(0, incoming - (player.block || 0)));
-        const extraBlock  = Math.max(0, blockGain - usefulBlock);
-        score += usefulBlock * 1.5 * ps.blockWeight + extraBlock * 0.3 * ps.blockWeight;
+        score += scoreBlockGain(effect.amount || 0);
         break;
       }
       case 'DrawCards':   score += (effect.amount || 0) * 5 * ps.drawWeight;   break;
@@ -426,6 +461,40 @@ function scoreCard(def, ci, target, aliveEnemies, player, playstyle, data) {
         const healNeed = (player.maxHP || 0) - (player.hp || 0);
         const urgency = player.hp < player.maxHP * 0.5 ? 2 : 0.5;
         score += Math.min(effect.amount || 0, healNeed) * urgency * ps.healWeight;
+        break;
+      }
+      case 'RawText': {
+        // Parse common patterns that lack structured effects
+        const t = effect.text || '';
+        // "Gain X Firewall" or "gain X Firewall" → immediate block
+        const fwMatch = t.match(/[Gg]ain (\d+) Firewall/);
+        if (fwMatch) score += scoreBlockGain(parseInt(fwMatch[1]));
+        // "POWER.*gain X Firewall" — persistent per-turn block; value ~3 turns
+        const pwrFwMatch = t.match(/POWER[^]*gain (\d+) Firewall/i);
+        if (pwrFwMatch) score += scoreBlockGain(parseInt(pwrFwMatch[1]) * 3);
+        // "Deal X damage" — single-target
+        const dmgMatch = t.match(/[Dd]eal (\d+) damage(?! to ALL)/);
+        if (dmgMatch) score += scoreDamage(parseInt(dmgMatch[1]), false);
+        // "Deal X damage to ALL enemies"
+        const aoeMatch = t.match(/[Dd]eal (\d+) damage to ALL/i);
+        if (aoeMatch) score += scoreDamage(parseInt(aoeMatch[1]), true);
+        // "Deal X damage per RAM" / "Spend all remaining RAM. Deal X damage per RAM"
+        const ramDmgMatch = t.match(/[Dd]eal (\d+) damage[^]*per RAM/i);
+        if (ramDmgMatch) {
+          const dmgPerRam = parseInt(ramDmgMatch[1]);
+          const isAoe = /to ALL/i.test(t);
+          score += scoreDamage(dmgPerRam * Math.max(1, player.ram), isAoe);
+        }
+        // "Draw X card"
+        const drawMatch = t.match(/[Dd]raw (\d+)/);
+        if (drawMatch) score += parseInt(drawMatch[1]) * 5 * ps.drawWeight;
+        // "Heal X HP"
+        const healMatch = t.match(/[Hh]eal (\d+) HP/);
+        if (healMatch) {
+          const healNeed = (player.maxHP || 0) - (player.hp || 0);
+          const urgency = player.hp < player.maxHP * 0.5 ? 2 : 0.5;
+          score += Math.min(parseInt(healMatch[1]), healNeed) * urgency * ps.healWeight;
+        }
         break;
       }
     }

@@ -1719,9 +1719,83 @@ function applyRelicHook(state, data, relic, ctx) {
       state._relicOverclockCostMod = -1;
       break;
     case 'NeuralBurnout':
-      // take 2 damage (no block interaction — direct HP loss)
       state.player.hp = Math.max(0, state.player.hp - 2);
       push(state.log, { t: 'Info', msg: 'NeuralBurnout: -2 HP' });
+      break;
+    case 'TheSingularity': {
+      // Download 1 of 3 random non-Core cards from the draw pile into hand
+      const rng2 = ctx.rng || new RNG((state.seed ^ 0x5199) >>> 0);
+      const candidates = state.player.piles.draw
+        .filter(cid2 => {
+          const ci2 = state.cardInstances[cid2];
+          const def2 = state.dataRef?.cards?.[ci2?.defId];
+          return def2 && !def2.tags?.includes('Core');
+        })
+        .slice(0, 6);
+      if (candidates.length > 0) {
+        const pick = rng2.pick(candidates);
+        state.player.piles.draw = state.player.piles.draw.filter(x => x !== pick);
+        state.player.piles.hand.push(pick);
+        push(state.log, { t: 'Info', msg: 'TheSingularity: downloaded card to hand' });
+      }
+      break;
+    }
+
+    // --- on_turn_end ---
+    case 'BufferOverflow':
+      if (state.player.ram <= 0) {
+        const rng3 = ctx.rng || new RNG((state.seed ^ 0xBF) >>> 0);
+        drawCards(state, rng3, 1);
+        push(state.log, { t: 'Info', msg: 'BufferOverflow: +1 draw (0 RAM)' });
+      }
+      break;
+
+    // --- on_card_play ---
+    case 'NeuralOverride':
+      // Draw 1 when you play a 0-cost card
+      if (ctx.cost === 0) {
+        const r2 = ctx.rng || new RNG((state.seed ^ 0xAB0) >>> 0);
+        drawCards(state, r2, 1);
+        push(state.log, { t: 'Info', msg: 'NeuralOverride: +1 draw (0-cost)' });
+      }
+      break;
+    case 'ViralPayload':
+      // Apply 1 Corrode to target on each card play
+      {
+        const target = state.enemies.find(e => e.hp > 0);
+        if (target) {
+          addStatus(state, target, 'Corrode', 1);
+          push(state.log, { t: 'Info', msg: 'ViralPayload: +1 Corrode on enemy' });
+        }
+      }
+      break;
+    case 'ProtocolBreach':
+      // Gain 1 temporary RAM combo token (tracked as _protocolBreachTokens)
+      state._protocolBreachTokens = (state._protocolBreachTokens || 0) + 1;
+      push(state.log, { t: 'Info', msg: 'ProtocolBreach: RAM combo +1' });
+      break;
+    case 'DebugLog':
+      // Every 5th card played this combat is free
+      {
+        state._debugLogCount = (state._debugLogCount || 0) + 1;
+        if (state._debugLogCount % 5 === 0) {
+          state._nextCardFree = true;
+          push(state.log, { t: 'Info', msg: 'DebugLog: 5th card — next is free' });
+        }
+      }
+      break;
+    case 'CoolingFan':
+      // If this card has a Repair effect, gain 4 block
+      if (ctx.def?.effects?.some(e => e.op === 'RepairSelectedCard' || e.op === 'RepairCard')) {
+        gainBlock(state, state.player, 4);
+        push(state.log, { t: 'Info', msg: 'CoolingFan: +4 block (repair)' });
+      }
+      break;
+
+    // --- on_enemy_kill (called manually from applyDamage result) ---
+    case 'KillSwitch':
+      state.player.hp = Math.min(state.player.maxHP, state.player.hp + 3);
+      push(state.log, { t: 'Info', msg: 'KillSwitch: +3 HP on kill' });
       break;
 
     default:
@@ -1731,6 +1805,8 @@ function applyRelicHook(state, data, relic, ctx) {
 
 export function startCombatFromRunDeck(params) {
   const { data, seed, act, runDeck, enemyIds, playerMaxHP=50, playerMaxRAM=8, playerRamRegen=2, openingHand=5, ruleMods={}, forcedMutationTier=null, debugOverrides=null, relicIds=[] } = params;
+  // ThrottledProc: cap RAM at 3, max card cost 1 (passive_combat)
+  const effectiveMaxRAM = relicIds.includes('ThrottledProc') ? Math.min(3, playerMaxRAM) : playerMaxRAM;
   const rng = new RNG(seed);
   const draw = [...runDeck.master];
 
@@ -1784,8 +1860,8 @@ export function startCombatFromRunDeck(params) {
       maxHP: playerMaxHP,
       block: 0,
       statuses: [],
-      ram: playerMaxRAM,
-      maxRAM: playerMaxRAM,
+      ram: effectiveMaxRAM,
+      maxRAM: effectiveMaxRAM,
       ramRegen: playerRamRegen,
       piles: { draw, hand: [], discard: [], exhaust: [], power: [] }
     },
@@ -1799,12 +1875,15 @@ export function startCombatFromRunDeck(params) {
     balance: { enemyDmgMult: effectiveEnemyDmgMult, enemyHpMult: effectiveEnemyHpMult },
     ruleMods: effectiveRuleMods,
     forcedMutationTier,
+    relicIds,
     dataRef: data
   };
 
   push(state.log, { t: "Info", msg: `Combat started (seed=${seed})` });
+  runRelicHooks(state, data, 'on_combat_start', { rng });
   runEnemyPassives(state, "CombatStart", rng, null, { turn: 0 });
   drawCards(state, rng, openingHand);
+  runRelicHooks(state, data, 'on_combat_start', { postDraw: true, rng });
   for (const e of enemies) setEnemyIntent(state, data, e.id);
   return state;
 }
@@ -1880,6 +1959,9 @@ export function dispatchCombat(state, data, action) {
       // POWER: StartTurn triggers (NC-058 +1 RAM, NC-067 remove debuff, NC-072 draw 2 if empty)
       runPowerTriggers(state, data, rng, 'StartTurn', {});
 
+      // Relic on_turn_start hooks
+      runRelicHooks(state, data, 'on_turn_start', { rng });
+
       push(state.log, { t: "Info", msg: `Turn ${state.turn} start` });
       return state;
     }
@@ -1947,6 +2029,9 @@ export function dispatchCombat(state, data, action) {
       // onPlay mutation patches
       runPatchTrigger(state, data, rng, cid, 'onPlay');
 
+      // Relic on_card_play hooks
+      runRelicHooks(state, data, 'on_card_play', { cid, rng, def, cost });
+
       // decay tick (non-core only)
       const isCore = def.tags?.includes("Core");
       if (!isCore) {
@@ -2001,6 +2086,8 @@ export function dispatchCombat(state, data, action) {
       }
       // POWER: EndTurn triggers (NC-059 Firewall, NC-064 heal, NC-068 keep, NC-069 recycle)
       runPowerTriggers(state, data, rng, 'EndTurn', {});
+      // Relic on_turn_end hooks (e.g. BufferOverflow: draw 1 if 0 RAM)
+      runRelicHooks(state, data, 'on_turn_end', { rng });
 
       endTurnEthereal(state, data);
 

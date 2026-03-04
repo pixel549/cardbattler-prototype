@@ -11354,7 +11354,9 @@
       "act": 1,
       "kind": "elite",
       "compositionType": "generated",
-      "enemyIds": [],
+      "enemyIds": [
+        "E_NULL_SHAMAN_UNIT"
+      ],
       "weight": 1
     },
     "ENC_A1_SPEC_CONTROL": {
@@ -11399,7 +11401,10 @@
       "act": 1,
       "kind": "hard",
       "compositionType": "generated",
-      "enemyIds": [],
+      "enemyIds": [
+        "E_HOLO_ENFORCER_MK_I",
+        "E_GHOST_RUNNER_PROTOCOL"
+      ],
       "weight": 1
     },
     "ENC_GEN_A1_DAMAGE_FOCUS": {
@@ -11408,7 +11413,10 @@
       "act": 1,
       "kind": "hard",
       "compositionType": "generated",
-      "enemyIds": [],
+      "enemyIds": [
+        "E_ADMINISTRATOR_CIPHER_MAINFRAME",
+        "E_ECHO_SENTINEL_SHARD"
+      ],
       "weight": 1
     },
     "ENC_GEN_A1_LEAK_THEME": {
@@ -11417,7 +11425,10 @@
       "act": 1,
       "kind": "hard",
       "compositionType": "generated",
-      "enemyIds": [],
+      "enemyIds": [
+        "E_VECTOR_COURIER_ARRAY",
+        "E_OVERSEER_STATIC_CORE"
+      ],
       "weight": 1
     },
     "ENC_A1_N1_01": {
@@ -11688,7 +11699,9 @@
       "act": 1,
       "kind": "normal",
       "compositionType": "generated",
-      "enemyIds": [],
+      "enemyIds": [
+        "E_STATIC_IMP_RIG"
+      ],
       "weight": 1
     },
     "ENC-002": {
@@ -11697,7 +11710,10 @@
       "act": 1,
       "kind": "normal",
       "compositionType": "generated",
-      "enemyIds": [],
+      "enemyIds": [
+        "E_VANTA_SENTINEL_PROTOCOL",
+        "E_KILO_SNIPER_UNIT"
+      ],
       "weight": 1
     },
     "ENC-003": {
@@ -11706,7 +11722,11 @@
       "act": 1,
       "kind": "normal",
       "compositionType": "generated",
-      "enemyIds": [],
+      "enemyIds": [
+        "E_FLUX_POD_SHARD",
+        "E_TITAN_HOLO_APEX",
+        "E_HACKER_DRONE"
+      ],
       "weight": 1
     },
     "ENC-005": {
@@ -11715,7 +11735,9 @@
       "act": 1,
       "kind": "normal",
       "compositionType": "generated",
-      "enemyIds": [],
+      "enemyIds": [
+        "E_OBSIDIAN_BRUISER_PACK"
+      ],
       "weight": 1
     },
     "ENC-006": {
@@ -11724,7 +11746,9 @@
       "act": 1,
       "kind": "normal",
       "compositionType": "generated",
-      "enemyIds": [],
+      "enemyIds": [
+        "E_RAZOR_SHAMAN_MK_II"
+      ],
       "weight": 1
     },
     "ENC-007": {
@@ -11733,7 +11757,10 @@
       "act": 1,
       "kind": "normal",
       "compositionType": "generated",
-      "enemyIds": [],
+      "enemyIds": [
+        "E_VANTA_SCOUT_NODE",
+        "E_OVERSEER_STATIC_CORE"
+      ],
       "weight": 1
     },
     "ENC-008": {
@@ -11742,7 +11769,10 @@
       "act": 1,
       "kind": "normal",
       "compositionType": "generated",
-      "enemyIds": [],
+      "enemyIds": [
+        "E_PULSE_DAEMON_UNIT",
+        "E_ECHO_SENTINEL_SHARD"
+      ],
       "weight": 1
     },
     "ENC-009": {
@@ -11751,7 +11781,9 @@
       "act": 1,
       "kind": "normal",
       "compositionType": "generated",
-      "enemyIds": [],
+      "enemyIds": [
+        "E_OBSIDIAN_BRUISER_PACK"
+      ],
       "weight": 1
     },
     "ENC-010": {
@@ -11760,7 +11792,9 @@
       "act": 1,
       "kind": "normal",
       "compositionType": "generated",
-      "enemyIds": [],
+      "enemyIds": [
+        "E_GHOST_RUNNER_PROTOCOL"
+      ],
       "weight": 1
     },
     "ENC-011": {
@@ -11769,7 +11803,9 @@
       "act": 1,
       "kind": "normal",
       "compositionType": "generated",
-      "enemyIds": [],
+      "enemyIds": [
+        "E_VECTOR_GOON_PROXY"
+      ],
       "weight": 1
     },
     "ENC-012": {
@@ -11778,7 +11814,9 @@
       "act": 1,
       "kind": "normal",
       "compositionType": "generated",
-      "enemyIds": [],
+      "enemyIds": [
+        "E_NEON_WARDEN_SUITE"
+      ],
       "weight": 1
     },
     "ENC_GEN_A1_MIX_1_3": {
@@ -11787,7 +11825,10 @@
       "act": 1,
       "kind": "normal",
       "compositionType": "generated",
-      "enemyIds": [],
+      "enemyIds": [
+        "E_VECTOR_RAT_MK_III",
+        "E_LEVIATHAN_VANTA_CORE"
+      ],
       "weight": 1
     },
     "ENC_A2_EL1_01": {
@@ -11878,7 +11919,10 @@
       "act": 2,
       "kind": "hard",
       "compositionType": "generated",
-      "enemyIds": [],
+      "enemyIds": [
+        "E_NEON_WARDEN_SUITE",
+        "E_GHOST_CLERIC_SHARD"
+      ],
       "weight": 1
     },
     "ENC_GEN_A2_DAMAGE_FOCUS": {
@@ -11887,7 +11931,10 @@
       "act": 2,
       "kind": "hard",
       "compositionType": "generated",
-      "enemyIds": [],
+      "enemyIds": [
+        "E_HOLO_SCOUT_PROXY",
+        "E_ROGUE_POD_PROTOCOL"
+      ],
       "weight": 1
     },
     "ENC_GEN_A2_LEAK_THEME": {
@@ -11896,7 +11943,10 @@
       "act": 2,
       "kind": "hard",
       "compositionType": "generated",
-      "enemyIds": [],
+      "enemyIds": [
+        "E_HOLO_RUNNER_NODE",
+        "E_ARCHON_NULL_GOLIATH"
+      ],
       "weight": 1
     },
     "ENC_A2_N1_01": {
@@ -12167,7 +12217,10 @@
       "act": 2,
       "kind": "normal",
       "compositionType": "generated",
-      "enemyIds": [],
+      "enemyIds": [
+        "E_OBSIDIAN_POD_MK_I",
+        "E_BOSS_VECTOR_MAINFRAME"
+      ],
       "weight": 1
     },
     "ENC_A3_EL1_01": {
@@ -12246,7 +12299,10 @@
       "act": 3,
       "kind": "hard",
       "compositionType": "generated",
-      "enemyIds": [],
+      "enemyIds": [
+        "E_OBSIDIAN_BRUISER_PACK",
+        "E_QUANTUM_TECH_NODE"
+      ],
       "weight": 1
     },
     "ENC_GEN_A3_DAMAGE_FOCUS": {
@@ -12255,7 +12311,10 @@
       "act": 3,
       "kind": "hard",
       "compositionType": "generated",
-      "enemyIds": [],
+      "enemyIds": [
+        "E_NULL_DAEMON_RIG",
+        "E_ION_SNIPER_RIG"
+      ],
       "weight": 1
     },
     "ENC_GEN_A3_LEAK_THEME": {
@@ -12264,7 +12323,10 @@
       "act": 3,
       "kind": "hard",
       "compositionType": "generated",
-      "enemyIds": [],
+      "enemyIds": [
+        "E_CIPHER_DRONE_PROTOCOL",
+        "E_QUANTUM_POD_SUITE"
+      ],
       "weight": 1
     },
     "ENC_A3_N1_01": {
@@ -12535,7 +12597,10 @@
       "act": 3,
       "kind": "normal",
       "compositionType": "generated",
-      "enemyIds": [],
+      "enemyIds": [
+        "E_NEON_SAPPER_MK_II",
+        "E_CIPHER_CLERIC_SHARD"
+      ],
       "weight": 1
     }
   },

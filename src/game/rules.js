@@ -68,12 +68,43 @@ export function applyDamage(state, sourceId, target, amount) {
     amount = Math.floor(amount * enemyDmgMult);
   }
 
+  // --- passive_combat relic effects on outgoing player damage ---
+  const relics = state.relicIds || [];
+  const playerDealing = !isEnemy;
+  if (playerDealing) {
+    // GlassCannon: player deals 50% more damage (but takes 50% more — handled on intake)
+    if (relics.includes('GlassCannon')) amount = Math.floor(amount * 1.5);
+    // TheDaemon: flat +N bonus damage
+    if (state._relicDaemonDmgBonus && amount > 0) amount += state._relicDaemonDmgBonus;
+  }
+
   // TraceBeacon (NC-088): while in hand, enemies deal +N damage to player
   if (isEnemy && state._traceBeaconHandBonus) {
     amount += state._traceBeaconHandBonus;
   }
 
   const statusModdedAmount = amount; // after status mods, before shields
+
+  // --- relic damage intake modifiers (enemy → player only) ---
+  if (isEnemy && target === state.player) {
+    const relics2 = state.relicIds || [];
+    // GlassCannon: player takes 50% more damage
+    if (relics2.includes('GlassCannon')) amount = Math.floor(amount * 1.5);
+    // ScrapPlating: reduce FIRST hit per combat by 4
+    if (relics2.includes('ScrapPlating') && !state._scrapPlatingUsed && amount > 0) {
+      const reduction = Math.min(4, amount);
+      amount -= reduction;
+      state._scrapPlatingUsed = true;
+      push(state.log, { t: 'Info', msg: `ScrapPlating: absorbed ${reduction} dmg` });
+    }
+    // FirewallPrime: first 3 hits are fully negated
+    if (relics2.includes('FirewallPrime') && state._relicFirewallPrimeHits > 0 && amount > 0) {
+      state._relicFirewallPrimeHits -= 1;
+      push(state.log, { t: 'Info', msg: `FirewallPrime: hit negated (${state._relicFirewallPrimeHits} remaining)` });
+      amount = 0;
+    }
+    // SignalJammer: FIRST incoming hit -2 (enemies already handled via _relicSignalJammerActive but that was outgoing — flip to intake)
+  }
 
   // Firewall: persistent shield that absorbs damage before block/HP
   let firewallAbsorbed = 0;
@@ -98,6 +129,46 @@ export function applyDamage(state, sourceId, target, amount) {
   // Track whether player took damage this turn (for NC-064 Patch Scheduler)
   if (dmg > 0 && target === state.player) {
     state._tookDamageThisTurn = true;
+  }
+
+  // --- post-damage relic effects ---
+  const relicsPost = state.relicIds || [];
+  // DeadMansChip: save from lethal once per run
+  if (target === state.player && target.hp <= 0 && !state._deadMansChipUsed && relicsPost.includes('DeadMansChip')) {
+    target.hp = 1;
+    state._deadMansChipUsed = true;
+    push(state.log, { t: 'Info', msg: 'DeadMansChip: lethal save! HP → 1' });
+  }
+  // BlackIce: reflect 3 damage to attacker on being hit
+  if (dmg > 0 && target === state.player && isEnemy && relicsPost.includes('BlackIce')) {
+    const attacker = state.enemies.find(e => e.id === sourceId);
+    if (attacker && attacker.hp > 0) {
+      const reflect = Math.min(3, attacker.hp);
+      attacker.hp -= reflect;
+      push(state.log, { t: 'Info', msg: `BlackIce: reflected ${reflect} to ${attacker.id}` });
+    }
+  }
+  // VampiricAPI: player heals 20% of damage dealt to enemies
+  if (dmg > 0 && playerDealing && target !== state.player && relicsPost.includes('VampiricAPI')) {
+    const heal = Math.max(1, Math.floor(dmg * 0.2));
+    state.player.hp = Math.min(state.player.maxHP, state.player.hp + heal);
+    push(state.log, { t: 'Info', msg: `VampiricAPI: +${heal} HP (lifesteal)` });
+  }
+  // KillSwitch: heal 3 HP when you kill an enemy
+  if (playerDealing && target.hp <= 0 && relicsPost.includes('KillSwitch')) {
+    state.player.hp = Math.min(state.player.maxHP, state.player.hp + 3);
+    push(state.log, { t: 'Info', msg: 'KillSwitch: +3 HP on kill' });
+  }
+  // EntropyEngine: draw 1 when player takes damage
+  if (dmg > 0 && target === state.player && isEnemy && relicsPost.includes('EntropyEngine')) {
+    state._entropyEngineDrawPending = (state._entropyEngineDrawPending || 0) + 1;
+  }
+  // SingularityChip: when player HP drops below 50%, heal 20 (once per combat)
+  if (target === state.player && target.hp > 0 && target.hp < target.maxHP * 0.5 && !state._singularityChipUsed && relicsPost.includes('SingularityChip')) {
+    const healAmt = Math.min(20, target.maxHP - target.hp);
+    target.hp += healAmt;
+    state._singularityChipUsed = true;
+    push(state.log, { t: 'Info', msg: `SingularityChip: threshold heal +${healAmt}` });
   }
 
   // Emit structured damage event for analytics

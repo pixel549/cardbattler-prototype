@@ -316,6 +316,7 @@ function resolveCurrentNodeInternal(state, data, log) {
       ruleMods: mods,
       forcedMutationTier: state.run.forcedMutationTier ?? null,
       debugOverrides: dbg,
+      relicIds: state.run.relicIds || [],
     });
     state.combat.player.hp = state.run.hp;
     const debugTag = dbg ? ` [dbg: act${effectiveAct}/${effectiveKind}]` : '';
@@ -567,6 +568,23 @@ export function dispatchGame(stateIn, data, action) {
         if (state.combat._pendingGoldGain) {
           state.run.gold += state.combat._pendingGoldGain;
           log({ t: "Info", msg: `Mutation gold: +${state.combat._pendingGoldGain}` });
+        }
+
+        // after_combat relic effects
+        const nodeType2 = state.map?.nodes[state.map.currentNodeId]?.type;
+        for (const rid of (state.run.relicIds || [])) {
+          const r = data.relics?.[rid];
+          if (!r || r.hook !== 'after_combat') continue;
+          if (rid === 'DataTap') {
+            state.run.gold += 12;
+            log({ t: "Info", msg: 'DataTap: +12g after combat' });
+          } else if (rid === 'Stimpak') {
+            state.run.hp = Math.min(state.run.maxHP, state.run.hp + 4);
+            log({ t: "Info", msg: 'Stimpak: +4 HP after combat' });
+          } else if (rid === 'ExploitFramework' && (nodeType2 === 'Elite' || nodeType2 === 'Boss')) {
+            state.run.gold += 25;
+            log({ t: "Info", msg: 'ExploitFramework: +25g elite/boss bonus' });
+          }
         }
 
         state.combat = null;

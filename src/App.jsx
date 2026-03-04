@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { loadGameData } from './data/loadData';
 import { createInitialState, dispatchGame } from './game/game_core';
 import { dispatchWithJournal } from './game/dispatch_with_journal';
@@ -683,10 +683,557 @@ function ShopScreen({ state, data, onAction }) {
 }
 
 // ============================================================
+// ============================================================
+// TRIVIA CHALLENGE
+// ============================================================
+const TRIVIA_QUESTIONS = [
+  // difficulty 1
+  { q: "What happens when a card's use counter reaches zero?",          options: ["It's removed from your deck", "It triggers a mutation", "Nothing — it still works"], answer: 1, difficulty: 1 },
+  { q: "What resource is spent when moving to a new map node?",         options: ["Gold", "HP", "MP"],                                                                  answer: 2, difficulty: 1 },
+  { q: "What does the Rest Site primarily do?",                         options: ["Sells relics", "Heals HP or services a card", "Refills your MP"],                    answer: 1, difficulty: 1 },
+  { q: "What bonus does an Elite node grant on victory?",               options: ["Double gold", "A relic choice", "Three card choices"],                               answer: 1, difficulty: 1 },
+  { q: "What does 'Repair' do to a card?",                             options: ["Removes its mutations", "Restores its use counter", "Resets its mutation countdown"], answer: 1, difficulty: 1 },
+  // difficulty 2
+  { q: "What does 'Stabilise' do to a card?",                          options: ["Increases its use counter", "Resets its mutation countdown", "Removes all mutations"], answer: 1, difficulty: 2 },
+  { q: "What happens if you travel with 0 MP?",                        options: ["You can't move", "You spend gold instead", "You spend HP instead"],                   answer: 2, difficulty: 2 },
+  { q: "What does 'Accelerate' do to a card?",                         options: ["Increases its damage", "Speeds up mutation trigger", "Reduces its RAM cost"],          answer: 1, difficulty: 2 },
+  { q: "How much does card removal cost at the Shop?",                  options: ["50g", "60g", "75g"],                                                                  answer: 2, difficulty: 2 },
+  { q: "What percentage of max HP does the Rest Site restore?",         options: ["20%", "30%", "40%"],                                                                  answer: 1, difficulty: 2 },
+  // difficulty 3
+  { q: "What does 'Corrode' do on a target's turn?",                   options: ["Deals damage per stack only", "Strips block then deals 1 damage per stack", "Halves damage dealt"], answer: 1, difficulty: 3 },
+  { q: "How much does the Shop's Accelerate service cost?",             options: ["30g", "40g", "50g"],                                                                  answer: 1, difficulty: 3 },
+  { q: "What does the 'Ethereal' card tag mean?",                       options: ["Card is played for free", "Card exhausts at end of your turn", "Card deals bonus damage"], answer: 1, difficulty: 3 },
+  { q: "What does a 'J_REWRITE' final mutation do to a card?",         options: ["Destroys it permanently", "Transforms it into a new card, losing all mutations", "Doubles its RAM cost"], answer: 1, difficulty: 3 },
+  { q: "What does Block do?",                                           options: ["Permanently reduces enemy damage", "Absorbs incoming damage and resets each turn", "Heals HP when attacked"], answer: 1, difficulty: 3 },
+];
+const TRIVIA_ROUNDS = [
+  { reward: 10, penalty: 5,  difficulty: 1 },
+  { reward: 15, penalty: 8,  difficulty: 2 },
+  { reward: 20, penalty: 12, difficulty: 2 },
+  { reward: 30, penalty: 18, difficulty: 3 },
+  { reward: 45, penalty: 25, difficulty: 3 },
+];
+
+function TriviaScreen({ state, onAction }) {
+  const MONO = "'JetBrains Mono', 'Fira Code', 'Consolas', monospace";
+  const [round, setRound]               = useState(0);
+  const [phase, setPhase]               = useState('intro');   // intro | question | result | done
+  const [usedIndices, setUsedIndices]   = useState([]);
+  const [currentQ, setCurrentQ]         = useState(null);
+  const [chosen, setChosen]             = useState(null);
+  const [wasCorrect, setWasCorrect]     = useState(null);
+
+  const roundDef = TRIVIA_ROUNDS[round];
+
+  const pickQuestion = useCallback((roundIdx, used) => {
+    const rd = TRIVIA_ROUNDS[roundIdx];
+    if (!rd) return null;
+    const pool = TRIVIA_QUESTIONS.map((q, i) => ({ q, i })).filter(({ q, i }) => q.difficulty === rd.difficulty && !used.includes(i));
+    if (pool.length === 0) return null;
+    const pick = pool[((state.run?.seed ?? 0) + roundIdx * 7) % pool.length];
+    return pick;
+  }, [state.run?.seed]);
+
+  // Kick off intro → question transition
+  useEffect(() => {
+    if (phase === 'intro') {
+      const entry = pickQuestion(round, usedIndices);
+      setCurrentQ(entry);
+    }
+  }, [phase, round]);
+
+  const handleAnswer = (optionIdx) => {
+    if (phase !== 'question' || chosen !== null) return;
+    const correct = optionIdx === currentQ?.q?.answer;
+    setChosen(optionIdx);
+    setWasCorrect(correct);
+    if (correct) {
+      onAction({ type: 'Event_Reward', gold: roundDef.reward });
+    } else {
+      onAction({ type: 'Event_Reward', loseHp: roundDef.penalty });
+    }
+    setPhase('result');
+  };
+
+  const handleContinue = () => {
+    const nextRound = round + 1;
+    if (nextRound >= TRIVIA_ROUNDS.length) {
+      onAction({ type: 'Event_EndEvent' });
+      return;
+    }
+    const newUsed = [...usedIndices, currentQ?.i].filter(x => x != null);
+    setUsedIndices(newUsed);
+    setRound(nextRound);
+    setChosen(null);
+    setWasCorrect(null);
+    setCurrentQ(pickQuestion(nextRound, newUsed));
+    setPhase('question');
+  };
+
+  return (
+    <ScreenShell>
+      <RunHeader run={state.run} />
+      <div style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="animate-slide-up" style={{ width: '100%', maxWidth: '360px' }}>
+
+          {/* Header */}
+          <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+            <div style={{ fontSize: '40px', marginBottom: '8px' }}>📡</div>
+            <div style={{ fontFamily: MONO, fontWeight: 700, fontSize: 16, color: C.cyan }}>KNOWLEDGE PROBE</div>
+            <div style={{ fontFamily: MONO, fontSize: 11, color: C.textMuted, marginTop: 4 }}>
+              Round {round + 1} / {TRIVIA_ROUNDS.length} — correct: +{roundDef?.reward}g | wrong: −{roundDef?.penalty} HP
+            </div>
+          </div>
+
+          {phase === 'intro' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ fontFamily: MONO, fontSize: 12, color: C.textDim, textAlign: 'center', padding: '12px', backgroundColor: C.bgCard, borderRadius: 10, border: `1px solid ${C.border}` }}>
+                Answer questions about game mechanics. Each round escalates in difficulty and reward.
+                You may leave after any answer.
+              </div>
+              <button onClick={() => setPhase('question')} style={{ padding: '14px', borderRadius: 10, fontFamily: MONO, fontWeight: 700, fontSize: 13, backgroundColor: `${C.cyan}20`, border: `2px solid ${C.cyan}60`, color: C.cyan, cursor: 'pointer' }}>
+                Begin
+              </button>
+              <button onClick={() => onAction({ type: 'Event_EndEvent' })} style={{ padding: '10px', borderRadius: 10, fontFamily: MONO, fontSize: 12, backgroundColor: 'transparent', border: `1px solid ${C.border}`, color: C.textMuted, cursor: 'pointer' }}>
+                Leave
+              </button>
+            </div>
+          )}
+
+          {phase === 'question' && currentQ && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ fontFamily: MONO, fontSize: 13, color: C.text, padding: '16px', backgroundColor: C.bgCard, borderRadius: 10, border: `1px solid ${C.border}`, lineHeight: 1.5 }}>
+                {currentQ.q.q}
+              </div>
+              {currentQ.q.options.map((opt, i) => (
+                <button key={i} onClick={() => handleAnswer(i)} style={{ padding: '13px 16px', borderRadius: 10, fontFamily: MONO, fontSize: 12, fontWeight: 600, textAlign: 'left', backgroundColor: `${C.cyan}10`, border: `2px solid ${C.cyan}40`, color: C.cyan, cursor: 'pointer' }}>
+                  {String.fromCharCode(65 + i)}. {opt}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {phase === 'result' && currentQ && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ padding: '16px', borderRadius: 10, backgroundColor: wasCorrect ? `${C.green}15` : `${C.red}15`, border: `2px solid ${wasCorrect ? C.green : C.red}50`, textAlign: 'center' }}>
+                <div style={{ fontFamily: MONO, fontWeight: 700, fontSize: 16, color: wasCorrect ? C.green : C.red, marginBottom: 8 }}>
+                  {wasCorrect ? '✓ CORRECT' : '✗ WRONG'}
+                </div>
+                <div style={{ fontFamily: MONO, fontSize: 12, color: C.textDim, marginBottom: 8 }}>
+                  Answer: {currentQ.q.options[currentQ.q.answer]}
+                </div>
+                <div style={{ fontFamily: MONO, fontSize: 13, color: wasCorrect ? C.green : C.red, fontWeight: 700 }}>
+                  {wasCorrect ? `+${roundDef.reward}g` : `−${roundDef.penalty} HP`}
+                </div>
+              </div>
+              {round + 1 < TRIVIA_ROUNDS.length ? (
+                <button onClick={handleContinue} style={{ padding: '13px', borderRadius: 10, fontFamily: MONO, fontWeight: 700, fontSize: 12, backgroundColor: `${C.yellow}15`, border: `2px solid ${C.yellow}50`, color: C.yellow, cursor: 'pointer' }}>
+                  Next question (+{TRIVIA_ROUNDS[round + 1].reward}g if correct, −{TRIVIA_ROUNDS[round + 1].penalty} HP if wrong)
+                </button>
+              ) : (
+                <div style={{ fontFamily: MONO, fontSize: 11, color: C.textMuted, textAlign: 'center', padding: '8px' }}>All rounds complete.</div>
+              )}
+              <button onClick={() => onAction({ type: 'Event_EndEvent' })} style={{ padding: '10px', borderRadius: 10, fontFamily: MONO, fontSize: 12, backgroundColor: 'transparent', border: `1px solid ${C.border}`, color: C.textMuted, cursor: 'pointer' }}>
+                Leave
+              </button>
+            </div>
+          )}
+
+        </div>
+      </div>
+    </ScreenShell>
+  );
+}
+
+// ============================================================
+// PATTERN MEMORY GAME
+// ============================================================
+const PATTERN_ROUNDS = [
+  { tiles: 2,  reward: 5,  penalty: 5 },
+  { tiles: 4,  reward: 10, penalty: 10 },
+  { tiles: 6,  reward: 15, penalty: 15 },
+  { tiles: 8,  reward: 20, penalty: 20 },
+  { tiles: 10, reward: 30, penalty: 30 },
+];
+const GRID_SIZE = 25; // 5×5
+
+function seededShuffle(count, seed) {
+  let s = (seed >>> 0);
+  const result = [];
+  const available = Array.from({ length: GRID_SIZE }, (_, i) => i);
+  while (result.length < count && available.length > 0) {
+    s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
+    const idx = s % available.length;
+    result.push(available[idx]);
+    available.splice(idx, 1);
+  }
+  return result.sort((a, b) => a - b);
+}
+
+function PatternScreen({ state, onAction }) {
+  const MONO = "'JetBrains Mono', 'Fira Code', 'Consolas', monospace";
+  const [round, setRound]           = useState(0);
+  const [phase, setPhase]           = useState('intro');  // intro | ready | show | select | result
+  const [selected, setSelected]     = useState([]);
+  const [wasCorrect, setWasCorrect] = useState(null);
+  const [committed, setCommitted]   = useState(false);    // committed to current round
+
+  const roundDef  = PATTERN_ROUNDS[round];
+  const pattern   = useMemo(
+    () => seededShuffle(roundDef?.tiles ?? 2, ((state.run?.seed ?? 0) ^ (round * 0x9E37)) >>> 0),
+    [round, state.run?.seed, roundDef?.tiles]
+  );
+
+  // Auto-hide tiles after show phase
+  useEffect(() => {
+    if (phase !== 'show') return;
+    const t = setTimeout(() => setPhase('select'), 1800);
+    return () => clearTimeout(t);
+  }, [phase]);
+
+  const toggleTile = (i) => {
+    if (phase !== 'select') return;
+    setSelected(prev => prev.includes(i) ? prev.filter(x => x !== i) : [...prev, i]);
+  };
+
+  const handleCommit = () => {
+    setCommitted(true);
+    setPhase('show');
+  };
+
+  const handleSubmit = () => {
+    if (phase !== 'select') return;
+    const correct = selected.length === pattern.length && pattern.every(t => selected.includes(t));
+    setWasCorrect(correct);
+    if (correct) {
+      onAction({ type: 'Event_Reward', gold: roundDef.reward });
+    } else {
+      onAction({ type: 'Event_Reward', loseHp: roundDef.penalty });
+    }
+    setPhase('result');
+  };
+
+  const handleNext = () => {
+    const next = round + 1;
+    if (next >= PATTERN_ROUNDS.length) { onAction({ type: 'Event_EndEvent' }); return; }
+    setRound(next);
+    setSelected([]);
+    setWasCorrect(null);
+    setCommitted(false);
+    setPhase('ready');
+  };
+
+  const renderGrid = () => {
+    const showPattern = phase === 'show';
+    const showResult  = phase === 'result';
+    return (
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 4, margin: '16px 0' }}>
+        {Array.from({ length: GRID_SIZE }, (_, i) => {
+          const isPattern  = pattern.includes(i);
+          const isSelected = selected.includes(i);
+          let bg = C.bgCard;
+          let border = C.border;
+          if (showPattern && isPattern) { bg = C.cyan; border = C.cyan; }
+          else if (showResult) {
+            if (isPattern && isSelected)  { bg = `${C.green}50`; border = C.green; }
+            else if (isPattern)            { bg = `${C.red}40`;   border = C.red; }
+            else if (isSelected)           { bg = `${C.orange}40`; border = C.orange; }
+          } else if (phase === 'select' && isSelected) {
+            bg = `${C.cyan}40`; border = C.cyan;
+          }
+          return (
+            <button
+              key={i}
+              onClick={() => toggleTile(i)}
+              disabled={phase !== 'select'}
+              style={{
+                height: 46, borderRadius: 6, border: `2px solid ${border}`,
+                backgroundColor: bg, cursor: phase === 'select' ? 'pointer' : 'default',
+                transition: 'all 0.1s',
+              }}
+            />
+          );
+        })}
+      </div>
+    );
+  };
+
+  return (
+    <ScreenShell>
+      <RunHeader run={state.run} />
+      <div style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="animate-slide-up" style={{ width: '100%', maxWidth: '340px' }}>
+
+          <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+            <div style={{ fontSize: '36px', marginBottom: '6px' }}>🔲</div>
+            <div style={{ fontFamily: MONO, fontWeight: 700, fontSize: 15, color: C.cyan }}>NEURAL CALIBRATION</div>
+            <div style={{ fontFamily: MONO, fontSize: 11, color: C.textMuted, marginTop: 4 }}>
+              Round {round + 1} — memorise {roundDef?.tiles} tile{roundDef?.tiles !== 1 ? 's' : ''} · +{roundDef?.reward}g correct / −{roundDef?.penalty} HP wrong
+            </div>
+          </div>
+
+          {(phase === 'intro' || phase === 'ready') && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {phase === 'intro' && (
+                <div style={{ fontFamily: MONO, fontSize: 11, color: C.textDim, textAlign: 'center', padding: '10px', backgroundColor: C.bgCard, borderRadius: 8, border: `1px solid ${C.border}` }}>
+                  Tiles will flash briefly. Remember them, then tap to reproduce the pattern.
+                  Once you start a round, you must complete it before leaving.
+                </div>
+              )}
+              <button onClick={handleCommit} style={{ padding: '13px', borderRadius: 10, fontFamily: MONO, fontWeight: 700, fontSize: 13, backgroundColor: `${C.cyan}20`, border: `2px solid ${C.cyan}60`, color: C.cyan, cursor: 'pointer' }}>
+                {phase === 'intro' ? 'Begin Round 1' : `Start Round ${round + 1}`}
+              </button>
+              {!committed && (
+                <button onClick={() => onAction({ type: 'Event_EndEvent' })} style={{ padding: '10px', borderRadius: 10, fontFamily: MONO, fontSize: 12, backgroundColor: 'transparent', border: `1px solid ${C.border}`, color: C.textMuted, cursor: 'pointer' }}>
+                  Leave
+                </button>
+              )}
+            </div>
+          )}
+
+          {(phase === 'show' || phase === 'select' || phase === 'result') && renderGrid()}
+
+          {phase === 'show' && (
+            <div style={{ fontFamily: MONO, fontSize: 12, color: C.cyan, textAlign: 'center' }}>Memorise…</div>
+          )}
+
+          {phase === 'select' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ fontFamily: MONO, fontSize: 11, color: C.textMuted, textAlign: 'center' }}>
+                Tap the tiles you saw ({selected.length} / {roundDef?.tiles} selected)
+              </div>
+              <button onClick={handleSubmit} style={{ padding: '13px', borderRadius: 10, fontFamily: MONO, fontWeight: 700, fontSize: 13, backgroundColor: `${C.cyan}20`, border: `2px solid ${C.cyan}60`, color: C.cyan, cursor: 'pointer' }}>
+                Submit
+              </button>
+            </div>
+          )}
+
+          {phase === 'result' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ textAlign: 'center', padding: '12px', borderRadius: 10, backgroundColor: wasCorrect ? `${C.green}15` : `${C.red}15`, border: `2px solid ${wasCorrect ? C.green : C.red}40` }}>
+                <div style={{ fontFamily: MONO, fontWeight: 700, fontSize: 15, color: wasCorrect ? C.green : C.red }}>
+                  {wasCorrect ? `✓ CORRECT  +${roundDef.reward}g` : `✗ WRONG  −${roundDef.penalty} HP`}
+                </div>
+              </div>
+              {round + 1 < PATTERN_ROUNDS.length ? (
+                <button onClick={handleNext} style={{ padding: '13px', borderRadius: 10, fontFamily: MONO, fontWeight: 700, fontSize: 12, backgroundColor: `${C.yellow}15`, border: `2px solid ${C.yellow}50`, color: C.yellow, cursor: 'pointer' }}>
+                  Next round (+{PATTERN_ROUNDS[round + 1].reward}g / −{PATTERN_ROUNDS[round + 1].penalty} HP)
+                </button>
+              ) : (
+                <div style={{ fontFamily: MONO, fontSize: 11, color: C.textMuted, textAlign: 'center' }}>All rounds complete.</div>
+              )}
+              <button onClick={() => onAction({ type: 'Event_EndEvent' })} style={{ padding: '10px', borderRadius: 10, fontFamily: MONO, fontSize: 12, backgroundColor: 'transparent', border: `1px solid ${C.border}`, color: C.textMuted, cursor: 'pointer' }}>
+                Leave
+              </button>
+            </div>
+          )}
+
+        </div>
+      </div>
+    </ScreenShell>
+  );
+}
+
+// ============================================================
+// DATA FENCE (Shady Vendor)
+// ============================================================
+function DataFenceScreen({ state, data, onAction }) {
+  const MONO = "'JetBrains Mono', 'Fira Code', 'Consolas', monospace";
+  const [selling, setSelling] = useState(false);
+
+  const offers  = state.event?.dataFence?.offers ?? [];
+  const master  = state.deck?.master ?? [];
+  const instances = state.deck?.cardInstances ?? {};
+  const typeColors = { Attack: C.red, Skill: C.green, Power: C.purple, Defense: C.cyan, Support: C.green, Utility: C.yellow };
+
+  const deckCards = master.map(iid => {
+    const ci  = instances[iid];
+    if (!ci) return null;
+    const def = data?.cards?.[ci.defId];
+    if (!def || def.tags?.includes('EnemyAction')) return null;
+    return { iid, ci, def };
+  }).filter(Boolean);
+
+  return (
+    <ScreenShell>
+      <RunHeader run={state.run} />
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto', padding: '16px' }}>
+        <div className="animate-slide-up" style={{ textAlign: 'center', marginBottom: '16px' }}>
+          <div style={{ fontSize: '36px', marginBottom: '6px' }}>🤝</div>
+          <div style={{ fontFamily: MONO, fontWeight: 700, fontSize: 15, color: C.yellow }}>THE FENCE</div>
+          <div style={{ fontFamily: MONO, fontSize: 11, color: C.textMuted, marginTop: 4 }}>Sells at 400% mark-up. Buys your cards for 40g each.</div>
+        </div>
+
+        {/* Toggle: buy / sell */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+          {[['Buy', false], ['Sell Cards', true]].map(([label, isSell]) => (
+            <button key={label} onClick={() => setSelling(isSell)} style={{
+              flex: 1, padding: '10px', borderRadius: 8, fontFamily: MONO, fontWeight: 700, fontSize: 12,
+              backgroundColor: selling === isSell ? `${C.yellow}25` : 'transparent',
+              border: `2px solid ${selling === isSell ? C.yellow : C.border}`,
+              color: selling === isSell ? C.yellow : C.textMuted, cursor: 'pointer',
+            }}>{label}</button>
+          ))}
+        </div>
+
+        {/* BUY panel */}
+        {!selling && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {offers.map((offer, i) => {
+              const isBought = offer.bought;
+              const def = offer.type === 'card' ? data?.cards?.[offer.defId] : null;
+              const color = def ? (typeColors[def.type] || C.text) : C.purple;
+              const label = offer.type === 'card'    ? (def?.name ?? offer.defId)
+                          : offer.type === 'relic'   ? `Relic — ${offer.relicId}`
+                          : offer.label ?? 'Service';
+              const subLabel = offer.type === 'card' ? def?.type ?? '' : offer.type;
+              const canAfford = (state.run?.gold ?? 0) >= offer.price;
+              return (
+                <button key={i} disabled={isBought || !canAfford} onClick={() => onAction({ type: 'Event_DataFence_Buy', index: i })} style={{
+                  padding: '12px 14px', borderRadius: 10, textAlign: 'left', fontFamily: MONO,
+                  backgroundColor: isBought ? `${C.border}20` : `${color}10`,
+                  border: `2px solid ${isBought ? C.border : canAfford ? `${color}50` : `${C.border}60`}`,
+                  color: isBought ? C.textMuted : canAfford ? color : C.textMuted,
+                  cursor: isBought || !canAfford ? 'default' : 'pointer',
+                  opacity: isBought ? 0.5 : 1,
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 13 }}>{isBought ? '✓ SOLD OUT' : label}</div>
+                      <div style={{ fontSize: 10, color: C.textMuted, marginTop: 2 }}>{subLabel}</div>
+                    </div>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: canAfford && !isBought ? C.yellow : C.textMuted }}>{offer.price}g</div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* SELL panel */}
+        {selling && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ fontFamily: MONO, fontSize: 11, color: C.textMuted, textAlign: 'center', marginBottom: 4 }}>Tap a card to sell it for 40g</div>
+            {deckCards.length === 0 && <div style={{ fontFamily: MONO, fontSize: 12, color: C.textDim, textAlign: 'center', padding: 16 }}>No cards to sell.</div>}
+            {deckCards.map(({ iid, ci, def }) => {
+              const color = typeColors[def.type] || C.text;
+              const effectiveCost = Math.max(0, (def.costRAM ?? 0) + (ci.ramCostDelta ?? 0));
+              return (
+                <button key={iid} onClick={() => onAction({ type: 'Event_DataFence_Sell', instanceId: iid })} style={{
+                  padding: '11px 14px', borderRadius: 10, textAlign: 'left', fontFamily: MONO,
+                  backgroundColor: `${color}08`, border: `2px solid ${color}35`, color, cursor: 'pointer',
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 12 }}>{def.name}</div>
+                      <div style={{ fontSize: 10, color: C.textMuted }}>{def.type} · {effectiveCost} RAM</div>
+                    </div>
+                    <div style={{ fontWeight: 700, fontSize: 13, color: C.green }}>+40g</div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        <button onClick={() => onAction({ type: 'Event_EndEvent' })} style={{ marginTop: 16, padding: '12px', borderRadius: 10, fontFamily: MONO, fontSize: 12, backgroundColor: 'transparent', border: `1px solid ${C.border}`, color: C.textMuted, cursor: 'pointer' }}>
+          Leave
+        </button>
+      </div>
+    </ScreenShell>
+  );
+}
+
+// ============================================================
+// MASS PURGE (multi-select deck wipe)
+// ============================================================
+function MassPurgeScreen({ state, data, onAction }) {
+  const MONO = "'JetBrains Mono', 'Fira Code', 'Consolas', monospace";
+  const selected  = state.event?.massPurgeSelected ?? [];
+  const master    = state.deck?.master ?? [];
+  const instances = state.deck?.cardInstances ?? {};
+  const typeColors = { Attack: C.red, Skill: C.green, Power: C.purple, Defense: C.cyan, Support: C.green, Utility: C.yellow };
+
+  const cards = master.map(iid => {
+    const ci  = instances[iid];
+    if (!ci) return null;
+    const def = data?.cards?.[ci.defId];
+    if (!def || def.tags?.includes('EnemyAction')) return null;
+    return { iid, ci, def };
+  }).filter(Boolean);
+
+  return (
+    <ScreenShell>
+      <RunHeader run={state.run} />
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+        <div className="animate-slide-up" style={{ padding: '16px', textAlign: 'center' }}>
+          <div style={{ fontSize: '36px', marginBottom: '6px' }}>💣</div>
+          <div style={{ fontFamily: MONO, fontWeight: 700, fontSize: 15, color: C.red }}>SYSTEM WIPE</div>
+          <div style={{ fontFamily: MONO, fontSize: 11, color: C.textMuted, marginTop: 4 }}>
+            Select cards to purge. The system will also randomly remove the same number of additional cards.
+          </div>
+          {selected.length > 0 && (
+            <div style={{ fontFamily: MONO, fontSize: 12, color: C.orange, marginTop: 8, fontWeight: 700 }}>
+              {selected.length} selected → {selected.length} random also removed ({selected.length * 2} total)
+            </div>
+          )}
+        </div>
+
+        <div style={{ flex: 1, overflowY: 'auto', padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {cards.map(({ iid, ci, def }) => {
+            const isChosen = selected.includes(iid);
+            const color = typeColors[def.type] || C.text;
+            return (
+              <button key={iid} onClick={() => onAction({ type: 'Event_MassPurge_Toggle', instanceId: iid })} style={{
+                padding: '12px 14px', borderRadius: 10, textAlign: 'left', fontFamily: MONO,
+                backgroundColor: isChosen ? `${C.red}25` : `${color}08`,
+                border: `2px solid ${isChosen ? C.red : `${color}35`}`,
+                color: isChosen ? C.red : color, cursor: 'pointer',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 20, height: 20, borderRadius: 4, border: `2px solid ${isChosen ? C.red : C.border}`, backgroundColor: isChosen ? C.red : 'transparent', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, color: '#000' }}>
+                    {isChosen ? '✓' : ''}
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 12 }}>{def.name}</div>
+                    <div style={{ fontSize: 10, color: C.textMuted }}>{def.type} · {Math.max(0,(def.costRAM??0)+(ci.ramCostDelta??0))} RAM</div>
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        <div style={{ padding: '12px 16px', backgroundColor: C.bgBar, borderTop: `1px solid ${C.border}`, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <button onClick={() => onAction({ type: 'Event_MassPurge_Confirm' })} disabled={selected.length === 0} style={{
+            padding: '13px', borderRadius: 10, fontFamily: MONO, fontWeight: 700, fontSize: 13,
+            backgroundColor: selected.length > 0 ? `${C.red}25` : `${C.border}20`,
+            border: `2px solid ${selected.length > 0 ? C.red : C.border}`,
+            color: selected.length > 0 ? C.red : C.textMuted,
+            cursor: selected.length > 0 ? 'pointer' : 'default',
+          }}>
+            {selected.length > 0 ? `Purge ${selected.length} cards (+ ${selected.length} random)` : 'Select cards to purge'}
+          </button>
+          <button onClick={() => onAction({ type: 'Event_EndEvent' })} style={{ padding: '10px', borderRadius: 10, fontFamily: MONO, fontSize: 12, backgroundColor: 'transparent', border: `1px solid ${C.border}`, color: C.textMuted, cursor: 'pointer' }}>
+            Leave without purging
+          </button>
+        </div>
+      </div>
+    </ScreenShell>
+  );
+}
+
+// ============================================================
 // EVENT SCREEN
 // ============================================================
 function EventScreen({ state, data, onAction }) {
   const eventId = state.event?.eventId;
+
+  // ── Special-cased custom event UIs ───────────────────────────────────────
+  if (eventId === 'TriviaChallenge') return <TriviaScreen state={state} onAction={onAction} />;
+  if (eventId === 'PatternMemory')   return <PatternScreen state={state} onAction={onAction} />;
+  if (eventId === 'DataFence')       return <DataFenceScreen state={state} data={data} onAction={onAction} />;
+  if (eventId === 'MassPurge')       return <MassPurgeScreen state={state} data={data} onAction={onAction} />;
 
   if (eventId === 'RestSite') {
     return (
@@ -807,10 +1354,14 @@ function EventScreen({ state, data, onAction }) {
   // Categorise choices for coloring
   const choiceColor = (choice) => {
     const ops = choice.ops.map(o => o.op);
-    if (ops.includes('LoseHP')) return C.red;
+    if (ops.includes('LoseHP') || ops.includes('LoseMaxHP')) return C.red;
     if (ops.includes('GainMaxHP')) return C.purple;
     if (ops.includes('AccelerateSelectedCard')) return C.orange;
-    if (ops.includes('RemoveSelectedCard')) return C.red;
+    if (ops.includes('RemoveSelectedCard') || ops.includes('RemoveSelectedCardAndRandom')) return C.red;
+    if (ops.includes('FeedSelectedCardForHP')) return C.green;
+    if (ops.includes('RemoveLastMutation')) return C.purple;
+    if (ops.includes('RerollLastMutation')) return C.yellow;
+    if (ops.includes('ShiftMutationTier')) return C.orange;
     if (ops.includes('RepairSelectedCard')) return C.cyan;
     if (ops.includes('StabiliseSelectedCard')) return C.purple;
     if (ops.includes('GainGold')) return C.yellow;
@@ -824,6 +1375,18 @@ function EventScreen({ state, data, onAction }) {
     <ScreenShell>
       <RunHeader run={state.run} />
       <div style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column' }}>
+
+        {/* Last-action result banner (repeatable events) */}
+        {state.event?.lastResult && (
+          <div style={{
+            fontFamily: MONO, fontSize: '12px', color: C.green,
+            backgroundColor: `${C.green}10`, border: `1px solid ${C.green}30`,
+            borderRadius: '10px', padding: '10px 14px', marginBottom: '12px',
+            textAlign: 'center',
+          }}>
+            ✓ {state.event.lastResult}
+          </div>
+        )}
 
         {/* Event card */}
         <div
@@ -890,6 +1453,11 @@ function EventScreen({ state, data, onAction }) {
                       : choice.ops.some(o => o.op === 'Heal') ? '💊'
                       : choice.ops.some(o => o.op === 'GainMaxHP') ? '⬆'
                       : choice.ops.some(o => o.op === 'RemoveSelectedCard') ? '🗑'
+                      : choice.ops.some(o => o.op === 'RemoveSelectedCardAndRandom') ? '🗂'
+                      : choice.ops.some(o => o.op === 'FeedSelectedCardForHP') ? '🔋'
+                      : choice.ops.some(o => o.op === 'RemoveLastMutation') ? '⚗'
+                      : choice.ops.some(o => o.op === 'RerollLastMutation') ? '🎲'
+                      : choice.ops.some(o => o.op === 'ShiftMutationTier') ? '🎛'
                       : choice.ops.some(o => o.op === 'RepairSelectedCard') ? '🔧'
                       : choice.ops.some(o => o.op === 'StabiliseSelectedCard') ? '◆'
                       : choice.ops.some(o => o.op === 'AccelerateSelectedCard') ? '⚡'
@@ -915,10 +1483,15 @@ function EventScreen({ state, data, onAction }) {
 // ============================================================
 
 const DECK_OP_LABELS = {
-  RemoveSelectedCard:    { label: 'REMOVE A CARD',    desc: 'The chosen card will be permanently deleted.', color: '#ff4444' },
-  RepairSelectedCard:    { label: 'REPAIR A CARD',    desc: 'Restore the chosen card\'s use counter.', color: '#00f0ff' },
-  StabiliseSelectedCard: { label: 'STABILISE A CARD', desc: 'Reset the chosen card\'s mutation countdown.', color: '#b44aff' },
-  AccelerateSelectedCard:{ label: 'ACCELERATE A CARD',desc: 'Speed up the chosen card\'s mutation trigger.', color: '#ff6b00' },
+  RemoveSelectedCard:         { label: 'REMOVE A CARD',         desc: 'The chosen card will be permanently deleted.', color: '#ff4444' },
+  RepairSelectedCard:         { label: 'REPAIR A CARD',         desc: "Restore the chosen card's use counter.", color: '#00f0ff' },
+  StabiliseSelectedCard:      { label: 'STABILISE A CARD',      desc: "Reset the chosen card's mutation countdown.", color: '#b44aff' },
+  AccelerateSelectedCard:     { label: 'ACCELERATE A CARD',     desc: "Speed up the chosen card's mutation trigger.", color: '#ff6b00' },
+  RemoveSelectedCardAndRandom:{ label: 'DEFRAG — REMOVE A CARD', desc: 'Remove this card. One additional random card will also be scrapped.', color: '#ff4444' },
+  FeedSelectedCardForHP:      { label: 'SIPHON A CARD',         desc: 'Remove this card and gain HP equal to its RAM cost × 3.', color: '#00ff6b' },
+  RemoveLastMutation:         { label: 'SELECT CARD TO TREAT',  desc: "Remove the card's most recent mutation.", color: '#b44aff' },
+  RerollLastMutation:         { label: 'SELECT CARD TO SPLICE', desc: "Reroll the card's most recent mutation into a new one.", color: '#ffe600' },
+  ShiftMutationTier:          { label: 'SELECT CARD TO ADJUST', desc: "Shift the card's most recent mutation to a random different tier.", color: '#ff6b00' },
 };
 
 function DeckPickerOverlay({ state, data, onAction }) {
@@ -933,6 +1506,8 @@ function DeckPickerOverlay({ state, data, onAction }) {
   const instances = state.deck?.cardInstances || {};
   const typeColors = { Attack: C.red, Skill: C.green, Power: C.purple, Defense: C.cyan, Support: C.green, Utility: C.yellow };
 
+  const mutationOps = new Set(['RemoveLastMutation', 'RerollLastMutation', 'ShiftMutationTier']);
+
   const cards = master
     .map(iid => {
       const ci = instances[iid];
@@ -940,6 +1515,8 @@ function DeckPickerOverlay({ state, data, onAction }) {
       const def = data?.cards?.[ci.defId];
       if (!def) return null;
       if (def.tags?.includes('EnemyCard')) return null;
+      // Mutation ops require the card to have at least one applied mutation
+      if (mutationOps.has(pendingOp) && !(ci.appliedMutations?.length > 0)) return null;
       return { iid, ci, def };
     })
     .filter(Boolean);

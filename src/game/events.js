@@ -28,7 +28,7 @@ export function createBasicEventRegistry() {
       ],
     },
 
-    // ── New events ───────────────────────────────────────────────────────────
+    // ── New original events ───────────────────────────────────────────────────
 
     "GlitchZone": {
       id: "GlitchZone",
@@ -139,14 +139,146 @@ export function createBasicEventRegistry() {
       ],
     },
 
+    // ── Deck-culling events (conditional on deck size) ────────────────────────
+
+    "DataPurge": {
+      id: "DataPurge",
+      title: "Fragmentation Alert",
+      icon: "🗂️",
+      text: "Your deck is bloated with redundant processes. Purge one voluntarily — but defrag will auto-scrap another alongside it.",
+      deckSizeMin: 40,
+      repeatable: true,
+      choices: [
+        { id: "purge", label: "Defrag — Remove a card (+ 1 random also removed)", ops: [{ op: "RemoveSelectedCardAndRandom" }] },
+        { id: "leave", label: "Leave it", ops: [] },
+      ],
+    },
+
+    // MassPurge, DataFence, TriviaChallenge, PatternMemory are handled
+    // as special-case events (custom UI, no standard choices array needed).
+
+    "MassPurge": {
+      id: "MassPurge",
+      title: "System Wipe",
+      icon: "💣",
+      text: "Your deck has reached critical mass. Select every card you want purged — the system will mirror your cull with an equal random sweep.",
+      deckSizeMin: 50,
+      choices: [],    // custom UI
+    },
+
+    // ── Energy / health events ────────────────────────────────────────────────
+
+    "PowerDrain": {
+      id: "PowerDrain",
+      title: "Energy Siphon",
+      icon: "🔋",
+      text: "A power tap offers to convert a card's RAM allocation directly into your system health. The card is gone — but you feel better.",
+      repeatable: true,
+      choices: [
+        { id: "siphon", label: "Siphon — Remove a card, gain HP equal to its RAM × 3", ops: [{ op: "FeedSelectedCardForHP" }] },
+        { id: "leave",  label: "Leave",                                                  ops: [] },
+      ],
+    },
+
+    // ── Mutation surgery events (require at least one mutated card) ───────────
+
+    "MutationClinic_MaxHP": {
+      id: "MutationClinic_MaxHP",
+      title: "Back-Alley Surgeon",
+      icon: "⚗️",
+      text: "A rogue bio-technician can extract a card's most recent mutation. Each procedure permanently reduces your maximum integrity.",
+      requiresMutation: true,
+      repeatable: true,
+      choices: [
+        { id: "extract", label: "Extract mutation (−1 Max HP per op)", ops: [{ op: "LoseMaxHP", amount: 1 }, { op: "RemoveLastMutation" }] },
+        { id: "leave",   label: "Leave",                                ops: [] },
+      ],
+    },
+
+    "MutationClinic_HP": {
+      id: "MutationClinic_HP",
+      title: "Mutation Suppressor",
+      icon: "💉",
+      text: "Experimental suppressants can flush a card's most recent mutation. Effective — but the treatment stings.",
+      requiresMutation: true,
+      repeatable: true,
+      choices: [
+        { id: "suppress", label: "Suppress mutation (−10 HP per op)", ops: [{ op: "LoseHP", amount: 10 }, { op: "RemoveLastMutation" }] },
+        { id: "leave",    label: "Leave",                               ops: [] },
+      ],
+    },
+
+    "MutationReroll": {
+      id: "MutationReroll",
+      title: "Spliced Signal",
+      icon: "🎲",
+      text: "A signal interceptor scrambles a card's most recent mutation into a new one of the same tier. Could be better. Could be worse.",
+      requiresMutation: true,
+      repeatable: true,
+      choices: [
+        { id: "splice", label: "Splice mutation (−2 HP per op)", ops: [{ op: "LoseHP", amount: 2 }, { op: "RerollLastMutation" }] },
+        { id: "leave",  label: "Leave",                           ops: [] },
+      ],
+    },
+
+    "MutationTuner": {
+      id: "MutationTuner",
+      title: "Variance Adjuster",
+      icon: "🎛️",
+      text: "A variance modulator shifts a card's most recent mutation to a random severity tier — up or down. Gamble carefully.",
+      requiresMutation: true,
+      repeatable: true,
+      choices: [
+        { id: "adjust", label: "Adjust tier (−5 HP per op)", ops: [{ op: "LoseHP", amount: 5 }, { op: "ShiftMutationTier" }] },
+        { id: "leave",  label: "Leave",                       ops: [] },
+      ],
+    },
+
+    // ── Vendor event ─────────────────────────────────────────────────────────
+
+    "DataFence": {
+      id: "DataFence",
+      title: "The Fence",
+      icon: "🤝",
+      text: "A shifty broker who'll buy your unwanted cards at a fair price — and sells rare goods at a steep mark-up.",
+      choices: [],    // custom UI
+    },
+
+    // ── Minigame events ───────────────────────────────────────────────────────
+
+    "TriviaChallenge": {
+      id: "TriviaChallenge",
+      title: "Knowledge Probe",
+      icon: "📡",
+      text: "An automated system scans your tactical knowledge. Answer correctly for rewards; answer wrong for penalties. Escalates with each question.",
+      choices: [],    // custom UI
+    },
+
+    "PatternMemory": {
+      id: "PatternMemory",
+      title: "Neural Calibration",
+      icon: "🔲",
+      text: "A neural calibration grid tests your memory. Observe the pattern, then reproduce it. Each round adds more tiles — and more at stake.",
+      choices: [],    // custom UI
+    },
+
   };
 
   return { events, pool: Object.keys(events) };
 }
 
-export function pickRandomEventId(reg, seed) {
+export function pickRandomEventId(reg, seed, ctx = {}) {
+  const { deckSize = 0, hasMutations = false } = ctx;
   const rng = new RNG(seed ^ 0xE17E17);
-  return rng.pick(reg.pool);
+  const eligible = reg.pool.filter(id => {
+    const def = reg.events[id];
+    if (!def) return false;
+    if (def.deckSizeMin && deckSize < def.deckSizeMin) return false;
+    if (def.requiresMutation && !hasMutations) return false;
+    return true;
+  });
+  const pool = eligible.length > 0 ? eligible : reg.pool.filter(id => !!reg.events[id]);
+  return rng.pick(pool);
 }
 
 export function applyEventChoiceImmediate(state, data, reg, choiceId) {
@@ -158,6 +290,8 @@ export function applyEventChoiceImmediate(state, data, reg, choiceId) {
   const deckOps = new Set([
     "RemoveSelectedCard", "RepairSelectedCard",
     "StabiliseSelectedCard", "AccelerateSelectedCard",
+    "RemoveSelectedCardAndRandom", "FeedSelectedCardForHP",
+    "RemoveLastMutation", "RerollLastMutation", "ShiftMutationTier",
   ]);
 
   for (const op of choice.ops) {

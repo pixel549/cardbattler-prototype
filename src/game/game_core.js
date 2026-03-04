@@ -82,6 +82,168 @@ function makeShop(data, seed) {
 
 function clamp(n, lo, hi) { return Math.max(lo, Math.min(hi, n)); }
 
+// ── New event service helpers ─────────────────────────────────────────────────
+
+function service_RemoveCardAndRandom(state, data) {
+  const sel = state.deckView?.selectedInstanceId;
+  if (!sel || !state.deck?.cardInstances[sel]) return false;
+
+  const selName = data.cards[state.deck.cardInstances[sel].defId]?.name ?? 'Card';
+  state.deck.master = state.deck.master.filter(x => x !== sel);
+  delete state.deck.cardInstances[sel];
+
+  // Act 1 → 1 random; Act 2+ → 2 random
+  const randomCount = (state.event?.act ?? 1) >= 2 ? 2 : 1;
+  const rng = new RNG((((state.run?.seed ?? 0) ^ (state.run?.floor ?? 0) ^ 0xAB4321)) >>> 0);
+  const randomNames = [];
+  for (let i = 0; i < randomCount && state.deck.master.length > 0; i++) {
+    const idx = rng.int(state.deck.master.length);
+    const rid = state.deck.master[idx];
+    randomNames.push(data.cards[state.deck.cardInstances[rid]?.defId]?.name ?? 'Card');
+    state.deck.master.splice(idx, 1);
+    delete state.deck.cardInstances[rid];
+  }
+  state.event.lastResult = `Removed "${selName}" — also scrapped: ${randomNames.join(', ') || 'none'}.`;
+  return true;
+}
+
+function service_FeedCardForHP(state, data) {
+  const sel = state.deckView?.selectedInstanceId;
+  if (!sel || !state.deck?.cardInstances[sel]) return false;
+
+  const ci  = state.deck.cardInstances[sel];
+  const def = data.cards[ci.defId];
+  const effectiveCost = Math.max(0, (def?.costRAM ?? 0) + (ci.ramCostDelta ?? 0));
+  const healAmt = Math.max(1, effectiveCost * 3);
+  const cardName = def?.name ?? 'Card';
+
+  state.deck.master = state.deck.master.filter(x => x !== sel);
+  delete state.deck.cardInstances[sel];
+  state.run.hp = Math.min(state.run.maxHP, state.run.hp + healAmt);
+  state.event.lastResult = `Fed "${cardName}" (${effectiveCost} RAM) → +${healAmt} HP.`;
+  return true;
+}
+
+function _popLastMutation(ci, data) {
+  if (!ci.appliedMutations?.length) return null;
+  const mutId = ci.appliedMutations[ci.appliedMutations.length - 1];
+  ci.appliedMutations = ci.appliedMutations.slice(0, -1);
+  const mut = data.mutations?.[mutId];
+  if (mut) {
+    if (mut.ramCostDelta)       ci.ramCostDelta           = (ci.ramCostDelta           ?? 0) - mut.ramCostDelta;
+    if (mut.useCounterDelta)    ci.useCounter             = Math.max(0, (ci.useCounter ?? 0) - mut.useCounterDelta);
+    if (mut.finalCountdownDelta) ci.finalMutationCountdown = Math.max(0, (ci.finalMutationCountdown ?? 0) - mut.finalCountdownDelta);
+  }
+  return { mutId, mut };
+}
+
+function service_RemoveLastMutation(state, data) {
+  const sel = state.deckView?.selectedInstanceId;
+  if (!sel || !state.deck?.cardInstances[sel]) return false;
+  const ci = state.deck.cardInstances[sel];
+  const result = _popLastMutation(ci, data);
+  if (!result) return false;   // no mutations on this card
+  const cardName = data.cards[ci.defId]?.name ?? 'Card';
+  state.event.lastResult = `Removed "${result.mut?.name ?? result.mutId}" from ${cardName}.`;
+  return true;
+}
+
+function service_RerollLastMutation(state, data) {
+  const sel = state.deckView?.selectedInstanceId;
+  if (!sel || !state.deck?.cardInstances[sel]) return false;
+  const ci = state.deck.cardInstances[sel];
+  const result = _popLastMutation(ci, data);
+  if (!result) return false;
+
+  const oldTier = result.mut?.tier ?? 'A';
+  const rng = new RNG((((state.run?.seed ?? 0) ^ (state.run?.floor ?? 0) ^ 0xAA5577)) >>> 0);
+  const pool = (data.mutationPoolsByTier?.[oldTier] || []).filter(mid => {
+    if (mid === result.mutId) return false;
+    const m = data.mutations[mid];
+    if (!m) return false;
+    if (!m.stackable && ci.appliedMutations.includes(mid)) return false;
+    return true;
+  });
+
+  let newMutName = '(none available)';
+  if (pool.length > 0) {
+    const newMutId = pool[rng.int(pool.length)];
+    const newMut   = data.mutations[newMutId];
+    ci.appliedMutations.push(newMutId);
+    if (newMut.ramCostDelta)        ci.ramCostDelta           = (ci.ramCostDelta           ?? 0) + newMut.ramCostDelta;
+    if (newMut.useCounterDelta)     ci.useCounter             = Math.max(0, (ci.useCounter ?? 0) + newMut.useCounterDelta);
+    if (newMut.finalCountdownDelta) ci.finalMutationCountdown = Math.max(0, (ci.finalMutationCountdown ?? 0) + newMut.finalCountdownDelta);
+    newMutName = newMut.name;
+  }
+  const cardName = data.cards[ci.defId]?.name ?? 'Card';
+  state.event.lastResult = `${cardName}: "${result.mut?.name}" → "${newMutName}" (tier ${oldTier}).`;
+  return true;
+}
+
+function service_ShiftMutationTier(state, data) {
+  const sel = state.deckView?.selectedInstanceId;
+  if (!sel || !state.deck?.cardInstances[sel]) return false;
+  const ci = state.deck.cardInstances[sel];
+  const result = _popLastMutation(ci, data);
+  if (!result) return false;
+
+  const TIERS = ['A','B','C','D','E','F','G','H','I'];
+  const oldIdx = TIERS.indexOf(result.mut?.tier ?? 'A');
+  const rng = new RNG((((state.run?.seed ?? 0) ^ (state.run?.floor ?? 0) ^ 0x5E7711)) >>> 0);
+
+  // Candidate target indices: ±1 or ±2 steps, clamped to valid range, not same tier
+  const candidates = [-2, -1, 1, 2]
+    .map(d => oldIdx + d)
+    .filter(i => i >= 0 && i < TIERS.length);
+
+  let newMutName = '(none)';
+  let dirLabel   = 'shifted';
+  if (candidates.length > 0) {
+    const newIdx  = candidates[rng.int(candidates.length)];
+    const newTier = TIERS[newIdx];
+    dirLabel = newIdx < oldIdx ? `downgraded → tier ${newTier}` : `upgraded → tier ${newTier}`;
+
+    const pool = (data.mutationPoolsByTier?.[newTier] || []).filter(mid => {
+      const m = data.mutations[mid];
+      if (!m) return false;
+      if (!m.stackable && ci.appliedMutations.includes(mid)) return false;
+      return true;
+    });
+    if (pool.length > 0) {
+      const newMutId = pool[rng.int(pool.length)];
+      const newMut   = data.mutations[newMutId];
+      ci.appliedMutations.push(newMutId);
+      if (newMut.ramCostDelta)        ci.ramCostDelta           = (ci.ramCostDelta           ?? 0) + newMut.ramCostDelta;
+      if (newMut.useCounterDelta)     ci.useCounter             = Math.max(0, (ci.useCounter ?? 0) + newMut.useCounterDelta);
+      if (newMut.finalCountdownDelta) ci.finalMutationCountdown = Math.max(0, (ci.finalMutationCountdown ?? 0) + newMut.finalCountdownDelta);
+      newMutName = newMut.name;
+    }
+  }
+  const cardName = data.cards[ci.defId]?.name ?? 'Card';
+  state.event.lastResult = `${cardName}: "${result.mut?.name}" ${dirLabel} → "${newMutName}".`;
+  return true;
+}
+
+function makeDataFenceOffers(data, seed) {
+  const rng = new RNG((seed ^ 0xFEED5555) >>> 0);
+  const cardIds = Object.keys(data.cards).filter(id =>
+    !data.cards[id].tags?.includes('EnemyAction') &&
+    !data.cards[id].tags?.includes('EnemyCard')
+  );
+  const shuffled = [...cardIds];
+  const offers = [];
+  for (let i = 0; i < 3 && shuffled.length > 0; i++) {
+    const idx = rng.int(shuffled.length);
+    const [id] = shuffled.splice(idx, 1);
+    offers.push({ type: 'card', defId: id, price: 200, bought: false });
+  }
+  // Add a premium remove-card service
+  offers.push({ type: 'service', serviceId: 'RemoveCard', label: 'Remove a card from deck', price: 150, bought: false });
+  return offers;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 // Called after reward completes: if the current map has no more selectable nodes,
 // advance to the next act and generate a fresh map.
 function maybeAdvanceAct(state, data, log) {
@@ -212,8 +374,21 @@ function resolveCurrentNodeInternal(state, data, log) {
 
   if (node.type === "Event") {
     state.mode = "Event";
-    const eid = pickRandomEventId(EVENT_REG, state.run.seed ^ state.run.floor);
-    state.event = { eventId: eid, step: 0 };
+    const deckSize    = state.deck?.master?.length ?? 0;
+    const hasMutations = Object.values(state.deck?.cardInstances ?? {}).some(ci => ci.appliedMutations?.length > 0);
+    const eid = pickRandomEventId(EVENT_REG, state.run.seed ^ state.run.floor, { deckSize, hasMutations });
+    const eventDef = EVENT_REG.events[eid];
+    state.event = {
+      eventId:    eid,
+      step:       0,
+      act:        state.run.act,
+      repeatable: eventDef?.repeatable ?? false,
+    };
+    if (eid === 'DataFence') {
+      state.event.dataFence = { offers: makeDataFenceOffers(data, state.run.seed ^ state.run.floor) };
+    } else if (eid === 'MassPurge') {
+      state.event.massPurgeSelected = [];
+    }
     log({ t: "Info", msg: `Entered event: ${eid}` });
     return state;
   }
@@ -565,16 +740,26 @@ export function dispatchGame(stateIn, data, action) {
       if (state.mode === "Event" && state.event?.pendingSelectOp) {
         const op = state.event.pendingSelectOp;
         let ok = false;
-        if (op === "RemoveSelectedCard") ok = service_RemoveCard(state);
-        if (op === "RepairSelectedCard") ok = service_RepairCard(state, data);
-        if (op === "StabiliseSelectedCard") ok = service_StabiliseCard(state, data);
-        if (op === "AccelerateSelectedCard") ok = service_AccelerateCard(state);
+        if (op === "RemoveSelectedCard")         ok = service_RemoveCard(state);
+        if (op === "RepairSelectedCard")         ok = service_RepairCard(state, data);
+        if (op === "StabiliseSelectedCard")      ok = service_StabiliseCard(state, data);
+        if (op === "AccelerateSelectedCard")     ok = service_AccelerateCard(state);
+        if (op === "RemoveSelectedCardAndRandom") ok = service_RemoveCardAndRandom(state, data);
+        if (op === "FeedSelectedCardForHP")      ok = service_FeedCardForHP(state, data);
+        if (op === "RemoveLastMutation")         ok = service_RemoveLastMutation(state, data);
+        if (op === "RerollLastMutation")         ok = service_RerollLastMutation(state, data);
+        if (op === "ShiftMutationTier")          ok = service_ShiftMutationTier(state, data);
         if (!ok) { log({ t: "Info", msg: `Event card op failed: ${op}` }); return state; }
         log({ t: "Info", msg: `Event: applied card op ${op}` });
         state.event.pendingSelectOp = undefined;
         state.deckView = null;
-        state.mode = "Map";
-        state.event = null;
+        // Repeatable events stay in event mode so the player can do it again or leave
+        if (state.event.repeatable) {
+          log({ t: "Info", msg: `Event: repeatable — staying in event` });
+        } else {
+          state.mode = "Map";
+          state.event = null;
+        }
       }
 
       return state;
@@ -610,6 +795,107 @@ export function dispatchGame(stateIn, data, action) {
       log({ t: "Info", msg: "Left rest site" });
       state.mode = "Map";
       state.event = null;
+      return state;
+    }
+
+    // ---------- Event: generic end / reward ──────────────────────────────────
+    case "Event_EndEvent": {
+      if (state.mode !== "Event") return state;
+      state.mode = "Map";
+      state.event = null;
+      state.deckView = null;
+      log({ t: "Info", msg: "Event ended" });
+      return state;
+    }
+
+    case "Event_Reward": {
+      if (!state.run) return state;
+      if (action.gold)   state.run.gold = Math.max(0, (state.run.gold ?? 0) + action.gold);
+      if (action.loseGold) state.run.gold = Math.max(0, (state.run.gold ?? 0) - action.loseGold);
+      if (action.hp)     state.run.hp   = Math.min(state.run.maxHP, (state.run.hp ?? 0) + action.hp);
+      if (action.loseHp) state.run.hp   = Math.max(0, (state.run.hp ?? 0) - action.loseHp);
+      if (state.run.hp <= 0) {
+        state.mode = "GameOver";
+        log({ t: "Info", msg: "Run ended: died to event penalty" });
+      }
+      log({ t: "Info", msg: `Event_Reward applied` });
+      return state;
+    }
+
+    // ---------- Event: MassPurge ─────────────────────────────────────────────
+    case "Event_MassPurge_Toggle": {
+      if (state.mode !== "Event" || state.event?.eventId !== "MassPurge") return state;
+      const sel = action.instanceId;
+      const cur = state.event.massPurgeSelected ?? [];
+      state.event.massPurgeSelected = cur.includes(sel)
+        ? cur.filter(x => x !== sel)
+        : [...cur, sel];
+      return state;
+    }
+
+    case "Event_MassPurge_Confirm": {
+      if (state.mode !== "Event" || state.event?.eventId !== "MassPurge" || !state.deck || !state.run) return state;
+      const chosen = state.event.massPurgeSelected ?? [];
+      if (chosen.length === 0) {
+        state.mode = "Map";
+        state.event = null;
+        return state;
+      }
+      // Remove chosen cards
+      for (const iid of chosen) {
+        if (!state.deck.cardInstances[iid]) continue;
+        state.deck.master = state.deck.master.filter(x => x !== iid);
+        delete state.deck.cardInstances[iid];
+      }
+      // Remove equal count random additional cards
+      const rng = new RNG((((state.run.seed ?? 0) ^ (state.run.floor ?? 0) ^ 0xAA7733)) >>> 0);
+      let extra = 0;
+      while (extra < chosen.length && state.deck.master.length > 0) {
+        const idx = rng.int(state.deck.master.length);
+        const rid = state.deck.master[idx];
+        state.deck.master.splice(idx, 1);
+        delete state.deck.cardInstances[rid];
+        extra++;
+      }
+      log({ t: "Info", msg: `MassPurge: removed ${chosen.length} chosen + ${extra} random` });
+      state.mode = "Map";
+      state.event = null;
+      return state;
+    }
+
+    // ---------- Event: DataFence ─────────────────────────────────────────────
+    case "Event_DataFence_Sell": {
+      if (state.mode !== "Event" || state.event?.eventId !== "DataFence" || !state.deck || !state.run) return state;
+      const { instanceId } = action;
+      if (!instanceId || !state.deck.cardInstances[instanceId]) return state;
+      const cardName = data.cards[state.deck.cardInstances[instanceId].defId]?.name ?? 'Card';
+      state.deck.master = state.deck.master.filter(x => x !== instanceId);
+      delete state.deck.cardInstances[instanceId];
+      state.run.gold += 40;
+      log({ t: "Info", msg: `DataFence: sold ${cardName} for 40g` });
+      return state;
+    }
+
+    case "Event_DataFence_Buy": {
+      if (state.mode !== "Event" || state.event?.eventId !== "DataFence" || !state.deck || !state.run) return state;
+      const { index } = action;
+      const offers = state.event.dataFence?.offers ?? [];
+      const offer  = offers[index];
+      if (!offer || offer.bought) return state;
+      if (state.run.gold < offer.price) { log({ t: "Info", msg: "DataFence: not enough gold" }); return state; }
+      state.run.gold -= offer.price;
+      offer.bought = true;
+      if (offer.type === 'card') {
+        const rng = new RNG((((state.run.seed ?? 0) ^ (state.run.floor ?? 0) ^ 0xFEC1CE)) >>> 0);
+        addCardToRunDeck(data, state.deck, rng, offer.defId);
+        log({ t: "Info", msg: `DataFence: bought card ${offer.defId}` });
+      } else if (offer.type === 'service' && offer.serviceId === 'RemoveCard') {
+        // Opens deck picker for card removal; repeatable=true so we return to DataFence after
+        state.deckView = { selectedInstanceId: null, returnMode: "Event" };
+        state.event.pendingSelectOp = "RemoveSelectedCard";
+        state.event.repeatable = true;
+        log({ t: "Info", msg: `DataFence: remove-card service activated` });
+      }
       return state;
     }
 

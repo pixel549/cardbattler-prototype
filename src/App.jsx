@@ -270,9 +270,10 @@ function MapScreen({ state, data, onAction }) {
                 key={`${from.id}-${to.id}`}
                 x1={mapNX(from.x)} y1={mapNY(from.y)}
                 x2={mapNX(to.x)}   y2={mapNY(to.y)}
-                stroke={isTraversed ? `${C.cyan}50` : isHot ? `${C.cyan}35` : '#222233'}
-                strokeWidth={isTraversed ? 2 : isHot ? 1.5 : 1}
-                strokeDasharray={isTraversed || isHot ? 'none' : '3 5'}
+                stroke={isTraversed ? `${C.cyan}70` : isHot ? `${C.cyan}cc` : `${C.cyan}28`}
+                strokeWidth={isTraversed ? 2 : isHot ? 2 : 1.5}
+                strokeDasharray={isTraversed || isHot ? 'none' : '5 4'}
+                filter={isHot ? 'url(#mglow-sm)' : undefined}
               />
             );
           })}

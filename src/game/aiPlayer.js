@@ -781,6 +781,64 @@ function getEventAction(event, run, deck, data, playstyle) {
     return { type: 'Event_Choose', choiceId: 'play_safe' };
   }
 
-  // Unknown event: return null (will be retried next tick)
-  return null;
+  const choose = (id) => ({ type: 'Event_Choose', choiceId: id });
+  const gold   = run?.gold ?? 0;
+  const deckSz = deck?.master?.length ?? 0;
+
+  if (event.eventId === 'GlitchZone') {
+    // exploit: free card remove + 40g — great if deck is large enough
+    return deckSz >= 6 ? choose('exploit') : choose('leave');
+  }
+  if (event.eventId === 'SalvageYard') {
+    return choose('strip'); // free +25g + repair
+  }
+  if (event.eventId === 'NeuralBooster') {
+    return hpPct < 0.7 ? choose('trial') : choose('sell'); // heal 20 vs +50g
+  }
+  if (event.eventId === 'CorruptDataPurge') {
+    return deckSz >= 7 ? choose('purge') : choose('ignore'); // remove junk or just ignore
+  }
+  if (event.eventId === 'BlackMarketDeal') {
+    return hpPct > 0.5 ? choose('quick') : choose('pass'); // -6HP +40g vs free
+  }
+  if (event.eventId === 'AbandonedLab') {
+    return choose('leave');
+  }
+  if (event.eventId === 'SystemRestore') {
+    return choose('full'); // free 30 HP heal — always take it
+  }
+  if (event.eventId === 'CorporateSpy') {
+    return (gold >= 25 && hpPct < 0.8) ? choose('intel') : choose('walk');
+  }
+  if (event.eventId === 'BionicUpgrade') {
+    return (gold >= 15 && hpPct < 0.6) ? choose('hp_heal') : choose('decline');
+  }
+  if (event.eventId === 'EchoChamber') {
+    return choose('extract'); // free +35g, safe
+  }
+  if (event.eventId === 'RogueDrone') {
+    return hpPct > 0.6 ? choose('clip') : choose('avoid'); // -8HP +40g vs free
+  }
+  if (event.eventId === 'DataLoop') {
+    return choose('sell'); // +55g, clean
+  }
+  if (event.eventId === 'Extraction') {
+    return (gold >= 20 && hpPct < 0.5) ? choose('partial') : choose('decline');
+  }
+  if (event.eventId === 'GhostTech') {
+    return choose('fence'); // free +40g
+  }
+  if (event.eventId === 'ShadowBroker') {
+    return choose('browse'); // free +30g
+  }
+  if (event.eventId === 'CorpAmbush') {
+    return (gold >= 25) ? choose('bribe') : choose('flee');
+  }
+  if (event.eventId === 'ReconReport') {
+    return choose('gold'); // free +40g
+  }
+
+  // Generic fallback: pick the last choice (usually "leave/pass/avoid")
+  // This ensures unknown future events don't deadlock the AI
+  return choose('leave');
 }

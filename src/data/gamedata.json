@@ -1,6 +1,6 @@
 {
-  "version": 3,
-  "builtAt": "2026-02-27T07:09:46.116Z",
+  "version": 1,
+  "builtAt": "2026-03-04T05:19:18.009Z",
   "cards": {
     "C-001": {
       "id": "C-001",
@@ -31,16 +31,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-001",
-          "NC-002",
-          "NC-005",
-          "NC-018",
-          "NC-025",
-          "NC-026",
-          "NC-027",
-          "NC-028"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "C-002": {
@@ -72,16 +63,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-003",
-          "NC-014",
-          "NC-016",
-          "NC-022",
-          "NC-030",
-          "NC-031",
-          "NC-032",
-          "NC-051"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "C-003": {
@@ -113,16 +95,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-004",
-          "NC-017",
-          "NC-038",
-          "NC-050",
-          "NC-058",
-          "NC-060",
-          "NC-061",
-          "NC-063"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "C-004": {
@@ -155,16 +128,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-006",
-          "NC-007",
-          "NC-008",
-          "NC-009",
-          "NC-010",
-          "NC-011",
-          "NC-012",
-          "NC-013"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "C-005": {
@@ -197,16 +161,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-001",
-          "NC-002",
-          "NC-005",
-          "NC-018",
-          "NC-025",
-          "NC-026",
-          "NC-027",
-          "NC-028"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "C-006": {
@@ -239,16 +194,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-010",
-          "NC-019",
-          "NC-033",
-          "NC-034",
-          "NC-035",
-          "NC-036",
-          "NC-037",
-          "NC-040"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "C-007": {
@@ -281,16 +227,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-003",
-          "NC-014",
-          "NC-016",
-          "NC-022",
-          "NC-030",
-          "NC-031",
-          "NC-032",
-          "NC-051"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "C-008": {
@@ -323,22 +260,13 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-001",
-          "NC-002",
-          "NC-005",
-          "NC-018",
-          "NC-025",
-          "NC-026",
-          "NC-027",
-          "NC-028"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "C-009": {
       "id": "C-009",
       "name": "Antivirus Lockout",
-      "type": "Skill",
+      "type": "Skill / Enemy interference",
       "costRAM": 1,
       "tags": [
         "Core"
@@ -363,14 +291,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-001",
-          "NC-002",
-          "NC-003",
-          "NC-004",
-          "NC-005",
-          "NC-006"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "C-010": {
@@ -403,16 +324,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-001",
-          "NC-002",
-          "NC-005",
-          "NC-018",
-          "NC-025",
-          "NC-026",
-          "NC-027",
-          "NC-028"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-001": {
@@ -444,16 +356,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-002",
-          "NC-005",
-          "NC-018",
-          "NC-025",
-          "NC-026",
-          "NC-028",
-          "NC-029",
-          "NC-093"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-002": {
@@ -485,16 +388,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-001",
-          "NC-005",
-          "NC-018",
-          "NC-025",
-          "NC-026",
-          "NC-028",
-          "NC-029",
-          "NC-093"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-003": {
@@ -527,16 +421,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-014",
-          "NC-016",
-          "NC-022",
-          "NC-031",
-          "NC-032",
-          "NC-051",
-          "NC-059",
-          "NC-062"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-004": {
@@ -569,16 +454,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-017",
-          "NC-038",
-          "NC-050",
-          "NC-058",
-          "NC-060",
-          "NC-061",
-          "NC-063",
-          "NC-064"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-005": {
@@ -612,16 +488,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-001",
-          "NC-002",
-          "NC-018",
-          "NC-025",
-          "NC-026",
-          "NC-028",
-          "NC-029",
-          "NC-093"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-006": {
@@ -654,16 +521,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-007",
-          "NC-008",
-          "NC-009",
-          "NC-011",
-          "NC-012",
-          "NC-013",
-          "NC-015",
-          "NC-019"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-007": {
@@ -696,16 +554,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-006",
-          "NC-008",
-          "NC-009",
-          "NC-011",
-          "NC-012",
-          "NC-013",
-          "NC-015",
-          "NC-019"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-008": {
@@ -739,16 +588,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-006",
-          "NC-007",
-          "NC-009",
-          "NC-011",
-          "NC-012",
-          "NC-013",
-          "NC-015",
-          "NC-019"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-009": {
@@ -783,16 +623,7 @@
           "rewrite": 0.35
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-006",
-          "NC-007",
-          "NC-008",
-          "NC-011",
-          "NC-012",
-          "NC-013",
-          "NC-015",
-          "NC-019"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-010": {
@@ -823,16 +654,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-019",
-          "NC-033",
-          "NC-034",
-          "NC-035",
-          "NC-036",
-          "NC-037",
-          "NC-040",
-          "NC-041"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-011": {
@@ -863,16 +685,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-006",
-          "NC-007",
-          "NC-008",
-          "NC-009",
-          "NC-012",
-          "NC-013",
-          "NC-015",
-          "NC-019"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-012": {
@@ -905,16 +718,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-006",
-          "NC-007",
-          "NC-008",
-          "NC-009",
-          "NC-011",
-          "NC-013",
-          "NC-015",
-          "NC-019"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-013": {
@@ -946,16 +750,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-006",
-          "NC-007",
-          "NC-008",
-          "NC-009",
-          "NC-011",
-          "NC-012",
-          "NC-015",
-          "NC-019"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-014": {
@@ -988,16 +783,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-003",
-          "NC-016",
-          "NC-022",
-          "NC-031",
-          "NC-032",
-          "NC-051",
-          "NC-059",
-          "NC-062"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-015": {
@@ -1030,16 +816,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-006",
-          "NC-007",
-          "NC-008",
-          "NC-009",
-          "NC-011",
-          "NC-012",
-          "NC-013",
-          "NC-019"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-016": {
@@ -1072,16 +849,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-003",
-          "NC-014",
-          "NC-022",
-          "NC-031",
-          "NC-032",
-          "NC-051",
-          "NC-059",
-          "NC-062"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-017": {
@@ -1114,16 +882,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-004",
-          "NC-038",
-          "NC-050",
-          "NC-058",
-          "NC-060",
-          "NC-061",
-          "NC-063",
-          "NC-064"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-018": {
@@ -1157,16 +916,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-001",
-          "NC-002",
-          "NC-005",
-          "NC-025",
-          "NC-026",
-          "NC-028",
-          "NC-029",
-          "NC-093"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-019": {
@@ -1198,16 +948,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-006",
-          "NC-007",
-          "NC-008",
-          "NC-009",
-          "NC-010",
-          "NC-011",
-          "NC-012",
-          "NC-013"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-020": {
@@ -1238,16 +979,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-006",
-          "NC-007",
-          "NC-008",
-          "NC-009",
-          "NC-011",
-          "NC-012",
-          "NC-013",
-          "NC-015"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-021": {
@@ -1279,16 +1011,7 @@
           "rewrite": 0.65
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-006",
-          "NC-007",
-          "NC-008",
-          "NC-009",
-          "NC-011",
-          "NC-012",
-          "NC-013",
-          "NC-015"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-022": {
@@ -1321,22 +1044,13 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-003",
-          "NC-014",
-          "NC-016",
-          "NC-031",
-          "NC-032",
-          "NC-051",
-          "NC-059",
-          "NC-062"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-023": {
       "id": "NC-023",
       "name": "RAM Transfusion",
-      "type": "Utility",
+      "type": "Utility / tradeoff",
       "costRAM": 0,
       "tags": [],
       "effects": [
@@ -1361,15 +1075,13 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-024"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-024": {
       "id": "NC-024",
       "name": "Blood Battery",
-      "type": "Utility",
+      "type": "Utility / tradeoff",
       "costRAM": 0,
       "tags": [],
       "effects": [
@@ -1395,9 +1107,7 @@
           "rewrite": 0.35
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-023"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-025": {
@@ -1438,16 +1148,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-001",
-          "NC-002",
-          "NC-005",
-          "NC-018",
-          "NC-026",
-          "NC-028",
-          "NC-029",
-          "NC-093"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-026": {
@@ -1482,16 +1183,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-001",
-          "NC-002",
-          "NC-005",
-          "NC-018",
-          "NC-025",
-          "NC-027",
-          "NC-028",
-          "NC-073"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-027": {
@@ -1536,16 +1228,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-026",
-          "NC-028",
-          "NC-073",
-          "NC-074",
-          "NC-076",
-          "NC-082",
-          "NC-093",
-          "NC-095"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-028": {
@@ -1581,16 +1264,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-001",
-          "NC-002",
-          "NC-005",
-          "NC-018",
-          "NC-025",
-          "NC-026",
-          "NC-027",
-          "NC-073"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-029": {
@@ -1628,16 +1302,7 @@
           "rewrite": 0.35
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-001",
-          "NC-002",
-          "NC-005",
-          "NC-018",
-          "NC-025",
-          "UC-001",
-          "UC-002",
-          "UC-009"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-030": {
@@ -1672,16 +1337,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-031",
-          "NC-062",
-          "NC-075",
-          "NC-083",
-          "NC-003",
-          "NC-014",
-          "NC-016",
-          "NC-022"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-031": {
@@ -1716,16 +1372,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-003",
-          "NC-014",
-          "NC-016",
-          "NC-022",
-          "NC-030",
-          "NC-032",
-          "NC-051",
-          "NC-059"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-032": {
@@ -1761,16 +1408,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-003",
-          "NC-014",
-          "NC-016",
-          "NC-022",
-          "NC-031",
-          "NC-051",
-          "NC-059",
-          "NC-062"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-033": {
@@ -1811,16 +1449,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-010",
-          "NC-019",
-          "NC-034",
-          "NC-035",
-          "NC-036",
-          "NC-037",
-          "NC-040",
-          "NC-041"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-034": {
@@ -1856,16 +1485,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-006",
-          "NC-007",
-          "NC-008",
-          "NC-009",
-          "NC-010",
-          "NC-011",
-          "NC-012",
-          "NC-013"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-035": {
@@ -1901,16 +1521,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-006",
-          "NC-007",
-          "NC-008",
-          "NC-009",
-          "NC-010",
-          "NC-011",
-          "NC-012",
-          "NC-013"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-036": {
@@ -1947,16 +1558,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-010",
-          "NC-019",
-          "NC-033",
-          "NC-034",
-          "NC-035",
-          "NC-037",
-          "NC-040",
-          "NC-041"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-037": {
@@ -1996,16 +1598,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-006",
-          "NC-007",
-          "NC-008",
-          "NC-009",
-          "NC-010",
-          "NC-011",
-          "NC-012",
-          "NC-013"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-038": {
@@ -2041,16 +1634,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-004",
-          "NC-017",
-          "NC-050",
-          "NC-058",
-          "NC-060",
-          "NC-061",
-          "NC-063",
-          "NC-064"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-039": {
@@ -2086,16 +1670,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-006",
-          "NC-007",
-          "NC-008",
-          "NC-009",
-          "NC-011",
-          "NC-012",
-          "NC-013",
-          "NC-015"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-040": {
@@ -2129,16 +1704,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-006",
-          "NC-007",
-          "NC-008",
-          "NC-009",
-          "NC-010",
-          "NC-011",
-          "NC-012",
-          "NC-013"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-041": {
@@ -2172,16 +1738,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-010",
-          "NC-019",
-          "NC-033",
-          "NC-034",
-          "NC-035",
-          "NC-036",
-          "NC-037",
-          "NC-040"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-042": {
@@ -2216,16 +1773,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-006",
-          "NC-007",
-          "NC-008",
-          "NC-009",
-          "NC-011",
-          "NC-012",
-          "NC-013",
-          "NC-015"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-043": {
@@ -2260,16 +1808,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-006",
-          "NC-007",
-          "NC-008",
-          "NC-009",
-          "NC-010",
-          "NC-011",
-          "NC-012",
-          "NC-013"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-044": {
@@ -2307,16 +1846,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-006",
-          "NC-007",
-          "NC-008",
-          "NC-009",
-          "NC-010",
-          "NC-011",
-          "NC-012",
-          "NC-013"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-045": {
@@ -2354,16 +1884,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-010",
-          "NC-019",
-          "NC-033",
-          "NC-034",
-          "NC-035",
-          "NC-036",
-          "NC-037",
-          "NC-040"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-046": {
@@ -2399,16 +1920,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-006",
-          "NC-007",
-          "NC-008",
-          "NC-009",
-          "NC-010",
-          "NC-011",
-          "NC-012",
-          "NC-013"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-047": {
@@ -2443,16 +1955,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-006",
-          "NC-007",
-          "NC-008",
-          "NC-009",
-          "NC-011",
-          "NC-012",
-          "NC-013",
-          "NC-015"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-048": {
@@ -2487,16 +1990,7 @@
           "rewrite": 0.65
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-006",
-          "NC-007",
-          "NC-008",
-          "NC-009",
-          "NC-010",
-          "NC-011",
-          "NC-012",
-          "NC-013"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-049": {
@@ -2531,16 +2025,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-006",
-          "NC-007",
-          "NC-008",
-          "NC-009",
-          "NC-011",
-          "NC-012",
-          "NC-013",
-          "NC-015"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-050": {
@@ -2575,16 +2060,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-004",
-          "NC-017",
-          "NC-038",
-          "NC-058",
-          "NC-060",
-          "NC-061",
-          "NC-063",
-          "NC-064"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-051": {
@@ -2619,16 +2095,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-003",
-          "NC-014",
-          "NC-016",
-          "NC-022",
-          "NC-031",
-          "NC-032",
-          "NC-059",
-          "NC-062"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-052": {
@@ -2664,16 +2131,7 @@
           "rewrite": 0.35
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-006",
-          "NC-007",
-          "NC-008",
-          "NC-009",
-          "NC-011",
-          "NC-012",
-          "NC-013",
-          "NC-015"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-053": {
@@ -2712,23 +2170,14 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-006",
-          "NC-007",
-          "NC-008",
-          "NC-009",
-          "NC-010",
-          "NC-011",
-          "NC-012",
-          "NC-013"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-054": {
       "id": "NC-054",
       "name": "Cold Boot",
       "type": "Utility",
-      "costRAM": 1,
+      "costRAM": 0,
       "tags": [
         "Control",
         "Shuffle"
@@ -2737,6 +2186,10 @@
         {
           "op": "RawText",
           "text": "Shuffle your hand into your draw pile. Draw 5."
+        },
+        {
+          "op": "DrawCards",
+          "amount": 5
         }
       ],
       "defaultUseCounter": 16,
@@ -2756,16 +2209,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-010",
-          "NC-019",
-          "NC-033",
-          "NC-034",
-          "NC-035",
-          "NC-036",
-          "NC-037",
-          "NC-040"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-055": {
@@ -2803,16 +2247,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-006",
-          "NC-007",
-          "NC-008",
-          "NC-009",
-          "NC-010",
-          "NC-011",
-          "NC-012",
-          "NC-013"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-056": {
@@ -2847,16 +2282,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-006",
-          "NC-007",
-          "NC-008",
-          "NC-009",
-          "NC-010",
-          "NC-011",
-          "NC-012",
-          "NC-013"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-057": {
@@ -2894,16 +2320,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-010",
-          "NC-019",
-          "NC-033",
-          "NC-034",
-          "NC-035",
-          "NC-036",
-          "NC-037",
-          "NC-040"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-058": {
@@ -2939,16 +2356,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-004",
-          "NC-017",
-          "NC-038",
-          "NC-050",
-          "NC-060",
-          "NC-061",
-          "NC-063",
-          "NC-064"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-059": {
@@ -2983,16 +2391,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-003",
-          "NC-014",
-          "NC-016",
-          "NC-022",
-          "NC-031",
-          "NC-032",
-          "NC-051",
-          "NC-062"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-060": {
@@ -3027,16 +2426,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-004",
-          "NC-017",
-          "NC-038",
-          "NC-050",
-          "NC-058",
-          "NC-061",
-          "NC-063",
-          "NC-064"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-061": {
@@ -3071,16 +2461,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-004",
-          "NC-017",
-          "NC-038",
-          "NC-050",
-          "NC-058",
-          "NC-060",
-          "NC-063",
-          "NC-064"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-062": {
@@ -3115,16 +2496,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-003",
-          "NC-014",
-          "NC-016",
-          "NC-022",
-          "NC-030",
-          "NC-031",
-          "NC-032",
-          "NC-051"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-063": {
@@ -3159,16 +2531,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-004",
-          "NC-017",
-          "NC-038",
-          "NC-050",
-          "NC-058",
-          "NC-060",
-          "NC-061",
-          "NC-064"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-064": {
@@ -3203,16 +2566,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-004",
-          "NC-017",
-          "NC-038",
-          "NC-050",
-          "NC-058",
-          "NC-060",
-          "NC-061",
-          "NC-063"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-065": {
@@ -3247,16 +2601,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-004",
-          "NC-017",
-          "NC-038",
-          "NC-050",
-          "NC-058",
-          "NC-060",
-          "NC-061",
-          "NC-063"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-066": {
@@ -3292,16 +2637,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-004",
-          "NC-017",
-          "NC-038",
-          "NC-050",
-          "NC-058",
-          "NC-064",
-          "NC-065",
-          "NC-067"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-067": {
@@ -3336,16 +2672,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-004",
-          "NC-017",
-          "NC-038",
-          "NC-050",
-          "NC-058",
-          "NC-060",
-          "NC-061",
-          "NC-063"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-068": {
@@ -3380,16 +2707,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-004",
-          "NC-017",
-          "NC-038",
-          "NC-050",
-          "NC-058",
-          "NC-060",
-          "NC-061",
-          "NC-063"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-069": {
@@ -3424,16 +2742,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-004",
-          "NC-017",
-          "NC-038",
-          "NC-050",
-          "NC-058",
-          "NC-060",
-          "NC-061",
-          "NC-063"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-070": {
@@ -3469,16 +2778,7 @@
           "rewrite": 0.35
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-004",
-          "NC-017",
-          "NC-038",
-          "NC-050",
-          "NC-058",
-          "NC-060",
-          "NC-061",
-          "NC-063"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-071": {
@@ -3513,16 +2813,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-004",
-          "NC-017",
-          "NC-038",
-          "NC-050",
-          "NC-058",
-          "NC-060",
-          "NC-061",
-          "NC-063"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-072": {
@@ -3557,16 +2848,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-004",
-          "NC-017",
-          "NC-038",
-          "NC-050",
-          "NC-058",
-          "NC-060",
-          "NC-061",
-          "NC-063"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-073": {
@@ -3602,16 +2884,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-026",
-          "NC-027",
-          "NC-028",
-          "NC-074",
-          "NC-076",
-          "NC-082",
-          "NC-093",
-          "NC-095"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-074": {
@@ -3648,16 +2921,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-026",
-          "NC-027",
-          "NC-028",
-          "NC-073",
-          "NC-076",
-          "NC-082",
-          "NC-093",
-          "NC-095"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-075": {
@@ -3693,16 +2957,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-030",
-          "NC-031",
-          "NC-062",
-          "NC-083",
-          "NC-003",
-          "NC-014",
-          "NC-016",
-          "NC-022"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-076": {
@@ -3738,16 +2993,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-026",
-          "NC-027",
-          "NC-028",
-          "NC-073",
-          "NC-074",
-          "NC-082",
-          "NC-093",
-          "NC-095"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-077": {
@@ -3783,16 +3029,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-060",
-          "NC-061",
-          "NC-063",
-          "NC-068",
-          "NC-071",
-          "NC-098",
-          "NC-004",
-          "NC-017"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-078": {
@@ -3828,16 +3065,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-010",
-          "NC-019",
-          "NC-033",
-          "NC-034",
-          "NC-035",
-          "NC-036",
-          "NC-037",
-          "NC-040"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-079": {
@@ -3873,16 +3101,7 @@
           "rewrite": 0.35
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-010",
-          "NC-019",
-          "NC-033",
-          "NC-034",
-          "NC-035",
-          "NC-036",
-          "NC-037",
-          "NC-040"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-080": {
@@ -3918,16 +3137,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-010",
-          "NC-019",
-          "NC-033",
-          "NC-034",
-          "NC-035",
-          "NC-036",
-          "NC-037",
-          "NC-040"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-081": {
@@ -3963,16 +3173,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-010",
-          "NC-019",
-          "NC-033",
-          "NC-034",
-          "NC-035",
-          "NC-036",
-          "NC-037",
-          "NC-040"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-082": {
@@ -4008,16 +3209,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-026",
-          "NC-027",
-          "NC-028",
-          "NC-073",
-          "NC-074",
-          "NC-076",
-          "NC-093",
-          "NC-095"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-083": {
@@ -4053,16 +3245,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-030",
-          "NC-031",
-          "NC-062",
-          "NC-075",
-          "NC-003",
-          "NC-014",
-          "NC-016",
-          "NC-022"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-084": {
@@ -4098,16 +3281,7 @@
           "rewrite": 0.35
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-010",
-          "NC-019",
-          "NC-033",
-          "NC-034",
-          "NC-035",
-          "NC-036",
-          "NC-037",
-          "NC-040"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-085": {
@@ -4141,15 +3315,7 @@
           "rewrite": 0.8
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-086",
-          "NC-087",
-          "NC-088",
-          "NC-089",
-          "NC-090",
-          "NC-091",
-          "NC-092"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-086": {
@@ -4184,15 +3350,7 @@
           "rewrite": 0.8
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-085",
-          "NC-087",
-          "NC-088",
-          "NC-089",
-          "NC-090",
-          "NC-091",
-          "NC-092"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-087": {
@@ -4227,15 +3385,7 @@
           "rewrite": 0.2
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-085",
-          "NC-086",
-          "NC-088",
-          "NC-089",
-          "NC-090",
-          "NC-091",
-          "NC-092"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-088": {
@@ -4271,15 +3421,7 @@
           "rewrite": 0.8
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-085",
-          "NC-086",
-          "NC-087",
-          "NC-089",
-          "NC-090",
-          "NC-091",
-          "NC-092"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-089": {
@@ -4314,15 +3456,7 @@
           "rewrite": 0.8
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-085",
-          "NC-086",
-          "NC-087",
-          "NC-088",
-          "NC-090",
-          "NC-091",
-          "NC-092"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-090": {
@@ -4357,15 +3491,7 @@
           "rewrite": 0.8
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-085",
-          "NC-086",
-          "NC-087",
-          "NC-088",
-          "NC-089",
-          "NC-091",
-          "NC-092"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-091": {
@@ -4400,15 +3526,7 @@
           "rewrite": 0.8
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-085",
-          "NC-086",
-          "NC-087",
-          "NC-088",
-          "NC-089",
-          "NC-090",
-          "NC-092"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-092": {
@@ -4443,15 +3561,7 @@
           "rewrite": 0.8
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-085",
-          "NC-086",
-          "NC-087",
-          "NC-088",
-          "NC-089",
-          "NC-090",
-          "NC-091"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-093": {
@@ -4491,16 +3601,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-001",
-          "NC-002",
-          "NC-005",
-          "NC-018",
-          "NC-025",
-          "NC-026",
-          "NC-027",
-          "NC-028"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-094": {
@@ -4535,16 +3636,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-006",
-          "NC-007",
-          "NC-008",
-          "NC-009",
-          "NC-010",
-          "NC-011",
-          "NC-012",
-          "NC-013"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-095": {
@@ -4580,16 +3672,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-026",
-          "NC-027",
-          "NC-028",
-          "NC-073",
-          "NC-074",
-          "NC-076",
-          "NC-082",
-          "NC-093"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-096": {
@@ -4630,16 +3713,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-010",
-          "NC-019",
-          "NC-033",
-          "NC-034",
-          "NC-035",
-          "NC-036",
-          "NC-037",
-          "NC-040"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-097": {
@@ -4680,16 +3754,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-006",
-          "NC-007",
-          "NC-008",
-          "NC-009",
-          "NC-010",
-          "NC-011",
-          "NC-012",
-          "NC-013"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-098": {
@@ -4726,16 +3791,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-004",
-          "NC-017",
-          "NC-038",
-          "NC-050",
-          "NC-058",
-          "NC-060",
-          "NC-061",
-          "NC-063"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-099": {
@@ -4775,16 +3831,7 @@
           "rewrite": 0.65
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-006",
-          "NC-007",
-          "NC-008",
-          "NC-009",
-          "NC-010",
-          "NC-011",
-          "NC-012",
-          "NC-013"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-100": {
@@ -4819,16 +3866,7 @@
           "rewrite": 0.65
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-003",
-          "NC-014",
-          "NC-016",
-          "NC-022",
-          "NC-031",
-          "NC-032",
-          "NC-051",
-          "NC-059"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-101": {
@@ -4863,16 +3901,7 @@
           "rewrite": 0.65
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-004",
-          "NC-017",
-          "NC-038",
-          "NC-050",
-          "NC-058",
-          "NC-060",
-          "NC-061",
-          "NC-063"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "NC-102": {
@@ -4908,16 +3937,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-010",
-          "NC-019",
-          "NC-033",
-          "NC-034",
-          "NC-035",
-          "NC-036",
-          "NC-037",
-          "NC-040"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "UC-001": {
@@ -4950,16 +3970,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-001",
-          "NC-002",
-          "NC-005",
-          "NC-018",
-          "NC-025",
-          "NC-029",
-          "UC-002",
-          "UC-009"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "UC-002": {
@@ -4994,16 +4005,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-001",
-          "NC-002",
-          "NC-005",
-          "NC-018",
-          "NC-025",
-          "NC-029",
-          "UC-001",
-          "UC-009"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "UC-003": {
@@ -5037,16 +4039,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-003",
-          "NC-014",
-          "NC-016",
-          "NC-022",
-          "NC-032",
-          "NC-051",
-          "NC-059",
-          "NC-100"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "UC-004": {
@@ -5079,16 +4072,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-003",
-          "NC-014",
-          "NC-016",
-          "NC-022",
-          "NC-032",
-          "NC-051",
-          "NC-059",
-          "NC-100"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "UC-005": {
@@ -5122,16 +4106,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-004",
-          "NC-017",
-          "NC-038",
-          "NC-050",
-          "NC-058",
-          "NC-064",
-          "NC-065",
-          "NC-066"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "UC-006": {
@@ -5165,16 +4140,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-004",
-          "NC-017",
-          "NC-038",
-          "NC-050",
-          "NC-058",
-          "NC-064",
-          "NC-065",
-          "NC-066"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "UC-007": {
@@ -5206,16 +4172,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-006",
-          "NC-007",
-          "NC-008",
-          "NC-009",
-          "NC-011",
-          "NC-012",
-          "NC-013",
-          "NC-015"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "UC-008": {
@@ -5248,16 +4205,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-006",
-          "NC-007",
-          "NC-008",
-          "NC-009",
-          "NC-011",
-          "NC-012",
-          "NC-013",
-          "NC-015"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "UC-009": {
@@ -5291,16 +4239,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-001",
-          "NC-002",
-          "NC-005",
-          "NC-018",
-          "NC-025",
-          "NC-029",
-          "UC-001",
-          "UC-002"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "UC-010": {
@@ -5334,16 +4273,7 @@
           "rewrite": 0.35
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-006",
-          "NC-007",
-          "NC-008",
-          "NC-009",
-          "NC-011",
-          "NC-012",
-          "NC-013",
-          "NC-015"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "UC-011": {
@@ -5378,16 +4308,7 @@
           "rewrite": 0.2
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-006",
-          "NC-007",
-          "NC-008",
-          "NC-009",
-          "NC-011",
-          "NC-012",
-          "NC-013",
-          "NC-015"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "UC-012": {
@@ -5421,16 +4342,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-006",
-          "NC-007",
-          "NC-008",
-          "NC-009",
-          "NC-011",
-          "NC-012",
-          "NC-013",
-          "NC-015"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "UC-013": {
@@ -5464,16 +4376,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-006",
-          "NC-007",
-          "NC-008",
-          "NC-009",
-          "NC-011",
-          "NC-012",
-          "NC-013",
-          "NC-015"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "UC-014": {
@@ -5505,16 +4408,7 @@
           "rewrite": 0.65
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-006",
-          "NC-007",
-          "NC-008",
-          "NC-009",
-          "NC-011",
-          "NC-012",
-          "NC-013",
-          "NC-015"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "UC-015": {
@@ -5546,16 +4440,7 @@
           "rewrite": 0.35
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-006",
-          "NC-007",
-          "NC-008",
-          "NC-009",
-          "NC-010",
-          "NC-011",
-          "NC-012",
-          "NC-013"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "UC-016": {
@@ -5587,16 +4472,7 @@
           "rewrite": 0.35
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-006",
-          "NC-007",
-          "NC-008",
-          "NC-009",
-          "NC-010",
-          "NC-011",
-          "NC-012",
-          "NC-013"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "R-001": {
@@ -5630,16 +4506,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-001",
-          "NC-002",
-          "NC-005",
-          "NC-018",
-          "NC-025",
-          "NC-029",
-          "UC-001",
-          "UC-002"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "R-002": {
@@ -5674,16 +4541,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-003",
-          "NC-014",
-          "NC-016",
-          "NC-022",
-          "NC-032",
-          "NC-051",
-          "NC-059",
-          "NC-100"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "R-003": {
@@ -5716,16 +4574,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-004",
-          "NC-017",
-          "NC-038",
-          "NC-050",
-          "NC-058",
-          "NC-064",
-          "NC-065",
-          "NC-066"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "R-004": {
@@ -5758,16 +4607,7 @@
           "rewrite": 0.2
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-006",
-          "NC-007",
-          "NC-008",
-          "NC-009",
-          "NC-011",
-          "NC-012",
-          "NC-013",
-          "NC-015"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "R-005": {
@@ -5800,16 +4640,7 @@
           "rewrite": 0.35
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-006",
-          "NC-007",
-          "NC-008",
-          "NC-009",
-          "NC-011",
-          "NC-012",
-          "NC-013",
-          "NC-015"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "R-006": {
@@ -5842,16 +4673,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-006",
-          "NC-007",
-          "NC-008",
-          "NC-009",
-          "NC-011",
-          "NC-012",
-          "NC-013",
-          "NC-015"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "R-007": {
@@ -5884,16 +4706,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-006",
-          "NC-007",
-          "NC-008",
-          "NC-009",
-          "NC-011",
-          "NC-012",
-          "NC-013",
-          "NC-015"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "R-008": {
@@ -5926,16 +4739,7 @@
           "rewrite": 0.35
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-006",
-          "NC-007",
-          "NC-008",
-          "NC-009",
-          "NC-010",
-          "NC-011",
-          "NC-012",
-          "NC-013"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "R-009": {
@@ -5968,16 +4772,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-006",
-          "NC-007",
-          "NC-008",
-          "NC-009",
-          "NC-011",
-          "NC-012",
-          "NC-013",
-          "NC-015"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "R-010": {
@@ -6011,16 +4806,7 @@
           "rewrite": 0.35
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-006",
-          "NC-007",
-          "NC-008",
-          "NC-009",
-          "NC-011",
-          "NC-012",
-          "NC-013",
-          "NC-015"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "P-001": {
@@ -6056,16 +4842,7 @@
           "rewrite": 0.2
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-006",
-          "NC-007",
-          "NC-008",
-          "NC-009",
-          "NC-011",
-          "NC-012",
-          "NC-013",
-          "NC-015"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "P-002": {
@@ -6101,16 +4878,7 @@
           "rewrite": 0.2
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-006",
-          "NC-007",
-          "NC-008",
-          "NC-009",
-          "NC-011",
-          "NC-012",
-          "NC-013",
-          "NC-015"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "P-003": {
@@ -6141,16 +4909,7 @@
           "rewrite": 0.65
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "P-004",
-          "P-009",
-          "P-010",
-          "P-011",
-          "P-007",
-          "P-012",
-          "P-013",
-          "P-014"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "P-004": {
@@ -6185,16 +4944,7 @@
           "rewrite": 0.65
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "P-003",
-          "P-009",
-          "P-010",
-          "P-011",
-          "P-007",
-          "P-012",
-          "P-013",
-          "P-014"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "P-005": {
@@ -6224,16 +4974,7 @@
           "rewrite": 0.8
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-006",
-          "NC-007",
-          "NC-008",
-          "NC-009",
-          "NC-010",
-          "NC-011",
-          "NC-012",
-          "NC-013"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "P-006": {
@@ -6267,16 +5008,7 @@
           "rewrite": 0.35
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-006",
-          "NC-007",
-          "NC-008",
-          "NC-009",
-          "NC-010",
-          "NC-011",
-          "NC-012",
-          "NC-013"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "P-007": {
@@ -6309,16 +5041,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "P-013",
-          "P-014",
-          "P-003",
-          "P-004",
-          "P-009",
-          "P-010",
-          "P-011",
-          "P-012"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "P-008": {
@@ -6352,16 +5075,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-001",
-          "NC-002",
-          "NC-005",
-          "NC-018",
-          "NC-025",
-          "NC-029",
-          "UC-001",
-          "UC-002"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "P-009": {
@@ -6394,16 +5108,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "P-003",
-          "P-004",
-          "P-010",
-          "P-011",
-          "P-007",
-          "P-012",
-          "P-013",
-          "P-014"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "P-010": {
@@ -6438,16 +5143,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "P-003",
-          "P-004",
-          "P-009",
-          "P-011",
-          "P-012",
-          "P-007",
-          "P-013",
-          "P-014"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "P-011": {
@@ -6477,16 +5173,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "P-003",
-          "P-004",
-          "P-009",
-          "P-010",
-          "P-007",
-          "P-012",
-          "P-013",
-          "P-014"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "P-012": {
@@ -6516,16 +5203,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "P-010",
-          "P-003",
-          "P-004",
-          "P-007",
-          "P-009",
-          "P-011",
-          "P-013",
-          "P-014"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "P-013": {
@@ -6557,16 +5235,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "P-007",
-          "P-014",
-          "P-003",
-          "P-004",
-          "P-009",
-          "P-010",
-          "P-011",
-          "P-012"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "P-014": {
@@ -6598,16 +5267,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "P-007",
-          "P-013",
-          "P-003",
-          "P-004",
-          "P-009",
-          "P-010",
-          "P-011",
-          "P-012"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "P-015": {
@@ -6640,16 +5300,7 @@
           "rewrite": 0.5
         },
         "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": [
-          "NC-026",
-          "NC-027",
-          "NC-028",
-          "NC-073",
-          "NC-074",
-          "NC-076",
-          "NC-082",
-          "NC-093"
-        ]
+        "rewritePoolDefIds": []
       }
     },
     "EC-A1": {
@@ -9870,12 +8521,9 @@
       "name": "Hacker Drone",
       "maxHP": 65,
       "rotation": [
-        "EC-A2",
-        "EC-A10",
-        "EC-A3",
-        "EC-A2",
-        "EC-D1",
-        "EC-A3"
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -9889,9 +8537,9 @@
       "name": "Firewall Pod",
       "maxHP": 51,
       "rotation": [
-        "EC-D1",
-        "EC-A2",
-        "EC-D2"
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -9905,9 +8553,9 @@
       "name": "Patch Sprite",
       "maxHP": 35,
       "rotation": [
-        "EC-H1",
-        "EC-A1",
-        "EC-H1"
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -9921,9 +8569,9 @@
       "name": "Signal Imp",
       "maxHP": 64,
       "rotation": [
-        "EC-S5",
-        "EC-A2",
-        "EC-S5"
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -9937,9 +8585,9 @@
       "name": "Corrode Rat",
       "maxHP": 61,
       "rotation": [
-        "EC-S1",
-        "EC-A1",
-        "EC-S2"
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -9953,9 +8601,9 @@
       "name": "Leak Wraith",
       "maxHP": 61,
       "rotation": [
-        "EC-S3",
-        "EC-A1",
-        "EC-S4"
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -9969,8 +8617,8 @@
       "name": "Scrap Minion",
       "maxHP": 12,
       "rotation": [
-        "EC-A1",
-        "EC-A1"
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -9984,8 +8632,8 @@
       "name": "Pulse Sapper Array",
       "maxHP": 65,
       "rotation": [
-        "EC-A2",
-        "EC-A3"
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -9999,8 +8647,8 @@
       "name": "Chrome Cleric Protocol",
       "maxHP": 41,
       "rotation": [
-        "EC-S5",
-        "EC-A2"
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -10014,9 +8662,9 @@
       "name": "Vector Rat Mk III",
       "maxHP": 35,
       "rotation": [
-        "EC-H1",
-        "EC-A1",
-        "EC-H1"
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -10030,9 +8678,9 @@
       "name": "Obsidian Bruiser Pack",
       "maxHP": 76,
       "rotation": [
-        "EC-D1",
-        "EC-A2",
-        "EC-D2"
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -10046,12 +8694,9 @@
       "name": "Glitch Runner Node",
       "maxHP": 65,
       "rotation": [
-        "EC-A2",
-        "EC-A10",
-        "EC-A3",
-        "EC-A2",
-        "EC-D1",
-        "EC-A3"
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -10065,9 +8710,9 @@
       "name": "Pulse Shaman Mk I",
       "maxHP": 41,
       "rotation": [
-        "EC-S5",
-        "EC-S6",
-        "EC-A2"
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -10081,8 +8726,8 @@
       "name": "Echo Imp Mk II",
       "maxHP": 35,
       "rotation": [
-        "EC-H1",
-        "EC-A1"
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -10096,8 +8741,8 @@
       "name": "Vanta Sentinel Protocol",
       "maxHP": 76,
       "rotation": [
-        "EC-D1",
-        "EC-A2"
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -10111,12 +8756,9 @@
       "name": "Ghost Daemon Swarm",
       "maxHP": 43,
       "rotation": [
-        "EC-A2",
-        "EC-A10",
-        "EC-A3",
-        "EC-A2",
-        "EC-D1",
-        "EC-A3"
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -10130,10 +8772,9 @@
       "name": "Cipher Pod Shard",
       "maxHP": 85,
       "rotation": [
-        "EC-A8",
-        "EC-A2",
-        "EC-S6",
-        "EC-A3"
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -10147,12 +8788,10 @@
       "name": "Vanta Drone Mk III",
       "maxHP": 38,
       "rotation": [
-        "EC-A2",
-        "EC-A10",
-        "EC-A3",
-        "EC-A2",
-        "EC-D1",
-        "EC-A3"
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -10166,9 +8805,9 @@
       "name": "Vanta Scout Node",
       "maxHP": 145,
       "rotation": [
-        "EC-A2",
-        "EC-S6",
-        "EC-A3"
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -10182,8 +8821,8 @@
       "name": "Cipher Hacker Swarm",
       "maxHP": 84,
       "rotation": [
-        "EC-S5",
-        "EC-A2"
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -10197,8 +8836,8 @@
       "name": "Circuit Bruiser Mk III",
       "maxHP": 56,
       "rotation": [
-        "EC-H1",
-        "EC-A1"
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -10212,9 +8851,9 @@
       "name": "Echo Enforcer Mk I",
       "maxHP": 61,
       "rotation": [
-        "EC-S1",
-        "EC-A1",
-        "EC-S2"
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -10228,8 +8867,8 @@
       "name": "Chrome Sapper Crew",
       "maxHP": 65,
       "rotation": [
-        "EC-A2",
-        "EC-A3"
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -10243,9 +8882,9 @@
       "name": "Static Pod Protocol",
       "maxHP": 64,
       "rotation": [
-        "EC-S5",
-        "EC-A2",
-        "EC-S8"
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -10259,8 +8898,8 @@
       "name": "Pulse Bruiser Frame",
       "maxHP": 85,
       "rotation": [
-        "EC-A3",
-        "EC-D1"
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -10274,9 +8913,9 @@
       "name": "Vector Courier Array",
       "maxHP": 59,
       "rotation": [
-        "EC-A2",
-        "EC-S6",
-        "EC-A3"
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -10290,8 +8929,8 @@
       "name": "Rogue Tech Array",
       "maxHP": 39,
       "rotation": [
-        "EC-S5",
-        "EC-A2"
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -10305,9 +8944,9 @@
       "name": "Ghost Runner Protocol",
       "maxHP": 81,
       "rotation": [
-        "EC-S9",
-        "EC-A2",
-        "EC-S8"
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -10321,9 +8960,9 @@
       "name": "Echo Sniper Pack",
       "maxHP": 65,
       "rotation": [
-        "EC-A6",
-        "EC-A2",
-        "EC-A6"
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -10337,10 +8976,10 @@
       "name": "Static Drone Mk II",
       "maxHP": 76,
       "rotation": [
-        "EC-D1",
-        "EC-A2",
-        "EC-D2",
-        "EC-A1"
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -10354,10 +8993,10 @@
       "name": "Razor Shaman Mk II",
       "maxHP": 38,
       "rotation": [
-        "EC-A2",
-        "EC-S6",
-        "EC-A3",
-        "EC-S7"
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -10371,9 +9010,9 @@
       "name": "Holo Shaman Crew",
       "maxHP": 76,
       "rotation": [
-        "EC-D1",
-        "EC-A2",
-        "EC-D2"
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -10387,10 +9026,10 @@
       "name": "Vector Daemon Frame",
       "maxHP": 59,
       "rotation": [
-        "EC-S1",
-        "EC-A2",
-        "EC-S6",
-        "EC-A1"
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -10404,10 +9043,10 @@
       "name": "Vanta Enforcer Swarm",
       "maxHP": 59,
       "rotation": [
-        "EC-A2",
-        "EC-S6",
-        "EC-A3",
-        "EC-S7"
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -10421,12 +9060,10 @@
       "name": "Chrome Sapper Node",
       "maxHP": 65,
       "rotation": [
-        "EC-A2",
-        "EC-A10",
-        "EC-A3",
-        "EC-A2",
-        "EC-D1",
-        "EC-A3"
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -10440,9 +9077,9 @@
       "name": "Null Daemon Mk II",
       "maxHP": 56,
       "rotation": [
-        "EC-H1",
-        "EC-A1",
-        "EC-H1"
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -10456,9 +9093,9 @@
       "name": "Kilo Enforcer Unit",
       "maxHP": 96,
       "rotation": [
-        "EC-D1",
-        "EC-A2",
-        "EC-D2"
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -10472,8 +9109,8 @@
       "name": "Cipher Hacker Mk II",
       "maxHP": 81,
       "rotation": [
-        "EC-S1",
-        "EC-A1"
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -10487,9 +9124,9 @@
       "name": "Static Sapper Cell",
       "maxHP": 84,
       "rotation": [
-        "EC-S5",
-        "EC-A2",
-        "EC-S5"
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -10503,9 +9140,9 @@
       "name": "Kilo Courier Array",
       "maxHP": 81,
       "rotation": [
-        "EC-S1",
-        "EC-A1",
-        "EC-S2"
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -10519,9 +9156,9 @@
       "name": "Rogue Scout Swarm",
       "maxHP": 38,
       "rotation": [
-        "EC-A2",
-        "EC-S6",
-        "EC-A3"
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -10535,8 +9172,8 @@
       "name": "Vanta Bruiser Proxy",
       "maxHP": 59,
       "rotation": [
-        "EC-A2",
-        "EC-S6"
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -10550,9 +9187,9 @@
       "name": "Kilo Sniper Unit",
       "maxHP": 81,
       "rotation": [
-        "EC-S1",
-        "EC-A1",
-        "EC-S2"
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -10566,8 +9203,8 @@
       "name": "Cipher Drone Protocol",
       "maxHP": 64,
       "rotation": [
-        "EC-S5",
-        "EC-A2"
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -10581,10 +9218,10 @@
       "name": "Obsidian Sniper Mk III",
       "maxHP": 51,
       "rotation": [
-        "EC-D1",
-        "EC-A2",
-        "EC-D2",
-        "EC-A1"
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -10598,8 +9235,8 @@
       "name": "Chrome Warden Swarm",
       "maxHP": 56,
       "rotation": [
-        "EC-H1",
-        "EC-A1"
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -10613,9 +9250,9 @@
       "name": "Quantum Hacker Pack",
       "maxHP": 51,
       "rotation": [
-        "EC-D1",
-        "EC-A2",
-        "EC-D2"
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -10629,8 +9266,8 @@
       "name": "Ion Rat Suite",
       "maxHP": 59,
       "rotation": [
-        "EC-A2",
-        "EC-S6"
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -10644,8 +9281,8 @@
       "name": "Glitch Warden Suite",
       "maxHP": 81,
       "rotation": [
-        "EC-S1",
-        "EC-A1"
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -10659,8 +9296,8 @@
       "name": "Holo Sniper Shard",
       "maxHP": 59,
       "rotation": [
-        "EC-A2",
-        "EC-S6"
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -10674,8 +9311,8 @@
       "name": "Vector Marauder Proxy",
       "maxHP": 65,
       "rotation": [
-        "EC-A3",
-        "EC-D1"
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -10689,9 +9326,9 @@
       "name": "Vanta Drone Frame",
       "maxHP": 56,
       "rotation": [
-        "EC-H1",
-        "EC-A1",
-        "EC-H1"
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -10705,9 +9342,9 @@
       "name": "Ion Sentinel Node",
       "maxHP": 76,
       "rotation": [
-        "EC-D1",
-        "EC-A2",
-        "EC-D2"
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -10721,9 +9358,9 @@
       "name": "Ghost Cleric Shard",
       "maxHP": 56,
       "rotation": [
-        "EC-H1",
-        "EC-A1",
-        "EC-H1"
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -10737,8 +9374,8 @@
       "name": "Static Scout Mk II",
       "maxHP": 79,
       "rotation": [
-        "EC-A2",
-        "EC-S6"
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -10752,9 +9389,9 @@
       "name": "Chrome Bruiser Shard",
       "maxHP": 64,
       "rotation": [
-        "EC-S5",
-        "EC-A2",
-        "EC-S8"
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -10768,9 +9405,9 @@
       "name": "Glitch Bruiser Mk II",
       "maxHP": 65,
       "rotation": [
-        "EC-A3",
-        "EC-D1",
-        "EC-A2"
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -10784,8 +9421,8 @@
       "name": "Static Imp Rig",
       "maxHP": 61,
       "rotation": [
-        "EC-S1",
-        "EC-A1"
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -10799,10 +9436,10 @@
       "name": "Echo Sentinel Shard",
       "maxHP": 64,
       "rotation": [
-        "EC-S5",
-        "EC-A2",
-        "EC-S8",
-        "EC-A2"
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -10816,9 +9453,9 @@
       "name": "Kilo Tech Swarm",
       "maxHP": 96,
       "rotation": [
-        "EC-D1",
-        "EC-A2",
-        "EC-D2"
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -10832,9 +9469,9 @@
       "name": "Vector Goon Proxy",
       "maxHP": 96,
       "rotation": [
-        "EC-D1",
-        "EC-A2",
-        "EC-D2"
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -10848,9 +9485,9 @@
       "name": "Ion Cleric Proxy",
       "maxHP": 79,
       "rotation": [
-        "EC-A2",
-        "EC-S6",
-        "EC-A3"
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -10864,8 +9501,8 @@
       "name": "Null Daemon Rig",
       "maxHP": 61,
       "rotation": [
-        "EC-S1",
-        "EC-A2"
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -10879,10 +9516,10 @@
       "name": "Vanta Sapper Node",
       "maxHP": 56,
       "rotation": [
-        "EC-H1",
-        "EC-A1",
-        "EC-H1",
-        "EC-A2"
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -10896,8 +9533,8 @@
       "name": "Flux Pod Shard",
       "maxHP": 59,
       "rotation": [
-        "EC-A2",
-        "EC-S6"
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -10911,9 +9548,9 @@
       "name": "Vector Hacker Pack",
       "maxHP": 39,
       "rotation": [
-        "EC-S1",
-        "EC-A1",
-        "EC-S2"
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -10927,8 +9564,8 @@
       "name": "Pulse Rat Mk II",
       "maxHP": 65,
       "rotation": [
-        "EC-A2",
-        "EC-A3"
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -10942,9 +9579,9 @@
       "name": "Neon Pod Suite",
       "maxHP": 64,
       "rotation": [
-        "EC-S5",
-        "EC-A2",
-        "EC-S8"
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -10958,9 +9595,9 @@
       "name": "Razor Enforcer Frame",
       "maxHP": 64,
       "rotation": [
-        "EC-S5",
-        "EC-A2",
-        "EC-S8"
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -10974,8 +9611,8 @@
       "name": "Quantum Tech Node",
       "maxHP": 59,
       "rotation": [
-        "EC-A2",
-        "EC-S6"
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -10989,8 +9626,8 @@
       "name": "Rogue Pod Protocol",
       "maxHP": 59,
       "rotation": [
-        "EC-A2",
-        "EC-S6"
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -11004,9 +9641,9 @@
       "name": "Vanta Enforcer Mk I",
       "maxHP": 64,
       "rotation": [
-        "EC-S5",
-        "EC-A2",
-        "EC-S8"
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -11020,8 +9657,8 @@
       "name": "Ion Sapper Rig",
       "maxHP": 96,
       "rotation": [
-        "EC-D1",
-        "EC-A2"
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -11035,8 +9672,8 @@
       "name": "Razor Runner Proxy",
       "maxHP": 76,
       "rotation": [
-        "EC-D1",
-        "EC-A2"
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -11050,8 +9687,8 @@
       "name": "Holo Sapper Cell",
       "maxHP": 65,
       "rotation": [
-        "EC-A2",
-        "EC-A3"
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -11065,10 +9702,10 @@
       "name": "Rogue Sniper Unit",
       "maxHP": 59,
       "rotation": [
-        "EC-A2",
-        "EC-S6",
-        "EC-A3",
-        "EC-S7"
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -11082,9 +9719,9 @@
       "name": "Pulse Daemon Unit",
       "maxHP": 56,
       "rotation": [
-        "EC-H1",
-        "EC-A1",
-        "EC-H1"
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -11098,8 +9735,8 @@
       "name": "Circuit Hacker Array",
       "maxHP": 81,
       "rotation": [
-        "EC-S1",
-        "EC-A1"
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -11113,12 +9750,9 @@
       "name": "Glitch Tech Protocol",
       "maxHP": 65,
       "rotation": [
-        "EC-A2",
-        "EC-A10",
-        "EC-A3",
-        "EC-A2",
-        "EC-D1",
-        "EC-A3"
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -11132,10 +9766,10 @@
       "name": "Chrome Marauder Cell",
       "maxHP": 35,
       "rotation": [
-        "EC-H1",
-        "EC-A1",
-        "EC-H1",
-        "EC-A2"
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -11149,9 +9783,9 @@
       "name": "Cipher Cleric Shard",
       "maxHP": 56,
       "rotation": [
-        "EC-H1",
-        "EC-A1",
-        "EC-H1"
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -11165,8 +9799,8 @@
       "name": "Ghost Goon Mk III",
       "maxHP": 64,
       "rotation": [
-        "EC-S9",
-        "EC-A2"
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -11180,12 +9814,9 @@
       "name": "Razor Cleric Mk II",
       "maxHP": 43,
       "rotation": [
-        "EC-A2",
-        "EC-A10",
-        "EC-A3",
-        "EC-A2",
-        "EC-D1",
-        "EC-A3"
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -11199,11 +9830,9 @@
       "name": "Echo Shaman Swarm",
       "maxHP": 121,
       "rotation": [
-        "EC-S5",
-        "EC-A1",
-        "EC-S6",
-        "EC-A1",
-        "EC-S5"
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -11217,10 +9846,10 @@
       "name": "Quantum Pod Suite",
       "maxHP": 96,
       "rotation": [
-        "EC-D1",
-        "EC-A2",
-        "EC-D2",
-        "EC-A1"
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -11234,8 +9863,8 @@
       "name": "Neon Sapper Mk II",
       "maxHP": 76,
       "rotation": [
-        "EC-H1",
-        "EC-A1"
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -11249,9 +9878,9 @@
       "name": "Holo Shaman Mk I",
       "maxHP": 76,
       "rotation": [
-        "EC-D1",
-        "EC-A2",
-        "EC-D2"
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -11265,12 +9894,9 @@
       "name": "Holo Enforcer Mk I",
       "maxHP": 65,
       "rotation": [
-        "EC-A2",
-        "EC-A10",
-        "EC-A3",
-        "EC-A2",
-        "EC-D1",
-        "EC-A3"
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -11284,8 +9910,8 @@
       "name": "Vanta Marauder Mk I",
       "maxHP": 39,
       "rotation": [
-        "EC-S1",
-        "EC-A1"
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -11299,8 +9925,8 @@
       "name": "Pulse Shaman Suite",
       "maxHP": 59,
       "rotation": [
-        "EC-A2",
-        "EC-S6"
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -11314,8 +9940,8 @@
       "name": "Holo Rat Mk II",
       "maxHP": 61,
       "rotation": [
-        "EC-S1",
-        "EC-A1"
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -11329,9 +9955,9 @@
       "name": "Holo Scout Proxy",
       "maxHP": 76,
       "rotation": [
-        "EC-D1",
-        "EC-A2",
-        "EC-D2"
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -11345,9 +9971,9 @@
       "name": "Circuit Tech Rig",
       "maxHP": 76,
       "rotation": [
-        "EC-D1",
-        "EC-A2",
-        "EC-D2"
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -11361,8 +9987,8 @@
       "name": "Static Daemon Swarm",
       "maxHP": 85,
       "rotation": [
-        "EC-A2",
-        "EC-A3"
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -11376,8 +10002,8 @@
       "name": "Neon Warden Suite",
       "maxHP": 65,
       "rotation": [
-        "EC-A2",
-        "EC-A3"
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -11391,9 +10017,9 @@
       "name": "Circuit Daemon Array",
       "maxHP": 38,
       "rotation": [
-        "EC-S1",
-        "EC-A2",
-        "EC-S6"
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -11407,8 +10033,8 @@
       "name": "Obsidian Tech Rig",
       "maxHP": 39,
       "rotation": [
-        "EC-S5",
-        "EC-A2"
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -11422,8 +10048,8 @@
       "name": "Razor Tech Node",
       "maxHP": 41,
       "rotation": [
-        "EC-S5",
-        "EC-A2"
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -11437,8 +10063,8 @@
       "name": "Echo Daemon Crew",
       "maxHP": 61,
       "rotation": [
-        "EC-S1",
-        "EC-A2"
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -11452,8 +10078,8 @@
       "name": "Obsidian Pod Mk I",
       "maxHP": 76,
       "rotation": [
-        "EC-H1",
-        "EC-A1"
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -11467,9 +10093,9 @@
       "name": "Ion Sniper Rig",
       "maxHP": 59,
       "rotation": [
-        "EC-A2",
-        "EC-S6",
-        "EC-A3"
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -11483,8 +10109,8 @@
       "name": "Null Shaman Unit",
       "maxHP": 56,
       "rotation": [
-        "EC-H1",
-        "EC-A1"
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -11498,8 +10124,8 @@
       "name": "Holo Sniper Suite",
       "maxHP": 127,
       "rotation": [
-        "EC-S5",
-        "EC-A2"
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -11513,10 +10139,10 @@
       "name": "Flux Courier Proxy",
       "maxHP": 56,
       "rotation": [
-        "EC-H1",
-        "EC-A1",
-        "EC-H1",
-        "EC-A2"
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -11530,10 +10156,10 @@
       "name": "Vanta Tech Node",
       "maxHP": 56,
       "rotation": [
-        "EC-H1",
-        "EC-A1",
-        "EC-H1",
-        "EC-A2"
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -11547,8 +10173,8 @@
       "name": "Kilo Sniper Array",
       "maxHP": 64,
       "rotation": [
-        "EC-S5",
-        "EC-A2"
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -11562,8 +10188,8 @@
       "name": "Obsidian Hacker Swarm",
       "maxHP": 145,
       "rotation": [
-        "EC-S5",
-        "EC-A2"
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -11577,9 +10203,9 @@
       "name": "Holo Pod Node",
       "maxHP": 61,
       "rotation": [
-        "EC-S1",
-        "EC-A1",
-        "EC-S2"
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -11593,9 +10219,9 @@
       "name": "Echo Sniper Pack 2",
       "maxHP": 76,
       "rotation": [
-        "EC-D1",
-        "EC-A2",
-        "EC-D2"
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -11609,12 +10235,9 @@
       "name": "Flux Shaman Crew",
       "maxHP": 130,
       "rotation": [
-        "EC-S1",
-        "EC-A2",
-        "EC-S2",
-        "EC-A1",
-        "EC-S1",
-        "EC-A2"
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -11628,9 +10251,9 @@
       "name": "Holo Runner Node",
       "maxHP": 35,
       "rotation": [
-        "EC-H1",
-        "EC-A1",
-        "EC-H1"
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -11644,8 +10267,8 @@
       "name": "Pulse Sapper Cell",
       "maxHP": 85,
       "rotation": [
-        "EC-A2",
-        "EC-A3"
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -11659,9 +10282,9 @@
       "name": "Razor Shaman Crew",
       "maxHP": 76,
       "rotation": [
-        "EC-D1",
-        "EC-A2",
-        "EC-D2"
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -11675,8 +10298,8 @@
       "name": "Cipher Warden Node",
       "maxHP": 64,
       "rotation": [
-        "EC-S5",
-        "EC-A2"
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -11690,12 +10313,9 @@
       "name": "Cipher Shaman Protocol",
       "maxHP": 65,
       "rotation": [
-        "EC-A2",
-        "EC-A10",
-        "EC-A3",
-        "EC-A2",
-        "EC-D1",
-        "EC-A3"
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -11709,8 +10329,8 @@
       "name": "Vanta Scout Pack",
       "maxHP": 59,
       "rotation": [
-        "EC-A2",
-        "EC-S6"
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -11724,9 +10344,9 @@
       "name": "Static Warden Array",
       "maxHP": 61,
       "rotation": [
-        "EC-S1",
-        "EC-A1",
-        "EC-S2"
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -11740,8 +10360,8 @@
       "name": "Neon Courier Crew",
       "maxHP": 79,
       "rotation": [
-        "EC-A2",
-        "EC-S6"
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -11755,10 +10375,10 @@
       "name": "Rogue Tech Shard",
       "maxHP": 79,
       "rotation": [
-        "EC-A2",
-        "EC-S6",
-        "EC-A3",
-        "EC-S7"
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -11772,9 +10392,9 @@
       "name": "Vanta Sapper Shard",
       "maxHP": 59,
       "rotation": [
-        "EC-S5",
-        "EC-A2",
-        "EC-S5"
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -11788,16 +10408,16 @@
       "name": "Administrator: Kilo Core",
       "maxHP": 230,
       "rotation": [
-        "EC-A4",
-        "EC-S1",
-        "EC-B1",
-        "EC-A4",
-        "EC-S2",
-        "EC-D3",
-        "EC-B4",
-        "EC-A4",
-        "EC-B5",
-        "EC-A5"
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -11811,13 +10431,13 @@
       "name": "Nexus: Rogue Oracle",
       "maxHP": 181,
       "rotation": [
-        "EC-B9",
-        "EC-A4",
-        "EC-B4",
-        "EC-A4",
-        "EC-B6",
-        "EC-S5",
-        "EC-A4"
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -11831,12 +10451,12 @@
       "name": "Administrator: Null Goliath",
       "maxHP": 189,
       "rotation": [
-        "EC-A4",
-        "EC-D2",
-        "EC-B1",
-        "EC-A4",
-        "EC-D2",
-        "EC-B3"
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -11850,15 +10470,15 @@
       "name": "Overseer: Vanta Goliath",
       "maxHP": 202,
       "rotation": [
-        "EC-A4",
-        "EC-B5",
-        "EC-D2",
-        "EC-A4",
-        "EC-B8",
-        "EC-D2",
-        "EC-A5",
-        "EC-B5",
-        "EC-B3"
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -11872,14 +10492,14 @@
       "name": "Nexus: Ion Goliath",
       "maxHP": 150,
       "rotation": [
-        "EC-A4",
-        "EC-A4",
-        "EC-B5",
-        "EC-A5",
-        "EC-B8",
-        "EC-D2",
-        "EC-A4",
-        "EC-B2"
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -11893,15 +10513,15 @@
       "name": "Leviathan: Ghost Hydra",
       "maxHP": 215,
       "rotation": [
-        "EC-B7",
-        "EC-S8",
-        "EC-A4",
-        "EC-B6",
-        "EC-S9",
-        "EC-A4",
-        "EC-B7",
-        "EC-B4",
-        "EC-A5"
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -11915,13 +10535,13 @@
       "name": "Titan: Holo Apex",
       "maxHP": 187,
       "rotation": [
-        "EC-B3",
-        "EC-A4",
-        "EC-D2",
-        "EC-B2",
-        "EC-H2",
-        "EC-A4",
-        "EC-B5"
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -11935,15 +10555,15 @@
       "name": "Overseer: Static Core",
       "maxHP": 180,
       "rotation": [
-        "EC-B4",
-        "EC-A4",
-        "EC-B9",
-        "EC-B6",
-        "EC-A4",
-        "EC-B4",
-        "EC-S1",
-        "EC-B2",
-        "EC-A5"
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -11957,15 +10577,15 @@
       "name": "Archon: Null Goliath",
       "maxHP": 250,
       "rotation": [
-        "EC-B8",
-        "EC-B4",
-        "EC-D2",
-        "EC-B1",
-        "EC-A5",
-        "EC-B5",
-        "EC-B3",
-        "EC-B9",
-        "EC-A5"
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -11979,15 +10599,15 @@
       "name": "Boss: Neon Mainframe",
       "maxHP": 188,
       "rotation": [
-        "EC-B6",
-        "EC-A4",
-        "EC-B2",
-        "EC-A4",
-        "EC-B4",
-        "EC-S2",
-        "EC-B7",
-        "EC-A4",
-        "EC-B10"
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -12001,13 +10621,13 @@
       "name": "Boss: Vector Mainframe",
       "maxHP": 184,
       "rotation": [
-        "EC-A4",
-        "EC-B1",
-        "EC-D3",
-        "EC-A4",
-        "EC-B2",
-        "EC-B3",
-        "EC-A5"
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -12021,14 +10641,14 @@
       "name": "Nexus: Chrome Warden",
       "maxHP": 197,
       "rotation": [
-        "EC-D2",
-        "EC-A4",
-        "EC-D2",
-        "EC-B3",
-        "EC-A10",
-        "EC-D2",
-        "EC-B5",
-        "EC-A4"
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -12042,12 +10662,12 @@
       "name": "Overseer: Chrome Oracle",
       "maxHP": 150,
       "rotation": [
-        "EC-B9",
-        "EC-A4",
-        "EC-B6",
-        "EC-A4",
-        "EC-B4",
-        "EC-A4"
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -12061,13 +10681,13 @@
       "name": "Director: Circuit Hydra",
       "maxHP": 165,
       "rotation": [
-        "EC-A4",
-        "EC-B7",
-        "EC-B4",
-        "EC-B1",
-        "EC-A4",
-        "EC-D2",
-        "EC-B5"
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -12081,13 +10701,13 @@
       "name": "Director: Pulse Mainframe",
       "maxHP": 181,
       "rotation": [
-        "EC-B2",
-        "EC-A4",
-        "EC-B4",
-        "EC-A4",
-        "EC-B5",
-        "EC-S2",
-        "EC-B10"
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -12101,15 +10721,15 @@
       "name": "Administrator: Cipher Mainframe",
       "maxHP": 209,
       "rotation": [
-        "EC-B2",
-        "EC-A4",
-        "EC-B1",
-        "EC-S2",
-        "EC-B4",
-        "EC-A4",
-        "EC-B2",
-        "EC-B3",
-        "EC-A5"
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -12123,14 +10743,14 @@
       "name": "Director: Ghost Oracle",
       "maxHP": 170,
       "rotation": [
-        "EC-B9",
-        "EC-B7",
-        "EC-A4",
-        "EC-B6",
-        "EC-S9",
-        "EC-A4",
-        "EC-B4",
-        "EC-A5"
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -12144,16 +10764,16 @@
       "name": "Overseer: Rogue Apex",
       "maxHP": 236,
       "rotation": [
-        "EC-A4",
-        "EC-B5",
-        "EC-B1",
-        "EC-A5",
-        "EC-B9",
-        "EC-A4",
-        "EC-B10",
-        "EC-B3",
-        "EC-A5",
-        "EC-B5"
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -12167,14 +10787,14 @@
       "name": "Leviathan: Pulse Core",
       "maxHP": 206,
       "rotation": [
-        "EC-B2",
-        "EC-A4",
-        "EC-B1",
-        "EC-B4",
-        "EC-A4",
-        "EC-D3",
-        "EC-B5",
-        "EC-A5"
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -12188,15 +10808,15 @@
       "name": "Leviathan: Neon Apex",
       "maxHP": 207,
       "rotation": [
-        "EC-B6",
-        "EC-A4",
-        "EC-B2",
-        "EC-B4",
-        "EC-A4",
-        "EC-B7",
-        "EC-D2",
-        "EC-B5",
-        "EC-A5"
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -12210,14 +10830,14 @@
       "name": "Leviathan: Chrome Oracle",
       "maxHP": 214,
       "rotation": [
-        "EC-B4",
-        "EC-A4",
-        "EC-B9",
-        "EC-A4",
-        "EC-B6",
-        "EC-B3",
-        "EC-A5",
-        "EC-B2"
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -12231,14 +10851,14 @@
       "name": "Archon: Pulse Hydra",
       "maxHP": 226,
       "rotation": [
-        "EC-B1",
-        "EC-A4",
-        "EC-B4",
-        "EC-B2",
-        "EC-A4",
-        "EC-B5",
-        "EC-B3",
-        "EC-A5"
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -12252,14 +10872,14 @@
       "name": "Leviathan: Ghost Goliath",
       "maxHP": 223,
       "rotation": [
-        "EC-B7",
-        "EC-A4",
-        "EC-B9",
-        "EC-B5",
-        "EC-A5",
-        "EC-D2",
-        "EC-B4",
-        "EC-A4"
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -12273,12 +10893,12 @@
       "name": "Overseer: Static Warden",
       "maxHP": 151,
       "rotation": [
-        "EC-D2",
-        "EC-B4",
-        "EC-A4",
-        "EC-D2",
-        "EC-B3",
-        "EC-A4"
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -12292,14 +10912,14 @@
       "name": "Archon: Holo Oracle",
       "maxHP": 206,
       "rotation": [
-        "EC-B9",
-        "EC-A4",
-        "EC-D2",
-        "EC-B2",
-        "EC-B6",
-        "EC-A4",
-        "EC-B5",
-        "EC-B3"
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -12313,16 +10933,16 @@
       "name": "Administrator: Pulse Citadel",
       "maxHP": 200,
       "rotation": [
-        "EC-B6",
-        "EC-A4",
-        "EC-B9",
-        "EC-A4",
-        "EC-B4",
-        "EC-B6",
-        "EC-A5",
-        "EC-B2",
-        "EC-B9",
-        "EC-A4"
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -12336,15 +10956,15 @@
       "name": "Leviathan: Vanta Core",
       "maxHP": 212,
       "rotation": [
-        "EC-A4",
-        "EC-B5",
-        "EC-B4",
-        "EC-D2",
-        "EC-B1",
-        "EC-A5",
-        "EC-B9",
-        "EC-D2",
-        "EC-B10"
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -12358,12 +10978,12 @@
       "name": "Archon: Kilo Mainframe",
       "maxHP": 155,
       "rotation": [
-        "EC-B1",
-        "EC-A4",
-        "EC-B2",
-        "EC-A4",
-        "EC-B4",
-        "EC-A4"
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001",
+        "C-001"
       ],
       "passives": [],
       "ai": null,
@@ -12734,10 +11354,7 @@
       "act": 1,
       "kind": "elite",
       "compositionType": "generated",
-      "enemyIds": [
-        "E_ECHO_SHAMAN_SWARM",
-        "E_CIPHER_HACKER_MK_II"
-      ],
+      "enemyIds": [],
       "weight": 1
     },
     "ENC_A1_SPEC_CONTROL": {
@@ -12782,10 +11399,7 @@
       "act": 1,
       "kind": "hard",
       "compositionType": "generated",
-      "enemyIds": [
-        "E_ECHO_SENTINEL_SHARD",
-        "E_NEON_SAPPER_MK_II"
-      ],
+      "enemyIds": [],
       "weight": 1
     },
     "ENC_GEN_A1_DAMAGE_FOCUS": {
@@ -12794,10 +11408,7 @@
       "act": 1,
       "kind": "hard",
       "compositionType": "generated",
-      "enemyIds": [
-        "E_GLITCH_WARDEN_SUITE",
-        "E_PULSE_BRUISER_FRAME"
-      ],
+      "enemyIds": [],
       "weight": 1
     },
     "ENC_GEN_A1_LEAK_THEME": {
@@ -12806,10 +11417,7 @@
       "act": 1,
       "kind": "hard",
       "compositionType": "generated",
-      "enemyIds": [
-        "E_LEAK_WRAITH",
-        "E_CORRODE_RAT"
-      ],
+      "enemyIds": [],
       "weight": 1
     },
     "ENC_A1_N1_01": {
@@ -13080,9 +11688,7 @@
       "act": 1,
       "kind": "normal",
       "compositionType": "generated",
-      "enemyIds": [
-        "E_HOLO_SHAMAN_CREW"
-      ],
+      "enemyIds": [],
       "weight": 1
     },
     "ENC-002": {
@@ -13091,22 +11697,16 @@
       "act": 1,
       "kind": "normal",
       "compositionType": "generated",
-      "enemyIds": [
-        "E_HOLO_RAT_MK_II",
-        "E_HOLO_SCOUT_PROXY"
-      ],
+      "enemyIds": [],
       "weight": 1
     },
     "ENC-003": {
       "id": "ENC-003",
-      "name": "Standard Encounter (2 enemy)",
+      "name": "Standard Encounter (3 enemy)",
       "act": 1,
       "kind": "normal",
       "compositionType": "generated",
-      "enemyIds": [
-        "E_HOLO_RAT_MK_II",
-        "E_HOLO_SHAMAN_CREW"
-      ],
+      "enemyIds": [],
       "weight": 1
     },
     "ENC-005": {
@@ -13115,10 +11715,7 @@
       "act": 1,
       "kind": "normal",
       "compositionType": "generated",
-      "enemyIds": [
-        "E_PULSE_BRUISER_FRAME",
-        "E_ION_SNIPER_RIG"
-      ],
+      "enemyIds": [],
       "weight": 1
     },
     "ENC-006": {
@@ -13127,10 +11724,7 @@
       "act": 1,
       "kind": "normal",
       "compositionType": "generated",
-      "enemyIds": [
-        "E_GLITCH_WARDEN_SUITE",
-        "E_HOLO_POD_NODE"
-      ],
+      "enemyIds": [],
       "weight": 1
     },
     "ENC-007": {
@@ -13139,10 +11733,7 @@
       "act": 1,
       "kind": "normal",
       "compositionType": "generated",
-      "enemyIds": [
-        "E_HOLO_ENFORCER_MK_I",
-        "E_ION_RAT_SUITE"
-      ],
+      "enemyIds": [],
       "weight": 1
     },
     "ENC-008": {
@@ -13151,46 +11742,34 @@
       "act": 1,
       "kind": "normal",
       "compositionType": "generated",
-      "enemyIds": [
-        "E_HOLO_SHAMAN_MK_I",
-        "E_ION_CLERIC_PROXY"
-      ],
+      "enemyIds": [],
       "weight": 1
     },
     "ENC-009": {
       "id": "ENC-009",
       "name": "Boss 1",
       "act": 1,
-      "kind": "elite",
+      "kind": "normal",
       "compositionType": "generated",
-      "enemyIds": [
-        "E_ECHO_SHAMAN_SWARM",
-        "E_KILO_SNIPER_ARRAY"
-      ],
+      "enemyIds": [],
       "weight": 1
     },
     "ENC-010": {
       "id": "ENC-010",
       "name": "Boss 2",
       "act": 1,
-      "kind": "elite",
+      "kind": "normal",
       "compositionType": "generated",
-      "enemyIds": [
-        "E_FLUX_SHAMAN_CREW",
-        "E_CIPHER_POD_SHARD"
-      ],
+      "enemyIds": [],
       "weight": 1
     },
     "ENC-011": {
       "id": "ENC-011",
       "name": "Boss 3",
       "act": 1,
-      "kind": "elite",
+      "kind": "normal",
       "compositionType": "generated",
-      "enemyIds": [
-        "E_VECTOR_GOON_PROXY",
-        "E_ECHO_SENTINEL_SHARD"
-      ],
+      "enemyIds": [],
       "weight": 1
     },
     "ENC-012": {
@@ -13199,22 +11778,16 @@
       "act": 1,
       "kind": "normal",
       "compositionType": "generated",
-      "enemyIds": [
-        "E_HOLO_RUNNER_NODE",
-        "E_HOLO_SCOUT_PROXY"
-      ],
+      "enemyIds": [],
       "weight": 1
     },
     "ENC_GEN_A1_MIX_1_3": {
       "id": "ENC_GEN_A1_MIX_1_3",
-      "name": "Act 1 Random: Mixed (1–2)",
+      "name": "Act 1 Random: Mixed (1–3)",
       "act": 1,
       "kind": "normal",
       "compositionType": "generated",
-      "enemyIds": [
-        "E_HOLO_SAPPER_CELL",
-        "E_ION_RAT_SUITE"
-      ],
+      "enemyIds": [],
       "weight": 1
     },
     "ENC_A2_EL1_01": {
@@ -13305,10 +11878,7 @@
       "act": 2,
       "kind": "hard",
       "compositionType": "generated",
-      "enemyIds": [
-        "E_STATIC_SAPPER_CELL",
-        "E_CIRCUIT_BRUISER_MK_III"
-      ],
+      "enemyIds": [],
       "weight": 1
     },
     "ENC_GEN_A2_DAMAGE_FOCUS": {
@@ -13317,10 +11887,7 @@
       "act": 2,
       "kind": "hard",
       "compositionType": "generated",
-      "enemyIds": [
-        "E_VANTA_BRUISER_PROXY",
-        "E_VECTOR_MARAUDER_PROXY"
-      ],
+      "enemyIds": [],
       "weight": 1
     },
     "ENC_GEN_A2_LEAK_THEME": {
@@ -13329,11 +11896,7 @@
       "act": 2,
       "kind": "hard",
       "compositionType": "generated",
-      "enemyIds": [
-        "E_CORRODE_RAT",
-        "E_GLITCH_RUNNER_NODE",
-        "E_STATIC_IMP_RIG"
-      ],
+      "enemyIds": [],
       "weight": 1
     },
     "ENC_A2_N1_01": {
@@ -13604,11 +12167,7 @@
       "act": 2,
       "kind": "normal",
       "compositionType": "generated",
-      "enemyIds": [
-        "E_VANTA_DRONE_FRAME",
-        "E_VECTOR_COURIER_ARRAY",
-        "E_CHROME_SAPPER_CREW"
-      ],
+      "enemyIds": [],
       "weight": 1
     },
     "ENC_A3_EL1_01": {
@@ -13687,10 +12246,7 @@
       "act": 3,
       "kind": "hard",
       "compositionType": "generated",
-      "enemyIds": [
-        "E_OBSIDIAN_TECH_RIG",
-        "E_RAZOR_CLERIC_MK_II"
-      ],
+      "enemyIds": [],
       "weight": 1
     },
     "ENC_GEN_A3_DAMAGE_FOCUS": {
@@ -13699,10 +12255,7 @@
       "act": 3,
       "kind": "hard",
       "compositionType": "generated",
-      "enemyIds": [
-        "E_OBSIDIAN_BRUISER_PACK",
-        "E_RAZOR_ENFORCER_FRAME"
-      ],
+      "enemyIds": [],
       "weight": 1
     },
     "ENC_GEN_A3_LEAK_THEME": {
@@ -13711,10 +12264,7 @@
       "act": 3,
       "kind": "hard",
       "compositionType": "generated",
-      "enemyIds": [
-        "E_OBSIDIAN_SNIPER_MK_III",
-        "E_ROGUE_SCOUT_SWARM"
-      ],
+      "enemyIds": [],
       "weight": 1
     },
     "ENC_A3_N1_01": {
@@ -13985,11 +12535,7 @@
       "act": 3,
       "kind": "normal",
       "compositionType": "generated",
-      "enemyIds": [
-        "E_NEON_WARDEN_SUITE",
-        "E_STATIC_WARDEN_ARRAY",
-        "E_CHROME_SAPPER_CREW"
-      ],
+      "enemyIds": [],
       "weight": 1
     }
   },
@@ -14015,6 +12561,12 @@
         "ENC_A1_N2_06",
         "ENC_A1_N2_07",
         "ENC_A1_N2_08",
+        "ENC_A1_N3_01",
+        "ENC_A1_N3_02",
+        "ENC_A1_N3_03",
+        "ENC_A1_N3_04",
+        "ENC_A1_N3_05",
+        "ENC_A1_N3_06",
         "ENC-001",
         "ENC-002",
         "ENC-003",
@@ -14022,11 +12574,11 @@
         "ENC-006",
         "ENC-007",
         "ENC-008",
+        "ENC-009",
+        "ENC-010",
+        "ENC-011",
         "ENC-012",
-        "ENC_GEN_A1_MIX_1_3",
-        "ENC_A1_SPEC_CONTROL",
-        "ENC_A1_SPEC_DECAY",
-        "ENC_A1_SPEC_SCREEN"
+        "ENC_GEN_A1_MIX_1_3"
       ]
     },
     {
@@ -14038,10 +12590,7 @@
         "ENC_A1_EL1_02",
         "ENC_A1_EL2_01",
         "ENC_A1_EL2_02",
-        "ENC-004",
-        "ENC-009",
-        "ENC-010",
-        "ENC-011"
+        "ENC-004"
       ]
     },
     {
@@ -14106,13 +12655,7 @@
         "ENC_A2_N3_04",
         "ENC_A2_N3_05",
         "ENC_A2_N3_06",
-        "ENC_GEN_A2_MIX_1_3",
-        "ENC_A2_SPEC_CONTROL",
-        "ENC_A2_SPEC_DECAY",
-        "ENC_A2_SPEC_SCREEN",
-        "ENC_GEN_A2_CONTROL_FOCUS",
-        "ENC_GEN_A2_DAMAGE_FOCUS",
-        "ENC_GEN_A2_LEAK_THEME"
+        "ENC_GEN_A2_MIX_1_3"
       ]
     },
     {
@@ -14130,36 +12673,7 @@
       "id": "ACT2_BOSS",
       "act": 2,
       "kind": "boss",
-      "encounterIds": [
-        "ENC_BOSS_ADMINISTRATOR_CIPHER_MAINFRAME",
-        "ENC_BOSS_ADMINISTRATOR_KILO_CORE",
-        "ENC_BOSS_ADMINISTRATOR_NULL_GOLIATH",
-        "ENC_BOSS_ADMINISTRATOR_PULSE_CITADEL",
-        "ENC_BOSS_ARCHON_HOLO_ORACLE",
-        "ENC_BOSS_ARCHON_KILO_MAINFRAME",
-        "ENC_BOSS_ARCHON_NULL_GOLIATH",
-        "ENC_BOSS_ARCHON_PULSE_HYDRA",
-        "ENC_BOSS_BOSS_NEON_MAINFRAME",
-        "ENC_BOSS_BOSS_VECTOR_MAINFRAME",
-        "ENC_BOSS_DIRECTOR_CIRCUIT_HYDRA",
-        "ENC_BOSS_DIRECTOR_GHOST_ORACLE",
-        "ENC_BOSS_DIRECTOR_PULSE_MAINFRAME",
-        "ENC_BOSS_LEVIATHAN_CHROME_ORACLE",
-        "ENC_BOSS_LEVIATHAN_GHOST_GOLIATH",
-        "ENC_BOSS_LEVIATHAN_GHOST_HYDRA",
-        "ENC_BOSS_LEVIATHAN_NEON_APEX",
-        "ENC_BOSS_LEVIATHAN_PULSE_CORE",
-        "ENC_BOSS_LEVIATHAN_VANTA_CORE",
-        "ENC_BOSS_NEXUS_CHROME_WARDEN",
-        "ENC_BOSS_NEXUS_ION_GOLIATH",
-        "ENC_BOSS_NEXUS_ROGUE_ORACLE",
-        "ENC_BOSS_OVERSEER_CHROME_ORACLE",
-        "ENC_BOSS_OVERSEER_ROGUE_APEX",
-        "ENC_BOSS_OVERSEER_STATIC_CORE",
-        "ENC_BOSS_OVERSEER_STATIC_WARDEN",
-        "ENC_BOSS_OVERSEER_VANTA_GOLIATH",
-        "ENC_BOSS_TITAN_HOLO_APEX"
-      ]
+      "encounterIds": []
     },
     {
       "id": "ACT3_NORMAL",
@@ -14188,12 +12702,7 @@
         "ENC_A3_N3_04",
         "ENC_A3_N3_05",
         "ENC_A3_N3_06",
-        "ENC_GEN_A3_MIX_1_3",
-        "ENC_A3_SPEC_DECAY",
-        "ENC_A3_SPEC_SCREEN",
-        "ENC_GEN_A3_CONTROL_FOCUS",
-        "ENC_GEN_A3_DAMAGE_FOCUS",
-        "ENC_GEN_A3_LEAK_THEME"
+        "ENC_GEN_A3_MIX_1_3"
       ]
     },
     {
@@ -14211,229 +12720,540 @@
       "id": "ACT3_BOSS",
       "act": 3,
       "kind": "boss",
-      "encounterIds": [
-        "ENC_BOSS_ADMINISTRATOR_CIPHER_MAINFRAME",
-        "ENC_BOSS_ADMINISTRATOR_KILO_CORE",
-        "ENC_BOSS_ADMINISTRATOR_NULL_GOLIATH",
-        "ENC_BOSS_ADMINISTRATOR_PULSE_CITADEL",
-        "ENC_BOSS_ARCHON_HOLO_ORACLE",
-        "ENC_BOSS_ARCHON_KILO_MAINFRAME",
-        "ENC_BOSS_ARCHON_NULL_GOLIATH",
-        "ENC_BOSS_ARCHON_PULSE_HYDRA",
-        "ENC_BOSS_BOSS_NEON_MAINFRAME",
-        "ENC_BOSS_BOSS_VECTOR_MAINFRAME",
-        "ENC_BOSS_DIRECTOR_CIRCUIT_HYDRA",
-        "ENC_BOSS_DIRECTOR_GHOST_ORACLE",
-        "ENC_BOSS_DIRECTOR_PULSE_MAINFRAME",
-        "ENC_BOSS_LEVIATHAN_CHROME_ORACLE",
-        "ENC_BOSS_LEVIATHAN_GHOST_GOLIATH",
-        "ENC_BOSS_LEVIATHAN_GHOST_HYDRA",
-        "ENC_BOSS_LEVIATHAN_NEON_APEX",
-        "ENC_BOSS_LEVIATHAN_PULSE_CORE",
-        "ENC_BOSS_LEVIATHAN_VANTA_CORE",
-        "ENC_BOSS_NEXUS_CHROME_WARDEN",
-        "ENC_BOSS_NEXUS_ION_GOLIATH",
-        "ENC_BOSS_NEXUS_ROGUE_ORACLE",
-        "ENC_BOSS_OVERSEER_CHROME_ORACLE",
-        "ENC_BOSS_OVERSEER_ROGUE_APEX",
-        "ENC_BOSS_OVERSEER_STATIC_CORE",
-        "ENC_BOSS_OVERSEER_STATIC_WARDEN",
-        "ENC_BOSS_OVERSEER_VANTA_GOLIATH",
-        "ENC_BOSS_TITAN_HOLO_APEX"
-      ]
-    },
-    {
-      "id": "ACT1_HARD",
-      "act": 1,
-      "kind": "hard",
-      "encounterIds": [
-        "ENC_A1_N3_01",
-        "ENC_A1_N3_02",
-        "ENC_A1_N3_03",
-        "ENC_A1_N3_04",
-        "ENC_A1_N3_05",
-        "ENC_A1_N3_06",
-        "ENC_GEN_A1_CONTROL_FOCUS",
-        "ENC_GEN_A1_DAMAGE_FOCUS",
-        "ENC_GEN_A1_LEAK_THEME"
-      ]
+      "encounterIds": []
     }
   ],
   "relics": {
-    "R_U_OVERCLOCK_MODULE": {
-      "id": "R_U_OVERCLOCK_MODULE",
-      "name": "Overclock Module",
-      "description": "Gain +1 max RAM at the start of each run.",
-      "tier": "uncommon",
+    "NeuralCache": {
+      "id": "NeuralCache",
+      "name": "Neural Cache",
+      "icon": "🧠",
+      "rarity": "common",
+      "description": "Start each combat with +2 MP",
+      "hook": "on_combat_start",
+      "hookEffect": "gain 2 MP"
+    },
+    "ScrapPlating": {
+      "id": "ScrapPlating",
+      "name": "Scrap Plating",
+      "icon": "🛡️",
+      "rarity": "common",
+      "description": "Reduce the first hit you take each combat by 4",
+      "hook": "on_damage_taken",
+      "hookEffect": "reduce first hit by 4"
+    },
+    "DataTap": {
+      "id": "DataTap",
+      "name": "Data Tap",
+      "icon": "💰",
+      "rarity": "common",
+      "description": "Gain 12g after every combat",
+      "hook": "after_combat",
+      "hookEffect": "gain 12g"
+    },
+    "Overclock": {
+      "id": "Overclock",
+      "name": "Overclock",
+      "icon": "⚡",
+      "rarity": "common",
+      "description": "First card played each turn costs 1 less RAM",
+      "hook": "on_turn_start",
+      "hookEffect": "cost -1 RAM gate"
+    },
+    "Stimpak": {
+      "id": "Stimpak",
+      "name": "Stimpak",
+      "icon": "💊",
+      "rarity": "common",
+      "description": "Heal 4 HP after every normal combat",
+      "hook": "after_combat",
+      "hookEffect": "heal 4 HP"
+    },
+    "ExtendedBattery": {
+      "id": "ExtendedBattery",
+      "name": "Extended Battery",
+      "icon": "🔋",
+      "rarity": "common",
+      "description": "+1 to starting max MP",
       "mods": {
-        "maxRAMDelta": 1
+        "maxMPDelta": 1
       }
     },
-    "R_U_RAM_CACHE": {
-      "id": "R_U_RAM_CACHE",
-      "name": "RAM Cache",
-      "description": "Regenerate +1 extra RAM per turn.",
-      "tier": "uncommon",
+    "WornToolkit": {
+      "id": "WornToolkit",
+      "name": "Worn Toolkit",
+      "icon": "🔧",
+      "rarity": "common",
+      "description": "At run start, one random card in your deck is Repaired",
+      "hook": "on_run_start",
+      "hookEffect": "repair 1 card"
+    },
+    "SignalJammer": {
+      "id": "SignalJammer",
+      "name": "Signal Jammer",
+      "icon": "📡",
+      "rarity": "common",
+      "description": "Enemies deal 2 less damage on their first action each combat",
+      "hook": "on_combat_start",
+      "hookEffect": "enemy dmg -2"
+    },
+    "ThermalSink": {
+      "id": "ThermalSink",
+      "name": "Thermal Sink",
+      "icon": "🌡️",
+      "rarity": "common",
+      "description": "Increased core stability provides flat HP",
       "mods": {
-        "ramRegenDelta": 1
+        "maxHPDelta": 6
       }
     },
-    "R_U_EXPANDED_BUFFER": {
-      "id": "R_U_EXPANDED_BUFFER",
-      "name": "Expanded Buffer",
-      "description": "Draw 1 extra card per turn.",
-      "tier": "uncommon",
-      "mods": {
-        "drawPerTurnDelta": 1
-      }
+    "LatencyChip": {
+      "id": "LatencyChip",
+      "name": "Latency Chip",
+      "icon": "⏳",
+      "rarity": "common",
+      "description": "Turn 1: +2 Draw, but -1 RAM",
+      "hook": "on_combat_start",
+      "hookEffect": "draw +2, ram -1"
     },
-    "R_U_BIO_PLATING": {
-      "id": "R_U_BIO_PLATING",
-      "name": "Bio-Plating",
-      "description": "Start each combat with +5 max HP.",
-      "tier": "uncommon",
-      "mods": {
-        "maxHPDelta": 5
-      }
+    "DebugLog": {
+      "id": "DebugLog",
+      "name": "Debug Log",
+      "icon": "📜",
+      "rarity": "common",
+      "description": "Every 5th card played in a single combat costs 0 RAM",
+      "hook": "on_card_play",
+      "hookEffect": "5th card free"
     },
-    "R_U_SUBDERMAL_ARMOR": {
-      "id": "R_U_SUBDERMAL_ARMOR",
-      "name": "Subdermal Armor",
-      "description": "Travel costs 1 less HP.",
-      "tier": "uncommon",
-      "mods": {
-        "travelHpCostDelta": -1
-      }
+    "PatchNotes": {
+      "id": "PatchNotes",
+      "name": "Patch Notes",
+      "icon": "📝",
+      "rarity": "common",
+      "description": "Whenever a card mutates, choose from 3 options instead of 2",
+      "hook": "on_card_mutate",
+      "hookEffect": "choice +1"
     },
-    "R_U_NANO_INJECTOR": {
-      "id": "R_U_NANO_INJECTOR",
-      "name": "Nano-Injector",
-      "description": "Mutations trigger 25% more often.",
-      "tier": "uncommon",
-      "mods": {
-        "mutationTriggerChanceMult": 1.25
-      }
+    "CoolingFan": {
+      "id": "CoolingFan",
+      "name": "Cooling Fan",
+      "icon": "❄️",
+      "rarity": "common",
+      "description": "Whenever you play a 'Repair' card, gain 4 Block",
+      "hook": "on_card_play",
+      "hookEffect": "if repair gain 4 block"
     },
-    "R_U_WATCHDOG_TIMER": {
-      "id": "R_U_WATCHDOG_TIMER",
-      "name": "Watchdog Timer",
-      "description": "Cards' final mutation countdown ticks 1 slower.",
-      "tier": "uncommon",
+    "BlackIce": {
+      "id": "BlackIce",
+      "name": "Black Ice",
+      "icon": "🖤",
+      "rarity": "uncommon",
+      "description": "Whenever an enemy inflicts a debuff on you, deal 3 damage back",
+      "hook": "on_damage_taken",
+      "hookEffect": "deal 3 back"
+    },
+    "MutationCatalyst": {
+      "id": "MutationCatalyst",
+      "name": "Mutation Catalyst",
+      "icon": "🧬",
+      "rarity": "uncommon",
+      "description": "All cards mutate 1 turn sooner",
       "mods": {
         "finalCountdownTickDelta": -1
       }
     },
-    "R_R_NEURAL_INTERFACE": {
-      "id": "R_R_NEURAL_INTERFACE",
-      "name": "Neural Interface",
-      "description": "Draw 2 extra cards per turn.",
-      "tier": "rare",
+    "FragmentationCache": {
+      "id": "FragmentationCache",
+      "name": "Fragment Cache",
+      "icon": "💣",
+      "rarity": "uncommon",
+      "description": "Gain 35g whenever you remove a card from your deck",
+      "hook": "on_card_remove",
+      "hookEffect": "gain 35g"
+    },
+    "GhostProtocol": {
+      "id": "GhostProtocol",
+      "name": "Ghost Protocol",
+      "icon": "👻",
+      "rarity": "uncommon",
+      "description": "The first card you play each combat costs 0 RAM",
+      "hook": "on_combat_start",
+      "hookEffect": "set cost 0 gate"
+    },
+    "KillSwitch": {
+      "id": "KillSwitch",
+      "name": "Kill Switch",
+      "icon": "☠️",
+      "rarity": "uncommon",
+      "description": "Killing an enemy heals you 3 HP",
+      "hook": "on_enemy_kill",
+      "hookEffect": "heal 3 HP"
+    },
+    "CorrodeCore": {
+      "id": "CorrodeCore",
+      "name": "Corrode Core",
+      "icon": "🔩",
+      "rarity": "uncommon",
+      "description": "Your Corrode stacks deal +1 damage per tick",
+      "hook": "passive_combat",
+      "hookEffect": "corrode dmg +1"
+    },
+    "ExploitFramework": {
+      "id": "ExploitFramework",
+      "name": "Exploit Frame",
+      "icon": "🗂️",
+      "rarity": "uncommon",
+      "description": "Gain an extra 25g after every Elite encounter",
+      "hook": "after_combat",
+      "hookEffect": "elite gold +25"
+    },
+    "CascadeProtocol": {
+      "id": "CascadeProtocol",
+      "name": "Cascade Protocol",
+      "icon": "📊",
+      "rarity": "uncommon",
+      "description": "Whenever one of your cards mutates during combat, gain 8g",
+      "hook": "on_card_mutate",
+      "hookEffect": "gain 8g"
+    },
+    "VampiricAPI": {
+      "id": "VampiricAPI",
+      "name": "Vampiric API",
+      "icon": "🧛",
+      "rarity": "uncommon",
+      "description": "Restore 20% dmg as HP; cannot heal at rooms or events",
+      "hook": "on_damage_dealt",
+      "hookEffect": "lifesteal 20%"
+    },
+    "GlitchFilter": {
+      "id": "GlitchFilter",
+      "name": "Glitch Filter",
+      "icon": "💾",
+      "rarity": "uncommon",
+      "description": "Whenever a card is discarded, deal 3 damage to a random enemy",
+      "hook": "on_card_discard",
+      "hookEffect": "deal 3 dmg"
+    },
+    "BufferOverflow": {
+      "id": "BufferOverflow",
+      "name": "Buffer Overflow",
+      "icon": "🌊",
+      "rarity": "uncommon",
+      "description": "If you end your turn with 0 RAM, draw 1 card next turn",
+      "hook": "on_turn_end",
+      "hookEffect": "if 0 RAM draw 1"
+    },
+    "MirrorArray": {
+      "id": "MirrorArray",
+      "name": "Mirror Array",
+      "icon": "🪞",
+      "rarity": "uncommon",
+      "description": "The first time an enemy attacks each combat, reflect the damage",
+      "hook": "on_damage_taken",
+      "hookEffect": "reflect first hit"
+    },
+    "HardenedKernel": {
+      "id": "HardenedKernel",
+      "name": "Hardened Kernel",
+      "icon": "🔰",
+      "rarity": "uncommon",
+      "description": "Immune to Vulnerable; you can no longer gain Strength buffs",
+      "hook": "passive",
+      "hookEffect": "immunity: vuln"
+    },
+    "ProtocolBreach": {
+      "id": "ProtocolBreach",
+      "name": "Protocol Breach",
+      "icon": "⚡",
+      "rarity": "uncommon",
+      "description": "If you play cards of 3 different types in one turn, gain 1 RAM",
+      "hook": "on_card_play",
+      "hookEffect": "gain 1 RAM combo"
+    },
+    "MemoryLeak": {
+      "id": "MemoryLeak",
+      "name": "Memory Leak",
+      "icon": "💧",
+      "rarity": "uncommon",
+      "description": "Every 3rd card played is Exhausted but deals double effect",
+      "hook": "on_card_play",
+      "hookEffect": "x2 effect then exhaust"
+    },
+    "SingularityChip": {
+      "id": "SingularityChip",
+      "name": "Singularity Chip",
+      "icon": "🌀",
+      "rarity": "rare",
+      "description": "Below 25% HP, restore 20 HP (Once per combat)",
+      "hook": "on_damage_taken",
+      "hookEffect": "threshold heal 20"
+    },
+    "ViralPayload": {
+      "id": "ViralPayload",
+      "name": "Viral Payload",
+      "icon": "🦠",
+      "rarity": "rare",
+      "description": "Cards that deal damage also apply 1 Corrode to the target",
+      "hook": "on_card_play",
+      "hookEffect": "apply 1 corrode"
+    },
+    "NeuralOverride": {
+      "id": "NeuralOverride",
+      "name": "Neural Override",
+      "icon": "🔄",
+      "rarity": "rare",
+      "description": "After playing a 0-RAM card, draw 1 card (once per turn)",
+      "hook": "on_card_play",
+      "hookEffect": "draw 1 on 0-cost"
+    },
+    "CombatChassis": {
+      "id": "CombatChassis",
+      "name": "Combat Chassis",
+      "icon": "🤖",
+      "rarity": "rare",
+      "description": "Permanent +8 Max HP boost",
       "mods": {
-        "drawPerTurnDelta": 2
+        "maxHPDelta": 8
       }
     },
-    "R_R_QUANTUM_CORE": {
-      "id": "R_R_QUANTUM_CORE",
-      "name": "Quantum Core",
-      "description": "Gain +2 max RAM.",
-      "tier": "rare",
+    "TheArchitect": {
+      "id": "TheArchitect",
+      "name": "The Architect",
+      "icon": "🏗️",
+      "rarity": "rare",
+      "description": "Shop card prices reduced by 15g",
+      "hook": "passive_shop",
+      "hookEffect": "prices -15g"
+    },
+    "PurgeEngine": {
+      "id": "PurgeEngine",
+      "name": "Purge Engine",
+      "icon": "🗑️",
+      "rarity": "rare",
+      "description": "Removing a card via event adds a random card to your deck",
+      "hook": "on_card_remove",
+      "hookEffect": "add random card"
+    },
+    "RedundantSystems": {
+      "id": "RedundantSystems",
+      "name": "Redundant Sys",
+      "icon": "♻️",
+      "rarity": "rare",
+      "description": "At 0 uses, restore 2 uses before final mutation",
+      "hook": "on_use_zero",
+      "hookEffect": "restore 2 uses"
+    },
+    "GlassCannon": {
+      "id": "GlassCannon",
+      "name": "Glass Cannon",
+      "icon": "💎",
+      "rarity": "rare",
+      "description": "Deal 50% more damage, but Max HP is reduced by 15",
+      "mods": {
+        "maxHPDelta": -15
+      },
+      "hook": "passive_combat",
+      "hookEffect": "dmg x1.5"
+    },
+    "QuantumProcessor": {
+      "id": "QuantumProcessor",
+      "name": "Quantum Proc",
+      "icon": "⚛️",
+      "rarity": "rare",
+      "description": "Whenever you play a card, 50% chance to double or Exhaust it",
+      "hook": "on_card_play",
+      "hookEffect": "rng double or exhaust"
+    },
+    "RecursiveLoop": {
+      "id": "RecursiveLoop",
+      "name": "Recursive Loop",
+      "icon": "➿",
+      "rarity": "rare",
+      "description": "When a card mutates, add a base version copy to your discard",
+      "hook": "on_card_mutate",
+      "hookEffect": "add base copy"
+    },
+    "VoidPointer": {
+      "id": "VoidPointer",
+      "name": "Void Pointer",
+      "icon": "🌌",
+      "rarity": "rare",
+      "description": "Cards with the Exhaust keyword are played twice",
+      "hook": "on_card_play",
+      "hookEffect": "double exhaust cards"
+    },
+    "SystemAdminKey": {
+      "id": "SystemAdminKey",
+      "name": "System Key",
+      "icon": "🔑",
+      "rarity": "rare",
+      "description": "Free shop rerolls and lower risk during events",
+      "hook": "passive",
+      "hookEffect": "shop reroll"
+    },
+    "GoldScraper": {
+      "id": "GoldScraper",
+      "name": "Gold Scraper",
+      "icon": "🪙",
+      "rarity": "rare",
+      "description": "Receive a high initial funding for the run",
+      "mods": {
+        "startingGoldDelta": 150
+      }
+    },
+    "TheDaemon": {
+      "id": "TheDaemon",
+      "name": "The Daemon",
+      "icon": "👁️",
+      "rarity": "boss",
+      "description": "Cards deal +3 damage; start combat with 3 Corrode on self",
+      "hook": "on_combat_start",
+      "hookEffect": "+3 dmg, 3 self corrode"
+    },
+    "NeuralBurnout": {
+      "id": "NeuralBurnout",
+      "name": "Neural Burnout",
+      "icon": "🔥",
+      "rarity": "boss",
+      "description": "Max RAM is doubled, but take 2 damage every turn",
+      "mods": {
+        "maxRAMDelta": 4
+      },
+      "hook": "on_turn_start",
+      "hookEffect": "take 2 dmg"
+    },
+    "DeadMansChip": {
+      "id": "DeadMansChip",
+      "name": "Dead Man Chip",
+      "icon": "💀",
+      "rarity": "boss",
+      "description": "Once per run, a lethal hit leaves you at 1 HP",
+      "hook": "on_damage_taken",
+      "hookEffect": "lethal save"
+    },
+    "OverclockSuite": {
+      "id": "OverclockSuite",
+      "name": "Overclock Suite",
+      "icon": "⚙️",
+      "rarity": "boss",
+      "description": "Mutate 2x faster; applied mutations are 1 tier weaker",
+      "mods": {
+        "finalCountdownTickDelta": -2
+      },
+      "hook": "on_card_mutate",
+      "hookEffect": "mutation tier -1"
+    },
+    "TheSingularity": {
+      "id": "TheSingularity",
+      "name": "Singularity",
+      "icon": "🕳️",
+      "rarity": "boss",
+      "description": "Cannot draw at turn start; choose 1 of 3 cards to Download",
+      "hook": "on_turn_start",
+      "hookEffect": "download 1 of 3"
+    },
+    "CursedCompiler": {
+      "id": "CursedCompiler",
+      "name": "Cursed Comp",
+      "icon": "💠",
+      "rarity": "boss",
+      "description": "+2 RAM; play cards to add Junk Data (Curse) to deck",
       "mods": {
         "maxRAMDelta": 2
-      }
+      },
+      "hook": "on_card_play",
+      "hookEffect": "add junk data card"
     },
-    "R_R_REACTOR_CORE": {
-      "id": "R_R_REACTOR_CORE",
-      "name": "Reactor Core",
-      "description": "Regenerate +2 extra RAM per turn.",
-      "tier": "rare",
-      "mods": {
-        "ramRegenDelta": 2
-      }
+    "FirewallPrime": {
+      "id": "FirewallPrime",
+      "name": "Firewall Prime",
+      "icon": "🧱",
+      "rarity": "boss",
+      "description": "Immune to first 3 hits; you can no longer gain Block",
+      "hook": "on_combat_start",
+      "hookEffect": "3-hit invuln"
     },
-    "R_R_EXPERIMENTAL_FIRMWARE": {
-      "id": "R_R_EXPERIMENTAL_FIRMWARE",
-      "name": "Experimental Firmware",
-      "description": "Mutations are skewed toward high tiers (A, B, C more likely).",
-      "tier": "rare",
+    "ThrottledProc": {
+      "id": "ThrottledProc",
+      "name": "Throttled Proc",
+      "icon": "🚥",
+      "rarity": "boss",
+      "description": "Max RAM is capped at 3; all cards cost max 1 RAM",
       "mods": {
-        "mutationTierWeightMult": {
-          "A": 2,
-          "B": 1.5,
-          "C": 1.2
-        }
-      }
+        "maxRAMDelta": -2
+      },
+      "hook": "passive_combat",
+      "hookEffect": "cap ram 3, card cost max 1"
     },
-    "R_R_FULL_BODY_RIG": {
-      "id": "R_R_FULL_BODY_RIG",
-      "name": "Full-Body Rig",
-      "description": "Start each combat with +10 max HP.",
-      "tier": "rare",
-      "mods": {
-        "maxHPDelta": 10
-      }
-    },
-    "R_R_NEURAL_CATALYST": {
-      "id": "R_R_NEURAL_CATALYST",
-      "name": "Neural Catalyst",
-      "description": "Mutations trigger 50% more often.",
-      "tier": "rare",
-      "mods": {
-        "mutationTriggerChanceMult": 1.5
-      }
-    },
-    "R_B_APEX_OVERRIDE": {
-      "id": "R_B_APEX_OVERRIDE",
-      "name": "Apex Override",
-      "description": "+2 max RAM and draw 1 extra card per turn.",
-      "tier": "boss",
-      "mods": {
-        "maxRAMDelta": 2,
-        "drawPerTurnDelta": 1
-      }
-    },
-    "R_B_BLACK_MARKET_DECK": {
-      "id": "R_B_BLACK_MARKET_DECK",
-      "name": "Black Market Cyberdeck",
-      "description": "+1 RAM regen. Mutations trigger 75% more often.",
-      "tier": "boss",
-      "mods": {
-        "ramRegenDelta": 1,
-        "mutationTriggerChanceMult": 1.75
-      }
-    },
-    "R_B_STOLEN_PROTOCOL": {
-      "id": "R_B_STOLEN_PROTOCOL",
-      "name": "Stolen Protocol",
-      "description": "+5 max HP and +1 max RAM.",
-      "tier": "boss",
-      "mods": {
-        "maxHPDelta": 5,
-        "maxRAMDelta": 1
-      }
-    },
-    "R_B_ADMIN_KEY": {
-      "id": "R_B_ADMIN_KEY",
-      "name": "Corrupted Admin Key",
-      "description": "Draw 3 extra cards per turn.",
-      "tier": "boss",
-      "mods": {
-        "drawPerTurnDelta": 3
-      }
-    },
-    "R_B_CORP_IMPLANT": {
-      "id": "R_B_CORP_IMPLANT",
-      "name": "Corporate Implant",
-      "description": "Mutations strongly favor high tiers and trigger 50% more often.",
-      "tier": "boss",
-      "mods": {
-        "mutationTierWeightMult": {
-          "A": 3,
-          "B": 2,
-          "C": 1.5
-        },
-        "mutationTriggerChanceMult": 1.5
-      }
+    "EntropyEngine": {
+      "id": "EntropyEngine",
+      "name": "Entropy Engine",
+      "icon": "🌀",
+      "rarity": "boss",
+      "description": "Taking damage draws 1 card; no longer draw at turn start",
+      "hook": "on_damage_taken",
+      "hookEffect": "damage triggers draw"
     }
+  },
+  "relicRewardPools": {
+    "common": [
+      "NeuralCache",
+      "ScrapPlating",
+      "DataTap",
+      "Overclock",
+      "Stimpak",
+      "ExtendedBattery",
+      "WornToolkit",
+      "SignalJammer",
+      "ThermalSink",
+      "LatencyChip",
+      "DebugLog",
+      "PatchNotes",
+      "CoolingFan"
+    ],
+    "uncommon": [
+      "BlackIce",
+      "MutationCatalyst",
+      "FragmentationCache",
+      "GhostProtocol",
+      "KillSwitch",
+      "CorrodeCore",
+      "ExploitFramework",
+      "CascadeProtocol",
+      "VampiricAPI",
+      "GlitchFilter",
+      "BufferOverflow",
+      "MirrorArray",
+      "HardenedKernel",
+      "ProtocolBreach",
+      "MemoryLeak"
+    ],
+    "rare": [
+      "SingularityChip",
+      "ViralPayload",
+      "NeuralOverride",
+      "CombatChassis",
+      "TheArchitect",
+      "PurgeEngine",
+      "RedundantSystems",
+      "GlassCannon",
+      "QuantumProcessor",
+      "RecursiveLoop",
+      "VoidPointer",
+      "SystemAdminKey",
+      "GoldScraper"
+    ],
+    "boss": [
+      "TheDaemon",
+      "NeuralBurnout",
+      "DeadMansChip",
+      "OverclockSuite",
+      "TheSingularity",
+      "CursedCompiler",
+      "FirewallPrime",
+      "ThrottledProc",
+      "EntropyEngine"
+    ]
   },
   "events": {
     "EVENT_ACT1_CACHE_001": {
@@ -15102,24 +13922,24 @@
       "goldNormal": 25,
       "goldElite": 50,
       "goldBoss": 99,
-      "enemyHpMult": 0.52,
-      "enemyDmgMult": 0.7
+      "enemyHpMult": 1,
+      "enemyDmgMult": 1
     },
     {
       "act": 2,
       "goldNormal": 30,
       "goldElite": 60,
       "goldBoss": 120,
-      "enemyHpMult": 1,
-      "enemyDmgMult": 1.1
+      "enemyHpMult": 1.3,
+      "enemyDmgMult": 1.2
     },
     {
       "act": 3,
       "goldNormal": 35,
       "goldElite": 70,
       "goldBoss": 150,
-      "enemyHpMult": 1.35,
-      "enemyDmgMult": 1.25
+      "enemyHpMult": 1.6,
+      "enemyDmgMult": 1.4
     }
   ],
   "mapRules": {
@@ -15215,31 +14035,5 @@
       "Shop": "shop",
       "Rest": "rest"
     }
-  },
-  "relicRewardPools": {
-    "uncommon": [
-      "R_U_OVERCLOCK_MODULE",
-      "R_U_RAM_CACHE",
-      "R_U_EXPANDED_BUFFER",
-      "R_U_BIO_PLATING",
-      "R_U_SUBDERMAL_ARMOR",
-      "R_U_NANO_INJECTOR",
-      "R_U_WATCHDOG_TIMER"
-    ],
-    "rare": [
-      "R_R_NEURAL_INTERFACE",
-      "R_R_QUANTUM_CORE",
-      "R_R_REACTOR_CORE",
-      "R_R_EXPERIMENTAL_FIRMWARE",
-      "R_R_FULL_BODY_RIG",
-      "R_R_NEURAL_CATALYST"
-    ],
-    "boss": [
-      "R_B_APEX_OVERRIDE",
-      "R_B_BLACK_MARKET_DECK",
-      "R_B_STOLEN_PROTOCOL",
-      "R_B_ADMIN_KEY",
-      "R_B_CORP_IMPLANT"
-    ]
   }
 }

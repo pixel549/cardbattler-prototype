@@ -403,15 +403,33 @@ export function dispatchGame(stateIn, data, action) {
         relicIds: []
       };
 
-      // Starter deck: explicit card list > count-based > default 20 cards
+      // Starter deck: explicit debug list > default 5-card starter
       let starter;
       if (dbg?.startingCardIds?.length) {
-        starter = dbg.startingCardIds; // exact list; duplicates allowed for multiple copies
+        starter = dbg.startingCardIds;
+      } else if (dbg?.startingCardCount != null) {
+        starter = Object.keys(data.cards).slice(0, dbg.startingCardCount);
       } else {
-        const cardCount = dbg?.startingCardCount ?? 20;
-        starter = Object.keys(data.cards).slice(0, cardCount);
+        // Default: C-001 (Strike) + C-002 (Guard) + 1 random Utility + 1 random Attack + 1 random Defense
+        const starterRng = new RNG((action.seed ^ 0x5EED5EED) >>> 0);
+        const pick = (type, exclude) => {
+          const pool = Object.entries(data.cards)
+            .filter(([id, c]) => c.type === type
+              && !c.tags?.includes('EnemyCard')
+              && !c.tags?.includes('Status')
+              && !exclude?.includes(id))
+            .map(([id]) => id);
+          return pool.length ? pool[starterRng.int(pool.length)] : null;
+        };
+        starter = [
+          'C-001',
+          'C-002',
+          pick('Utility'),
+          pick('Attack', ['C-001']),
+          pick('Defense', ['C-002']),
+        ].filter(Boolean);
       }
-      state.deck = createRunDeckFromDefs(data, action.seed, starter.length ? starter : ["C-001","C-002"]);
+      state.deck = createRunDeckFromDefs(data, action.seed, starter.length ? starter : ['C-001', 'C-002']);
       state.map = generateMap(action.seed);
       state.combat = null;
       state.reward = null;

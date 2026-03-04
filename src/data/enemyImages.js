@@ -123,6 +123,18 @@ const ENEMY_IMAGE_MAP = {
   E_STATIC_WARDEN_ARRAY:             'imgi_157_image.png',
   E_NEON_COURIER_CREW:               'imgi_210_image.png',
   E_VANTA_SAPPER_SHARD:              'imgi_116_image.png',
+  // Enemies added in later passes — assigned available image slots
+  E_OBSIDIAN_BRUISER_PACK:           'imgi_10_image.jpg',
+  E_VANTA_SENTINEL_PROTOCOL:         'imgi_13_image.jpg',
+  E_VANTA_SCOUT_NODE:                'imgi_14_image.jpg',
+  E_STATIC_DRONE_MK_II:              'imgi_16_image.jpg',
+  E_VECTOR_DAEMON_FRAME:             'imgi_18_image.jpg',
+  E_CIPHER_HACKER_MK_II:             'imgi_20_image.jpg',
+  E_RAZOR_TECH_NODE:                 'imgi_22_image.jpg',
+  E_OBSIDIAN_POD_MK_I:               'imgi_24_image.jpg',
+  E_FLUX_COURIER_PROXY:              'imgi_26_image.jpg',
+  E_ECHO_SNIPER_PACK_2:              'imgi_28_image.jpg',
+  E_ROGUE_TECH_SHARD:                'imgi_32_image.jpg',
   // Bosses
   E_ADMINISTRATOR_KILO_CORE:         'imgi_288_image.png',
   E_NEXUS_ROGUE_ORACLE:              'imgi_252_image.png',

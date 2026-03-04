@@ -1668,8 +1668,69 @@ function enemyTurn(state, data, rng, enemyId) {
 }
 
 // ---------- combat start ----------
+// ---------- relic hooks ----------
+function runRelicHooks(state, data, hook, ctx = {}) {
+  for (const rid of (state.relicIds || [])) {
+    const relic = data.relics?.[rid];
+    if (!relic || relic.hook !== hook) continue;
+    applyRelicHook(state, data, relic, ctx);
+  }
+}
+
+function applyRelicHook(state, data, relic, ctx) {
+  const rid = relic.id;
+  switch (rid) {
+    // --- on_combat_start ---
+    case 'NeuralCache':
+      // +2 RAM (may exceed maxRAM, treated as a bonus start)
+      state.player.ram = Math.min(state.player.maxRAM + 2, state.player.ram + 2);
+      push(state.log, { t: 'Info', msg: 'NeuralCache: +2 RAM' });
+      break;
+    case 'SignalJammer':
+      state._relicSignalJammerActive = true;
+      push(state.log, { t: 'Info', msg: 'SignalJammer: first enemy hit -2 dmg' });
+      break;
+    case 'GhostProtocol':
+      state._nextCardFree = true;
+      push(state.log, { t: 'Info', msg: 'GhostProtocol: first card free' });
+      break;
+    case 'LatencyChip':
+      // handled separately after opening draw (ctx.postDraw = true)
+      if (ctx.postDraw) {
+        const lRng = ctx.rng || new RNG((state.seed ^ 0xAB7) >>> 0);
+        drawCards(state, lRng, 2);
+        state.player.ram = Math.max(0, state.player.ram - 1);
+        push(state.log, { t: 'Info', msg: 'LatencyChip: +2 draw, -1 RAM' });
+      }
+      break;
+    case 'FirewallPrime':
+      state._relicFirewallPrimeHits = 3;
+      push(state.log, { t: 'Info', msg: 'FirewallPrime: 3-hit immune' });
+      break;
+    case 'TheDaemon':
+      // +3 outgoing damage tracked; also apply 3 Corrode to self
+      state._relicDaemonDmgBonus = 3;
+      addStatus(state.player, 'Corrode', 3);
+      push(state.log, { t: 'Info', msg: 'TheDaemon: +3 dmg bonus, 3 self Corrode' });
+      break;
+
+    // --- on_turn_start ---
+    case 'Overclock':
+      state._relicOverclockCostMod = -1;
+      break;
+    case 'NeuralBurnout':
+      // take 2 damage (no block interaction — direct HP loss)
+      state.player.hp = Math.max(0, state.player.hp - 2);
+      push(state.log, { t: 'Info', msg: 'NeuralBurnout: -2 HP' });
+      break;
+
+    default:
+      break;
+  }
+}
+
 export function startCombatFromRunDeck(params) {
-  const { data, seed, act, runDeck, enemyIds, playerMaxHP=50, playerMaxRAM=8, playerRamRegen=2, openingHand=5, ruleMods={}, forcedMutationTier=null, debugOverrides=null } = params;
+  const { data, seed, act, runDeck, enemyIds, playerMaxHP=50, playerMaxRAM=8, playerRamRegen=2, openingHand=5, ruleMods={}, forcedMutationTier=null, debugOverrides=null, relicIds=[] } = params;
   const rng = new RNG(seed);
   const draw = [...runDeck.master];
 

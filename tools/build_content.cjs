@@ -166,6 +166,93 @@ function buildMutationPools(filename) {
   return out;
 }
 
+// Parse specialAbilities JSON array strings into the passives format used by runEnemyPassives.
+// Only handles patterns that map cleanly to ops. AI-preference notes are silently skipped.
+function parseSpecialAbilitiesToPassives(specialAbilitiesJson) {
+  let specs;
+  try { specs = JSON.parse(specialAbilitiesJson || '[]'); } catch { return []; }
+  if (!Array.isArray(specs)) return [];
+  const passives = [];
+  for (const spec of specs) {
+    if (typeof spec !== 'string') continue;
+    const s = spec.trim();
+
+    // "On death: N damage to ALL active characters"
+    {
+      const m = s.match(/on death[:\s]+(\d+) damage to ALL/i);
+      if (m) {
+        passives.push({ trigger: 'Death', ops: [
+          { op: 'DealDamage', target: 'AllEnemies', amount: parseInt(m[1]) },
+          { op: 'DealDamage', target: 'Player', amount: parseInt(m[1]) },
+        ]});
+        continue;
+      }
+    }
+    // "On death: N damage to all active characters" (lowercase variant)
+    {
+      const m = s.match(/on death[:\s]+deals? (\d+) damage to ALL/i);
+      if (m) {
+        passives.push({ trigger: 'Death', ops: [
+          { op: 'DealDamage', target: 'AllEnemies', amount: parseInt(m[1]) },
+          { op: 'DealDamage', target: 'Player', amount: parseInt(m[1]) },
+        ]});
+        continue;
+      }
+    }
+    // "Starts combat with N Firewall"
+    {
+      const m = s.match(/starts combat with (\d+) Firewall/i);
+      if (m) {
+        passives.push({ trigger: 'CombatStart', ops: [
+          { op: 'ApplyStatus', target: 'Self', statusId: 'Firewall', stacks: parseInt(m[1]) },
+        ]});
+        continue;
+      }
+    }
+    // "First debuff each combat grants N Firewall"
+    {
+      const m = s.match(/first debuff.*grants (\d+) Firewall/i);
+      if (m) {
+        passives.push({ trigger: 'FirstDebuffAppliedToSelfThisCombat', ops: [
+          { op: 'ApplyStatus', target: 'Self', statusId: 'Firewall', stacks: parseInt(m[1]) },
+        ]});
+        continue;
+      }
+    }
+    // "Turn 1: plays 2 cards" / "Turn 1: plays N cards"
+    {
+      const m = s.match(/turn 1[:\s]+plays? (\d+) cards?/i);
+      if (m) {
+        passives.push({ trigger: 'TurnStart', when: { turn: 1 }, ops: [
+          { op: '_SetPlaysThisTurn', amount: parseInt(m[1]) },
+        ]});
+        continue;
+      }
+    }
+    // "Every N turns: apply N Corrode to player"
+    {
+      const m = s.match(/every (\d+) turns?[:\s]+apply (\d+) Corrode/i);
+      if (m) {
+        passives.push({ trigger: 'EveryNTurns', n: parseInt(m[1]), ops: [
+          { op: 'ApplyStatus', target: 'Enemy', statusId: 'Corrode', stacks: parseInt(m[2]) },
+        ]});
+        continue;
+      }
+    }
+    // "Each turn after acting: removes 1 stack of each negative status"
+    {
+      if (/removes? 1 stack of each negative status/i.test(s)) {
+        passives.push({ trigger: 'AfterEnemyActs', ops: [
+          { op: '_RemoveOneStackAllNegativeStatuses' },
+        ]});
+        continue;
+      }
+    }
+    // Other patterns not parsed — silently skip
+  }
+  return passives;
+}
+
 // Role-based enemy ability card assignment.
 // Each entry maps a role → { easy, normal, hard, boss } rotation arrays.
 const ENEMY_ROLE_ROTATIONS = {
@@ -228,7 +315,10 @@ function buildEnemies(filename) {
     rot = rot.map(x => (/^\d+$/.test(x) ? 'EC-A1' : x));
 
     // extra already parsed above; continue with passives/ai
-    const passives = toJson(r.passives, null) ?? extra.passives ?? [];
+    // Parse specialAbilities column into passives ops, then merge with any explicit passives
+    const specPassives = parseSpecialAbilitiesToPassives(r.specialAbilities || '[]');
+    const explicitPassives = toJson(r.passives, null) ?? extra.passives ?? [];
+    const passives = [...specPassives, ...(Array.isArray(explicitPassives) ? explicitPassives : [])];
     const ai = toJson(r.ai, null) ?? extra.ai ?? null;
     const phaseThresholdsPct = toJson(r.phaseThresholdsPct, null) ?? extra.phaseThresholdsPct ?? null;
 

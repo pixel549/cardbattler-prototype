@@ -968,6 +968,30 @@ export function applyEffectOp(state, sourceId, op, rng) {
       }
       return;
     }
+    // --- Enemy passive ops ---
+    case '_SetPlaysThisTurn': {
+      // Set how many times the enemy acts this turn (e.g. "Turn 1: plays 2 cards" passive)
+      const enemy = state.enemies.find(e => e.id === sourceId);
+      if (enemy) {
+        if (!enemy.combatFlags) enemy.combatFlags = {};
+        enemy.combatFlags.playsThisTurnOverride = op.amount || 1;
+        push(state.log, { t: 'Info', msg: `${enemy.id} plays ${op.amount} times this turn` });
+      }
+      return;
+    }
+    case '_RemoveOneStackAllNegativeStatuses': {
+      // Self-cleanse: remove 1 stack of each negative status on this enemy
+      const enemy2 = state.enemies.find(e => e.id === sourceId);
+      if (enemy2 && enemy2.statuses) {
+        for (const s of enemy2.statuses) {
+          if (isNegativeStatus(state, s.id) && s.stacks > 0) s.stacks -= 1;
+        }
+        enemy2.statuses = enemy2.statuses.filter(s => s.stacks > 0);
+        push(state.log, { t: 'Info', msg: `${enemy2.id} self-cleansed 1 stack of each negative status` });
+      }
+      return;
+    }
+
     default:
       push(state.log, { t: "Info", msg: `Unknown op ${op.op}` , data: op});
       return;

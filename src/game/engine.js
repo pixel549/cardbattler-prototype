@@ -343,8 +343,9 @@ function processStatusEffects(state, entity) {
             entity.block = Math.max(0, entity.block - stripped);
             push(state.log, { t: 'Info', msg: `${entity.id} Corrode strips ${stripped} block` });
           }
-          // Deal 1 damage per Corrode stack (acid burn DoT)
-          const corrodeDmg = s.stacks;
+          // Deal 1 damage per Corrode stack (acid burn DoT); CorrodeCore relic adds +1/stack
+          const corrodeDmgBonus = (state.relicIds || []).includes('CorrodeCore') ? 1 : 0;
+          const corrodeDmg = s.stacks + s.stacks * corrodeDmgBonus;
           entity.hp = Math.max(0, entity.hp - corrodeDmg);
           push(state.log, { t: 'Info', msg: `${entity.id} Corrode burns ${corrodeDmg}` });
         }
@@ -1126,8 +1127,15 @@ function maybeTriggerMutation(state, data, rng, cardInstanceId) {
   }
 
   const forced = state.forcedMutationTier;
-  const tier = forced || rollTier(rng, normalizeTierOdds(tierOdds));
+  let tier = forced || rollTier(rng, normalizeTierOdds(tierOdds));
   if (forced) state.forcedMutationTier = null;
+
+  // OverclockSuite: applied mutations are 1 tier weaker (A→A, B→A, C→B, etc.)
+  if ((state.relicIds || []).includes('OverclockSuite') && !forced) {
+    const tierOrder = ['A','B','C','D','E','F','G','H','I'];
+    const idx = tierOrder.indexOf(tier);
+    if (idx > 0) tier = tierOrder[idx - 1];
+  }
 
   applyMutation(state, data, rng, cardInstanceId, tier);
   runPatchTrigger(state, data, rng, cardInstanceId, 'onMutate');
@@ -1842,6 +1850,26 @@ function applyRelicHook(state, data, relic, ctx) {
       break;
     }
 
+    case 'CursedCompiler': {
+      // Add a Junk Data card (NC-085 Dazed Packet) to the discard pile each time a card is played
+      const ccRng = ctx.rng || new RNG((state.seed ^ 0xC0DE5) >>> 0);
+      const junkDefId = 'NC-085';
+      if (state.dataRef?.cards?.[junkDefId]) {
+        const junkCid = `cc_${ccRng.int(0xFFFF).toString(16)}_${state._ccJunkCount || 0}`;
+        state._ccJunkCount = (state._ccJunkCount || 0) + 1;
+        state.cardInstances[junkCid] = {
+          defId: junkDefId,
+          appliedMutations: [],
+          useCounter: state.dataRef.cards[junkDefId].defaultUseCounter ?? 7,
+          finalMutationCountdown: state.dataRef.cards[junkDefId].defaultFinalMutationCountdown ?? 7,
+          ramCostDelta: 0,
+        };
+        state.player.piles.discard.push(junkCid);
+        push(state.log, { t: 'Info', msg: 'CursedCompiler: Junk Data added to discard' });
+      }
+      break;
+    }
+
     // --- on_enemy_kill (called manually from applyDamage result) ---
     case 'KillSwitch':
       state.player.hp = Math.min(state.player.maxHP, state.player.hp + 3);
@@ -2065,10 +2093,40 @@ export function dispatchCombat(state, data, action) {
         }
       }
 
+      // QuantumProcessor: 50% chance to double all effects OR exhaust the card
+      const hasQuantumProcessor = (state.relicIds || []).includes('QuantumProcessor');
+      if (hasQuantumProcessor) {
+        const qpRoll = rng.next();
+        if (qpRoll < 0.5) {
+          state._qpDoubleThisCard = true;
+          push(state.log, { t: 'Info', msg: 'QuantumProcessor: doubled!' });
+        } else {
+          state._qpExhaustThisCard = true;
+          push(state.log, { t: 'Info', msg: 'QuantumProcessor: exhausted!' });
+        }
+      }
+
+      // VoidPointer: cards with Exhaust tag deal double effects (they still exhaust)
+      const hasVoidPointer = (state.relicIds || []).includes('VoidPointer');
+      if (hasVoidPointer && def.tags?.includes('Exhaust')) {
+        state._voidPointerDoubleThisCard = true;
+        push(state.log, { t: 'Info', msg: 'VoidPointer: Exhaust card plays twice' });
+      }
+
       // Passive mutation modifiers for this play
       const mutPassives = computePassiveMods(state, data, cid);
       // MemoryLeak doubles the effectMult for this card
       if (state._memoryLeakThisCard) {
+        mutPassives.effectMult = (mutPassives.effectMult || 1) * 2;
+        mutPassives.damageMult = (mutPassives.damageMult || 1) * 2;
+      }
+      // QuantumProcessor double roll
+      if (state._qpDoubleThisCard) {
+        mutPassives.effectMult = (mutPassives.effectMult || 1) * 2;
+        mutPassives.damageMult = (mutPassives.damageMult || 1) * 2;
+      }
+      // VoidPointer doubles Exhaust-tagged cards
+      if (state._voidPointerDoubleThisCard) {
         mutPassives.effectMult = (mutPassives.effectMult || 1) * 2;
         mutPassives.damageMult = (mutPassives.damageMult || 1) * 2;
       }
@@ -2122,20 +2180,31 @@ export function dispatchCombat(state, data, action) {
 
         // final mutation check
         if (ci.finalMutationCountdown <= 0 && !ci.finalMutationId) {
-          applyFinalMutation(state, data, rng, cid);
+          // RedundantSystems: once per card, restore 2 countdown ticks before final mutation
+          if ((state.relicIds || []).includes('RedundantSystems') && !ci._redundantSystemsUsed) {
+            ci._redundantSystemsUsed = true;
+            ci.finalMutationCountdown = 2;
+            push(state.log, { t: 'Info', msg: `RedundantSystems: final mutation delayed +2 for ${ci.defId}` });
+          } else {
+            applyFinalMutation(state, data, rng, cid);
+          }
         }
       }
 
       // move card to power/exhaust/discard
       const memoryLeakExhaust = state._memoryLeakThisCard;
+      const qpExhaust = state._qpExhaustThisCard;
       delete state._memoryLeakThisCard;
+      delete state._qpDoubleThisCard;
+      delete state._qpExhaustThisCard;
+      delete state._voidPointerDoubleThisCard;
       state.player.piles.hand = state.player.piles.hand.filter(x => x !== cid);
       if (def.tags?.includes("Power") || def.type === "Power") {
         // POWER cards stay in play permanently
         state.player.piles.power = state.player.piles.power || [];
         state.player.piles.power.push(cid);
         push(state.log, { t: 'Info', msg: `${def.name} is now active (Power)` });
-      } else if (memoryLeakExhaust || def.tags?.includes("Exhaust") || ci.finalMutationId === "J_BRICK") {
+      } else if (memoryLeakExhaust || qpExhaust || def.tags?.includes("Exhaust") || ci.finalMutationId === "J_BRICK") {
         state.player.piles.exhaust.push(cid);
       } else {
         state.player.piles.discard.push(cid);

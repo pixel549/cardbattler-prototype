@@ -1712,7 +1712,7 @@ function applyRelicHook(state, data, relic, ctx) {
     case 'TheDaemon':
       // +3 outgoing damage tracked; also apply 3 Corrode to self
       state._relicDaemonDmgBonus = 3;
-      addStatus(state.player, 'Corrode', 3);
+      addStatus(state, state.player, 'Corrode', 3);
       push(state.log, { t: 'Info', msg: 'TheDaemon: +3 dmg bonus, 3 self Corrode' });
       break;
 
@@ -1771,11 +1771,22 @@ function applyRelicHook(state, data, relic, ctx) {
         }
       }
       break;
-    case 'ProtocolBreach':
-      // Gain 1 temporary RAM combo token (tracked as _protocolBreachTokens)
-      state._protocolBreachTokens = (state._protocolBreachTokens || 0) + 1;
-      push(state.log, { t: 'Info', msg: 'ProtocolBreach: RAM combo +1' });
+    case 'ProtocolBreach': {
+      // Track unique card types played this turn; grant +1 RAM when 3 distinct types reached (once/turn)
+      if (!state._protocolBreachTriggered) {
+        if (!state._protocolBreachTypes) state._protocolBreachTypes = [];
+        const cardType = ctx.def?.type || 'Unknown';
+        if (!state._protocolBreachTypes.includes(cardType)) {
+          state._protocolBreachTypes.push(cardType);
+        }
+        if (state._protocolBreachTypes.length >= 3) {
+          state.player.ram = Math.min(state.player.maxRAM, state.player.ram + 1);
+          state._protocolBreachTriggered = true;
+          push(state.log, { t: 'Info', msg: 'ProtocolBreach: 3 types played — +1 RAM' });
+        }
+      }
       break;
+    }
     case 'DebugLog':
       // Every 5th card played this combat is free
       {
@@ -1946,6 +1957,12 @@ export function dispatchCombat(state, data, action) {
         delete state._nextTurnBonusRAM;
       }
 
+      // EntropyEngine: draw cards queued from damage taken last turn
+      if (state._entropyEngineDrawPending > 0) {
+        drawCards(state, rng, state._entropyEngineDrawPending);
+        push(state.log, { t: 'Info', msg: `EntropyEngine: +${state._entropyEngineDrawPending} draw from damage` });
+        delete state._entropyEngineDrawPending;
+      }
       drawCards(state, rng, 5 + (state.ruleMods?.drawPerTurnDelta || 0));
       // Reset transient per-turn combat flags before recomputing them via processStatusEffects
       const _clearFlags = (ent) => {
@@ -1966,6 +1983,8 @@ export function dispatchCombat(state, data, action) {
       state._firstDamageThisTurn = false;
       state._killchainUsedThisTurn = false;
       delete state._keepOneCard;
+      delete state._protocolBreachTypes;
+      delete state._protocolBreachTriggered;
       // Clear mutation-patch per-turn flags
       delete state._lockedCards;
       state._pendingEndTurnSelfDamage = 0;
@@ -2021,6 +2040,11 @@ export function dispatchCombat(state, data, action) {
       // Compute RAM cost, accounting for NextCardFree flag
       let cost = Math.max(0, (def.costRAM || 0) + (ci.ramCostDelta || 0));
       if (state._nextCardFree) { cost = 0; state._nextCardFree = false; }
+      // Overclock relic: first card each turn costs 1 less RAM
+      if (state._relicOverclockCostMod != null) {
+        cost = Math.max(0, cost + state._relicOverclockCostMod);
+        delete state._relicOverclockCostMod;
+      }
       if (state.player.ram < cost) { push(state.log, { t: "Info", msg: "Not enough RAM" }); return state; }
 
       state.player.ram -= cost;
@@ -2031,8 +2055,23 @@ export function dispatchCombat(state, data, action) {
       // Track currently-playing card so effects like _ShuffleHandIntoDraw can exclude it
       state._currentlyPlayingCard = cid;
 
+      // MemoryLeak: every 3rd card played is exhausted + deals double effect
+      const hasMemoryLeak = (state.relicIds || []).includes('MemoryLeak');
+      if (hasMemoryLeak) {
+        state._memoryLeakCount = (state._memoryLeakCount || 0) + 1;
+        if (state._memoryLeakCount % 3 === 0) {
+          state._memoryLeakThisCard = true;
+          push(state.log, { t: 'Info', msg: 'MemoryLeak: 3rd card — double effect + exhaust' });
+        }
+      }
+
       // Passive mutation modifiers for this play
       const mutPassives = computePassiveMods(state, data, cid);
+      // MemoryLeak doubles the effectMult for this card
+      if (state._memoryLeakThisCard) {
+        mutPassives.effectMult = (mutPassives.effectMult || 1) * 2;
+        mutPassives.damageMult = (mutPassives.damageMult || 1) * 2;
+      }
       state._cardMutMods = mutPassives;
 
       // Set target override so effects hit the selected enemy
@@ -2088,13 +2127,15 @@ export function dispatchCombat(state, data, action) {
       }
 
       // move card to power/exhaust/discard
+      const memoryLeakExhaust = state._memoryLeakThisCard;
+      delete state._memoryLeakThisCard;
       state.player.piles.hand = state.player.piles.hand.filter(x => x !== cid);
       if (def.tags?.includes("Power") || def.type === "Power") {
         // POWER cards stay in play permanently
         state.player.piles.power = state.player.piles.power || [];
         state.player.piles.power.push(cid);
         push(state.log, { t: 'Info', msg: `${def.name} is now active (Power)` });
-      } else if (def.tags?.includes("Exhaust") || ci.finalMutationId === "J_BRICK") {
+      } else if (memoryLeakExhaust || def.tags?.includes("Exhaust") || ci.finalMutationId === "J_BRICK") {
         state.player.piles.exhaust.push(cid);
       } else {
         state.player.piles.discard.push(cid);

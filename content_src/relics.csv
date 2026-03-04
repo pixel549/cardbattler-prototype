@@ -1,1 +1,51 @@
-id,name,mods
+id,name,icon,rarity,description,mod_maxHPDelta,mod_maxMPDelta,mod_maxRAMDelta,mod_startingGoldDelta,mod_drawPerTurnDelta,mod_travelHpCostDelta,mod_finalCountdownTickDelta,mod_ramRegenDelta,mod_mutationTriggerChanceMult,mod_mutationTierWeightMult,hook,hookEffect,pool
+NeuralCache,Neural Cache,🧠,common,Start each combat with +2 MP,,,,,,,,,,,on_combat_start,gain 2 MP,common
+ScrapPlating,Scrap Plating,🛡️,common,Reduce the first hit you take each combat by 4,,,,,,,,,,,on_damage_taken,reduce first hit by 4,common
+DataTap,Data Tap,💰,common,Gain 12g after every combat,,,,,,,,,,,after_combat,gain 12g,common
+Overclock,Overclock,⚡,common,First card played each turn costs 1 less RAM,,,,,,,,,,,on_turn_start,cost -1 RAM gate,common
+Stimpak,Stimpak,💊,common,Heal 4 HP after every normal combat,,,,,,,,,,,after_combat,heal 4 HP,common
+ExtendedBattery,Extended Battery,🔋,common,+1 to starting max MP,,1,,,,,,,,,,,common
+WornToolkit,Worn Toolkit,🔧,common,"At run start, one random card in your deck is Repaired",,,,,,,,,,,on_run_start,repair 1 card,common
+SignalJammer,Signal Jammer,📡,common,Enemies deal 2 less damage on their first action each combat,,,,,,,,,,,on_combat_start,enemy dmg -2,common
+ThermalSink,Thermal Sink,🌡️,common,Increased core stability provides flat HP,6,,,,,,,,,,,,common
+LatencyChip,Latency Chip,⏳,common,"Turn 1: +2 Draw, but -1 RAM",,,,,,,,,,,on_combat_start,"draw +2, ram -1",common
+DebugLog,Debug Log,📜,common,Every 5th card played in a single combat costs 0 RAM,,,,,,,,,,,on_card_play,5th card free,common
+PatchNotes,Patch Notes,📝,common,"Whenever a card mutates, choose from 3 options instead of 2",,,,,,,,,,,on_card_mutate,choice +1,common
+CoolingFan,Cooling Fan,❄️,common,"Whenever you play a 'Repair' card, gain 4 Block",,,,,,,,,,,on_card_play,if repair gain 4 block,common
+BlackIce,Black Ice,🖤,uncommon,"Whenever an enemy inflicts a debuff on you, deal 3 damage back",,,,,,,,,,,on_damage_taken,deal 3 back,uncommon
+MutationCatalyst,Mutation Catalyst,🧬,uncommon,All cards mutate 1 turn sooner,,,,,,,-1,,,,,,uncommon
+FragmentationCache,Fragment Cache,💣,uncommon,Gain 35g whenever you remove a card from your deck,,,,,,,,,,,on_card_remove,gain 35g,uncommon
+GhostProtocol,Ghost Protocol,👻,uncommon,The first card you play each combat costs 0 RAM,,,,,,,,,,,on_combat_start,set cost 0 gate,uncommon
+KillSwitch,Kill Switch,☠️,uncommon,Killing an enemy heals you 3 HP,,,,,,,,,,,on_enemy_kill,heal 3 HP,uncommon
+CorrodeCore,Corrode Core,🔩,uncommon,Your Corrode stacks deal +1 damage per tick,,,,,,,,,,,passive_combat,corrode dmg +1,uncommon
+ExploitFramework,Exploit Frame,🗂️,uncommon,Gain an extra 25g after every Elite encounter,,,,,,,,,,,after_combat,elite gold +25,uncommon
+CascadeProtocol,Cascade Protocol,📊,uncommon,"Whenever one of your cards mutates during combat, gain 8g",,,,,,,,,,,on_card_mutate,gain 8g,uncommon
+VampiricAPI,Vampiric API,🧛,uncommon,Restore 20% dmg as HP; cannot heal at rooms or events,,,,,,,,,,,on_damage_dealt,lifesteal 20%,uncommon
+GlitchFilter,Glitch Filter,💾,uncommon,"Whenever a card is discarded, deal 3 damage to a random enemy",,,,,,,,,,,on_card_discard,deal 3 dmg,uncommon
+BufferOverflow,Buffer Overflow,🌊,uncommon,"If you end your turn with 0 RAM, draw 1 card next turn",,,,,,,,,,,on_turn_end,if 0 RAM draw 1,uncommon
+MirrorArray,Mirror Array,🪞,uncommon,"The first time an enemy attacks each combat, reflect the damage",,,,,,,,,,,on_damage_taken,reflect first hit,uncommon
+HardenedKernel,Hardened Kernel,🔰,uncommon,Immune to Vulnerable; you can no longer gain Strength buffs,,,,,,,,,,,passive,immunity: vuln,uncommon
+ProtocolBreach,Protocol Breach,⚡,uncommon,"If you play cards of 3 different types in one turn, gain 1 RAM",,,,,,,,,,,on_card_play,gain 1 RAM combo,uncommon
+MemoryLeak,Memory Leak,💧,uncommon,Every 3rd card played is Exhausted but deals double effect,,,,,,,,,,,on_card_play,x2 effect then exhaust,uncommon
+SingularityChip,Singularity Chip,🌀,rare,"Below 25% HP, restore 20 HP (Once per combat)",,,,,,,,,,,on_damage_taken,threshold heal 20,rare
+ViralPayload,Viral Payload,🦠,rare,Cards that deal damage also apply 1 Corrode to the target,,,,,,,,,,,on_card_play,apply 1 corrode,rare
+NeuralOverride,Neural Override,🔄,rare,"After playing a 0-RAM card, draw 1 card (once per turn)",,,,,,,,,,,on_card_play,draw 1 on 0-cost,rare
+CombatChassis,Combat Chassis,🤖,rare,Permanent +8 Max HP boost,8,,,,,,,,,,,,rare
+TheArchitect,The Architect,🏗️,rare,Shop card prices reduced by 15g,,,,,,,,,,,passive_shop,prices -15g,rare
+PurgeEngine,Purge Engine,🗑️,rare,Removing a card via event adds a random card to your deck,,,,,,,,,,,on_card_remove,add random card,rare
+RedundantSystems,Redundant Sys,♻️,rare,"At 0 uses, restore 2 uses before final mutation",,,,,,,,,,,on_use_zero,restore 2 uses,rare
+GlassCannon,Glass Cannon,💎,rare,"Deal 50% more damage, but Max HP is reduced by 15",-15,,,,,,,,,,passive_combat,dmg x1.5,rare
+QuantumProcessor,Quantum Proc,⚛️,rare,"Whenever you play a card, 50% chance to double or Exhaust it",,,,,,,,,,,on_card_play,rng double or exhaust,rare
+RecursiveLoop,Recursive Loop,➿,rare,"When a card mutates, add a base version copy to your discard",,,,,,,,,,,on_card_mutate,add base copy,rare
+VoidPointer,Void Pointer,🌌,rare,Cards with the Exhaust keyword are played twice,,,,,,,,,,,on_card_play,double exhaust cards,rare
+SystemAdminKey,System Key,🔑,rare,Free shop rerolls and lower risk during events,,,,,,,,,,,passive,shop reroll,rare
+GoldScraper,Gold Scraper,🪙,rare,Receive a high initial funding for the run,,,,150,,,,,,,,,rare
+TheDaemon,The Daemon,👁️,boss,Cards deal +3 damage; start combat with 3 Corrode on self,,,,,,,,,,,on_combat_start,"+3 dmg, 3 self corrode",boss
+NeuralBurnout,Neural Burnout,🔥,boss,"Max RAM is doubled, but take 2 damage every turn",,,4,,,,,,,,on_turn_start,take 2 dmg,boss
+DeadMansChip,Dead Man Chip,💀,boss,"Once per run, a lethal hit leaves you at 1 HP",,,,,,,,,,,on_damage_taken,lethal save,boss
+OverclockSuite,Overclock Suite,⚙️,boss,Mutate 2x faster; applied mutations are 1 tier weaker,,,,,,,-2,,,,on_card_mutate,mutation tier -1,boss
+TheSingularity,Singularity,🕳️,boss,Cannot draw at turn start; choose 1 of 3 cards to Download,,,,,,,,,,,on_turn_start,download 1 of 3,boss
+CursedCompiler,Cursed Comp,💠,boss,+2 RAM; play cards to add Junk Data (Curse) to deck,,,2,,,,,,,,on_card_play,add junk data card,boss
+FirewallPrime,Firewall Prime,🧱,boss,Immune to first 3 hits; you can no longer gain Block,,,,,,,,,,,on_combat_start,3-hit invuln,boss
+ThrottledProc,Throttled Proc,🚥,boss,Max RAM is capped at 3; all cards cost max 1 RAM,,,-2,,,,,,,,passive_combat,"cap ram 3, card cost max 1",boss
+EntropyEngine,Entropy Engine,🌀,boss,Taking damage draws 1 card; no longer draw at turn start,,,,,,,,,,,on_damage_taken,damage triggers draw,boss

@@ -1,0 +1,635 @@
+NC-012 · Stack Trace · Utility
+Layered translucent violet data panels cascade downward in depth; a single glowing thread highlights a traced execution path through the stack.
+Control accent: faint spotlight isolating one glowing layer from a vertical stack.
+Standard finish: two-tone violet and silver-white glow, faint circuit-board texture in near-black (#0A0A10) background. No text. Portrait orientation.
+
+NC-013 · Reorder Buffer · Utility
+Floating violet data blocks shift positions mid-air, smoothly sliding past one another into a new ordered formation.
+Control accent: layered semi-transparent geometry rearranging in precise motion.
+Standard finish: two-tone violet and silver-white glow, faint circuit-board texture in near-black (#0A0A10) background. No text. Portrait orientation.
+
+NC-014 · Shield Injector · Defense · Firewall
+A cyan energy injector pierces into a forming hexagonal barrier; blue tiles rapidly assemble outward into a protective dome.
+Firewall accent: cascading blue hexagonal energy tiles locking into place from frame edges.
+Standard finish: cyan and electric-blue two-tone glow, faint circuit-board texture in near-black (#0A0A10) background. No text. Portrait orientation.
+
+NC-015 · Overclock Ping · Utility · Overclocked
+A sharp violet signal pulse ignites into blazing gold circuit-traces that flare brighter than safe limits.
+Overclocked accent: crackling gold-orange aura bursting outward from overloaded nodes.
+Standard finish: violet base with gold edge flare, faint circuit-board texture in near-black (#0A0A10) background. No text. Portrait orientation.
+
+NC-016 · Hardening Routine · Defense · Firewall
+A rigid cyan barrier solidifies as geometric panels seal shut with heavy locking motions.
+Firewall accent: hexagonal energy wall forming in layered segments, concentric ripple rings radiating outward.
+Standard finish: cyan and electric-blue two-tone glow, faint circuit-board texture in near-black (#0A0A10) background. No text. Portrait orientation.
+
+NC-017 · Nano Drip · Support · Nanoflow
+A steady stream of bioluminescent green nanites drips from above, flowing inward into a central damaged node.
+Nanoflow accent: flowing amber-green luminous streams curling inward.
+Standard finish: green and teal two-tone glow, faint circuit-board texture in near-black (#0A0A10) background. No text. Portrait orientation.
+
+NC-018 · Leak Tap · Attack · Leak
+A sharp red spike punctures a system chassis; dark iridescent fluid drains outward in thin streams.
+Leak accent: black-oil iridescent fluid seeping from cracked circuitry during impact.
+Standard finish: red and orange two-tone glow, faint circuit-board texture in near-black (#0A0A10) background. No text. Portrait orientation.
+
+NC-019 · Hook Script · Utility
+A curved violet data-hook arcs through darkness, latching onto a glowing node and pulling it slightly forward.
+Control accent: subtle tractor-beam line tethering object to source.
+Standard finish: two-tone violet and silver-white glow, faint circuit-board texture in near-black (#0A0A10) background. No text. Portrait orientation.
+
+NC-020 · Focus Cycle · Utility
+A ring of violet data shards spins in controlled orbit, one shard glowing brighter each rotation.
+Control accent: circular motion blur forming a precise rotation loop.
+Standard finish: two-tone violet and silver-white glow, faint circuit-board texture in near-black (#0A0A10) background. No text. Portrait orientation.
+
+NC-021 · Cleanup · Utility
+Fragmented data files disintegrate into pale violet embers, dissolving into empty space.
+Purge accent: digital fragments incinerating into glowing particle ash.
+Standard finish: two-tone violet and silver-white glow, faint circuit-board texture in near-black (#0A0A10) background. No text. Portrait orientation.
+
+NC-022 · Firewall Top-Up · Defense · Firewall
+A partially depleted cyan barrier rapidly replenishes; new hexagonal energy tiles cascade inward to reinforce weak points.
+Firewall accent: blue hex tiles locking into gaps, concentric barrier ripples radiating outward.
+Standard finish: cyan and electric-blue two-tone glow, faint circuit-board texture in near-black (#0A0A10) background. No text. Portrait orientation.
+
+NC-023 · RAM Transfusion · Utility
+A thick violet energy stream transfers from one glowing RAM crystal to another, the receiving core brightening steadily.
+RAM accent: visible RAM battery crystal clearly filling with energy.
+Standard finish: two-tone violet and silver-white glow, faint circuit-board texture in near-black (#0A0A10) background. No text. Portrait orientation.
+
+NC-024 · Blood Battery · Utility
+A dark synthetic power cell pulses with deep crimson-violet light, thin energy veins branching outward like circuitry arteries.
+Cerebral layered geometry with subtle internal glow fluctuations.
+Standard finish: violet dominant with faint red undertone glow, light circuit texture on near-black (#0A0A10) background. No text. Portrait orientation.
+
+NC-025 · Zero-Day Injector · Attack · Exploit; OneShot
+A sleek matte-black injector fires a concentrated red exploit payload into an exposed data-port; impact sparks flare violently.
+Exploit accent: broken digital padlock fragmenting on impact. OneShot accent: a single glowing charge ring burning out.
+Standard finish: hot red and orange two-tone glow, faint circuit-board texture in near-black (#0A0A10) background. No text. Portrait orientation.
+
+NC-026 · Logic Bomb · Attack · Exploit; Volatile
+A compact red data core detonates outward in a radial shockwave of fragmented code shards.
+Exploit accent: cracked open data-port at epicentre. Volatile accent: unstable arcing electricity snapping around the core.
+Standard finish: red-orange two-tone glow, faint circuit-board texture in near-black (#0A0A10) background. No text. Portrait orientation.
+
+NC-027 · Packet Spike · Attack · Exploit; Volatile
+A razor-thin red data spike launches forward with extreme motion blur, piercing through a glowing node.
+Exploit accent: exposed intrusion vector glowing at the penetration point. Volatile accent: chaotic red sparks bursting outward.
+Standard finish: red-orange two-tone glow, faint circuit-board texture in near-black (#0A0A10) background. No text. Portrait orientation.
+
+NC-028 · Rootkit Stab · Attack · Exploit; OneShot
+A jagged red cyber-blade drives downward into a system core, shattering protective layers on contact.
+Exploit accent: open broken padlock fragments scattering. OneShot accent: singular intense burst of light at impact.
+Standard finish: red-orange two-tone glow, faint circuit-board texture in near-black (#0A0A10) background. No text. Portrait orientation.
+
+NC-029 · Kill Switch · Attack · Exploit; OneShot; Tradeoff
+A glowing red control switch is violently slammed downward; energy surges outward as the system silhouette flickers and collapses.
+Exploit accent: intrusion vector glow at target core. OneShot accent: single discharge burst. Tradeoff accent: faint self-cracking circuitry on the activating side.
+Standard finish: red-orange two-tone glow, faint circuit-board texture in near-black (#0A0A10) background. No text. Portrait orientation.
+
+NC-030 · Emergency Shield · Defense · Patch; Volatile
+A cyan barrier snaps into place mid-impact, fragments of damaged plating rapidly stitching themselves shut.
+Patch accent: nano-stitch seams sealing glowing cracks. Volatile accent: unstable arcs barely contained along shield edges.
+Standard finish: cyan and electric-blue two-tone glow, faint circuit-board texture in near-black (#0A0A10) background. No text. Portrait orientation.
+
+
+NC-031 · Disposable Barrier · Defense · Patch; OneShot
+A thin cyan shield panel snaps into existence just as an impact hits, cracking immediately after absorbing the strike.
+Patch accent: nano-stitch seams forming briefly. OneShot accent: a single burst discharge shattering the barrier.
+Standard finish: cyan-electric two-tone glow, faint circuit texture on near-black (#0A0A10). No text. Portrait orientation.
+
+NC-032 · Failsafe Rollback · Defense · Patch; OneShot
+A damaged cyan system panel reverses in time, fractured segments sliding back into pristine alignment.
+Patch accent: glowing repair seams sealing. OneShot accent: singular bright rewind flare.
+Standard finish: cyan-electric two-tone glow, faint circuit texture, near-black background. No text. Portrait orientation.
+
+NC-033 · Burn Notice · Utility · Exploit; Volatile
+A violet data file ignites from within, red exploit code spreading like internal fire.
+Exploit accent: open intrusion port glow. Volatile accent: unstable electrical sparks.
+Standard finish: violet base with red edge glow, faint circuit texture, near-black background. No text. Portrait orientation.
+
+NC-034 · Crash Dump · Utility · Exploit; Volatile
+A suspended violet data core violently fractures, shards spilling outward in chaotic layers.
+Exploit accent: broken padlock fragments embedded in debris. Volatile accent: arcing instability around fragments.
+Standard finish: violet-silver two-tone glow, faint circuit texture, near-black background. No text. Portrait orientation.
+
+NC-035 · Exploit Kit · Utility · Exploit; OneShot
+A compact case opens to reveal neatly arranged red intrusion tools glowing sharply.
+Exploit accent: exposed data-port emitting red vector light. OneShot accent: single bright charge indicator.
+Standard finish: violet with red edge glow, faint circuit texture, near-black background. No text. Portrait orientation.
+
+NC-036 · Overclock Burst · Utility · Overclocked; OneShot; Tradeoff
+A violet signal core flares into blinding gold overload, cracks forming across its casing.
+Overclocked accent: blazing gold aura and crackling circuits. OneShot accent: single discharge flash. Tradeoff accent: visible stress fractures.
+Standard finish: violet-gold two-tone glow, faint circuit texture, near-black background. No text. Portrait orientation.
+
+NC-037 · Ghost Process · Utility · Exploit; Volatile
+A translucent violet AI silhouette flickers between solid and phase-shifted states.
+Exploit accent: subtle open port glow beneath it. Volatile accent: unstable flicker artefacts.
+Standard finish: violet-silver glow, faint circuit texture, near-black background. No text. Portrait orientation.
+
+NC-038 · Blacksite Patch · Support · Patch; OneShot
+A bioluminescent green repair swarm seals a heavily damaged chassis in one decisive wave.
+Patch accent: luminous nano-stitches closing cracks. OneShot accent: single radiant healing surge.
+Standard finish: green-teal two-tone glow, faint circuit texture, near-black background. No text. Portrait orientation.
+
+NC-039 · Data Wipe · Utility · Exploit; OneShot
+A glowing violet data block dissolves completely into black void, leaving only residual light.
+Exploit accent: intrusion vector pulse at origin. OneShot accent: single expanding erasure ring.
+Standard finish: violet-silver glow, faint circuit texture, near-black background. No text. Portrait orientation.
+
+NC-040 · Deep Scan · Utility · Scry
+A large luminous lens peers downward through layered translucent data stacks.
+Scry accent: camera-eye motif focusing on one highlighted layer.
+Standard finish: violet-silver glow, faint circuit texture, near-black background. No text. Portrait orientation.
+
+NC-041 · Packet Sniffer · Utility · Scry
+Thin violet data streams flow horizontally as one strand is isolated and magnified mid-air.
+Scry accent: glowing lens isolating a single packet.
+Standard finish: violet-silver glow, faint circuit texture, near-black background. No text. Portrait orientation.
+
+NC-042 · Kernel Trace · Utility · Scry
+A vertical stack of system layers descends into darkness, one bright execution thread traced downward.
+Scry accent: focused spotlight beam following the trace.
+Standard finish: violet-silver glow, faint circuit texture, near-black background. No text. Portrait orientation.
+
+NC-043 · Stack Reorder · Utility · Topdeck
+Floating violet cards shift positions mid-air, one rising to the top position.
+Topdeck accent: tractor-beam spotlight lifting a single glowing card upward.
+Standard finish: violet-silver glow, faint circuit texture, near-black background. No text. Portrait orientation.
+
+NC-044 · Hot Swap · Utility · Cycle
+Two glowing violet modules rotate past each other in a smooth circular exchange.
+Cycle accent: motion-blur arc forming a clean rotation sweep.
+Standard finish: violet-silver glow, faint circuit texture, near-black background. No text. Portrait orientation.
+
+NC-045 · Cache Line · Utility · Topdeck
+A clean horizontal row of violet data blocks, one highlighted and lifted forward.
+Topdeck accent: spotlight beam isolating the chosen block.
+Standard finish: violet-silver glow, faint circuit texture, near-black background. No text. Portrait orientation.
+
+NC-046 · Index Cache · Utility · Retrieve; Topdeck
+A layered data stack glows as one indexed shard is pulled forward from deep within.
+Retrieve accent: focused search beam extracting a single card. Topdeck accent: upward lift spotlight.
+Standard finish: violet-silver glow, faint circuit texture, near-black background. No text. Portrait orientation.
+
+NC-047 · Rapid Recompile · Utility · Retrieve
+Fragmented violet code shards rapidly reassemble into a cohesive construct.
+Retrieve accent: scanning beam highlighting correct fragments.
+Standard finish: violet-silver glow, faint circuit texture, near-black background. No text. Portrait orientation.
+
+NC-048 · Garbage Collect · Utility · Purge
+Broken violet files disintegrate into ember-like particles drifting downward.
+Purge accent: digital fragments incinerating cleanly.
+Standard finish: violet-silver glow, faint circuit texture, near-black background. No text. Portrait orientation.
+
+NC-049 · Targeted Pull · Utility · Tutor
+A wide spread of translucent data cards floats in darkness, one glowing brightly.
+Tutor accent: search beam scanning across spread and locking onto the highlighted card.
+Standard finish: violet-silver glow, faint circuit texture, near-black background. No text. Portrait orientation.
+
+NC-050 · Patch Finder · Support · Tutor
+Green data threads weave through a layered system map, converging on one damaged node.
+Tutor accent: scanning beam isolating correct patch fragment.
+Standard finish: green-teal two-tone glow, faint circuit texture, near-black background. No text. Portrait orientation.
+
+NC-051 · Firewall Lookup · Defense · Tutor
+Cyan hexagonal barrier schematics hover in layered depth as one segment illuminates.
+Tutor accent: search beam highlighting selected shield module.
+Standard finish: cyan-electric glow, faint circuit texture, near-black background. No text. Portrait orientation.
+
+NC-052 · Wildcard Query · Utility · Tutor
+A chaotic spread of violet symbols swirls until one stabilizes brightly at center.
+Tutor accent: scanning beam collapsing chaos into one selection.
+Standard finish: violet-silver glow, faint circuit texture, near-black background. No text. Portrait orientation.
+
+NC-053 · Defrag · Utility · Shuffle
+Scattered violet data blocks rapidly reorganize into tight aligned rows.
+Shuffle accent: fanned elements spinning in circular motion blur.
+Standard finish: violet-silver glow, faint circuit texture, near-black background. No text. Portrait orientation.
+
+NC-054 · Cold Boot · Utility · Shuffle
+A dark system core powers back on, violet circuits igniting from bottom upward.
+Shuffle accent: spinning reset ring of data fragments.
+Standard finish: violet-silver glow, faint circuit texture, near-black background. No text. Portrait orientation.
+
+NC-055 · Selective Buffer · Utility · Filter
+Multiple translucent violet layers overlap, only one remaining sharply defined.
+Filter accent: dimmed outer layers, center layer glowing brightly.
+Standard finish: violet-silver glow, faint circuit texture, near-black background. No text. Portrait orientation.
+
+NC-056 · Commit / Revert · Utility · Filter
+Two parallel violet timelines split; one solidifies while the other fades into ghosted transparency.
+Filter accent: dual-layer contrast, one bright one dim.
+Standard finish: violet-silver glow, faint circuit texture, near-black background. No text. Portrait orientation.
+
+NC-057 · Priority Interrupt · Utility · Topdeck
+A sharp violet lightning strike disrupts stacked data layers, one layer forced upward.
+Topdeck accent: spotlight beam lifting the interrupted layer.
+Standard finish: violet-silver glow, faint circuit texture, near-black background. No text. Portrait orientation.
+
+NC-058 · Daemon Thread · Support · Power;RAM
+Emerging teal threads weave through a dim grid, each strand pulsing with stored energy, connecting fragmented RAM nodes.
+RAM accent: glowing nodes blink sequentially along the main thread, highlighting memory flow.
+Standard finish: green-teal glow, soft flowing currents, faint circuit traces over near-black (#0A0A10) background. Portrait orientation.
+
+NC-059 · Adaptive Firewall · Defense · Power;Firewall
+A cyan firewall reshapes dynamically, hexagonal panels sliding and thickening in response to unseen threats.
+Firewall accent: small arcs of power surge along the edges, visually reinforcing adaptive strength.
+Standard finish: cyan-blue gradient glow, subtle circuitry overlay, near-black background. Portrait orientation.
+
+NC-060 · Packet Leech · Support · Power;Debuff
+Teal energy tendrils snake outward from a central node, siphoning faint red sparks from ghostly packets.
+Debuff accent: red pulse trails indicate draining influence on surrounding data streams.
+Standard finish: green-teal glow with minor red highlights, flowing organic currents over dark circuit backdrop. Portrait orientation.
+
+NC-061 · Signal Amplifier · Support · Power;Draw
+Radiating teal energy waves spiral from a central transmitter, pulling faint data fragments toward the source.
+Draw accent: small floating cubes converge upward along the spirals, emphasizing acquisition.
+Standard finish: soft teal glow, flowing inward currents, faint circuit-board texture on near-black (#0A0A10) background. Portrait orientation.
+
+NC-062 · Heat Sink · Defense · Power;Firewall
+Blue crystalline fins extend outward from a central core, absorbing and dissipating scattered energy pulses.
+Firewall accent: subtle cyan flares ripple along the edges of the fins, showing heat dissipation.
+Standard finish: cyan-blue two-tone glow, structured outward geometry, dark circuit background. Portrait orientation.
+
+NC-063 · Backdoor Cache · Support · Power;RAM
+Teal nodes hidden in shadowed circuits pulse rhythmically, forming a concealed cache of data threads.
+RAM accent: small glowing cubes intermittently appear and vanish along secret pathways.
+Standard finish: green-teal glow, flowing inward currents, faint circuit-board pattern, near-black background. Portrait orientation.
+
+NC-064 · Patch Scheduler · Support · Power;Healing
+Soft teal currents flow through fractured grids, reconnecting broken nodes with subtle healing light.
+Healing accent: gentle pulses highlight reconnection points as data patches propagate.
+Standard finish: organic green-teal glow, faint circuitry, near-black background. Portrait orientation.
+
+NC-065 · Exploit Collector · Support · Power;Setup
+Glowing teal strands spiral around inactive red nodes, siphoning latent energy to prepare future attacks.
+Setup accent: red sparks pulse briefly as each exploit is harvested into the central node.
+Standard finish: flowing teal glow with red highlights, dark circuit backdrop. Portrait orientation.
+
+NC-066 · Killchain Protocol · Support · Power;Attack
+Teal tendrils extend outward from a central hub, linking sequential attack vectors in a rhythmic chain.
+Attack accent: brief orange sparks trace along the chain, emphasizing offensive potential.
+Standard finish: green-teal with minor orange pulses, flowing currents over near-black background. Portrait orientation.
+
+NC-067 · Quarantine Routine · Support · Power;Cleanse
+Organic teal currents sweep over corrupted red fragments, isolating and neutralizing glitches in real-time.
+Cleanse accent: fading red sparks vanish as they’re absorbed into the main flow.
+Standard finish: flowing teal glow, red highlight transitions, faint dark circuit textures. Portrait orientation.
+
+NC-068 · Memory Compression · Support · Power;Hand
+Teal data streams fold inward, condensing scattered fragments into dense, glowing memory blocks.
+Hand accent: small floating blocks cluster in the center, emphasizing manipulation.
+Standard finish: soft green-teal glow, layered flowing currents, near-black circuit background. Portrait orientation.
+
+NC-069 · Recursive Loop · Support · Power;Deck
+Teal loops form infinite spirals of flowing data, each cycle subtly feeding into the next.
+Deck accent: small translucent cubes rotate along the loops, highlighting recursion.
+Standard finish: green-teal glow, smooth flowing layers, dark circuit-board backdrop. Portrait orientation.
+
+NC-070 · Dark Web Broker · Support · Power;Economy
+Floating teal ledgers hover mid-air, exchanging glowing data fragments in a controlled flow.
+Economy accent: small gold pulses mark transaction points along the streams.
+Standard finish: green-teal glow, layered inward currents, near-black background. Portrait orientation.
+
+NC-071 · System Watchdog · Support · Power;Control
+A teal sentinel eye hovers above a grid, scanning and stabilizing connected nodes in real-time.
+Control accent: faint geometric rings pulse outward, showing regulatory influence.
+Standard finish: flowing green-teal glow, circuit overlays, dark background. Portrait orientation.
+
+NC-072 · I/O Prioritiser · Support · Power;Draw
+Teal streams lift scattered cubes toward a central hub, prioritizing data flow through selective channels.
+Draw accent: bright cubes highlight the most critical streams being drawn inward.
+Standard finish: soft green-teal glow, flowing inward currents, near-black circuit-board texture. Portrait orientation.
+
+NC-073 · RAM Lance · Attack · XCost;Exploit
+Sharp orange beam pierces through floating circuit fragments, focusing raw power into a single strike.
+Exploit accent: small red sparks ignite along the beam, showing amplified damage potential.
+Standard finish: red-orange glow, kinetic linear motion, dark circuit background. Portrait orientation.
+
+NC-074 · Broadcast Surge · Attack · XCost;Exploit;AOE
+A broad orange pulse radiates outward, striking multiple floating nodes simultaneously.
+AOE accent: concentric rings flash as energy disperses across the network.
+Standard finish: red-orange burst glow, multi-node impact, near-black backdrop. Portrait orientation.
+
+NC-075 · Dynamic Firewall · Defense · XCost;Firewall
+Cyan hexagonal panels expand and rotate, dynamically forming a protective barrier around a dark core.
+Firewall accent: sharp blue arcs trace along panel edges, emphasizing energy redistribution.
+Standard finish: cyan-blue two-tone glow, geometric outward motion, faint circuitry on near-black background. Portrait orientation.
+
+NC-076 · Adaptive Countermeasure · Attack · XCost;Hybrid
+Orange and cyan energy streams intertwine, delivering a flexible strike that adapts mid-flight.
+Hybrid accent: small teal flashes indicate defensive components integrated into the attack.
+Standard finish: red-orange kinetic glow with cyan highlights, layered motion over dark circuit background. Portrait orientation.
+
+NC-077 · Nanite Flood · Support · XCost;Heal
+Teal nanite swarms flow across fractured grids, repairing and reinforcing damaged nodes.
+Heal accent: glowing pulses along repaired sections highlight restorative action.
+Standard finish: green-teal soft glow, organic flowing currents, near-black circuit texture. Portrait orientation.
+
+NC-078 · Burst Read · Utility · XCost;Draw
+Violet data panels flicker and cascade downward, rapidly revealing hidden information.
+Draw accent: small translucent cubes rise along panels, showing collected fragments.
+Standard finish: layered violet glow, cerebral scanning pattern, dark circuit backdrop. Portrait orientation.
+
+NC-079 · Cache Investment · Utility · XCost;Setup
+Floating violet cubes align into orderly clusters, preparing systems for future operations.
+Setup accent: soft glowing threads connect cubes, emphasizing strategic arrangement.
+Standard finish: layered violet glow, structured geometry, near-black background. Portrait orientation.
+
+NC-080 · Thread Allocation · Utility · XCost;Setup
+Violet threads fan out from a central hub, distributing resources across multiple nodes.
+Setup accent: glowing endpoints mark nodes receiving prioritized allocation.
+Standard finish: layered violet glow, flowing network currents, dark circuit-board backdrop. Portrait orientation.
+
+NC-081 · Throttle Protocol · Utility · XCost;Control
+Violet control lines pulse rhythmically, regulating the flow of data through key channels.
+Control accent: geometric highlights flash along throttled pathways, indicating regulated traffic.
+Standard finish: layered violet glow, cerebral scanning layers, near-black circuit background. Portrait orientation.
+
+NC-082 · Packet Leech · Attack · XCost;DebuffSynergy
+Orange tendrils lunge outward, draining energy from multiple nodes in a coordinated strike.
+DebuffSynergy accent: faint red sparks flare where energy is absorbed, emphasizing synergy.
+Standard finish: red-orange kinetic glow, layered linear motion, dark circuit texture. Portrait orientation.
+
+NC-083 · Emergency Reimage · Defense · XCost;Tradeoff
+Cyan panels flicker and collapse, reconstructing defenses in a rapid but unstable pattern.
+Tradeoff accent: brief red glitches flash along the panels, signaling risk.
+Standard finish: cyan-blue glow with minor red highlights, geometric outward energy, near-black backdrop. Portrait orientation.
+
+NC-084 · Hard Reset · Utility · XCost;Purge
+Violet circuits erupt in cascading bursts, clearing residual data and resetting layers.
+Purge accent: small fragmented cubes scatter and dissolve into the background.
+Standard finish: layered violet glow, fractured scanning layers, dark circuit-board texture. Portrait orientation.
+
+NC-085 · Dazed Packet · Status · Status;Junk
+Grey fragments float aimlessly, partially glitched and losing cohesion in corrupted space.
+Junk accent: faint red glitches flicker along unstable fragments.
+Standard finish: grey-sick glow, broken corrupted geometry, near-black background. Portrait orientation.
+
+NC-086 · Burn Stack · Status · Status;Junk
+Dark grey stack layers smolder with sporadic red sparks, showing overheating and corruption.
+Junk accent: flickering sparks indicate unstable, degraded data layers.
+Standard finish: grey-sick corrupted glow, fragmented layers over near-black circuit texture. Portrait orientation.
+
+NC-087 · Wound Fragment · Status · Status;Junk
+Grey shards float in disarray, fractured and partially corrupted, drifting through a broken data grid.
+Junk accent: occasional red sparks flare on fractured edges, signaling instability.
+Standard finish: grey-sick glow, glitched geometry, near-black circuit background. Portrait orientation.
+
+NC-088 · Trace Beacon · Status · Status;Junk;Debuff
+A dim grey beacon pulses sporadically, leaving faint corrupted trails across surrounding data.
+Debuff accent: red energy streaks mark weakened nodes along the beacon’s path.
+Standard finish: grey-sick glow with red highlights, fragmented glitched layers, near-black background. Portrait orientation.
+
+NC-089 · Malware Stub · Status · Status;Junk
+Floating grey code fragments emit faint red flickers, spreading corruption in erratic motion.
+Junk accent: brief red sparks show active malware fragments in the network.
+Standard finish: grey-sick glow, glitched broken geometry, dark circuit backdrop. Portrait orientation.
+
+NC-090 · Null Pointer · Status · Status;Junk
+Dark grey voids puncture scattered data panels, leaving floating fragments disconnected.
+Junk accent: faint red pulses indicate missing references and unstable points.
+Standard finish: grey-sick glow, broken corrupted layers, near-black circuit texture. Portrait orientation.
+
+NC-091 · Overheat · Status · Status;Junk
+Charred grey circuits crackle with erratic red sparks, showing excessive energy strain.
+Junk accent: sporadic red flashes emphasize unstable, overheated nodes.
+Standard finish: grey-sick glow with red highlights, glitched layered background. Portrait orientation.
+
+NC-092 · Corrupted Sector · Status · Status;Junk
+Shattered grey data panels drift in a corrupted field, each fragment flickering unpredictably.
+Junk accent: red glitches flicker intermittently along edges of corrupted panels.
+Standard finish: grey-sick glow, broken geometry, near-black circuit texture. Portrait orientation.
+
+NC-093 · Malware Seeder · Attack · Exploit;StatusGen
+Orange tendrils inject corrupted fragments into a network, infecting multiple nodes simultaneously.
+StatusGen accent: red flashes along each injection point indicate active compromise.
+Standard finish: red-orange kinetic glow, linear motion over dark circuit backdrop. Portrait orientation.
+
+NC-094 · Trace Spoofer · Utility · Control;StatusGen
+Violet layered panels shift and distort, obscuring key nodes while generating deceptive signals.
+StatusGen accent: faint red glitches appear in manipulated layers, signaling misdirection.
+Standard finish: layered violet glow, cerebral scanning layers, near-black circuit-board texture. Portrait orientation.
+
+NC-095 · Heat Burst · Attack · AOE;StatusGen
+A fiery orange pulse erupts outward from a central point, damaging and destabilizing multiple nodes.
+StatusGen accent: red sparks flare across all impacted nodes, signaling heat-induced corruption.
+Standard finish: red-orange glow, AOE radial motion, dark circuit background. Portrait orientation.
+
+NC-096 · Unsafe Cache · Utility · Draw;StatusGen
+Violet blocks cascade downward erratically, showing unstable data collection with corrupted fragments.
+StatusGen accent: red flickers mark volatile cubes being drawn into the hub.
+Standard finish: layered violet glow with red highlights, cerebral scanning pattern, near-black background. Portrait orientation.
+
+NC-097 · Packet Flood · Utility · Cycle;StatusGen
+Violet streams surge and loop in continuous cycles, spreading minor corruption across nodes.
+StatusGen accent: red glitch streaks trail along looping data, showing ongoing status generation.
+Standard finish: layered violet glow, flowing network currents, near-black circuit-board texture. Portrait orientation.
+
+NC-098 · Controlled Burn · Support · Heal;Tradeoff;StatusGen
+Teal currents flow to repair nodes while small red sparks indicate controlled damage as tradeoff.
+StatusGen accent: red highlights mark points where healing comes at cost.
+Standard finish: flowing green-teal glow with red accents, organic currents over near-black backdrop. Portrait orientation.
+
+NC-099 · Garbage Collector+ · Utility · Purge;Cleanup
+Violet fragments and residual data swirl upward, being systematically removed and cleared from the grid.
+Cleanup accent: scattered cubes dissolve as they reach the central purge point.
+Standard finish: layered violet glow, flowing purging currents, near-black circuit-board texture. Portrait orientation.
+
+NC-100 · System Quarantine · Defense · Firewall;Cleanup
+Cyan hexagonal panels close over corrupted fragments, isolating them in a protective dome.
+Firewall accent: blue arcs trace along panel edges, emphasizing containment.
+Standard finish: cyan-blue glow, structured outward geometry, faint circuitry over near-black background. Portrait orientation.
+
+NC-101 · Deep Clean · Support · Cleanup;Stabilise
+Teal currents flow inward, repairing fractured nodes while sweeping away residual junk data.
+Stabilise accent: glowing pulses highlight each stabilized section in sequence.
+Standard finish: flowing green-teal glow, organic currents, dark circuit-board backdrop. Portrait orientation.
+
+NC-102 · Panic Purge · Utility · Cleanup;Emergency
+Violet data panels explode outward as unstable fragments are forcefully cleared from the system.
+Emergency accent: sudden red flashes mark critical purge points under duress.
+Standard finish: layered violet glow with red highlights, dynamic fractured layers, near-black background. Portrait orientation.
+
+UC-001 · Heavy Shot · Attack
+A thick orange kinetic bolt rips through floating circuit fragments, delivering raw impact to the core.
+Attack accent: small sparks flare along the bolt’s trajectory, emphasizing power.
+Standard finish: red-orange glow, linear motion over dark circuit-board backdrop. Portrait orientation.
+
+UC-002 · Chain Bolt · Attack · Exposed Ports
+Orange arcs leap between exposed nodes, chaining electrical damage across multiple targets.
+Exposed Ports accent: small red sparks ignite at each connection point, highlighting vulnerability.
+Standard finish: red-orange glow, kinetic chained motion, near-black circuit background. Portrait orientation.
+
+UC-003 · Firewall Mesh · Defense · Firewall
+Cyan mesh panels interlock into a dense barrier, forming a resilient protective grid.
+Firewall accent: subtle arcs pulse along panel edges, reinforcing energy flow.
+Standard finish: cyan-blue glow, structured outward geometry, faint circuitry on dark background. Portrait orientation.
+
+UC-004 · Firewall Bank · Defense · Firewall
+Thick cyan panels stack into layered defensive walls, radiating outward from the center.
+Firewall accent: arcs of light trace the panel edges, showing accumulated strength.
+Standard finish: cyan-blue glow, geometric layering, near-black circuit-board texture. Portrait orientation.
+
+UC-005 · Emergency Patch · Support · Nanoflow
+Teal nanite streams weave through fractured nodes, instantly repairing damaged connections.
+Nanoflow accent: glowing pulses follow repaired points along data streams.
+Standard finish: green-teal glow, flowing organic currents, dark circuit background. Portrait orientation.
+
+UC-006 · Nano Surge · Support · Nanoflow
+Dense teal nanite clouds surge through the network, boosting multiple nodes simultaneously.
+Nanoflow accent: small pulses highlight nodes receiving rapid reinforcement.
+Standard finish: flowing green-teal glow, organic layered currents, near-black backdrop. Portrait orientation.
+
+UC-007 · RAM Burst · Utility
+Violet memory blocks explode upward, revealing previously hidden fragments in a rapid display.
+Draw accent: small cubes lift and converge at the center, emphasizing acquisition.
+Standard finish: layered violet glow, cerebral scanning layers, dark circuit-board texture. Portrait orientation.
+
+UC-008 · Battery Swap · Utility
+Violet energy cores float mid-air as a seamless exchange occurs, maintaining system power.
+Setup accent: glowing endpoints mark the flow of energy between cores.
+Standard finish: layered violet glow, subtle kinetic motion, near-black background. Portrait orientation.
+
+UC-009 · Corrode Payload · Attack · Corrode
+Orange streaks strike grey circuit fragments, dissolving surfaces and leaving jagged corruption.
+Corrode accent: small red sparks flare along eroded edges to show active damage.
+Standard finish: red-orange glow with red highlights, kinetic impact, dark circuit backdrop. Portrait orientation.
+
+UC-010 · Signal Jammer · Utility · Sensor Glitch
+Violet waves ripple outward, distorting and scrambling nearby node signals.
+Sensor Glitch accent: faint red pulses appear across disrupted layers, showing interference.
+Standard finish: layered violet glow, cerebral scanning pattern, near-black circuit-board background. Portrait orientation.
+
+UC-011 · Spoof Field · Utility · Target Spoof
+Violet holographic grids flicker and shift, creating false pathways and misleading nodes.
+Target Spoof accent: glowing blocks momentarily duplicate, signaling deception.
+Standard finish: layered violet glow, cerebral layers, dark circuit texture. Portrait orientation.
+
+UC-012 · Overclock Self · Utility · Overclocked
+Violet circuits flare intensely, pushing processing nodes beyond normal limits.
+Overclocked accent: small orange pulses indicate overstrained but powerful components.
+Standard finish: layered violet glow with orange highlights, scanning layers over near-black backdrop. Portrait orientation.
+
+UC-013 · Underclock Pulse · Utility · Underclock
+Violet energy pulses ripple outward, slowing circuits and damping node activity.
+Underclock accent: subtle blue sparks flicker at throttled nodes, showing reduced speed.
+Standard finish: layered violet glow, cerebral scanning layers, near-black circuit-board background. Portrait orientation.
+
+UC-014 · Quarantine Protocol · Utility
+Violet geometric panels slide into position, isolating unstable fragments in real-time.
+Control accent: glowing edges mark secured nodes within the quarantine field.
+Standard finish: layered violet glow, structured geometry, dark circuit backdrop. Portrait orientation.
+
+UC-015 · Commit Buffer · Utility
+Violet streams gather floating cubes into organized clusters, preparing rapid execution.
+Setup accent: glowing threads connect grouped cubes, emphasizing readiness.
+Standard finish: layered violet glow, flowing network currents, near-black background. Portrait orientation.
+
+UC-016 · Credit Skim · Utility
+Violet fragments drift toward a central node, siphoning residual energy discreetly.
+Economy accent: small gold pulses trace the collection points of each fragment.
+Standard finish: layered violet glow with gold highlights, cerebral currents, dark circuit-board backdrop. Portrait orientation.
+
+R-001 · Plasma Lance · Attack
+A bright red-orange beam arcs forward with concentrated kinetic force, cutting through floating nodes.
+Attack accent: sparks ignite along the beam’s path, emphasizing raw destructive power.
+Standard finish: dramatic red-orange glow, linear kinetic motion, dark circuit-board background. Portrait orientation.
+
+R-002 · Firewall Bastion · Defense · Firewall
+Thick cyan energy panels stack outward, forming a massive protective barrier over a central core.
+Firewall accent: bright arcs flash along edges, showing reinforced defensive strength.
+Standard finish: cyan-blue glow, geometric outward layering, faint circuitry on near-black backdrop. Portrait orientation.
+
+R-003 · System Reboot · Support
+Teal currents flow inward, realigning fractured nodes and restoring order in the network.
+Stabilise accent: glowing pulses sweep through key areas, signaling full recovery.
+Standard finish: flowing green-teal glow, organic layered currents, dark circuit-board background. Portrait orientation.
+
+R-004 · Freeze RAM Use · Utility
+Violet blocks stiffen mid-air as a chilling pulse halts memory activity.
+Control accent: small icy-blue highlights trace frozen nodes, emphasizing temporary lockdown.
+Standard finish: layered violet glow, cerebral scanning layers, near-black background. Portrait orientation.
+
+R-005 · RAM Doubler · Utility
+Violet memory blocks replicate and converge, visually doubling computational capacity.
+Draw accent: floating cubes cluster dynamically, highlighting increased throughput.
+Standard finish: layered violet glow, flowing network currents, dark circuit-board texture. Portrait orientation.
+
+R-006 · Hand Compiler · Utility
+Violet threads weave fragmented blocks together, forming functional composite nodes.
+Setup accent: glowing intersections indicate compiled points of action.
+Standard finish: layered violet glow, cerebral geometric currents, near-black backdrop. Portrait orientation.
+
+R-007 · Hot Swap Patch · Utility
+Violet patches slide rapidly into place across fractured circuits, instantly replacing faulty nodes.
+Heal accent: glowing points mark restored sections in real-time.
+Standard finish: layered violet glow, flowing currents over dark circuit-board texture. Portrait orientation.
+
+R-008 · Stabilise Target · Utility
+Violet energy gently envelops scattered nodes, reducing instability and correcting drift.
+Stabilise accent: small pulses highlight each stabilized point, showing controlled effect.
+Standard finish: layered violet glow, soft organic currents, near-black background. Portrait orientation.
+
+R-009 · Mutation Sink · Utility
+Violet fragmented nodes spiral inward, neutralizing erratic signals and absorbing unstable energy.
+Control accent: glowing threads trace absorbed fragments, showing regulation.
+Standard finish: layered violet glow, cerebral scanning currents, near-black circuit background. Portrait orientation.
+
+R-010 · Credit Heist · Utility
+Floating violet and gold cubes stream toward a central node, siphoning digital assets discreetly.
+Economy accent: gold pulses highlight collected fragments along the flow.
+Standard finish: layered violet glow with gold highlights, dark circuit-board texture. Portrait orientation.
+
+P-001 · Assimilate Weak · Utility · Overclocked
+Prismatic violet circuits flare intensely, integrating weaker nodes into a high-performance network.
+Overclocked accent: small orange pulses track assimilated nodes under extreme load.
+Prismatic finish: full iridescent glow, layered flowing currents, near-black background. Portrait orientation.
+
+P-002 · Fragment Strong · Utility · Sensor Glitch
+Prismatic violet panels fracture and shift, disrupting normal sensor readings while maintaining functionality.
+Sensor Glitch accent: faint red flickers indicate ongoing interference.
+Prismatic finish: full iridescent glow, cerebral layered geometry, near-black circuit texture. Portrait orientation.
+
+P-003 · Cachejack · Skill
+Gold threads spiral around a central node, executing a precise and unique data extraction.
+Target Spoof accent: glowing intersections highlight manipulated targets.
+Prismatic finish: full gold glow, layered flowing currents, dark circuit-board background. Portrait orientation.
+
+P-004 · Cachejack MkII · Skill · Target Spoof
+Gold energy streams arc in precise patterns, intercepting and misdirecting critical nodes.
+Target Spoof accent: bright flashes mark successful redirection points.
+Prismatic finish: full gold glow, prismatic layered currents, near-black circuit backdrop. Portrait orientation.
+
+P-005 · Prime Seed · Utility
+Prismatic violet energy gathers into a central core, initiating a controlled propagation sequence.
+Setup accent: glowing threads indicate nodes prepared for activation.
+Prismatic finish: iridescent layered glow, flowing geometric currents, near-black background. Portrait orientation.
+
+P-006 · Forked Compiler · Utility
+Prismatic violet threads split and weave around floating nodes, compiling multiple outputs simultaneously.
+Setup accent: glowing intersections mark functional composite nodes.
+Prismatic finish: iridescent layered glow, cerebral flowing currents, near-black backdrop. Portrait orientation.
+
+P-007 · Hotwire Surge · Skill
+Gold energy arcs leap between nodes, executing an instantaneous and unpredictable network shock.
+Attack accent: small orange sparks flare along energized paths.
+Prismatic finish: full gold glow, kinetic layered currents, dark circuit-board background. Portrait orientation.
+
+P-008 · Burst Cannon · Attack
+A prismatic orange bolt explodes outward, delivering high-impact kinetic damage across multiple nodes.
+AOE accent: concentric rings flash outward, emphasizing area effect.
+Prismatic finish: full iridescent glow, layered kinetic motion, near-black circuit texture. Portrait orientation.
+
+P-009 · Street Doc Patch · Skill
+Gold nanite streams weave across fractured nodes, executing a precise restorative intervention.
+Heal accent: glowing pulses trace repaired points in real-time.
+Prismatic finish: full gold glow, flowing organic currents, dark circuit-board backdrop. Portrait orientation.
+
+P-010 · Instant Firewall · Skill · Firewall
+Gold hexagonal panels snap into place, forming an immediate protective barrier around critical nodes.
+Firewall accent: arcs of energy flash along panel edges, emphasizing rapid deployment.
+Prismatic finish: full gold glow, structured outward geometry, near-black circuit background. Portrait orientation.

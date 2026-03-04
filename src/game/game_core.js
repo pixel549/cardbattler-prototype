@@ -165,7 +165,7 @@ function makeCardRewards(data, seed, act = 1, nodeType = 'Combat') {
   return { cardChoices: choices, canSkip: true };
 }
 
-function makeShop(data, seed, relicIds = []) {
+function makeShop(data, seed, relicIds = [], act = 1) {
   const rng = new RNG(seed ^ 0x0F0F0F0F);
   // Only offer player-usable cards (same filter as card rewards)
   const ids = Object.keys(data.cards).filter(id => {
@@ -176,17 +176,32 @@ function makeShop(data, seed, relicIds = []) {
   // TheArchitect: all shop prices reduced by 15g
   const disc = relicIds.includes('TheArchitect') ? 15 : 0;
   const p = (base) => Math.max(5, base - disc);
-  return {
-    offers: [
-      { kind: "Card", defId: rng.pick(ids), price: p(50) },
-      { kind: "Card", defId: rng.pick(ids), price: p(50) },
-      { kind: "Service", serviceId: "RemoveCard", price: p(75), requiresCard: true },
-      { kind: "Service", serviceId: "Repair", price: p(60), requiresCard: true },
-      { kind: "Service", serviceId: "Stabilise", price: p(60), requiresCard: true },
-      { kind: "Service", serviceId: "Accelerate", price: p(40), requiresCard: true },
-      { kind: "Service", serviceId: "Heal", price: p(60), requiresCard: false }
-    ]
-  };
+
+  // Pick one relic offer from common pool (act 1) or uncommon pool (act 2+)
+  // Never offer a relic the player already owns
+  const relicPool = act <= 1
+    ? (data.relicRewardPools?.common || [])
+    : [...(data.relicRewardPools?.common || []), ...(data.relicRewardPools?.uncommon || [])];
+  const availableRelics = relicPool.filter(rid => !relicIds.includes(rid));
+  let relicOffer = null;
+  if (availableRelics.length > 0) {
+    const rid = rng.pick(availableRelics);
+    const r = data.relics?.[rid];
+    const relicPrice = r?.rarity === 'uncommon' ? p(150) : p(100);
+    relicOffer = { kind: "Relic", relicId: rid, price: relicPrice };
+  }
+
+  const offers = [
+    { kind: "Card", defId: rng.pick(ids), price: p(50) },
+    { kind: "Card", defId: rng.pick(ids), price: p(50) },
+    { kind: "Service", serviceId: "RemoveCard", price: p(75), requiresCard: true },
+    { kind: "Service", serviceId: "Repair", price: p(60), requiresCard: true },
+    { kind: "Service", serviceId: "Stabilise", price: p(60), requiresCard: true },
+    { kind: "Service", serviceId: "Accelerate", price: p(40), requiresCard: true },
+    { kind: "Service", serviceId: "Heal", price: p(60), requiresCard: false },
+  ];
+  if (relicOffer) offers.push(relicOffer);
+  return { offers };
 }
 
 function clamp(n, lo, hi) { return Math.max(lo, Math.min(hi, n)); }
@@ -357,7 +372,7 @@ function resolveCurrentNodeInternal(state, data, log) {
 
   if (node.type === "Shop") {
     state.mode = "Shop";
-    state.shop = makeShop(data, state.run.seed ^ state.run.floor, state.run.relicIds || []);
+    state.shop = makeShop(data, state.run.seed ^ state.run.floor, state.run.relicIds || [], state.run.act || 1);
     log({ t: "Info", msg: "Entered shop" });
     return state;
   }
@@ -655,6 +670,27 @@ export function dispatchGame(stateIn, data, action) {
 
       state.run.relicIds.push(action.relicId);
       log({ t: "Info", msg: `Picked relic: ${action.relicId}` });
+
+      // Apply run-level stat mods immediately on pickup
+      const pickedRelic = data.relics?.[action.relicId];
+      const pm = pickedRelic?.mods || {};
+      if (pm.maxHPDelta) {
+        state.run.maxHP += pm.maxHPDelta;
+        // Increase or decrease current HP proportionally (cap at new max, floor at 1)
+        state.run.hp = Math.max(1, Math.min(state.run.hp + pm.maxHPDelta, state.run.maxHP));
+      }
+      if (pm.maxMPDelta) {
+        state.run.maxMP = (state.run.maxMP || 6) + pm.maxMPDelta;
+        state.run.mp = Math.min((state.run.mp ?? state.run.maxMP), state.run.maxMP);
+      }
+      if (pm.startingGoldDelta) {
+        state.run.gold = Math.max(0, state.run.gold + pm.startingGoldDelta);
+        log({ t: "Info", msg: `Relic: ${pm.startingGoldDelta > 0 ? '+' : ''}${pm.startingGoldDelta}g` });
+      }
+      if (pm.travelHpCostDelta) {
+        state.run.travelHpCost = Math.max(0, (state.run.travelHpCost || 2) + pm.travelHpCostDelta);
+      }
+
       // on_run_start effects fire when the relic is first acquired
       if (action.relicId === 'WornToolkit' && state.deck) {
         const instances = Object.values(state.deck.cardInstances);
@@ -688,6 +724,30 @@ export function dispatchGame(stateIn, data, action) {
         return state;
       }
 
+      if (offer.kind === "Relic") {
+        if (state.run.relicIds.includes(offer.relicId)) return state; // already owned
+        state.run.relicIds.push(offer.relicId);
+        // Apply run-level stat mods (same logic as Reward_PickRelic)
+        const boughtRelic = data.relics?.[offer.relicId];
+        const bm = boughtRelic?.mods || {};
+        if (bm.maxHPDelta) {
+          state.run.maxHP += bm.maxHPDelta;
+          state.run.hp = Math.max(1, Math.min(state.run.hp + bm.maxHPDelta, state.run.maxHP));
+        }
+        if (bm.maxMPDelta) {
+          state.run.maxMP = (state.run.maxMP || 6) + bm.maxMPDelta;
+          state.run.mp = Math.min((state.run.mp ?? state.run.maxMP), state.run.maxMP);
+        }
+        if (bm.startingGoldDelta) {
+          state.run.gold = Math.max(0, state.run.gold + bm.startingGoldDelta);
+        }
+        if (bm.travelHpCostDelta) {
+          state.run.travelHpCost = Math.max(0, (state.run.travelHpCost || 2) + bm.travelHpCostDelta);
+        }
+        log({ t: "Info", msg: `Bought relic: ${offer.relicId}` });
+        return state;
+      }
+
       // service
       if (offer.serviceId === "Heal") {
         if (!service_HealPlayer(state)) return state;
@@ -700,6 +760,24 @@ export function dispatchGame(stateIn, data, action) {
       state.shop.pendingService = offer.serviceId;
       state.shop.pendingPrice = offer.price;
       log({ t: "Info", msg: `Select a card for service: ${offer.serviceId}` });
+      return state;
+    }
+
+    case "Shop_Reroll": {
+      if (state.mode !== "Shop" || !state.shop || !state.run) return state;
+      const rerollsUsed = state.shop.rerollsUsed || 0;
+      // SystemAdminKey: first reroll each shop is free
+      const hasSysKey = (state.run.relicIds || []).includes('SystemAdminKey');
+      const rerollCost = hasSysKey && rerollsUsed === 0 ? 0 : 30 + rerollsUsed * 10;
+      if (state.run.gold < rerollCost) { log({ t: "Info", msg: "Not enough gold to reroll" }); return state; }
+      state.run.gold -= rerollCost;
+      // Regenerate shop with a shifted seed so we get different items
+      const newSeed = (state.run.seed ^ state.run.floor ^ (0x4E11 * (rerollsUsed + 1))) >>> 0;
+      const newShop = makeShop(data, newSeed, state.run.relicIds || [], state.run.act || 1);
+      newShop.rerollsUsed = rerollsUsed + 1;
+      newShop.rerollCostNext = hasSysKey && rerollsUsed === 0 ? 30 : 30 + (rerollsUsed + 1) * 10;
+      state.shop = newShop;
+      log({ t: "Info", msg: `Shop rerolled (cost ${rerollCost}g)` });
       return state;
     }
 

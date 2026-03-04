@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "builtAt": "2026-03-04T05:19:18.009Z",
+  "builtAt": "2026-03-04T08:28:27.153Z",
   "cards": {
     "C-001": {
       "id": "C-001",
@@ -5302,1180 +5302,6 @@
         "brickBehavior": "Exhaust",
         "rewritePoolDefIds": []
       }
-    },
-    "EC-A1": {
-      "id": "EC-A1",
-      "name": "Light Strike",
-      "type": "Attack",
-      "costRAM": 0,
-      "tags": [
-        "EnemyCard"
-      ],
-      "effects": [
-        {
-          "op": "DealDamage",
-          "target": "Enemy",
-          "amount": 6
-        }
-      ],
-      "finalMutation": {
-        "outcomeWeights": {
-          "brick": 1,
-          "rewrite": 0
-        },
-        "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
-      },
-      "defaultUseCounter": 9999,
-      "defaultFinalMutationCountdown": 9999,
-      "mutationOdds": {
-        "triggerChance": 0,
-        "tiers": {}
-      }
-    },
-    "EC-A2": {
-      "id": "EC-A2",
-      "name": "Strike",
-      "type": "Attack",
-      "costRAM": 0,
-      "tags": [
-        "EnemyCard"
-      ],
-      "effects": [
-        {
-          "op": "DealDamage",
-          "target": "Enemy",
-          "amount": 8
-        }
-      ],
-      "finalMutation": {
-        "outcomeWeights": {
-          "brick": 1,
-          "rewrite": 0
-        },
-        "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
-      },
-      "defaultUseCounter": 9999,
-      "defaultFinalMutationCountdown": 9999,
-      "mutationOdds": {
-        "triggerChance": 0,
-        "tiers": {}
-      }
-    },
-    "EC-A3": {
-      "id": "EC-A3",
-      "name": "Heavy Strike",
-      "type": "Attack",
-      "costRAM": 0,
-      "tags": [
-        "EnemyCard"
-      ],
-      "effects": [
-        {
-          "op": "DealDamage",
-          "target": "Enemy",
-          "amount": 11
-        }
-      ],
-      "finalMutation": {
-        "outcomeWeights": {
-          "brick": 1,
-          "rewrite": 0
-        },
-        "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
-      },
-      "defaultUseCounter": 9999,
-      "defaultFinalMutationCountdown": 9999,
-      "mutationOdds": {
-        "triggerChance": 0,
-        "tiers": {}
-      }
-    },
-    "EC-A4": {
-      "id": "EC-A4",
-      "name": "Crushing Blow",
-      "type": "Attack",
-      "costRAM": 0,
-      "tags": [
-        "EnemyCard"
-      ],
-      "effects": [
-        {
-          "op": "DealDamage",
-          "target": "Enemy",
-          "amount": 18
-        }
-      ],
-      "finalMutation": {
-        "outcomeWeights": {
-          "brick": 1,
-          "rewrite": 0
-        },
-        "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
-      },
-      "defaultUseCounter": 9999,
-      "defaultFinalMutationCountdown": 9999,
-      "mutationOdds": {
-        "triggerChance": 0,
-        "tiers": {}
-      }
-    },
-    "EC-A5": {
-      "id": "EC-A5",
-      "name": "Devastating Strike",
-      "type": "Attack",
-      "costRAM": 0,
-      "tags": [
-        "EnemyCard"
-      ],
-      "effects": [
-        {
-          "op": "DealDamage",
-          "target": "Enemy",
-          "amount": 24
-        }
-      ],
-      "finalMutation": {
-        "outcomeWeights": {
-          "brick": 1,
-          "rewrite": 0
-        },
-        "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
-      },
-      "defaultUseCounter": 9999,
-      "defaultFinalMutationCountdown": 9999,
-      "mutationOdds": {
-        "triggerChance": 0,
-        "tiers": {}
-      }
-    },
-    "EC-A6": {
-      "id": "EC-A6",
-      "name": "Sniper Shot",
-      "type": "Attack",
-      "costRAM": 0,
-      "tags": [
-        "EnemyCard"
-      ],
-      "effects": [
-        {
-          "op": "DealDamage",
-          "target": "Enemy",
-          "amount": 14
-        }
-      ],
-      "finalMutation": {
-        "outcomeWeights": {
-          "brick": 1,
-          "rewrite": 0
-        },
-        "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
-      },
-      "defaultUseCounter": 9999,
-      "defaultFinalMutationCountdown": 9999,
-      "mutationOdds": {
-        "triggerChance": 0,
-        "tiers": {}
-      }
-    },
-    "EC-A7": {
-      "id": "EC-A7",
-      "name": "Corrosive Bite",
-      "type": "Attack",
-      "costRAM": 0,
-      "tags": [
-        "EnemyCard"
-      ],
-      "effects": [
-        {
-          "op": "DealDamage",
-          "target": "Enemy",
-          "amount": 6
-        },
-        {
-          "op": "ApplyStatus",
-          "statusId": "Corrode",
-          "stacks": 3,
-          "target": "Enemy"
-        }
-      ],
-      "finalMutation": {
-        "outcomeWeights": {
-          "brick": 1,
-          "rewrite": 0
-        },
-        "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
-      },
-      "defaultUseCounter": 9999,
-      "defaultFinalMutationCountdown": 9999,
-      "mutationOdds": {
-        "triggerChance": 0,
-        "tiers": {}
-      }
-    },
-    "EC-A8": {
-      "id": "EC-A8",
-      "name": "Vulnerable Slash",
-      "type": "Attack",
-      "costRAM": 0,
-      "tags": [
-        "EnemyCard"
-      ],
-      "effects": [
-        {
-          "op": "DealDamage",
-          "target": "Enemy",
-          "amount": 8
-        },
-        {
-          "op": "ApplyStatus",
-          "statusId": "Vulnerable",
-          "stacks": 1,
-          "target": "Enemy"
-        }
-      ],
-      "finalMutation": {
-        "outcomeWeights": {
-          "brick": 1,
-          "rewrite": 0
-        },
-        "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
-      },
-      "defaultUseCounter": 9999,
-      "defaultFinalMutationCountdown": 9999,
-      "mutationOdds": {
-        "triggerChance": 0,
-        "tiers": {}
-      }
-    },
-    "EC-A9": {
-      "id": "EC-A9",
-      "name": "Weakening Blow",
-      "type": "Attack",
-      "costRAM": 0,
-      "tags": [
-        "EnemyCard"
-      ],
-      "effects": [
-        {
-          "op": "DealDamage",
-          "target": "Enemy",
-          "amount": 8
-        },
-        {
-          "op": "ApplyStatus",
-          "statusId": "Weak",
-          "stacks": 1,
-          "target": "Enemy"
-        }
-      ],
-      "finalMutation": {
-        "outcomeWeights": {
-          "brick": 1,
-          "rewrite": 0
-        },
-        "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
-      },
-      "defaultUseCounter": 9999,
-      "defaultFinalMutationCountdown": 9999,
-      "mutationOdds": {
-        "triggerChance": 0,
-        "tiers": {}
-      }
-    },
-    "EC-A10": {
-      "id": "EC-A10",
-      "name": "Shield Bash",
-      "type": "Attack",
-      "costRAM": 0,
-      "tags": [
-        "EnemyCard"
-      ],
-      "effects": [
-        {
-          "op": "DealDamage",
-          "target": "Enemy",
-          "amount": 6
-        },
-        {
-          "op": "GainBlock",
-          "target": "Self",
-          "amount": 5
-        }
-      ],
-      "finalMutation": {
-        "outcomeWeights": {
-          "brick": 1,
-          "rewrite": 0
-        },
-        "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
-      },
-      "defaultUseCounter": 9999,
-      "defaultFinalMutationCountdown": 9999,
-      "mutationOdds": {
-        "triggerChance": 0,
-        "tiers": {}
-      }
-    },
-    "EC-D1": {
-      "id": "EC-D1",
-      "name": "Raise Shield",
-      "type": "Defense",
-      "costRAM": 0,
-      "tags": [
-        "EnemyCard"
-      ],
-      "effects": [
-        {
-          "op": "GainBlock",
-          "target": "Self",
-          "amount": 6
-        }
-      ],
-      "finalMutation": {
-        "outcomeWeights": {
-          "brick": 1,
-          "rewrite": 0
-        },
-        "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
-      },
-      "defaultUseCounter": 9999,
-      "defaultFinalMutationCountdown": 9999,
-      "mutationOdds": {
-        "triggerChance": 0,
-        "tiers": {}
-      }
-    },
-    "EC-D2": {
-      "id": "EC-D2",
-      "name": "Iron Wall",
-      "type": "Defense",
-      "costRAM": 0,
-      "tags": [
-        "EnemyCard"
-      ],
-      "effects": [
-        {
-          "op": "GainBlock",
-          "target": "Self",
-          "amount": 10
-        }
-      ],
-      "finalMutation": {
-        "outcomeWeights": {
-          "brick": 1,
-          "rewrite": 0
-        },
-        "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
-      },
-      "defaultUseCounter": 9999,
-      "defaultFinalMutationCountdown": 9999,
-      "mutationOdds": {
-        "triggerChance": 0,
-        "tiers": {}
-      }
-    },
-    "EC-D3": {
-      "id": "EC-D3",
-      "name": "Fortify",
-      "type": "Defense",
-      "costRAM": 0,
-      "tags": [
-        "EnemyCard"
-      ],
-      "effects": [
-        {
-          "op": "GainBlock",
-          "target": "Self",
-          "amount": 8
-        }
-      ],
-      "finalMutation": {
-        "outcomeWeights": {
-          "brick": 1,
-          "rewrite": 0
-        },
-        "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
-      },
-      "defaultUseCounter": 9999,
-      "defaultFinalMutationCountdown": 9999,
-      "mutationOdds": {
-        "triggerChance": 0,
-        "tiers": {}
-      }
-    },
-    "EC-H1": {
-      "id": "EC-H1",
-      "name": "Patch Routine",
-      "type": "Support",
-      "costRAM": 0,
-      "tags": [
-        "EnemyCard"
-      ],
-      "effects": [
-        {
-          "op": "Heal",
-          "target": "Self",
-          "amount": 7
-        }
-      ],
-      "finalMutation": {
-        "outcomeWeights": {
-          "brick": 1,
-          "rewrite": 0
-        },
-        "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
-      },
-      "defaultUseCounter": 9999,
-      "defaultFinalMutationCountdown": 9999,
-      "mutationOdds": {
-        "triggerChance": 0,
-        "tiers": {}
-      }
-    },
-    "EC-H2": {
-      "id": "EC-H2",
-      "name": "System Restore",
-      "type": "Support",
-      "costRAM": 0,
-      "tags": [
-        "EnemyCard"
-      ],
-      "effects": [
-        {
-          "op": "Heal",
-          "target": "Self",
-          "amount": 11
-        }
-      ],
-      "finalMutation": {
-        "outcomeWeights": {
-          "brick": 1,
-          "rewrite": 0
-        },
-        "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
-      },
-      "defaultUseCounter": 9999,
-      "defaultFinalMutationCountdown": 9999,
-      "mutationOdds": {
-        "triggerChance": 0,
-        "tiers": {}
-      }
-    },
-    "EC-H3": {
-      "id": "EC-H3",
-      "name": "Emergency Patch",
-      "type": "Support",
-      "costRAM": 0,
-      "tags": [
-        "EnemyCard"
-      ],
-      "effects": [
-        {
-          "op": "Heal",
-          "target": "Self",
-          "amount": 7
-        },
-        {
-          "op": "GainBlock",
-          "target": "Self",
-          "amount": 5
-        }
-      ],
-      "finalMutation": {
-        "outcomeWeights": {
-          "brick": 1,
-          "rewrite": 0
-        },
-        "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
-      },
-      "defaultUseCounter": 9999,
-      "defaultFinalMutationCountdown": 9999,
-      "mutationOdds": {
-        "triggerChance": 0,
-        "tiers": {}
-      }
-    },
-    "EC-S1": {
-      "id": "EC-S1",
-      "name": "Corrode Pulse",
-      "type": "Attack",
-      "costRAM": 0,
-      "tags": [
-        "EnemyCard"
-      ],
-      "effects": [
-        {
-          "op": "ApplyStatus",
-          "statusId": "Corrode",
-          "stacks": 1,
-          "target": "Enemy"
-        }
-      ],
-      "finalMutation": {
-        "outcomeWeights": {
-          "brick": 1,
-          "rewrite": 0
-        },
-        "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
-      },
-      "defaultUseCounter": 9999,
-      "defaultFinalMutationCountdown": 9999,
-      "mutationOdds": {
-        "triggerChance": 0,
-        "tiers": {}
-      }
-    },
-    "EC-S2": {
-      "id": "EC-S2",
-      "name": "Corrode Burst",
-      "type": "Attack",
-      "costRAM": 0,
-      "tags": [
-        "EnemyCard"
-      ],
-      "effects": [
-        {
-          "op": "ApplyStatus",
-          "statusId": "Corrode",
-          "stacks": 2,
-          "target": "Enemy"
-        }
-      ],
-      "finalMutation": {
-        "outcomeWeights": {
-          "brick": 1,
-          "rewrite": 0
-        },
-        "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
-      },
-      "defaultUseCounter": 9999,
-      "defaultFinalMutationCountdown": 9999,
-      "mutationOdds": {
-        "triggerChance": 0,
-        "tiers": {}
-      }
-    },
-    "EC-S3": {
-      "id": "EC-S3",
-      "name": "Leak Tap",
-      "type": "Attack",
-      "costRAM": 0,
-      "tags": [
-        "EnemyCard"
-      ],
-      "effects": [
-        {
-          "op": "ApplyStatus",
-          "statusId": "Leak",
-          "stacks": 2,
-          "target": "Enemy"
-        }
-      ],
-      "finalMutation": {
-        "outcomeWeights": {
-          "brick": 1,
-          "rewrite": 0
-        },
-        "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
-      },
-      "defaultUseCounter": 9999,
-      "defaultFinalMutationCountdown": 9999,
-      "mutationOdds": {
-        "triggerChance": 0,
-        "tiers": {}
-      }
-    },
-    "EC-S4": {
-      "id": "EC-S4",
-      "name": "Leak Flood",
-      "type": "Attack",
-      "costRAM": 0,
-      "tags": [
-        "EnemyCard"
-      ],
-      "effects": [
-        {
-          "op": "ApplyStatus",
-          "statusId": "Leak",
-          "stacks": 3,
-          "target": "Enemy"
-        }
-      ],
-      "finalMutation": {
-        "outcomeWeights": {
-          "brick": 1,
-          "rewrite": 0
-        },
-        "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
-      },
-      "defaultUseCounter": 9999,
-      "defaultFinalMutationCountdown": 9999,
-      "mutationOdds": {
-        "triggerChance": 0,
-        "tiers": {}
-      }
-    },
-    "EC-S5": {
-      "id": "EC-S5",
-      "name": "Underclock Pulse",
-      "type": "Utility",
-      "costRAM": 0,
-      "tags": [
-        "EnemyCard"
-      ],
-      "effects": [
-        {
-          "op": "ApplyStatus",
-          "statusId": "Underclock",
-          "stacks": 1,
-          "target": "Enemy"
-        }
-      ],
-      "finalMutation": {
-        "outcomeWeights": {
-          "brick": 1,
-          "rewrite": 0
-        },
-        "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
-      },
-      "defaultUseCounter": 9999,
-      "defaultFinalMutationCountdown": 9999,
-      "mutationOdds": {
-        "triggerChance": 0,
-        "tiers": {}
-      }
-    },
-    "EC-S6": {
-      "id": "EC-S6",
-      "name": "Vulnerability Scan",
-      "type": "Utility",
-      "costRAM": 0,
-      "tags": [
-        "EnemyCard"
-      ],
-      "effects": [
-        {
-          "op": "ApplyStatus",
-          "statusId": "Vulnerable",
-          "stacks": 1,
-          "target": "Enemy"
-        }
-      ],
-      "finalMutation": {
-        "outcomeWeights": {
-          "brick": 1,
-          "rewrite": 0
-        },
-        "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
-      },
-      "defaultUseCounter": 9999,
-      "defaultFinalMutationCountdown": 9999,
-      "mutationOdds": {
-        "triggerChance": 0,
-        "tiers": {}
-      }
-    },
-    "EC-S7": {
-      "id": "EC-S7",
-      "name": "Weak Signal",
-      "type": "Utility",
-      "costRAM": 0,
-      "tags": [
-        "EnemyCard"
-      ],
-      "effects": [
-        {
-          "op": "ApplyStatus",
-          "statusId": "Weak",
-          "stacks": 1,
-          "target": "Enemy"
-        }
-      ],
-      "finalMutation": {
-        "outcomeWeights": {
-          "brick": 1,
-          "rewrite": 0
-        },
-        "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
-      },
-      "defaultUseCounter": 9999,
-      "defaultFinalMutationCountdown": 9999,
-      "mutationOdds": {
-        "triggerChance": 0,
-        "tiers": {}
-      }
-    },
-    "EC-S8": {
-      "id": "EC-S8",
-      "name": "Port Expose",
-      "type": "Utility",
-      "costRAM": 0,
-      "tags": [
-        "EnemyCard"
-      ],
-      "effects": [
-        {
-          "op": "ApplyStatus",
-          "statusId": "ExposedPorts",
-          "stacks": 1,
-          "target": "Enemy"
-        }
-      ],
-      "finalMutation": {
-        "outcomeWeights": {
-          "brick": 1,
-          "rewrite": 0
-        },
-        "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
-      },
-      "defaultUseCounter": 9999,
-      "defaultFinalMutationCountdown": 9999,
-      "mutationOdds": {
-        "triggerChance": 0,
-        "tiers": {}
-      }
-    },
-    "EC-S9": {
-      "id": "EC-S9",
-      "name": "Sensor Glitch",
-      "type": "Utility",
-      "costRAM": 0,
-      "tags": [
-        "EnemyCard"
-      ],
-      "effects": [
-        {
-          "op": "ApplyStatus",
-          "statusId": "SensorGlitch",
-          "stacks": 1,
-          "target": "Enemy"
-        }
-      ],
-      "finalMutation": {
-        "outcomeWeights": {
-          "brick": 1,
-          "rewrite": 0
-        },
-        "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
-      },
-      "defaultUseCounter": 9999,
-      "defaultFinalMutationCountdown": 9999,
-      "mutationOdds": {
-        "triggerChance": 0,
-        "tiers": {}
-      }
-    },
-    "EC-S10": {
-      "id": "EC-S10",
-      "name": "Overheat Charge",
-      "type": "Attack",
-      "costRAM": 0,
-      "tags": [
-        "EnemyCard"
-      ],
-      "effects": [
-        {
-          "op": "ApplyStatus",
-          "statusId": "Overheat",
-          "stacks": 3,
-          "target": "Enemy"
-        }
-      ],
-      "finalMutation": {
-        "outcomeWeights": {
-          "brick": 1,
-          "rewrite": 0
-        },
-        "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
-      },
-      "defaultUseCounter": 9999,
-      "defaultFinalMutationCountdown": 9999,
-      "mutationOdds": {
-        "triggerChance": 0,
-        "tiers": {}
-      }
-    },
-    "EC-B1": {
-      "id": "EC-B1",
-      "name": "Acid Assault",
-      "type": "Attack",
-      "costRAM": 0,
-      "tags": [
-        "EnemyCard"
-      ],
-      "effects": [
-        {
-          "op": "DealDamage",
-          "target": "Enemy",
-          "amount": 13
-        },
-        {
-          "op": "ApplyStatus",
-          "statusId": "Corrode",
-          "stacks": 3,
-          "target": "Enemy"
-        }
-      ],
-      "finalMutation": {
-        "outcomeWeights": {
-          "brick": 1,
-          "rewrite": 0
-        },
-        "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
-      },
-      "defaultUseCounter": 9999,
-      "defaultFinalMutationCountdown": 9999,
-      "mutationOdds": {
-        "triggerChance": 0,
-        "tiers": {}
-      }
-    },
-    "EC-B2": {
-      "id": "EC-B2",
-      "name": "Expose Strike",
-      "type": "Attack",
-      "costRAM": 0,
-      "tags": [
-        "EnemyCard"
-      ],
-      "effects": [
-        {
-          "op": "DealDamage",
-          "target": "Enemy",
-          "amount": 11
-        },
-        {
-          "op": "ApplyStatus",
-          "statusId": "Vulnerable",
-          "stacks": 2,
-          "target": "Enemy"
-        }
-      ],
-      "finalMutation": {
-        "outcomeWeights": {
-          "brick": 1,
-          "rewrite": 0
-        },
-        "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
-      },
-      "defaultUseCounter": 9999,
-      "defaultFinalMutationCountdown": 9999,
-      "mutationOdds": {
-        "triggerChance": 0,
-        "tiers": {}
-      }
-    },
-    "EC-B3": {
-      "id": "EC-B3",
-      "name": "Fortified Recovery",
-      "type": "Defense",
-      "costRAM": 0,
-      "tags": [
-        "EnemyCard"
-      ],
-      "effects": [
-        {
-          "op": "GainBlock",
-          "target": "Self",
-          "amount": 12
-        },
-        {
-          "op": "Heal",
-          "target": "Self",
-          "amount": 10
-        }
-      ],
-      "finalMutation": {
-        "outcomeWeights": {
-          "brick": 1,
-          "rewrite": 0
-        },
-        "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
-      },
-      "defaultUseCounter": 9999,
-      "defaultFinalMutationCountdown": 9999,
-      "mutationOdds": {
-        "triggerChance": 0,
-        "tiers": {}
-      }
-    },
-    "EC-B4": {
-      "id": "EC-B4",
-      "name": "System Overload",
-      "type": "Utility",
-      "costRAM": 0,
-      "tags": [
-        "EnemyCard"
-      ],
-      "effects": [
-        {
-          "op": "ApplyStatus",
-          "statusId": "Corrode",
-          "stacks": 3,
-          "target": "Enemy"
-        },
-        {
-          "op": "ApplyStatus",
-          "statusId": "Underclock",
-          "stacks": 1,
-          "target": "Enemy"
-        }
-      ],
-      "finalMutation": {
-        "outcomeWeights": {
-          "brick": 1,
-          "rewrite": 0
-        },
-        "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
-      },
-      "defaultUseCounter": 9999,
-      "defaultFinalMutationCountdown": 9999,
-      "mutationOdds": {
-        "triggerChance": 0,
-        "tiers": {}
-      }
-    },
-    "EC-B5": {
-      "id": "EC-B5",
-      "name": "Annihilate",
-      "type": "Attack",
-      "costRAM": 0,
-      "tags": [
-        "EnemyCard"
-      ],
-      "effects": [
-        {
-          "op": "DealDamage",
-          "target": "Enemy",
-          "amount": 16
-        },
-        {
-          "op": "ApplyStatus",
-          "statusId": "Weak",
-          "stacks": 2,
-          "target": "Enemy"
-        }
-      ],
-      "finalMutation": {
-        "outcomeWeights": {
-          "brick": 1,
-          "rewrite": 0
-        },
-        "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
-      },
-      "defaultUseCounter": 9999,
-      "defaultFinalMutationCountdown": 9999,
-      "mutationOdds": {
-        "triggerChance": 0,
-        "tiers": {}
-      }
-    },
-    "EC-B6": {
-      "id": "EC-B6",
-      "name": "Cascade Leak",
-      "type": "Utility",
-      "costRAM": 0,
-      "tags": [
-        "EnemyCard"
-      ],
-      "effects": [
-        {
-          "op": "ApplyStatus",
-          "statusId": "Leak",
-          "stacks": 4,
-          "target": "Enemy"
-        },
-        {
-          "op": "ApplyStatus",
-          "statusId": "ExposedPorts",
-          "stacks": 2,
-          "target": "Enemy"
-        }
-      ],
-      "finalMutation": {
-        "outcomeWeights": {
-          "brick": 1,
-          "rewrite": 0
-        },
-        "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
-      },
-      "defaultUseCounter": 9999,
-      "defaultFinalMutationCountdown": 9999,
-      "mutationOdds": {
-        "triggerChance": 0,
-        "tiers": {}
-      }
-    },
-    "EC-B7": {
-      "id": "EC-B7",
-      "name": "Null Strike",
-      "type": "Attack",
-      "costRAM": 0,
-      "tags": [
-        "EnemyCard"
-      ],
-      "effects": [
-        {
-          "op": "DealDamage",
-          "target": "Enemy",
-          "amount": 14
-        },
-        {
-          "op": "ApplyStatus",
-          "statusId": "SensorGlitch",
-          "stacks": 1,
-          "target": "Enemy"
-        }
-      ],
-      "finalMutation": {
-        "outcomeWeights": {
-          "brick": 1,
-          "rewrite": 0
-        },
-        "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
-      },
-      "defaultUseCounter": 9999,
-      "defaultFinalMutationCountdown": 9999,
-      "mutationOdds": {
-        "triggerChance": 0,
-        "tiers": {}
-      }
-    },
-    "EC-B8": {
-      "id": "EC-B8",
-      "name": "Power Surge",
-      "type": "Attack",
-      "costRAM": 0,
-      "tags": [
-        "EnemyCard"
-      ],
-      "effects": [
-        {
-          "op": "DealDamage",
-          "target": "Enemy",
-          "amount": 20
-        }
-      ],
-      "finalMutation": {
-        "outcomeWeights": {
-          "brick": 1,
-          "rewrite": 0
-        },
-        "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
-      },
-      "defaultUseCounter": 9999,
-      "defaultFinalMutationCountdown": 9999,
-      "mutationOdds": {
-        "triggerChance": 0,
-        "tiers": {}
-      }
-    },
-    "EC-B9": {
-      "id": "EC-B9",
-      "name": "Total Lockdown",
-      "type": "Utility",
-      "costRAM": 0,
-      "tags": [
-        "EnemyCard"
-      ],
-      "effects": [
-        {
-          "op": "ApplyStatus",
-          "statusId": "Underclock",
-          "stacks": 2,
-          "target": "Enemy"
-        },
-        {
-          "op": "ApplyStatus",
-          "statusId": "Weak",
-          "stacks": 1,
-          "target": "Enemy"
-        }
-      ],
-      "finalMutation": {
-        "outcomeWeights": {
-          "brick": 1,
-          "rewrite": 0
-        },
-        "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
-      },
-      "defaultUseCounter": 9999,
-      "defaultFinalMutationCountdown": 9999,
-      "mutationOdds": {
-        "triggerChance": 0,
-        "tiers": {}
-      }
-    },
-    "EC-B10": {
-      "id": "EC-B10",
-      "name": "Final Reckoning",
-      "type": "Attack",
-      "costRAM": 0,
-      "tags": [
-        "EnemyCard"
-      ],
-      "effects": [
-        {
-          "op": "DealDamage",
-          "target": "Enemy",
-          "amount": 22
-        },
-        {
-          "op": "ApplyStatus",
-          "statusId": "Corrode",
-          "stacks": 4,
-          "target": "Enemy"
-        }
-      ],
-      "finalMutation": {
-        "outcomeWeights": {
-          "brick": 1,
-          "rewrite": 0
-        },
-        "brickBehavior": "Exhaust",
-        "rewritePoolDefIds": []
-      },
-      "defaultUseCounter": 9999,
-      "defaultFinalMutationCountdown": 9999,
-      "mutationOdds": {
-        "triggerChance": 0,
-        "tiers": {}
-      }
     }
   },
   "mutations": {
@@ -11354,9 +10180,7 @@
       "act": 1,
       "kind": "elite",
       "compositionType": "generated",
-      "enemyIds": [
-        "E_NULL_SHAMAN_UNIT"
-      ],
+      "enemyIds": [],
       "weight": 1
     },
     "ENC_A1_SPEC_CONTROL": {
@@ -11401,10 +10225,7 @@
       "act": 1,
       "kind": "hard",
       "compositionType": "generated",
-      "enemyIds": [
-        "E_HOLO_ENFORCER_MK_I",
-        "E_GHOST_RUNNER_PROTOCOL"
-      ],
+      "enemyIds": [],
       "weight": 1
     },
     "ENC_GEN_A1_DAMAGE_FOCUS": {
@@ -11413,10 +10234,7 @@
       "act": 1,
       "kind": "hard",
       "compositionType": "generated",
-      "enemyIds": [
-        "E_ADMINISTRATOR_CIPHER_MAINFRAME",
-        "E_ECHO_SENTINEL_SHARD"
-      ],
+      "enemyIds": [],
       "weight": 1
     },
     "ENC_GEN_A1_LEAK_THEME": {
@@ -11425,10 +10243,7 @@
       "act": 1,
       "kind": "hard",
       "compositionType": "generated",
-      "enemyIds": [
-        "E_VECTOR_COURIER_ARRAY",
-        "E_OVERSEER_STATIC_CORE"
-      ],
+      "enemyIds": [],
       "weight": 1
     },
     "ENC_A1_N1_01": {
@@ -11699,9 +10514,7 @@
       "act": 1,
       "kind": "normal",
       "compositionType": "generated",
-      "enemyIds": [
-        "E_STATIC_IMP_RIG"
-      ],
+      "enemyIds": [],
       "weight": 1
     },
     "ENC-002": {
@@ -11710,10 +10523,7 @@
       "act": 1,
       "kind": "normal",
       "compositionType": "generated",
-      "enemyIds": [
-        "E_VANTA_SENTINEL_PROTOCOL",
-        "E_KILO_SNIPER_UNIT"
-      ],
+      "enemyIds": [],
       "weight": 1
     },
     "ENC-003": {
@@ -11722,11 +10532,7 @@
       "act": 1,
       "kind": "normal",
       "compositionType": "generated",
-      "enemyIds": [
-        "E_FLUX_POD_SHARD",
-        "E_TITAN_HOLO_APEX",
-        "E_HACKER_DRONE"
-      ],
+      "enemyIds": [],
       "weight": 1
     },
     "ENC-005": {
@@ -11735,9 +10541,7 @@
       "act": 1,
       "kind": "normal",
       "compositionType": "generated",
-      "enemyIds": [
-        "E_OBSIDIAN_BRUISER_PACK"
-      ],
+      "enemyIds": [],
       "weight": 1
     },
     "ENC-006": {
@@ -11746,9 +10550,7 @@
       "act": 1,
       "kind": "normal",
       "compositionType": "generated",
-      "enemyIds": [
-        "E_RAZOR_SHAMAN_MK_II"
-      ],
+      "enemyIds": [],
       "weight": 1
     },
     "ENC-007": {
@@ -11757,10 +10559,7 @@
       "act": 1,
       "kind": "normal",
       "compositionType": "generated",
-      "enemyIds": [
-        "E_VANTA_SCOUT_NODE",
-        "E_OVERSEER_STATIC_CORE"
-      ],
+      "enemyIds": [],
       "weight": 1
     },
     "ENC-008": {
@@ -11769,10 +10568,7 @@
       "act": 1,
       "kind": "normal",
       "compositionType": "generated",
-      "enemyIds": [
-        "E_PULSE_DAEMON_UNIT",
-        "E_ECHO_SENTINEL_SHARD"
-      ],
+      "enemyIds": [],
       "weight": 1
     },
     "ENC-009": {
@@ -11781,9 +10577,7 @@
       "act": 1,
       "kind": "normal",
       "compositionType": "generated",
-      "enemyIds": [
-        "E_OBSIDIAN_BRUISER_PACK"
-      ],
+      "enemyIds": [],
       "weight": 1
     },
     "ENC-010": {
@@ -11792,9 +10586,7 @@
       "act": 1,
       "kind": "normal",
       "compositionType": "generated",
-      "enemyIds": [
-        "E_GHOST_RUNNER_PROTOCOL"
-      ],
+      "enemyIds": [],
       "weight": 1
     },
     "ENC-011": {
@@ -11803,9 +10595,7 @@
       "act": 1,
       "kind": "normal",
       "compositionType": "generated",
-      "enemyIds": [
-        "E_VECTOR_GOON_PROXY"
-      ],
+      "enemyIds": [],
       "weight": 1
     },
     "ENC-012": {
@@ -11814,9 +10604,7 @@
       "act": 1,
       "kind": "normal",
       "compositionType": "generated",
-      "enemyIds": [
-        "E_NEON_WARDEN_SUITE"
-      ],
+      "enemyIds": [],
       "weight": 1
     },
     "ENC_GEN_A1_MIX_1_3": {
@@ -11825,10 +10613,7 @@
       "act": 1,
       "kind": "normal",
       "compositionType": "generated",
-      "enemyIds": [
-        "E_VECTOR_RAT_MK_III",
-        "E_LEVIATHAN_VANTA_CORE"
-      ],
+      "enemyIds": [],
       "weight": 1
     },
     "ENC_A2_EL1_01": {
@@ -11919,10 +10704,7 @@
       "act": 2,
       "kind": "hard",
       "compositionType": "generated",
-      "enemyIds": [
-        "E_NEON_WARDEN_SUITE",
-        "E_GHOST_CLERIC_SHARD"
-      ],
+      "enemyIds": [],
       "weight": 1
     },
     "ENC_GEN_A2_DAMAGE_FOCUS": {
@@ -11931,10 +10713,7 @@
       "act": 2,
       "kind": "hard",
       "compositionType": "generated",
-      "enemyIds": [
-        "E_HOLO_SCOUT_PROXY",
-        "E_ROGUE_POD_PROTOCOL"
-      ],
+      "enemyIds": [],
       "weight": 1
     },
     "ENC_GEN_A2_LEAK_THEME": {
@@ -11943,10 +10722,7 @@
       "act": 2,
       "kind": "hard",
       "compositionType": "generated",
-      "enemyIds": [
-        "E_HOLO_RUNNER_NODE",
-        "E_ARCHON_NULL_GOLIATH"
-      ],
+      "enemyIds": [],
       "weight": 1
     },
     "ENC_A2_N1_01": {
@@ -12217,10 +10993,7 @@
       "act": 2,
       "kind": "normal",
       "compositionType": "generated",
-      "enemyIds": [
-        "E_OBSIDIAN_POD_MK_I",
-        "E_BOSS_VECTOR_MAINFRAME"
-      ],
+      "enemyIds": [],
       "weight": 1
     },
     "ENC_A3_EL1_01": {
@@ -12299,10 +11072,7 @@
       "act": 3,
       "kind": "hard",
       "compositionType": "generated",
-      "enemyIds": [
-        "E_OBSIDIAN_BRUISER_PACK",
-        "E_QUANTUM_TECH_NODE"
-      ],
+      "enemyIds": [],
       "weight": 1
     },
     "ENC_GEN_A3_DAMAGE_FOCUS": {
@@ -12311,10 +11081,7 @@
       "act": 3,
       "kind": "hard",
       "compositionType": "generated",
-      "enemyIds": [
-        "E_NULL_DAEMON_RIG",
-        "E_ION_SNIPER_RIG"
-      ],
+      "enemyIds": [],
       "weight": 1
     },
     "ENC_GEN_A3_LEAK_THEME": {
@@ -12323,10 +11090,7 @@
       "act": 3,
       "kind": "hard",
       "compositionType": "generated",
-      "enemyIds": [
-        "E_CIPHER_DRONE_PROTOCOL",
-        "E_QUANTUM_POD_SUITE"
-      ],
+      "enemyIds": [],
       "weight": 1
     },
     "ENC_A3_N1_01": {
@@ -12597,10 +11361,7 @@
       "act": 3,
       "kind": "normal",
       "compositionType": "generated",
-      "enemyIds": [
-        "E_NEON_SAPPER_MK_II",
-        "E_CIPHER_CLERIC_SHARD"
-      ],
+      "enemyIds": [],
       "weight": 1
     }
   },

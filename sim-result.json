@@ -1,0 +1,141 @@
+{
+  "seed": 42,
+  "playstyle": "balanced",
+  "finalMode": "GameOver",
+  "act": 2,
+  "floor": 17,
+  "hp": 0,
+  "maxHP": 75,
+  "gold": 258,
+  "deckSize": 18,
+  "deck": [
+    "Strike",
+    "Guard",
+    "RAM Cache",
+    "Corrode Payload",
+    "Firewall Patch",
+    "Index Cache",
+    "Zero-Day Injector",
+    "Stack Trace",
+    "Hard Reset",
+    "Heat Burst",
+    "Heat Burst",
+    "Heat Burst",
+    "Heat Burst",
+    "Burst Shot",
+    "System Quarantine",
+    "Signal Amplifier",
+    "Packet Leech",
+    "Defrag"
+  ],
+  "steps": 117,
+  "encounters": [
+    {
+      "act": 1,
+      "floor": 2,
+      "hpBefore": 75,
+      "enemies": [],
+      "result": "win",
+      "hpAfter": 75
+    },
+    {
+      "act": 1,
+      "floor": 4,
+      "hpBefore": 75,
+      "enemies": [],
+      "result": "win",
+      "hpAfter": 75
+    },
+    {
+      "act": 1,
+      "floor": 6,
+      "hpBefore": 75,
+      "enemies": [],
+      "result": "win",
+      "hpAfter": 75
+    },
+    {
+      "act": 1,
+      "floor": 7,
+      "hpBefore": 75,
+      "enemies": [],
+      "result": "win",
+      "hpAfter": 75
+    },
+    {
+      "act": 1,
+      "floor": 12,
+      "hpBefore": 67,
+      "enemies": [],
+      "result": "win",
+      "hpAfter": 67
+    },
+    {
+      "act": 1,
+      "floor": 13,
+      "hpBefore": 65,
+      "enemies": [],
+      "result": "win",
+      "hpAfter": 65
+    },
+    {
+      "act": 1,
+      "floor": 15,
+      "hpBefore": 61,
+      "enemies": [
+        "E_OVERSEER_ROGUE_APEX"
+      ],
+      "result": "win",
+      "hpAfter": 40
+    },
+    {
+      "act": 2,
+      "floor": 16,
+      "hpBefore": 38,
+      "enemies": [
+        "E_STATIC_SCOUT_MK_II",
+        "E_VANTA_ENFORCER_SWARM"
+      ],
+      "result": "win",
+      "hpAfter": 21
+    },
+    {
+      "act": 2,
+      "floor": 17,
+      "hpBefore": 19,
+      "enemies": [
+        "E_STATIC_SCOUT_MK_II",
+        "E_VANTA_ENFORCER_SWARM"
+      ],
+      "result": "loss",
+      "hpAfter": 0
+    }
+  ],
+  "events": [
+    {
+      "act": 1,
+      "floor": 3,
+      "eventId": "NeuralBooster",
+      "choice": "sell"
+    },
+    {
+      "act": 1,
+      "floor": 5,
+      "eventId": "AbandonedLab",
+      "choice": "leave"
+    },
+    {
+      "act": 1,
+      "floor": 10,
+      "eventId": "ShadowBroker",
+      "choice": "browse"
+    },
+    {
+      "act": 1,
+      "floor": 14,
+      "eventId": "Extraction",
+      "choice": "decline"
+    }
+  ],
+  "errors": []
+}

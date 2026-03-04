@@ -252,14 +252,51 @@ function buildEncounters(filename) {
 
 function buildRelics(filename) {
   const p = path.join(CONTENT_DIR, filename);
-  if (!exists(p)) return {};
+  if (!exists(p)) return { relics: {}, relicRewardPools: {} };
   const rows = rowsToObjects(parseCsv(readText(p)));
-  const out = {};
+
+  const MOD_NUM_COLS = [
+    'maxHPDelta','maxMPDelta','maxRAMDelta','startingGoldDelta','drawPerTurnDelta',
+    'travelHpCostDelta','finalCountdownTickDelta','ramRegenDelta','mutationTriggerChanceMult',
+  ];
+
+  const relics = {};
+  const relicRewardPools = {};
+
   for (const r of rows) {
     const id = ensureId(r, filename);
-    out[id] = { id, name: r.name || id, mods: toJson(r.mods, {}) };
+
+    const mods = {};
+    for (const k of MOD_NUM_COLS) {
+      const raw = r[`mod_${k}`];
+      if (raw !== undefined && raw !== '') {
+        const v = parseFloat(raw);
+        if (!isNaN(v)) mods[k] = v;
+      }
+    }
+    if (r.mod_mutationTierWeightMult && r.mod_mutationTierWeightMult !== '') {
+      mods.mutationTierWeightMult = toJson(r.mod_mutationTierWeightMult, {});
+    }
+
+    const entry = {
+      id,
+      name:        r.name        || id,
+      icon:        r.icon        || '',
+      rarity:      r.rarity      || 'common',
+      description: r.description || '',
+    };
+    if (Object.keys(mods).length > 0) entry.mods = mods;
+    if (r.hook        && r.hook        !== '') entry.hook       = r.hook;
+    if (r.hookEffect  && r.hookEffect  !== '') entry.hookEffect = r.hookEffect;
+
+    relics[id] = entry;
+
+    const pool = (r.pool || r.rarity || 'common').trim();
+    if (!relicRewardPools[pool]) relicRewardPools[pool] = [];
+    relicRewardPools[pool].push(id);
   }
-  return out;
+
+  return { relics, relicRewardPools };
 }
 
 function buildEvents(filename) {
@@ -363,6 +400,8 @@ function main() {
     try { prev = JSON.parse(readText(OUT_PATH)); } catch { prev = null; }
   }
 
+  const { relics, relicRewardPools } = buildRelics("relics.csv");
+
   const gamedata = {
     version: 1,
     builtAt: new Date().toISOString(),
@@ -372,7 +411,8 @@ function main() {
     enemies: buildEnemies("enemies.csv"),
     encounters: encountersById,
     encounterTables: buildEncounterTables(encountersById),
-    relics: buildRelics("relics.csv"),
+    relics,
+    relicRewardPools,
     events: buildEvents("events.csv"),
     statuses: buildStatuses("statuses.csv"),
     actBalance: ensureActBalance(buildActBalance("act_balance.csv")),

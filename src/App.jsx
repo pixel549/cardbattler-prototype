@@ -149,15 +149,16 @@ function RunHeader({ run, data }) {
         }}>
           {relics.map(rid => {
             const relic = data?.relics?.[rid];
+            const tier = relic?.rarity || relic?.tier || 'common';
             const tierColors = { boss: C.red, rare: C.purple, uncommon: C.yellow };
-            const col = tierColors[relic?.tier] || C.cyan;
+            const col = tierColors[tier] || C.cyan;
             return (
               <div
                 key={rid}
                 title={`${relic?.name || rid}: ${relic?.description || ''}`}
                 style={{
                   fontFamily: MONO,
-                  fontSize: 8,
+                  fontSize: 9,
                   fontWeight: 700,
                   color: col,
                   backgroundColor: `${col}15`,
@@ -168,7 +169,7 @@ function RunHeader({ run, data }) {
                   whiteSpace: 'nowrap',
                 }}
               >
-                ◈ {relic?.name || rid}
+                {relic?.icon || '◈'} {relic?.name || rid}
               </div>
             );
           })}
@@ -437,8 +438,9 @@ function RewardScreen({ state, data, onAction }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {relicChoices.map(rid => {
                 const relic = data.relics?.[rid];
+                const tier = relic?.rarity || relic?.tier || 'common';
                 const tierColors = { boss: C.red, rare: C.purple, uncommon: C.yellow };
-                const col = tierColors[relic?.tier] || C.cyan;
+                const col = tierColors[tier] || C.cyan;
                 return (
                   <button
                     key={rid}
@@ -454,9 +456,10 @@ function RewardScreen({ state, data, onAction }) {
                     }}
                   >
                     <div style={{ fontFamily: MONO, fontWeight: 700, color: col, fontSize: 13, marginBottom: '3px' }}>
+                      {relic?.icon && <span style={{ marginRight: 5 }}>{relic.icon}</span>}
                       {relic?.name || rid}
                       <span style={{ marginLeft: 6, fontSize: 9, fontWeight: 400, opacity: 0.7, textTransform: 'uppercase' }}>
-                        [{relic?.tier || '?'}]
+                        [{tier}]
                       </span>
                     </div>
                     <div style={{ fontFamily: MONO, fontSize: 10, color: C.textDim }}>
@@ -788,9 +791,78 @@ function ShopScreen({ state, data, onAction }) {
           </div>
         )}
 
+        {/* Relic section */}
+        {offers.some(o => o.kind === 'Relic') && (
+          <div style={{ marginBottom: '20px' }}>
+            <div style={{ fontFamily: MONO, fontSize: 10, color: C.textMuted, letterSpacing: '0.1em', marginBottom: '10px' }}>
+              RELICS
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {offers.map((offer, i) => {
+                if (offer.kind !== 'Relic') return null;
+                const relic = data.relics?.[offer.relicId];
+                const tier = relic?.rarity || relic?.tier || 'common';
+                const tierColors = { boss: C.red, rare: C.purple, uncommon: C.yellow };
+                const col = tierColors[tier] || C.cyan;
+                const canAfford = gold >= offer.price;
+                return (
+                  <button
+                    key={i}
+                    onClick={() => canAfford && onAction({ type: 'Shop_BuyOffer', index: i })}
+                    disabled={!canAfford}
+                    style={{
+                      width: '100%', padding: '14px', borderRadius: '12px',
+                      textAlign: 'left', transition: 'all 0.2s ease',
+                      opacity: !canAfford ? 0.45 : 1,
+                      backgroundColor: canAfford ? `${col}10` : C.bgCard,
+                      border: `2px solid ${canAfford ? `${col}50` : C.border}`,
+                      boxShadow: canAfford ? `0 0 20px ${col}14` : 'none',
+                      cursor: canAfford ? 'pointer' : 'default',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div style={{
+                        width: 42, height: 42, borderRadius: '10px', flexShrink: 0,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: '22px',
+                        backgroundColor: `${col}18`,
+                        border: `1px solid ${col}40`,
+                      }}>
+                        {relic?.icon || '◈'}
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                          <span style={{ fontFamily: MONO, fontWeight: 700, color: canAfford ? col : C.textMuted, fontSize: 14 }}>
+                            {relic?.name || offer.relicId}
+                          </span>
+                          <span style={{ fontFamily: MONO, fontSize: 9, color: C.textMuted, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                            [{tier}]
+                          </span>
+                        </div>
+                        <div style={{ fontFamily: MONO, marginTop: 2, color: C.textMuted, fontSize: 11 }}>
+                          {relic?.description || ''}
+                        </div>
+                      </div>
+                      <div style={{
+                        padding: '4px 10px', borderRadius: '8px',
+                        fontFamily: MONO, fontWeight: 700,
+                        backgroundColor: canAfford ? `${C.yellow}18` : 'transparent',
+                        border: `1px solid ${canAfford ? `${C.yellow}50` : C.border}`,
+                        color: canAfford ? C.yellow : C.textMuted, fontSize: 13, flexShrink: 0,
+                      }}>
+                        {offer.price}g
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
       </div>
 
-      {/* Leave Market — always-visible sticky footer, outside the scrollable area */}
+      {/* Footer: Reroll + Leave */}
       <div
         className="safe-area-bottom"
         style={{
@@ -798,12 +870,40 @@ function ShopScreen({ state, data, onAction }) {
           padding: '10px 16px',
           borderTop: `1px solid ${C.border}`,
           backgroundColor: C.bgBar,
+          display: 'flex',
+          gap: '8px',
         }}
       >
+        {/* Reroll button */}
+        {(() => {
+          const rerollsUsed = state.shop?.rerollsUsed || 0;
+          const hasSysKey = (state.run?.relicIds || []).includes('SystemAdminKey');
+          const rerollCost = hasSysKey && rerollsUsed === 0 ? 0 : 30 + rerollsUsed * 10;
+          const canAffordReroll = (state.run?.gold || 0) >= rerollCost;
+          return (
+            <button
+              onClick={() => onAction({ type: 'Shop_Reroll' })}
+              disabled={!canAffordReroll}
+              title={hasSysKey && rerollsUsed === 0 ? 'Free reroll (SystemAdminKey)' : `Reroll shop (${rerollCost}g)`}
+              style={{
+                flex: '0 0 auto', padding: '14px 18px', borderRadius: '12px',
+                fontFamily: MONO, fontSize: 12, fontWeight: 700,
+                backgroundColor: canAffordReroll ? `${C.cyan}12` : 'transparent',
+                border: `1px solid ${canAffordReroll ? `${C.cyan}40` : C.border}`,
+                color: canAffordReroll ? C.cyan : C.textMuted,
+                cursor: canAffordReroll ? 'pointer' : 'default',
+                opacity: canAffordReroll ? 1 : 0.45,
+                transition: 'all 0.15s ease',
+              }}
+            >
+              🔄 {rerollCost === 0 ? 'Free' : `${rerollCost}g`}
+            </button>
+          );
+        })()}
         <button
           onClick={() => onAction({ type: 'Shop_Exit' })}
           style={{
-            width: '100%', padding: '14px', borderRadius: '12px',
+            flex: 1, padding: '14px', borderRadius: '12px',
             fontFamily: MONO, transition: 'all 0.15s ease',
             backgroundColor: C.bgCard, border: `1px solid ${C.border}`,
             color: C.textMuted, fontSize: 13, cursor: 'pointer',

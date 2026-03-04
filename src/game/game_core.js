@@ -624,6 +624,19 @@ export function dispatchGame(stateIn, data, action) {
 
       state.run.relicIds.push(action.relicId);
       log({ t: "Info", msg: `Picked relic: ${action.relicId}` });
+      // on_run_start effects fire when the relic is first acquired
+      if (action.relicId === 'WornToolkit' && state.deck) {
+        const instances = Object.values(state.deck.cardInstances);
+        const repairable = instances.filter(ci => !ci.finalMutationId);
+        if (repairable.length > 0) {
+          const wtRng = new RNG((state.run.seed ^ 0x700C) >>> 0);
+          const target = repairable[wtRng.int(repairable.length)];
+          const def = data.cards[target.defId];
+          const maxUse = def?.defaultUseCounter ?? 12;
+          target.useCounter = Math.min(maxUse, target.useCounter + Math.ceil(maxUse * 0.35));
+          log({ t: "Info", msg: `WornToolkit: repaired ${target.defId}` });
+        }
+      }
       delete state.reward.relicChoices;
       return state;
     }

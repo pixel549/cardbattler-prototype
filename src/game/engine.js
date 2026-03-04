@@ -1096,6 +1096,8 @@ function applyMutation(state, data, rng, cardInstanceId, tier) {
 
   push(state.log, { t: "MutationApplied", msg: `Mutation ${mid}`, data: { cardInstanceId, tier } });
   runPatchTrigger(state, data, rng, cardInstanceId, 'onApply');
+  // on_card_mutate relic hooks (e.g. CascadeProtocol: +8g on mutate)
+  runRelicHooks(state, data, 'on_card_mutate', { rng, cardInstanceId, tier });
 }
 
 function maybeTriggerMutation(state, data, rng, cardInstanceId) {
@@ -1792,6 +1794,43 @@ function applyRelicHook(state, data, relic, ctx) {
       }
       break;
 
+    // --- on_card_discard ---
+    case 'GlitchFilter': {
+      const aliveEnemies = state.enemies.filter(e => e.hp > 0);
+      if (aliveEnemies.length > 0) {
+        const gfRng = ctx.rng || new RNG((state.seed ^ 0xD1C5) >>> 0);
+        const target = gfRng.pick(aliveEnemies);
+        applyDamage(state, state.player.id, target, 3);
+        push(state.log, { t: 'Info', msg: `GlitchFilter: 3 dmg on discard` });
+      }
+      break;
+    }
+
+    // --- on_card_mutate ---
+    case 'CascadeProtocol':
+      // +8g when any card mutates during combat
+      state._pendingGoldGain = (state._pendingGoldGain || 0) + 8;
+      push(state.log, { t: 'Info', msg: 'CascadeProtocol: +8g on mutate' });
+      break;
+    case 'RecursiveLoop': {
+      // When a card mutates, add a fresh copy of the base card to discard
+      const rlCi = state.cardInstances[ctx.cardInstanceId];
+      if (rlCi) {
+        const rlRng = ctx.rng || new RNG((state.seed ^ 0xC0DE) >>> 0);
+        const newCid = `rl_${rlRng.int(0xFFFF).toString(16)}`;
+        state.cardInstances[newCid] = {
+          defId: rlCi.defId,
+          appliedMutations: [],
+          useCounter: (state.dataRef?.cards?.[rlCi.defId]?.defaultUseCounter ?? 12),
+          finalMutationCountdown: (state.dataRef?.cards?.[rlCi.defId]?.defaultFinalMutationCountdown ?? 8),
+          ramCostDelta: 0,
+        };
+        state.player.piles.discard.push(newCid);
+        push(state.log, { t: 'Info', msg: 'RecursiveLoop: base copy added to discard' });
+      }
+      break;
+    }
+
     // --- on_enemy_kill (called manually from applyDamage result) ---
     case 'KillSwitch':
       state.player.hp = Math.min(state.player.maxHP, state.player.hp + 3);
@@ -2090,6 +2129,17 @@ export function dispatchCombat(state, data, action) {
       runRelicHooks(state, data, 'on_turn_end', { rng });
 
       endTurnEthereal(state, data);
+
+      // on_card_discard relic hooks (e.g. GlitchFilter: 3 dmg per discard)
+      // Fire once per card being discarded from hand
+      {
+        const keepCid = state._keepOneCard;
+        const discardCount = state.player.piles.hand.filter(c => c !== keepCid).length;
+        for (let _di = 0; _di < discardCount; _di++) {
+          runRelicHooks(state, data, 'on_card_discard', { rng, cardIdx: _di });
+          if (state.combatOver) break;
+        }
+      }
 
       // Compute TraceBeacon hand-penalty BEFORE discarding (card was in hand this turn)
       state._traceBeaconHandBonus = getTraceBeaconHandBonus(state, data);

@@ -103,7 +103,16 @@ export function applyDamage(state, sourceId, target, amount) {
       push(state.log, { t: 'Info', msg: `FirewallPrime: hit negated (${state._relicFirewallPrimeHits} remaining)` });
       amount = 0;
     }
-    // SignalJammer: FIRST incoming hit -2 (enemies already handled via _relicSignalJammerActive but that was outgoing — flip to intake)
+    // MirrorArray: first enemy attack each combat is fully reflected back
+    if (relics2.includes('MirrorArray') && !state._mirrorArrayUsed && amount > 0) {
+      const attacker = state.enemies.find(e => e.id === sourceId);
+      if (attacker && attacker.hp > 0) {
+        attacker.hp = Math.max(0, attacker.hp - amount);
+        push(state.log, { t: 'Info', msg: `MirrorArray: reflected ${amount} to ${attacker.id}` });
+      }
+      state._mirrorArrayUsed = true;
+      amount = 0; // player takes no damage from the reflected hit
+    }
   }
 
   // Firewall: persistent shield that absorbs damage before block/HP
@@ -207,6 +216,11 @@ export function gainBlock(state, target, amount) {
 }
 
 export function addStatus(state, target, id, stacks) {
+  // HardenedKernel: player is immune to Vulnerable status
+  if (id === 'Vulnerable' && target === state.player && (state.relicIds || []).includes('HardenedKernel')) {
+    push(state.log, { t: 'Info', msg: 'HardenedKernel: Vulnerable blocked' });
+    return;
+  }
   if (!target.statuses) target.statuses = [];
   const existing = target.statuses.find(s => s.id === id);
   if (existing) existing.stacks += stacks;

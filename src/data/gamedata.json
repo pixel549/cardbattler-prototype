@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "builtAt": "2026-03-04T08:28:27.153Z",
+  "builtAt": "2026-03-04T12:19:19.853Z",
   "cards": {
     "C-001": {
       "id": "C-001",
@@ -5302,6 +5302,600 @@
         "brickBehavior": "Exhaust",
         "rewritePoolDefIds": []
       }
+    },
+    "EC-A1": {
+      "id": "EC-A1",
+      "name": "Enemy Light Attack",
+      "type": "Attack",
+      "costRAM": 0,
+      "tags": [
+        "EnemyAbility"
+      ],
+      "effects": [
+        {
+          "op": "DealDamage",
+          "target": "Enemy",
+          "amount": 7
+        }
+      ],
+      "defaultUseCounter": 999,
+      "defaultFinalMutationCountdown": 999,
+      "mutationOdds": {
+        "triggerChance": 0,
+        "tiers": {
+          "A": 100
+        }
+      },
+      "finalMutation": {
+        "outcomeWeights": {
+          "brick": 0,
+          "rewrite": 1
+        },
+        "brickBehavior": "Exhaust",
+        "rewritePoolDefIds": []
+      }
+    },
+    "EC-A2": {
+      "id": "EC-A2",
+      "name": "Enemy Medium Attack",
+      "type": "Attack",
+      "costRAM": 0,
+      "tags": [
+        "EnemyAbility"
+      ],
+      "effects": [
+        {
+          "op": "DealDamage",
+          "target": "Enemy",
+          "amount": 10
+        }
+      ],
+      "defaultUseCounter": 999,
+      "defaultFinalMutationCountdown": 999,
+      "mutationOdds": {
+        "triggerChance": 0,
+        "tiers": {
+          "A": 100
+        }
+      },
+      "finalMutation": {
+        "outcomeWeights": {
+          "brick": 0,
+          "rewrite": 1
+        },
+        "brickBehavior": "Exhaust",
+        "rewritePoolDefIds": []
+      }
+    },
+    "EC-A3": {
+      "id": "EC-A3",
+      "name": "Enemy Heavy Attack",
+      "type": "Attack",
+      "costRAM": 0,
+      "tags": [
+        "EnemyAbility"
+      ],
+      "effects": [
+        {
+          "op": "DealDamage",
+          "target": "Enemy",
+          "amount": 14
+        }
+      ],
+      "defaultUseCounter": 999,
+      "defaultFinalMutationCountdown": 999,
+      "mutationOdds": {
+        "triggerChance": 0,
+        "tiers": {
+          "A": 100
+        }
+      },
+      "finalMutation": {
+        "outcomeWeights": {
+          "brick": 0,
+          "rewrite": 1
+        },
+        "brickBehavior": "Exhaust",
+        "rewritePoolDefIds": []
+      }
+    },
+    "EC-A4": {
+      "id": "EC-A4",
+      "name": "Enemy Boss Attack",
+      "type": "Attack",
+      "costRAM": 0,
+      "tags": [
+        "EnemyAbility"
+      ],
+      "effects": [
+        {
+          "op": "DealDamage",
+          "target": "Enemy",
+          "amount": 18
+        }
+      ],
+      "defaultUseCounter": 999,
+      "defaultFinalMutationCountdown": 999,
+      "mutationOdds": {
+        "triggerChance": 0,
+        "tiers": {
+          "A": 100
+        }
+      },
+      "finalMutation": {
+        "outcomeWeights": {
+          "brick": 0,
+          "rewrite": 1
+        },
+        "brickBehavior": "Exhaust",
+        "rewritePoolDefIds": []
+      }
+    },
+    "EC-D1": {
+      "id": "EC-D1",
+      "name": "Enemy Light Guard",
+      "type": "Defense",
+      "costRAM": 0,
+      "tags": [
+        "EnemyAbility"
+      ],
+      "effects": [
+        {
+          "op": "GainBlock",
+          "target": "Self",
+          "amount": 8
+        }
+      ],
+      "defaultUseCounter": 999,
+      "defaultFinalMutationCountdown": 999,
+      "mutationOdds": {
+        "triggerChance": 0,
+        "tiers": {
+          "A": 100
+        }
+      },
+      "finalMutation": {
+        "outcomeWeights": {
+          "brick": 0,
+          "rewrite": 1
+        },
+        "brickBehavior": "Exhaust",
+        "rewritePoolDefIds": []
+      }
+    },
+    "EC-D2": {
+      "id": "EC-D2",
+      "name": "Enemy Heavy Guard",
+      "type": "Defense",
+      "costRAM": 0,
+      "tags": [
+        "EnemyAbility"
+      ],
+      "effects": [
+        {
+          "op": "GainBlock",
+          "target": "Self",
+          "amount": 12
+        }
+      ],
+      "defaultUseCounter": 999,
+      "defaultFinalMutationCountdown": 999,
+      "mutationOdds": {
+        "triggerChance": 0,
+        "tiers": {
+          "A": 100
+        }
+      },
+      "finalMutation": {
+        "outcomeWeights": {
+          "brick": 0,
+          "rewrite": 1
+        },
+        "brickBehavior": "Exhaust",
+        "rewritePoolDefIds": []
+      }
+    },
+    "EC-D3": {
+      "id": "EC-D3",
+      "name": "Enemy Guard Strike",
+      "type": "Defense",
+      "costRAM": 0,
+      "tags": [
+        "EnemyAbility"
+      ],
+      "effects": [
+        {
+          "op": "GainBlock",
+          "target": "Self",
+          "amount": 5
+        },
+        {
+          "op": "DealDamage",
+          "target": "Enemy",
+          "amount": 5
+        }
+      ],
+      "defaultUseCounter": 999,
+      "defaultFinalMutationCountdown": 999,
+      "mutationOdds": {
+        "triggerChance": 0,
+        "tiers": {
+          "A": 100
+        }
+      },
+      "finalMutation": {
+        "outcomeWeights": {
+          "brick": 0,
+          "rewrite": 1
+        },
+        "brickBehavior": "Exhaust",
+        "rewritePoolDefIds": []
+      }
+    },
+    "EC-S1": {
+      "id": "EC-S1",
+      "name": "Enemy Light Heal",
+      "type": "Skill",
+      "costRAM": 0,
+      "tags": [
+        "EnemyAbility"
+      ],
+      "effects": [
+        {
+          "op": "Heal",
+          "target": "Self",
+          "amount": 10
+        }
+      ],
+      "defaultUseCounter": 999,
+      "defaultFinalMutationCountdown": 999,
+      "mutationOdds": {
+        "triggerChance": 0,
+        "tiers": {
+          "A": 100
+        }
+      },
+      "finalMutation": {
+        "outcomeWeights": {
+          "brick": 0,
+          "rewrite": 1
+        },
+        "brickBehavior": "Exhaust",
+        "rewritePoolDefIds": []
+      }
+    },
+    "EC-S2": {
+      "id": "EC-S2",
+      "name": "Enemy Heavy Heal",
+      "type": "Skill",
+      "costRAM": 0,
+      "tags": [
+        "EnemyAbility"
+      ],
+      "effects": [
+        {
+          "op": "Heal",
+          "target": "Self",
+          "amount": 15
+        },
+        {
+          "op": "DealDamage",
+          "target": "Enemy",
+          "amount": 4
+        }
+      ],
+      "defaultUseCounter": 999,
+      "defaultFinalMutationCountdown": 999,
+      "mutationOdds": {
+        "triggerChance": 0,
+        "tiers": {
+          "A": 100
+        }
+      },
+      "finalMutation": {
+        "outcomeWeights": {
+          "brick": 0,
+          "rewrite": 1
+        },
+        "brickBehavior": "Exhaust",
+        "rewritePoolDefIds": []
+      }
+    },
+    "EC-C1": {
+      "id": "EC-C1",
+      "name": "Enemy Light Control",
+      "type": "Skill",
+      "costRAM": 0,
+      "tags": [
+        "EnemyAbility"
+      ],
+      "effects": [
+        {
+          "op": "ApplyStatus",
+          "target": "Enemy",
+          "statusId": "SensorGlitch",
+          "stacks": 1
+        }
+      ],
+      "defaultUseCounter": 999,
+      "defaultFinalMutationCountdown": 999,
+      "mutationOdds": {
+        "triggerChance": 0,
+        "tiers": {
+          "A": 100
+        }
+      },
+      "finalMutation": {
+        "outcomeWeights": {
+          "brick": 0,
+          "rewrite": 1
+        },
+        "brickBehavior": "Exhaust",
+        "rewritePoolDefIds": []
+      }
+    },
+    "EC-C2": {
+      "id": "EC-C2",
+      "name": "Enemy Heavy Control",
+      "type": "Skill",
+      "costRAM": 0,
+      "tags": [
+        "EnemyAbility"
+      ],
+      "effects": [
+        {
+          "op": "ApplyStatus",
+          "target": "Enemy",
+          "statusId": "SensorGlitch",
+          "stacks": 2
+        },
+        {
+          "op": "DealDamage",
+          "target": "Enemy",
+          "amount": 4
+        }
+      ],
+      "defaultUseCounter": 999,
+      "defaultFinalMutationCountdown": 999,
+      "mutationOdds": {
+        "triggerChance": 0,
+        "tiers": {
+          "A": 100
+        }
+      },
+      "finalMutation": {
+        "outcomeWeights": {
+          "brick": 0,
+          "rewrite": 1
+        },
+        "brickBehavior": "Exhaust",
+        "rewritePoolDefIds": []
+      }
+    },
+    "EC-DB1": {
+      "id": "EC-DB1",
+      "name": "Enemy Corrode Light",
+      "type": "Skill",
+      "costRAM": 0,
+      "tags": [
+        "EnemyAbility"
+      ],
+      "effects": [
+        {
+          "op": "ApplyStatus",
+          "target": "Enemy",
+          "statusId": "Corrode",
+          "stacks": 2
+        }
+      ],
+      "defaultUseCounter": 999,
+      "defaultFinalMutationCountdown": 999,
+      "mutationOdds": {
+        "triggerChance": 0,
+        "tiers": {
+          "A": 100
+        }
+      },
+      "finalMutation": {
+        "outcomeWeights": {
+          "brick": 0,
+          "rewrite": 1
+        },
+        "brickBehavior": "Exhaust",
+        "rewritePoolDefIds": []
+      }
+    },
+    "EC-DB2": {
+      "id": "EC-DB2",
+      "name": "Enemy Corrode Medium",
+      "type": "Skill",
+      "costRAM": 0,
+      "tags": [
+        "EnemyAbility"
+      ],
+      "effects": [
+        {
+          "op": "ApplyStatus",
+          "target": "Enemy",
+          "statusId": "Corrode",
+          "stacks": 3
+        },
+        {
+          "op": "ApplyStatus",
+          "target": "Enemy",
+          "statusId": "Leak",
+          "stacks": 1
+        }
+      ],
+      "defaultUseCounter": 999,
+      "defaultFinalMutationCountdown": 999,
+      "mutationOdds": {
+        "triggerChance": 0,
+        "tiers": {
+          "A": 100
+        }
+      },
+      "finalMutation": {
+        "outcomeWeights": {
+          "brick": 0,
+          "rewrite": 1
+        },
+        "brickBehavior": "Exhaust",
+        "rewritePoolDefIds": []
+      }
+    },
+    "EC-DB3": {
+      "id": "EC-DB3",
+      "name": "Enemy Corrode Heavy",
+      "type": "Skill",
+      "costRAM": 0,
+      "tags": [
+        "EnemyAbility"
+      ],
+      "effects": [
+        {
+          "op": "ApplyStatus",
+          "target": "Enemy",
+          "statusId": "Corrode",
+          "stacks": 4
+        },
+        {
+          "op": "ApplyStatus",
+          "target": "Enemy",
+          "statusId": "Leak",
+          "stacks": 2
+        }
+      ],
+      "defaultUseCounter": 999,
+      "defaultFinalMutationCountdown": 999,
+      "mutationOdds": {
+        "triggerChance": 0,
+        "tiers": {
+          "A": 100
+        }
+      },
+      "finalMutation": {
+        "outcomeWeights": {
+          "brick": 0,
+          "rewrite": 1
+        },
+        "brickBehavior": "Exhaust",
+        "rewritePoolDefIds": []
+      }
+    },
+    "EC-M1": {
+      "id": "EC-M1",
+      "name": "Enemy Mixed Attack",
+      "type": "Attack",
+      "costRAM": 0,
+      "tags": [
+        "EnemyAbility"
+      ],
+      "effects": [
+        {
+          "op": "DealDamage",
+          "target": "Enemy",
+          "amount": 7
+        },
+        {
+          "op": "ApplyStatus",
+          "target": "Enemy",
+          "statusId": "Corrode",
+          "stacks": 1
+        }
+      ],
+      "defaultUseCounter": 999,
+      "defaultFinalMutationCountdown": 999,
+      "mutationOdds": {
+        "triggerChance": 0,
+        "tiers": {
+          "A": 100
+        }
+      },
+      "finalMutation": {
+        "outcomeWeights": {
+          "brick": 0,
+          "rewrite": 1
+        },
+        "brickBehavior": "Exhaust",
+        "rewritePoolDefIds": []
+      }
+    },
+    "EC-E1": {
+      "id": "EC-E1",
+      "name": "Enemy Economy Light",
+      "type": "Skill",
+      "costRAM": 0,
+      "tags": [
+        "EnemyAbility"
+      ],
+      "effects": [
+        {
+          "op": "ApplyStatus",
+          "target": "Enemy",
+          "statusId": "SensorGlitch",
+          "stacks": 1
+        },
+        {
+          "op": "DealDamage",
+          "target": "Enemy",
+          "amount": 5
+        }
+      ],
+      "defaultUseCounter": 999,
+      "defaultFinalMutationCountdown": 999,
+      "mutationOdds": {
+        "triggerChance": 0,
+        "tiers": {
+          "A": 100
+        }
+      },
+      "finalMutation": {
+        "outcomeWeights": {
+          "brick": 0,
+          "rewrite": 1
+        },
+        "brickBehavior": "Exhaust",
+        "rewritePoolDefIds": []
+      }
+    },
+    "EC-E2": {
+      "id": "EC-E2",
+      "name": "Enemy Economy Medium",
+      "type": "Skill",
+      "costRAM": 0,
+      "tags": [
+        "EnemyAbility"
+      ],
+      "effects": [
+        {
+          "op": "ApplyStatus",
+          "target": "Enemy",
+          "statusId": "Underclock",
+          "stacks": 2
+        },
+        {
+          "op": "DealDamage",
+          "target": "Enemy",
+          "amount": 5
+        }
+      ],
+      "defaultUseCounter": 999,
+      "defaultFinalMutationCountdown": 999,
+      "mutationOdds": {
+        "triggerChance": 0,
+        "tiers": {
+          "A": 100
+        }
+      },
+      "finalMutation": {
+        "outcomeWeights": {
+          "brick": 0,
+          "rewrite": 1
+        },
+        "brickBehavior": "Exhaust",
+        "rewritePoolDefIds": []
+      }
     }
   },
   "mutations": {
@@ -7347,15 +7941,13 @@
       "name": "Hacker Drone",
       "maxHP": 65,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A2"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Attack",
-      "difficulty": "Normal",
+      "difficulty": "4.0",
       "act": "Act 2"
     },
     "E_FIREWALL_POD": {
@@ -7363,15 +7955,14 @@
       "name": "Firewall Pod",
       "maxHP": 51,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-D2",
+        "EC-D3"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Defense/Tank",
-      "difficulty": "Easy",
+      "difficulty": "3.8",
       "act": "Act 1"
     },
     "E_PATCH_SPRITE": {
@@ -7379,15 +7970,14 @@
       "name": "Patch Sprite",
       "maxHP": 35,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-S1",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Support/Heal",
-      "difficulty": "Easy",
+      "difficulty": "3.2",
       "act": "Act 1"
     },
     "E_SIGNAL_IMP": {
@@ -7395,15 +7985,14 @@
       "name": "Signal Imp",
       "maxHP": 64,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-C1",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Control",
-      "difficulty": "Normal",
+      "difficulty": "4.5",
       "act": "Act 1"
     },
     "E_CORRODE_RAT": {
@@ -7411,15 +8000,13 @@
       "name": "Corrode Rat",
       "maxHP": 61,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-DB2"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Debuff/DoT",
-      "difficulty": "Normal",
+      "difficulty": "4.2",
       "act": "Act 2"
     },
     "E_LEAK_WRAITH": {
@@ -7427,15 +8014,13 @@
       "name": "Leak Wraith",
       "maxHP": 61,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-DB2"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Debuff/DoT",
-      "difficulty": "Normal",
+      "difficulty": "4.8",
       "act": "Act 2"
     },
     "E_SCRAP_MINION": {
@@ -7443,14 +8028,13 @@
       "name": "Scrap Minion",
       "maxHP": 12,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Minion",
-      "difficulty": "Minion",
+      "difficulty": "1.0",
       "act": "All"
     },
     "E_PULSE_SAPPER_ARRAY": {
@@ -7458,14 +8042,13 @@
       "name": "Pulse Sapper Array",
       "maxHP": 65,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-A2"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Attack",
-      "difficulty": "Normal",
+      "difficulty": "5.4",
       "act": "Act 2"
     },
     "E_CHROME_CLERIC_PROTOCOL": {
@@ -7473,14 +8056,14 @@
       "name": "Chrome Cleric Protocol",
       "maxHP": 41,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-C1",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Control",
-      "difficulty": "Easy",
+      "difficulty": "4.2",
       "act": "Act 1"
     },
     "E_VECTOR_RAT_MK_III": {
@@ -7488,15 +8071,14 @@
       "name": "Vector Rat Mk III",
       "maxHP": 35,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-S1",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Support/Heal",
-      "difficulty": "Easy",
+      "difficulty": "4.2",
       "act": "Act 1"
     },
     "E_OBSIDIAN_BRUISER_PACK": {
@@ -7504,15 +8086,14 @@
       "name": "Obsidian Bruiser Pack",
       "maxHP": 76,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-D2",
+        "EC-D3"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Defense/Tank",
-      "difficulty": "Normal",
+      "difficulty": "7.6",
       "act": "Act 1"
     },
     "E_GLITCH_RUNNER_NODE": {
@@ -7520,15 +8101,13 @@
       "name": "Glitch Runner Node",
       "maxHP": 65,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A2"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Attack",
-      "difficulty": "Normal",
+      "difficulty": "5.5",
       "act": "Act 2"
     },
     "E_PULSE_SHAMAN_MK_I": {
@@ -7536,15 +8115,14 @@
       "name": "Pulse Shaman Mk I",
       "maxHP": 41,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-C1",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Control",
-      "difficulty": "Easy",
+      "difficulty": "4.5",
       "act": "Act 1"
     },
     "E_ECHO_IMP_MK_II": {
@@ -7552,14 +8130,14 @@
       "name": "Echo Imp Mk II",
       "maxHP": 35,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-S1",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Support/Heal",
-      "difficulty": "Easy",
+      "difficulty": "3.1",
       "act": "Act 1"
     },
     "E_VANTA_SENTINEL_PROTOCOL": {
@@ -7567,14 +8145,14 @@
       "name": "Vanta Sentinel Protocol",
       "maxHP": 76,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-D2",
+        "EC-D3"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Defense/Tank",
-      "difficulty": "Normal",
+      "difficulty": "6.8",
       "act": "Act 1"
     },
     "E_GHOST_DAEMON_SWARM": {
@@ -7582,15 +8160,13 @@
       "name": "Ghost Daemon Swarm",
       "maxHP": 43,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A2"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Attack",
-      "difficulty": "Easy",
+      "difficulty": "3.2",
       "act": "Act 1"
     },
     "E_CIPHER_POD_SHARD": {
@@ -7598,15 +8174,13 @@
       "name": "Cipher Pod Shard",
       "maxHP": 85,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A3"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Attack",
-      "difficulty": "Hard",
+      "difficulty": "15.1",
       "act": "Act 3"
     },
     "E_VANTA_DRONE_MK_III": {
@@ -7614,16 +8188,13 @@
       "name": "Vanta Drone Mk III",
       "maxHP": 38,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-E2"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Economy pressure",
-      "difficulty": "Easy",
+      "difficulty": "4.6",
       "act": "Act 1"
     },
     "E_VANTA_SCOUT_NODE": {
@@ -7631,15 +8202,14 @@
       "name": "Vanta Scout Node",
       "maxHP": 145,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A3",
+        "EC-DB1"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Mixed threat",
-      "difficulty": "Elite",
+      "difficulty": "18.7",
       "act": "Act 3"
     },
     "E_CIPHER_HACKER_SWARM": {
@@ -7647,14 +8217,14 @@
       "name": "Cipher Hacker Swarm",
       "maxHP": 84,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-C1",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Control",
-      "difficulty": "Hard",
+      "difficulty": "9.0",
       "act": "Act 2"
     },
     "E_CIRCUIT_BRUISER_MK_III": {
@@ -7662,14 +8232,14 @@
       "name": "Circuit Bruiser Mk III",
       "maxHP": 56,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-S1",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Support/Heal",
-      "difficulty": "Normal",
+      "difficulty": "7.4",
       "act": "Act 2"
     },
     "E_ECHO_ENFORCER_MK_I": {
@@ -7677,15 +8247,13 @@
       "name": "Echo Enforcer Mk I",
       "maxHP": 61,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-DB2"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Debuff/DoT",
-      "difficulty": "Normal",
+      "difficulty": "8.0",
       "act": "Act 1"
     },
     "E_CHROME_SAPPER_CREW": {
@@ -7693,14 +8261,13 @@
       "name": "Chrome Sapper Crew",
       "maxHP": 65,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-A2"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Attack",
-      "difficulty": "Normal",
+      "difficulty": "4.5",
       "act": "Act 2"
     },
     "E_STATIC_POD_PROTOCOL": {
@@ -7708,15 +8275,14 @@
       "name": "Static Pod Protocol",
       "maxHP": 64,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-C1",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Control",
-      "difficulty": "Normal",
+      "difficulty": "4.7",
       "act": "Act 1"
     },
     "E_PULSE_BRUISER_FRAME": {
@@ -7724,14 +8290,13 @@
       "name": "Pulse Bruiser Frame",
       "maxHP": 85,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-A2"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Attack",
-      "difficulty": "Hard",
+      "difficulty": "10.9",
       "act": "Act 2"
     },
     "E_VECTOR_COURIER_ARRAY": {
@@ -7739,15 +8304,13 @@
       "name": "Vector Courier Array",
       "maxHP": 59,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-E2"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Economy pressure",
-      "difficulty": "Normal",
+      "difficulty": "4.9",
       "act": "Act 2"
     },
     "E_ROGUE_TECH_ARRAY": {
@@ -7755,14 +8318,13 @@
       "name": "Rogue Tech Array",
       "maxHP": 39,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-DB2"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Debuff/DoT",
-      "difficulty": "Easy",
+      "difficulty": "3.7",
       "act": "Act 1"
     },
     "E_GHOST_RUNNER_PROTOCOL": {
@@ -7770,15 +8332,13 @@
       "name": "Ghost Runner Protocol",
       "maxHP": 81,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-DB2"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Debuff/DoT",
-      "difficulty": "Hard",
+      "difficulty": "14.0",
       "act": "Act 2"
     },
     "E_ECHO_SNIPER_PACK": {
@@ -7786,15 +8346,13 @@
       "name": "Echo Sniper Pack",
       "maxHP": 65,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A2"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Attack",
-      "difficulty": "Normal",
+      "difficulty": "8.2",
       "act": "Act 1"
     },
     "E_STATIC_DRONE_MK_II": {
@@ -7802,16 +8360,14 @@
       "name": "Static Drone Mk II",
       "maxHP": 76,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-D2",
+        "EC-D3"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Defense/Tank",
-      "difficulty": "Normal",
+      "difficulty": "7.5",
       "act": "Act 2"
     },
     "E_RAZOR_SHAMAN_MK_II": {
@@ -7819,16 +8375,13 @@
       "name": "Razor Shaman Mk II",
       "maxHP": 38,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-E2"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Economy pressure",
-      "difficulty": "Easy",
+      "difficulty": "4.0",
       "act": "Act 1"
     },
     "E_HOLO_SHAMAN_CREW": {
@@ -7836,15 +8389,14 @@
       "name": "Holo Shaman Crew",
       "maxHP": 76,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-D2",
+        "EC-D3"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Defense/Tank",
-      "difficulty": "Normal",
+      "difficulty": "6.0",
       "act": "Act 2"
     },
     "E_VECTOR_DAEMON_FRAME": {
@@ -7852,16 +8404,13 @@
       "name": "Vector Daemon Frame",
       "maxHP": 59,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-E2"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Economy pressure",
-      "difficulty": "Normal",
+      "difficulty": "6.6",
       "act": "Act 2"
     },
     "E_VANTA_ENFORCER_SWARM": {
@@ -7869,16 +8418,13 @@
       "name": "Vanta Enforcer Swarm",
       "maxHP": 59,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-E2"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Economy pressure",
-      "difficulty": "Normal",
+      "difficulty": "5.9",
       "act": "Act 2"
     },
     "E_CHROME_SAPPER_NODE": {
@@ -7886,16 +8432,13 @@
       "name": "Chrome Sapper Node",
       "maxHP": 65,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A2"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Attack",
-      "difficulty": "Normal",
+      "difficulty": "5.6",
       "act": "Act 1"
     },
     "E_NULL_DAEMON_MK_II": {
@@ -7903,15 +8446,14 @@
       "name": "Null Daemon Mk II",
       "maxHP": 56,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-S1",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Support/Heal",
-      "difficulty": "Normal",
+      "difficulty": "4.6",
       "act": "Act 2"
     },
     "E_KILO_ENFORCER_UNIT": {
@@ -7919,15 +8461,15 @@
       "name": "Kilo Enforcer Unit",
       "maxHP": 96,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-D2",
+        "EC-D2",
+        "EC-D3"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Defense/Tank",
-      "difficulty": "Hard",
+      "difficulty": "11.1",
       "act": "Act 3"
     },
     "E_CIPHER_HACKER_MK_II": {
@@ -7935,14 +8477,13 @@
       "name": "Cipher Hacker Mk II",
       "maxHP": 81,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-DB3"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Debuff/DoT",
-      "difficulty": "Hard",
+      "difficulty": "12.1",
       "act": "Act 3"
     },
     "E_STATIC_SAPPER_CELL": {
@@ -7950,15 +8491,14 @@
       "name": "Static Sapper Cell",
       "maxHP": 84,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-C2",
+        "EC-A2"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Control",
-      "difficulty": "Hard",
+      "difficulty": "13.9",
       "act": "Act 3"
     },
     "E_KILO_COURIER_ARRAY": {
@@ -7966,15 +8506,13 @@
       "name": "Kilo Courier Array",
       "maxHP": 81,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-DB2"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Debuff/DoT",
-      "difficulty": "Hard",
+      "difficulty": "15.5",
       "act": "Act 2"
     },
     "E_ROGUE_SCOUT_SWARM": {
@@ -7982,15 +8520,13 @@
       "name": "Rogue Scout Swarm",
       "maxHP": 38,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-E2"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Economy pressure",
-      "difficulty": "Easy",
+      "difficulty": "4.4",
       "act": "Act 1"
     },
     "E_VANTA_BRUISER_PROXY": {
@@ -7998,14 +8534,13 @@
       "name": "Vanta Bruiser Proxy",
       "maxHP": 59,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-E2"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Economy pressure",
-      "difficulty": "Normal",
+      "difficulty": "7.4",
       "act": "Act 1"
     },
     "E_KILO_SNIPER_UNIT": {
@@ -8013,15 +8548,13 @@
       "name": "Kilo Sniper Unit",
       "maxHP": 81,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-DB2"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Debuff/DoT",
-      "difficulty": "Hard",
+      "difficulty": "10.5",
       "act": "Act 2"
     },
     "E_CIPHER_DRONE_PROTOCOL": {
@@ -8029,14 +8562,14 @@
       "name": "Cipher Drone Protocol",
       "maxHP": 64,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-C1",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Control",
-      "difficulty": "Normal",
+      "difficulty": "7.5",
       "act": "Act 1"
     },
     "E_OBSIDIAN_SNIPER_MK_III": {
@@ -8044,16 +8577,14 @@
       "name": "Obsidian Sniper Mk III",
       "maxHP": 51,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-D2",
+        "EC-D3"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Defense/Tank",
-      "difficulty": "Easy",
+      "difficulty": "3.1",
       "act": "Act 1"
     },
     "E_CHROME_WARDEN_SWARM": {
@@ -8061,14 +8592,14 @@
       "name": "Chrome Warden Swarm",
       "maxHP": 56,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-S1",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Support/Heal",
-      "difficulty": "Normal",
+      "difficulty": "8.0",
       "act": "Act 1"
     },
     "E_QUANTUM_HACKER_PACK": {
@@ -8076,15 +8607,14 @@
       "name": "Quantum Hacker Pack",
       "maxHP": 51,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-D2",
+        "EC-D3"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Defense/Tank",
-      "difficulty": "Easy",
+      "difficulty": "3.7",
       "act": "Act 1"
     },
     "E_ION_RAT_SUITE": {
@@ -8092,14 +8622,13 @@
       "name": "Ion Rat Suite",
       "maxHP": 59,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-E2"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Economy pressure",
-      "difficulty": "Normal",
+      "difficulty": "5.0",
       "act": "Act 2"
     },
     "E_GLITCH_WARDEN_SUITE": {
@@ -8107,14 +8636,13 @@
       "name": "Glitch Warden Suite",
       "maxHP": 81,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-DB3"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Debuff/DoT",
-      "difficulty": "Hard",
+      "difficulty": "16.0",
       "act": "Act 3"
     },
     "E_HOLO_SNIPER_SHARD": {
@@ -8122,14 +8650,13 @@
       "name": "Holo Sniper Shard",
       "maxHP": 59,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-E2"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Economy pressure",
-      "difficulty": "Normal",
+      "difficulty": "8.0",
       "act": "Act 2"
     },
     "E_VECTOR_MARAUDER_PROXY": {
@@ -8137,14 +8664,13 @@
       "name": "Vector Marauder Proxy",
       "maxHP": 65,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-A2"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Attack",
-      "difficulty": "Normal",
+      "difficulty": "7.6",
       "act": "Act 2"
     },
     "E_VANTA_DRONE_FRAME": {
@@ -8152,15 +8678,14 @@
       "name": "Vanta Drone Frame",
       "maxHP": 56,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-S1",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Support/Heal",
-      "difficulty": "Normal",
+      "difficulty": "5.9",
       "act": "Act 2"
     },
     "E_ION_SENTINEL_NODE": {
@@ -8168,15 +8693,14 @@
       "name": "Ion Sentinel Node",
       "maxHP": 76,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-D2",
+        "EC-D3"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Defense/Tank",
-      "difficulty": "Normal",
+      "difficulty": "6.2",
       "act": "Act 2"
     },
     "E_GHOST_CLERIC_SHARD": {
@@ -8184,15 +8708,14 @@
       "name": "Ghost Cleric Shard",
       "maxHP": 56,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-S1",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Support/Heal",
-      "difficulty": "Normal",
+      "difficulty": "6.5",
       "act": "Act 1"
     },
     "E_STATIC_SCOUT_MK_II": {
@@ -8200,14 +8723,14 @@
       "name": "Static Scout Mk II",
       "maxHP": 79,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-E2",
+        "EC-A2"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Economy pressure",
-      "difficulty": "Hard",
+      "difficulty": "13.4",
       "act": "Act 3"
     },
     "E_CHROME_BRUISER_SHARD": {
@@ -8215,15 +8738,14 @@
       "name": "Chrome Bruiser Shard",
       "maxHP": 64,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-C1",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Control",
-      "difficulty": "Normal",
+      "difficulty": "8.5",
       "act": "Act 1"
     },
     "E_GLITCH_BRUISER_MK_II": {
@@ -8231,15 +8753,13 @@
       "name": "Glitch Bruiser Mk II",
       "maxHP": 65,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A2"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Attack",
-      "difficulty": "Normal",
+      "difficulty": "6.7",
       "act": "Act 1"
     },
     "E_STATIC_IMP_RIG": {
@@ -8247,14 +8767,13 @@
       "name": "Static Imp Rig",
       "maxHP": 61,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-DB2"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Debuff/DoT",
-      "difficulty": "Normal",
+      "difficulty": "6.1",
       "act": "Act 2"
     },
     "E_ECHO_SENTINEL_SHARD": {
@@ -8262,16 +8781,14 @@
       "name": "Echo Sentinel Shard",
       "maxHP": 64,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-C1",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Control",
-      "difficulty": "Normal",
+      "difficulty": "5.1",
       "act": "Act 1"
     },
     "E_KILO_TECH_SWARM": {
@@ -8279,15 +8796,14 @@
       "name": "Kilo Tech Swarm",
       "maxHP": 96,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-D2",
+        "EC-D3"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Defense/Tank",
-      "difficulty": "Hard",
+      "difficulty": "13.6",
       "act": "Act 2"
     },
     "E_VECTOR_GOON_PROXY": {
@@ -8295,15 +8811,15 @@
       "name": "Vector Goon Proxy",
       "maxHP": 96,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-D2",
+        "EC-D2",
+        "EC-D3"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Defense/Tank",
-      "difficulty": "Hard",
+      "difficulty": "16.0",
       "act": "Act 3"
     },
     "E_ION_CLERIC_PROXY": {
@@ -8311,15 +8827,14 @@
       "name": "Ion Cleric Proxy",
       "maxHP": 79,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-E2",
+        "EC-A2"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Economy pressure",
-      "difficulty": "Hard",
+      "difficulty": "8.8",
       "act": "Act 3"
     },
     "E_NULL_DAEMON_RIG": {
@@ -8327,14 +8842,13 @@
       "name": "Null Daemon Rig",
       "maxHP": 61,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-DB2"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Debuff/DoT",
-      "difficulty": "Normal",
+      "difficulty": "6.4",
       "act": "Act 2"
     },
     "E_VANTA_SAPPER_NODE": {
@@ -8342,16 +8856,14 @@
       "name": "Vanta Sapper Node",
       "maxHP": 56,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-S1",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Support/Heal",
-      "difficulty": "Normal",
+      "difficulty": "5.1",
       "act": "Act 2"
     },
     "E_FLUX_POD_SHARD": {
@@ -8359,14 +8871,13 @@
       "name": "Flux Pod Shard",
       "maxHP": 59,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-E2"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Economy pressure",
-      "difficulty": "Normal",
+      "difficulty": "5.7",
       "act": "Act 1"
     },
     "E_VECTOR_HACKER_PACK": {
@@ -8374,15 +8885,13 @@
       "name": "Vector Hacker Pack",
       "maxHP": 39,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-DB2"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Debuff/DoT",
-      "difficulty": "Easy",
+      "difficulty": "3.1",
       "act": "Act 1"
     },
     "E_PULSE_RAT_MK_II": {
@@ -8390,14 +8899,13 @@
       "name": "Pulse Rat Mk II",
       "maxHP": 65,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-A2"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Attack",
-      "difficulty": "Normal",
+      "difficulty": "7.1",
       "act": "Act 1"
     },
     "E_NEON_POD_SUITE": {
@@ -8405,15 +8913,14 @@
       "name": "Neon Pod Suite",
       "maxHP": 64,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-C1",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Control",
-      "difficulty": "Normal",
+      "difficulty": "7.2",
       "act": "Act 2"
     },
     "E_RAZOR_ENFORCER_FRAME": {
@@ -8421,15 +8928,14 @@
       "name": "Razor Enforcer Frame",
       "maxHP": 64,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-C1",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Control",
-      "difficulty": "Normal",
+      "difficulty": "5.2",
       "act": "Act 1"
     },
     "E_QUANTUM_TECH_NODE": {
@@ -8437,14 +8943,13 @@
       "name": "Quantum Tech Node",
       "maxHP": 59,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-E2"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Economy pressure",
-      "difficulty": "Normal",
+      "difficulty": "7.5",
       "act": "Act 1"
     },
     "E_ROGUE_POD_PROTOCOL": {
@@ -8452,14 +8957,13 @@
       "name": "Rogue Pod Protocol",
       "maxHP": 59,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-E2"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Economy pressure",
-      "difficulty": "Normal",
+      "difficulty": "6.4",
       "act": "Act 2"
     },
     "E_VANTA_ENFORCER_MK_I": {
@@ -8467,15 +8971,14 @@
       "name": "Vanta Enforcer Mk I",
       "maxHP": 64,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-C1",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Control",
-      "difficulty": "Normal",
+      "difficulty": "6.2",
       "act": "Act 1"
     },
     "E_ION_SAPPER_RIG": {
@@ -8483,14 +8986,14 @@
       "name": "Ion Sapper Rig",
       "maxHP": 96,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-D2",
+        "EC-D3"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Defense/Tank",
-      "difficulty": "Hard",
+      "difficulty": "11.6",
       "act": "Act 2"
     },
     "E_RAZOR_RUNNER_PROXY": {
@@ -8498,14 +9001,14 @@
       "name": "Razor Runner Proxy",
       "maxHP": 76,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-D2",
+        "EC-D3"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Defense/Tank",
-      "difficulty": "Normal",
+      "difficulty": "5.2",
       "act": "Act 2"
     },
     "E_HOLO_SAPPER_CELL": {
@@ -8513,14 +9016,13 @@
       "name": "Holo Sapper Cell",
       "maxHP": 65,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-A2"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Attack",
-      "difficulty": "Normal",
+      "difficulty": "6.9",
       "act": "Act 2"
     },
     "E_ROGUE_SNIPER_UNIT": {
@@ -8528,16 +9030,13 @@
       "name": "Rogue Sniper Unit",
       "maxHP": 59,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-E2"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Economy pressure",
-      "difficulty": "Normal",
+      "difficulty": "4.6",
       "act": "Act 1"
     },
     "E_PULSE_DAEMON_UNIT": {
@@ -8545,15 +9044,14 @@
       "name": "Pulse Daemon Unit",
       "maxHP": 56,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-S1",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Support/Heal",
-      "difficulty": "Normal",
+      "difficulty": "7.7",
       "act": "Act 2"
     },
     "E_CIRCUIT_HACKER_ARRAY": {
@@ -8561,14 +9059,13 @@
       "name": "Circuit Hacker Array",
       "maxHP": 81,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-DB2"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Debuff/DoT",
-      "difficulty": "Hard",
+      "difficulty": "9.9",
       "act": "Act 2"
     },
     "E_GLITCH_TECH_PROTOCOL": {
@@ -8576,15 +9073,13 @@
       "name": "Glitch Tech Protocol",
       "maxHP": 65,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A2"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Attack",
-      "difficulty": "Normal",
+      "difficulty": "5.0",
       "act": "Act 1"
     },
     "E_CHROME_MARAUDER_CELL": {
@@ -8592,16 +9087,14 @@
       "name": "Chrome Marauder Cell",
       "maxHP": 35,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-S1",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Support/Heal",
-      "difficulty": "Easy",
+      "difficulty": "2.6",
       "act": "Act 1"
     },
     "E_CIPHER_CLERIC_SHARD": {
@@ -8609,15 +9102,14 @@
       "name": "Cipher Cleric Shard",
       "maxHP": 56,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-S1",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Support/Heal",
-      "difficulty": "Normal",
+      "difficulty": "6.1",
       "act": "Act 2"
     },
     "E_GHOST_GOON_MK_III": {
@@ -8625,14 +9117,14 @@
       "name": "Ghost Goon Mk III",
       "maxHP": 64,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-C1",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Control",
-      "difficulty": "Normal",
+      "difficulty": "7.2",
       "act": "Act 1"
     },
     "E_RAZOR_CLERIC_MK_II": {
@@ -8640,15 +9132,13 @@
       "name": "Razor Cleric Mk II",
       "maxHP": 43,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A2"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Attack",
-      "difficulty": "Easy",
+      "difficulty": "4.3",
       "act": "Act 1"
     },
     "E_ECHO_SHAMAN_SWARM": {
@@ -8656,15 +9146,13 @@
       "name": "Echo Shaman Swarm",
       "maxHP": 121,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-DB3"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Debuff/DoT",
-      "difficulty": "Elite",
+      "difficulty": "27.2",
       "act": "Act 3"
     },
     "E_QUANTUM_POD_SUITE": {
@@ -8672,16 +9160,14 @@
       "name": "Quantum Pod Suite",
       "maxHP": 96,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-D2",
+        "EC-D3"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Defense/Tank",
-      "difficulty": "Hard",
+      "difficulty": "16.1",
       "act": "Act 2"
     },
     "E_NEON_SAPPER_MK_II": {
@@ -8689,14 +9175,14 @@
       "name": "Neon Sapper Mk II",
       "maxHP": 76,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-S1",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Support/Heal",
-      "difficulty": "Hard",
+      "difficulty": "11.6",
       "act": "Act 2"
     },
     "E_HOLO_SHAMAN_MK_I": {
@@ -8704,15 +9190,14 @@
       "name": "Holo Shaman Mk I",
       "maxHP": 76,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-D2",
+        "EC-D3"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Defense/Tank",
-      "difficulty": "Normal",
+      "difficulty": "4.6",
       "act": "Act 2"
     },
     "E_HOLO_ENFORCER_MK_I": {
@@ -8720,15 +9205,13 @@
       "name": "Holo Enforcer Mk I",
       "maxHP": 65,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A2"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Attack",
-      "difficulty": "Normal",
+      "difficulty": "7.7",
       "act": "Act 2"
     },
     "E_VANTA_MARAUDER_MK_I": {
@@ -8736,14 +9219,13 @@
       "name": "Vanta Marauder Mk I",
       "maxHP": 39,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-DB2"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Debuff/DoT",
-      "difficulty": "Easy",
+      "difficulty": "3.6",
       "act": "Act 1"
     },
     "E_PULSE_SHAMAN_SUITE": {
@@ -8751,14 +9233,13 @@
       "name": "Pulse Shaman Suite",
       "maxHP": 59,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-E2"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Economy pressure",
-      "difficulty": "Normal",
+      "difficulty": "5.6",
       "act": "Act 2"
     },
     "E_HOLO_RAT_MK_II": {
@@ -8766,14 +9247,13 @@
       "name": "Holo Rat Mk II",
       "maxHP": 61,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-DB2"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Debuff/DoT",
-      "difficulty": "Normal",
+      "difficulty": "5.7",
       "act": "Act 1"
     },
     "E_HOLO_SCOUT_PROXY": {
@@ -8781,15 +9261,14 @@
       "name": "Holo Scout Proxy",
       "maxHP": 76,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-D2",
+        "EC-D3"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Defense/Tank",
-      "difficulty": "Normal",
+      "difficulty": "7.8",
       "act": "Act 1"
     },
     "E_CIRCUIT_TECH_RIG": {
@@ -8797,15 +9276,14 @@
       "name": "Circuit Tech Rig",
       "maxHP": 76,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-D2",
+        "EC-D3"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Defense/Tank",
-      "difficulty": "Normal",
+      "difficulty": "6.7",
       "act": "Act 1"
     },
     "E_STATIC_DAEMON_SWARM": {
@@ -8813,14 +9291,13 @@
       "name": "Static Daemon Swarm",
       "maxHP": 85,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-A3"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Attack",
-      "difficulty": "Hard",
+      "difficulty": "11.6",
       "act": "Act 3"
     },
     "E_NEON_WARDEN_SUITE": {
@@ -8828,14 +9305,13 @@
       "name": "Neon Warden Suite",
       "maxHP": 65,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-A2"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Attack",
-      "difficulty": "Normal",
+      "difficulty": "6.9",
       "act": "Act 2"
     },
     "E_CIRCUIT_DAEMON_ARRAY": {
@@ -8843,15 +9319,13 @@
       "name": "Circuit Daemon Array",
       "maxHP": 38,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-E2"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Economy pressure",
-      "difficulty": "Easy",
+      "difficulty": "4.3",
       "act": "Act 1"
     },
     "E_OBSIDIAN_TECH_RIG": {
@@ -8859,14 +9333,13 @@
       "name": "Obsidian Tech Rig",
       "maxHP": 39,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-DB2"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Debuff/DoT",
-      "difficulty": "Easy",
+      "difficulty": "4.7",
       "act": "Act 1"
     },
     "E_RAZOR_TECH_NODE": {
@@ -8874,14 +9347,14 @@
       "name": "Razor Tech Node",
       "maxHP": 41,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-C1",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Control",
-      "difficulty": "Easy",
+      "difficulty": "4.6",
       "act": "Act 1"
     },
     "E_ECHO_DAEMON_CREW": {
@@ -8889,14 +9362,13 @@
       "name": "Echo Daemon Crew",
       "maxHP": 61,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-DB2"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Debuff/DoT",
-      "difficulty": "Normal",
+      "difficulty": "8.5",
       "act": "Act 1"
     },
     "E_OBSIDIAN_POD_MK_I": {
@@ -8904,14 +9376,14 @@
       "name": "Obsidian Pod Mk I",
       "maxHP": 76,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-S1",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Support/Heal",
-      "difficulty": "Hard",
+      "difficulty": "16.2",
       "act": "Act 2"
     },
     "E_ION_SNIPER_RIG": {
@@ -8919,15 +9391,13 @@
       "name": "Ion Sniper Rig",
       "maxHP": 59,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-E2"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Economy pressure",
-      "difficulty": "Normal",
+      "difficulty": "4.8",
       "act": "Act 2"
     },
     "E_NULL_SHAMAN_UNIT": {
@@ -8935,14 +9405,14 @@
       "name": "Null Shaman Unit",
       "maxHP": 56,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-S1",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Support/Heal",
-      "difficulty": "Normal",
+      "difficulty": "7.3",
       "act": "Act 2"
     },
     "E_HOLO_SNIPER_SUITE": {
@@ -8950,14 +9420,14 @@
       "name": "Holo Sniper Suite",
       "maxHP": 127,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-C2",
+        "EC-A2"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Control",
-      "difficulty": "Elite",
+      "difficulty": "25.6",
       "act": "Act 3"
     },
     "E_FLUX_COURIER_PROXY": {
@@ -8965,16 +9435,14 @@
       "name": "Flux Courier Proxy",
       "maxHP": 56,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-S1",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Support/Heal",
-      "difficulty": "Normal",
+      "difficulty": "7.0",
       "act": "Act 2"
     },
     "E_VANTA_TECH_NODE": {
@@ -8982,16 +9450,14 @@
       "name": "Vanta Tech Node",
       "maxHP": 56,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-S1",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Support/Heal",
-      "difficulty": "Normal",
+      "difficulty": "8.3",
       "act": "Act 2"
     },
     "E_KILO_SNIPER_ARRAY": {
@@ -8999,14 +9465,14 @@
       "name": "Kilo Sniper Array",
       "maxHP": 64,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-C1",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Control",
-      "difficulty": "Normal",
+      "difficulty": "7.7",
       "act": "Act 2"
     },
     "E_OBSIDIAN_HACKER_SWARM": {
@@ -9014,14 +9480,14 @@
       "name": "Obsidian Hacker Swarm",
       "maxHP": 145,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-A3",
+        "EC-DB1"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Mixed threat",
-      "difficulty": "Elite",
+      "difficulty": "27.4",
       "act": "Act 3"
     },
     "E_HOLO_POD_NODE": {
@@ -9029,15 +9495,13 @@
       "name": "Holo Pod Node",
       "maxHP": 61,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-DB2"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Debuff/DoT",
-      "difficulty": "Normal",
+      "difficulty": "5.8",
       "act": "Act 2"
     },
     "E_ECHO_SNIPER_PACK_2": {
@@ -9045,15 +9509,14 @@
       "name": "Echo Sniper Pack 2",
       "maxHP": 76,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-D2",
+        "EC-D3"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Defense/Tank",
-      "difficulty": "Normal",
+      "difficulty": "7.6",
       "act": "Act 2"
     },
     "E_FLUX_SHAMAN_CREW": {
@@ -9061,15 +9524,13 @@
       "name": "Flux Shaman Crew",
       "maxHP": 130,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A3"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Attack",
-      "difficulty": "Elite",
+      "difficulty": "21.6",
       "act": "Act 3"
     },
     "E_HOLO_RUNNER_NODE": {
@@ -9077,15 +9538,14 @@
       "name": "Holo Runner Node",
       "maxHP": 35,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-S1",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Support/Heal",
-      "difficulty": "Easy",
+      "difficulty": "2.5",
       "act": "Act 1"
     },
     "E_PULSE_SAPPER_CELL": {
@@ -9093,14 +9553,13 @@
       "name": "Pulse Sapper Cell",
       "maxHP": 85,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-A2"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Attack",
-      "difficulty": "Hard",
+      "difficulty": "15.0",
       "act": "Act 2"
     },
     "E_RAZOR_SHAMAN_CREW": {
@@ -9108,15 +9567,14 @@
       "name": "Razor Shaman Crew",
       "maxHP": 76,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-D2",
+        "EC-D3"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Defense/Tank",
-      "difficulty": "Normal",
+      "difficulty": "5.2",
       "act": "Act 2"
     },
     "E_CIPHER_WARDEN_NODE": {
@@ -9124,14 +9582,14 @@
       "name": "Cipher Warden Node",
       "maxHP": 64,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-C1",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Control",
-      "difficulty": "Normal",
+      "difficulty": "6.5",
       "act": "Act 1"
     },
     "E_CIPHER_SHAMAN_PROTOCOL": {
@@ -9139,15 +9597,13 @@
       "name": "Cipher Shaman Protocol",
       "maxHP": 65,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A2"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Attack",
-      "difficulty": "Normal",
+      "difficulty": "7.0",
       "act": "Act 1"
     },
     "E_VANTA_SCOUT_PACK": {
@@ -9155,14 +9611,13 @@
       "name": "Vanta Scout Pack",
       "maxHP": 59,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-E2"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Economy pressure",
-      "difficulty": "Normal",
+      "difficulty": "6.0",
       "act": "Act 1"
     },
     "E_STATIC_WARDEN_ARRAY": {
@@ -9170,15 +9625,13 @@
       "name": "Static Warden Array",
       "maxHP": 61,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-DB2"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Debuff/DoT",
-      "difficulty": "Normal",
+      "difficulty": "7.3",
       "act": "Act 1"
     },
     "E_NEON_COURIER_CREW": {
@@ -9186,14 +9639,13 @@
       "name": "Neon Courier Crew",
       "maxHP": 79,
       "rotation": [
-        "C-001",
-        "C-001"
+        "EC-E2"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Economy pressure",
-      "difficulty": "Hard",
+      "difficulty": "13.4",
       "act": "Act 2"
     },
     "E_ROGUE_TECH_SHARD": {
@@ -9201,16 +9653,14 @@
       "name": "Rogue Tech Shard",
       "maxHP": 79,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-E2",
+        "EC-A2"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Economy pressure",
-      "difficulty": "Hard",
+      "difficulty": "11.8",
       "act": "Act 3"
     },
     "E_VANTA_SAPPER_SHARD": {
@@ -9218,15 +9668,13 @@
       "name": "Vanta Sapper Shard",
       "maxHP": 59,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-E2"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Economy pressure",
-      "difficulty": "Normal",
+      "difficulty": "6.0",
       "act": "Act 1"
     },
     "E_ADMINISTRATOR_KILO_CORE": {
@@ -9234,22 +9682,16 @@
       "name": "Administrator: Kilo Core",
       "maxHP": 230,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A4",
+        "EC-DB3",
+        "EC-D2",
+        "EC-A3"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Boss",
-      "difficulty": "Boss",
+      "difficulty": "104.1",
       "act": "Act 3"
     },
     "E_NEXUS_ROGUE_ORACLE": {
@@ -9257,19 +9699,16 @@
       "name": "Nexus: Rogue Oracle",
       "maxHP": 181,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A4",
+        "EC-DB3",
+        "EC-D2",
+        "EC-A3"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Boss",
-      "difficulty": "Boss",
+      "difficulty": "75.5",
       "act": "Act 2"
     },
     "E_ADMINISTRATOR_NULL_GOLIATH": {
@@ -9277,18 +9716,16 @@
       "name": "Administrator: Null Goliath",
       "maxHP": 189,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A4",
+        "EC-DB3",
+        "EC-D2",
+        "EC-A3"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Boss",
-      "difficulty": "Boss",
+      "difficulty": "80.3",
       "act": "Act 1"
     },
     "E_OVERSEER_VANTA_GOLIATH": {
@@ -9296,21 +9733,16 @@
       "name": "Overseer: Vanta Goliath",
       "maxHP": 202,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A4",
+        "EC-DB3",
+        "EC-D2",
+        "EC-A3"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Boss",
-      "difficulty": "Boss",
+      "difficulty": "87.8",
       "act": "Act 2"
     },
     "E_NEXUS_ION_GOLIATH": {
@@ -9318,20 +9750,16 @@
       "name": "Nexus: Ion Goliath",
       "maxHP": 150,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A4",
+        "EC-DB3",
+        "EC-D2",
+        "EC-A3"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Boss",
-      "difficulty": "Boss",
+      "difficulty": "58.0",
       "act": "Act 1"
     },
     "E_LEVIATHAN_GHOST_HYDRA": {
@@ -9339,21 +9767,16 @@
       "name": "Leviathan: Ghost Hydra",
       "maxHP": 215,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A4",
+        "EC-DB3",
+        "EC-D2",
+        "EC-A3"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Boss",
-      "difficulty": "Boss",
+      "difficulty": "95.8",
       "act": "Act 2"
     },
     "E_TITAN_HOLO_APEX": {
@@ -9361,19 +9784,16 @@
       "name": "Titan: Holo Apex",
       "maxHP": 187,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A4",
+        "EC-DB3",
+        "EC-D2",
+        "EC-A3"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Boss",
-      "difficulty": "Boss",
+      "difficulty": "78.8",
       "act": "Act 1"
     },
     "E_OVERSEER_STATIC_CORE": {
@@ -9381,21 +9801,16 @@
       "name": "Overseer: Static Core",
       "maxHP": 180,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A4",
+        "EC-DB3",
+        "EC-D2",
+        "EC-A3"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Boss",
-      "difficulty": "Boss",
+      "difficulty": "74.8",
       "act": "Act 2"
     },
     "E_ARCHON_NULL_GOLIATH": {
@@ -9403,21 +9818,16 @@
       "name": "Archon: Null Goliath",
       "maxHP": 250,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A4",
+        "EC-DB3",
+        "EC-D2",
+        "EC-A3"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Boss",
-      "difficulty": "Boss",
+      "difficulty": "115.6",
       "act": "Act 3"
     },
     "E_BOSS_NEON_MAINFRAME": {
@@ -9425,21 +9835,16 @@
       "name": "Boss: Neon Mainframe",
       "maxHP": 188,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A4",
+        "EC-DB3",
+        "EC-D2",
+        "EC-A3"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Boss",
-      "difficulty": "Boss",
+      "difficulty": "79.5",
       "act": "Act 2"
     },
     "E_BOSS_VECTOR_MAINFRAME": {
@@ -9447,19 +9852,16 @@
       "name": "Boss: Vector Mainframe",
       "maxHP": 184,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A4",
+        "EC-DB3",
+        "EC-D2",
+        "EC-A3"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Boss",
-      "difficulty": "Boss",
+      "difficulty": "78.3",
       "act": "Act 2"
     },
     "E_NEXUS_CHROME_WARDEN": {
@@ -9467,20 +9869,16 @@
       "name": "Nexus: Chrome Warden",
       "maxHP": 197,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A4",
+        "EC-DB3",
+        "EC-D2",
+        "EC-A3"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Boss",
-      "difficulty": "Boss",
+      "difficulty": "85.6",
       "act": "Act 2"
     },
     "E_OVERSEER_CHROME_ORACLE": {
@@ -9488,18 +9886,16 @@
       "name": "Overseer: Chrome Oracle",
       "maxHP": 150,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A4",
+        "EC-DB3",
+        "EC-D2",
+        "EC-A3"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Boss",
-      "difficulty": "Boss",
+      "difficulty": "58.0",
       "act": "Act 1"
     },
     "E_DIRECTOR_CIRCUIT_HYDRA": {
@@ -9507,19 +9903,16 @@
       "name": "Director: Circuit Hydra",
       "maxHP": 165,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A4",
+        "EC-DB3",
+        "EC-D2",
+        "EC-A3"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Boss",
-      "difficulty": "Boss",
+      "difficulty": "66.8",
       "act": "Act 1"
     },
     "E_DIRECTOR_PULSE_MAINFRAME": {
@@ -9527,19 +9920,16 @@
       "name": "Director: Pulse Mainframe",
       "maxHP": 181,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A4",
+        "EC-DB3",
+        "EC-D2",
+        "EC-A3"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Boss",
-      "difficulty": "Boss",
+      "difficulty": "75.8",
       "act": "Act 1"
     },
     "E_ADMINISTRATOR_CIPHER_MAINFRAME": {
@@ -9547,21 +9937,16 @@
       "name": "Administrator: Cipher Mainframe",
       "maxHP": 209,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A4",
+        "EC-DB3",
+        "EC-D2",
+        "EC-A3"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Boss",
-      "difficulty": "Boss",
+      "difficulty": "91.5",
       "act": "Act 2"
     },
     "E_DIRECTOR_GHOST_ORACLE": {
@@ -9569,20 +9954,16 @@
       "name": "Director: Ghost Oracle",
       "maxHP": 170,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A4",
+        "EC-DB3",
+        "EC-D2",
+        "EC-A3"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Boss",
-      "difficulty": "Boss",
+      "difficulty": "69.3",
       "act": "Act 1"
     },
     "E_OVERSEER_ROGUE_APEX": {
@@ -9590,22 +9971,16 @@
       "name": "Overseer: Rogue Apex",
       "maxHP": 236,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A4",
+        "EC-DB3",
+        "EC-D2",
+        "EC-A3"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Boss",
-      "difficulty": "Boss",
+      "difficulty": "107.6",
       "act": "Act 3"
     },
     "E_LEVIATHAN_PULSE_CORE": {
@@ -9613,20 +9988,16 @@
       "name": "Leviathan: Pulse Core",
       "maxHP": 206,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A4",
+        "EC-DB3",
+        "EC-D2",
+        "EC-A3"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Boss",
-      "difficulty": "Boss",
+      "difficulty": "90.0",
       "act": "Act 3"
     },
     "E_LEVIATHAN_NEON_APEX": {
@@ -9634,21 +10005,16 @@
       "name": "Leviathan: Neon Apex",
       "maxHP": 207,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A4",
+        "EC-DB3",
+        "EC-D2",
+        "EC-A3"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Boss",
-      "difficulty": "Boss",
+      "difficulty": "91.1",
       "act": "Act 3"
     },
     "E_LEVIATHAN_CHROME_ORACLE": {
@@ -9656,20 +10022,16 @@
       "name": "Leviathan: Chrome Oracle",
       "maxHP": 214,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A4",
+        "EC-DB3",
+        "EC-D2",
+        "EC-A3"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Boss",
-      "difficulty": "Boss",
+      "difficulty": "94.3",
       "act": "Act 2"
     },
     "E_ARCHON_PULSE_HYDRA": {
@@ -9677,20 +10039,16 @@
       "name": "Archon: Pulse Hydra",
       "maxHP": 226,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A4",
+        "EC-DB3",
+        "EC-D2",
+        "EC-A3"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Boss",
-      "difficulty": "Boss",
+      "difficulty": "101.3",
       "act": "Act 3"
     },
     "E_LEVIATHAN_GHOST_GOLIATH": {
@@ -9698,20 +10056,16 @@
       "name": "Leviathan: Ghost Goliath",
       "maxHP": 223,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A4",
+        "EC-DB3",
+        "EC-D2",
+        "EC-A3"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Boss",
-      "difficulty": "Boss",
+      "difficulty": "99.3",
       "act": "Act 3"
     },
     "E_OVERSEER_STATIC_WARDEN": {
@@ -9719,18 +10073,16 @@
       "name": "Overseer: Static Warden",
       "maxHP": 151,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A4",
+        "EC-DB3",
+        "EC-D2",
+        "EC-A3"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Boss",
-      "difficulty": "Boss",
+      "difficulty": "58.5",
       "act": "Act 1"
     },
     "E_ARCHON_HOLO_ORACLE": {
@@ -9738,20 +10090,16 @@
       "name": "Archon: Holo Oracle",
       "maxHP": 206,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A4",
+        "EC-DB3",
+        "EC-D2",
+        "EC-A3"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Boss",
-      "difficulty": "Boss",
+      "difficulty": "89.8",
       "act": "Act 3"
     },
     "E_ADMINISTRATOR_PULSE_CITADEL": {
@@ -9759,22 +10107,16 @@
       "name": "Administrator: Pulse Citadel",
       "maxHP": 200,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A4",
+        "EC-DB3",
+        "EC-D2",
+        "EC-A3"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Boss",
-      "difficulty": "Boss",
+      "difficulty": "87.3",
       "act": "Act 3"
     },
     "E_LEVIATHAN_VANTA_CORE": {
@@ -9782,21 +10124,16 @@
       "name": "Leviathan: Vanta Core",
       "maxHP": 212,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A4",
+        "EC-DB3",
+        "EC-D2",
+        "EC-A3"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Boss",
-      "difficulty": "Boss",
+      "difficulty": "93.8",
       "act": "Act 3"
     },
     "E_ARCHON_KILO_MAINFRAME": {
@@ -9804,18 +10141,16 @@
       "name": "Archon: Kilo Mainframe",
       "maxHP": 155,
       "rotation": [
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001",
-        "C-001"
+        "EC-A4",
+        "EC-DB3",
+        "EC-D2",
+        "EC-A3"
       ],
       "passives": [],
       "ai": null,
       "phaseThresholdsPct": null,
       "role": "Boss",
-      "difficulty": "Boss",
+      "difficulty": "61.0",
       "act": "Act 1"
     }
   },

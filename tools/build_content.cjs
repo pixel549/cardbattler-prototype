@@ -166,6 +166,33 @@ function buildMutationPools(filename) {
   return out;
 }
 
+// Role-based enemy ability card assignment.
+// Each entry maps a role → { easy, normal, hard, boss } rotation arrays.
+const ENEMY_ROLE_ROTATIONS = {
+  'Attack':           { easy: ['EC-A1'], normal: ['EC-A2'], hard: ['EC-A3'], boss: ['EC-A3','EC-A2','EC-A4'] },
+  'Defense/Tank':     { easy: ['EC-D1','EC-D3'], normal: ['EC-D2','EC-D3'], hard: ['EC-D2','EC-D2','EC-D3'], boss: ['EC-D2','EC-D3','EC-A2'] },
+  'Support/Heal':     { easy: ['EC-S1'], normal: ['EC-S1','EC-A1'], hard: ['EC-S2','EC-A2'], boss: ['EC-S2','EC-S1','EC-A2'] },
+  'Control':          { easy: ['EC-C1'], normal: ['EC-C1','EC-A1'], hard: ['EC-C2','EC-A2'], boss: ['EC-C2','EC-A2','EC-C2'] },
+  'Debuff/DoT':       { easy: ['EC-DB1'], normal: ['EC-DB2'], hard: ['EC-DB3'], boss: ['EC-DB3','EC-A2','EC-DB3'] },
+  'Economy pressure': { easy: ['EC-E1'], normal: ['EC-E2'], hard: ['EC-E2','EC-A2'], boss: ['EC-E2','EC-A3','EC-C1'] },
+  'Mixed threat':     { easy: ['EC-M1'], normal: ['EC-M1','EC-A2'], hard: ['EC-A3','EC-DB1'], boss: ['EC-A3','EC-DB2','EC-D1'] },
+  'Minion':           { easy: ['EC-A1'], normal: ['EC-A1'], hard: ['EC-A2'], boss: ['EC-A2'] },
+  'Boss':             { easy: ['EC-A2','EC-D1'], normal: ['EC-A3','EC-D2','EC-C1'], hard: ['EC-A4','EC-DB2','EC-D2'], boss: ['EC-A4','EC-DB3','EC-D2','EC-A3'] },
+};
+
+function getEnemyRotationByRole(role, difficulty, act) {
+  const tbl = ENEMY_ROLE_ROTATIONS[role] || ENEMY_ROLE_ROTATIONS['Attack'];
+  // Difficulty tier: Easy → easy, Hard/Extreme → hard, Boss → boss, else normal
+  const actNum = typeof act === 'string' ? parseInt(act.replace(/\D/g,'')) || 1 : (act || 1);
+  const diff = (difficulty || '').toLowerCase();
+  let tier;
+  if (diff === 'boss' || role === 'Boss') tier = 'boss';
+  else if (diff === 'hard' || diff === 'extreme' || actNum >= 3) tier = 'hard';
+  else if (diff === 'easy' || diff === 'trivial') tier = 'easy';
+  else tier = 'normal';
+  return (tbl[tier] || tbl['normal'] || ['EC-A1']);
+}
+
 function buildEnemies(filename) {
   const p = path.join(CONTENT_DIR, filename);
   if (!exists(p)) return {};
@@ -177,20 +204,30 @@ function buildEnemies(filename) {
 
     // CSV currently has rotation as either:
     // - a list of card ids (good), OR
-    // - a number like "3" meaning "actions per turn" (bad for validator).
+    // - a number like "3" meaning "actions per turn" (placeholder).
     let rot = splitList(r.rotation);
 
-    // If rotation is just a single number (e.g. "3"), treat it as "repeat a basic move N times".
+    // Parse role/difficulty/act from extra field early so we can use it for auto-assignment
+    const extra = toJson(r.extra, {});
+    const role = r.primaryPurpose || extra["Primary purpose"] || 'Attack';
+    const difficulty = r.difficulty || extra["Difficulty"] || 'Normal';
+    const actStr = extra["Act"] || r.actMin || '1';
+
+    // If rotation is just a single number (e.g. "3"), auto-assign role-based abilities
     if (rot.length === 1 && /^\d+$/.test(rot[0])) {
-      const n = Math.max(1, Math.min(10, Number(rot[0]))); // clamp
-      rot = Array.from({ length: n }, () => "C-001");       // C-001 exists (Strike)
+      rot = getEnemyRotationByRole(role, difficulty, actStr);
     }
 
-    // If any tokens are still numeric (e.g. "2"), replace with a real card id.
-    rot = rot.map(x => (/^\d+$/.test(x) ? "C-001" : x));
+    // If any tokens are still numeric or still C-001 placeholders, replace with role-based abilities
+    const hasRealAbilities = rot.some(x => x !== 'C-001' && !/^\d+$/.test(x));
+    if (!hasRealAbilities) {
+      rot = getEnemyRotationByRole(role, difficulty, actStr);
+    }
 
-    // Parse extra field for enemy metadata (role, difficulty, act, etc.)
-    const extra = toJson(r.extra, {});
+    // Fallback: replace any remaining numeric tokens
+    rot = rot.map(x => (/^\d+$/.test(x) ? 'EC-A1' : x));
+
+    // extra already parsed above; continue with passives/ai
     const passives = toJson(r.passives, null) ?? extra.passives ?? [];
     const ai = toJson(r.ai, null) ?? extra.ai ?? null;
     const phaseThresholdsPct = toJson(r.phaseThresholdsPct, null) ?? extra.phaseThresholdsPct ?? null;
@@ -204,9 +241,9 @@ function buildEnemies(filename) {
       ai: ai && typeof ai === "object" ? ai : null,
       phaseThresholdsPct: Array.isArray(phaseThresholdsPct) ? phaseThresholdsPct : null,
       // Include enemy metadata for generator filtering
-      role: extra["Primary purpose"] || null,
-      difficulty: extra["Difficulty"] || "Normal",
-      act: extra["Act"] || "All"
+      role: role || null,
+      difficulty: difficulty || "Normal",
+      act: actStr || "All"
     };
   }
 

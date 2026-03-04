@@ -165,7 +165,7 @@ function makeCardRewards(data, seed, act = 1, nodeType = 'Combat') {
   return { cardChoices: choices, canSkip: true };
 }
 
-function makeShop(data, seed) {
+function makeShop(data, seed, relicIds = []) {
   const rng = new RNG(seed ^ 0x0F0F0F0F);
   // Only offer player-usable cards (same filter as card rewards)
   const ids = Object.keys(data.cards).filter(id => {
@@ -173,15 +173,18 @@ function makeShop(data, seed) {
     const tags = c.tags || [];
     return !tags.includes('EnemyCard') && !tags.includes('Core') && !id.startsWith('EC-');
   });
+  // TheArchitect: all shop prices reduced by 15g
+  const disc = relicIds.includes('TheArchitect') ? 15 : 0;
+  const p = (base) => Math.max(5, base - disc);
   return {
     offers: [
-      { kind: "Card", defId: rng.pick(ids), price: 50 },
-      { kind: "Card", defId: rng.pick(ids), price: 50 },
-      { kind: "Service", serviceId: "RemoveCard", price: 75, requiresCard: true },
-      { kind: "Service", serviceId: "Repair", price: 60, requiresCard: true },
-      { kind: "Service", serviceId: "Stabilise", price: 60, requiresCard: true },
-      { kind: "Service", serviceId: "Accelerate", price: 40, requiresCard: true },
-      { kind: "Service", serviceId: "Heal", price: 60, requiresCard: false }
+      { kind: "Card", defId: rng.pick(ids), price: p(50) },
+      { kind: "Card", defId: rng.pick(ids), price: p(50) },
+      { kind: "Service", serviceId: "RemoveCard", price: p(75), requiresCard: true },
+      { kind: "Service", serviceId: "Repair", price: p(60), requiresCard: true },
+      { kind: "Service", serviceId: "Stabilise", price: p(60), requiresCard: true },
+      { kind: "Service", serviceId: "Accelerate", price: p(40), requiresCard: true },
+      { kind: "Service", serviceId: "Heal", price: p(60), requiresCard: false }
     ]
   };
 }
@@ -212,11 +215,39 @@ function maybeAdvanceAct(state, data, log) {
   log({ t: "Info", msg: `Act ${prevAct} complete — entering Act ${state.run.act}` });
 }
 
-function service_RemoveCard(state) {
+function service_RemoveCard(state, data, source = 'shop') {
   const sel = state.deckView?.selectedInstanceId;
   if (!state.deck || !sel) return false;
   delete state.deck.cardInstances[sel];
   state.deck.master = state.deck.master.filter(x => x !== sel);
+  // on_card_remove relic effects
+  const relicIds = state.run?.relicIds || [];
+  if (relicIds.includes('FragmentationCache')) {
+    state.run.gold += 35;
+    log({ t: 'Info', msg: 'FragmentationCache: +35g on remove' });
+  }
+  if (relicIds.includes('PurgeEngine') && source === 'event') {
+    // Add a random player card to deck
+    const cardIds = Object.keys(data?.cards || {}).filter(id => {
+      const c = data.cards[id];
+      return !c?.tags?.includes('EnemyCard') && !c?.tags?.includes('Status') && !c?.tags?.includes('Core');
+    });
+    if (cardIds.length > 0) {
+      const peRng = new RNG((state.run.seed ^ 0xC0DE) >>> 0);
+      const randomId = cardIds[peRng.int(cardIds.length)];
+      const def = data.cards[randomId];
+      const newCid = `pe_${peRng.int(0xFFFF).toString(16)}`;
+      state.deck.cardInstances[newCid] = {
+        defId: randomId,
+        appliedMutations: [],
+        useCounter: def.defaultUseCounter ?? 12,
+        finalMutationCountdown: def.defaultFinalMutationCountdown ?? 8,
+        ramCostDelta: 0,
+      };
+      state.deck.master.push(newCid);
+      log({ t: 'Info', msg: `PurgeEngine: added ${randomId} to deck` });
+    }
+  }
   return true;
 }
 function service_RepairCard(state, data) {
@@ -326,7 +357,7 @@ function resolveCurrentNodeInternal(state, data, log) {
 
   if (node.type === "Shop") {
     state.mode = "Shop";
-    state.shop = makeShop(data, state.run.seed ^ state.run.floor);
+    state.shop = makeShop(data, state.run.seed ^ state.run.floor, state.run.relicIds || []);
     log({ t: "Info", msg: "Entered shop" });
     return state;
   }
@@ -792,7 +823,7 @@ export function dispatchGame(stateIn, data, action) {
       if (state.mode === "Shop" && state.shop?.pendingService) {
         const serviceId = state.shop.pendingService;
         let ok = false;
-        if (serviceId === "RemoveCard") ok = service_RemoveCard(state);
+        if (serviceId === "RemoveCard") ok = service_RemoveCard(state, data, 'shop');
         if (serviceId === "Repair") ok = service_RepairCard(state, data);
         if (serviceId === "Stabilise") ok = service_StabiliseCard(state, data);
         if (serviceId === "Accelerate") ok = service_AccelerateCard(state);
@@ -807,7 +838,7 @@ export function dispatchGame(stateIn, data, action) {
       if (state.mode === "Event" && state.event?.pendingSelectOp) {
         const op = state.event.pendingSelectOp;
         let ok = false;
-        if (op === "RemoveSelectedCard") ok = service_RemoveCard(state);
+        if (op === "RemoveSelectedCard") ok = service_RemoveCard(state, data, 'event');
         if (op === "RepairSelectedCard") ok = service_RepairCard(state, data);
         if (op === "StabiliseSelectedCard") ok = service_StabiliseCard(state, data);
         if (op === "AccelerateSelectedCard") ok = service_AccelerateCard(state);

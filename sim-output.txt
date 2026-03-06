@@ -1,0 +1,185 @@
+════════════════════════════════════════════════════
+  CARDBATTLER HEADLESS SIMULATION
+════════════════════════════════════════════════════
+  Seed      : 42
+  Playstyle : balanced
+  Max steps : 3000
+════════════════════════════════════════════════════
+────────────────────────────────────────────────────
+  [   0] MAP — Act 1, Floor 1, HP 75/75, Gold 99g
+    →  Moving to: Combat (node dd67)
+────────────────────────────────────────────────────
+  [   1] COMBAT — Act 1, Floor 2, HP 75/75, Gold 99g
+    [DBG] enemies at start: 
+    [DBG] player ram=8/8 hand=5 cards
+    ↩  End Turn  (turn 0) RAM=8/8 hand=[Zero-Day Injector(2r), Strike(1r), Emergency Reimage(0r), RAM Cache(2r), Guard(1r)]
+    ── Combat result: WIN, HP 75 → 75
+────────────────────────────────────────────────────
+  [   2] REWARD — Act 1, Floor 2, HP 75/75, Gold 124g
+    ★  Picked card: Index Cache
+────────────────────────────────────────────────────
+  [   3] MAP — Act 1, Floor 2, HP 75/75, Gold 124g
+    →  Moving to: Event (node 15bf)
+────────────────────────────────────────────────────
+  [   4] EVENT — Act 1, Floor 3, HP 75/75, Gold 124g
+    ?  Event choice: sell
+────────────────────────────────────────────────────
+  [   5] MAP — Act 1, Floor 3, HP 75/75, Gold 174g
+    →  Moving to: Combat (node ab33)
+────────────────────────────────────────────────────
+  [   6] COMBAT — Act 1, Floor 4, HP 75/75, Gold 174g
+    [DBG] enemies at start: 
+    [DBG] player ram=8/8 hand=5 cards
+    ↩  End Turn  (turn 0) RAM=8/8 hand=[Guard(1r), Index Cache(1r), RAM Cache(2r), Emergency Reimage(0r), Zero-Day Injector(2r)]
+    ── Combat result: WIN, HP 75 → 75
+────────────────────────────────────────────────────
+  [   7] REWARD — Act 1, Floor 4, HP 75/75, Gold 199g
+    ★  Picked card: Zero-Day Injector
+────────────────────────────────────────────────────
+  [   8] MAP — Act 1, Floor 4, HP 75/75, Gold 199g
+    →  Moving to: Event (node cc17)
+────────────────────────────────────────────────────
+  [   9] EVENT — Act 1, Floor 5, HP 75/75, Gold 199g
+    ?  Event choice: leave
+────────────────────────────────────────────────────
+  [  10] MAP — Act 1, Floor 5, HP 75/75, Gold 199g
+    →  Moving to: Combat (node e98b)
+────────────────────────────────────────────────────
+  [  11] COMBAT — Act 1, Floor 6, HP 75/75, Gold 199g
+    [DBG] enemies at start: 
+    [DBG] player ram=8/8 hand=5 cards
+    ↩  End Turn  (turn 0) RAM=8/8 hand=[Guard(1r), Zero-Day Injector(2r), Strike(1r), Zero-Day Injector(2r), Emergency Reimage(0r)]
+    ── Combat result: WIN, HP 75 → 75
+────────────────────────────────────────────────────
+  [  12] REWARD — Act 1, Floor 6, HP 75/75, Gold 224g
+    ★  Picked card: Stack Trace
+────────────────────────────────────────────────────
+  [  13] MAP — Act 1, Floor 6, HP 75/75, Gold 224g
+    →  Moving to: Elite (node e19e)
+────────────────────────────────────────────────────
+  [  14] COMBAT — Act 1, Floor 7, HP 75/75, Gold 224g
+    [DBG] enemies at start: 
+    [DBG] player ram=8/8 hand=5 cards
+    ↩  End Turn  (turn 0) RAM=8/8 hand=[Guard(1r), Zero-Day Injector(2r), RAM Cache(2r), Zero-Day Injector(2r), Index Cache(1r)]
+    ── Combat result: WIN, HP 75 → 75
+────────────────────────────────────────────────────
+  [  15] REWARD — Act 1, Floor 7, HP 75/75, Gold 274g
+    ★  Picked card: Hard Reset
+────────────────────────────────────────────────────
+  [  17] MAP — Act 1, Floor 7, HP 75/75, Gold 274g
+    →  Moving to: Rest (node e7b2)
+────────────────────────────────────────────────────
+  [  18] EVENT — Act 1, Floor 8, HP 73/75, Gold 274g
+    ♥  Resting: Heal
+────────────────────────────────────────────────────
+  [  19] MAP — Act 1, Floor 8, HP 75/75, Gold 274g
+    →  Moving to: Shop (node bd48)
+────────────────────────────────────────────────────
+  [  20] SHOP — Act 1, Floor 9, HP 73/75, Gold 274g
+    ← Left shop
+────────────────────────────────────────────────────
+  [  21] MAP — Act 1, Floor 9, HP 73/75, Gold 274g
+    →  Moving to: Event (node 1fb3)
+────────────────────────────────────────────────────
+  [  22] EVENT — Act 1, Floor 10, HP 71/75, Gold 274g
+    ?  Event choice: browse
+────────────────────────────────────────────────────
+  [  23] MAP — Act 1, Floor 10, HP 71/75, Gold 304g
+    →  Moving to: Shop (node e6ef)
+────────────────────────────────────────────────────
+  [  24] SHOP — Act 1, Floor 11, HP 69/75, Gold 304g
+    ← Left shop
+────────────────────────────────────────────────────
+  [  25] MAP — Act 1, Floor 11, HP 69/75, Gold 304g
+    →  Moving to: Combat (node 0259)
+────────────────────────────────────────────────────
+  [  26] COMBAT — Act 1, Floor 12, HP 67/75, Gold 304g
+    [DBG] enemies at start: 
+    [DBG] player ram=8/8 hand=5 cards
+    ↩  End Turn  (turn 0) RAM=8/8 hand=[Index Cache(1r), Stack Trace(2r), Zero-Day Injector(2r), Guard(1r), Emergency Reimage(0r)]
+    ── Combat result: WIN, HP 67 → 67
+────────────────────────────────────────────────────
+  [  27] REWARD — Act 1, Floor 12, HP 67/75, Gold 329g
+    ★  Picked card: System Quarantine
+────────────────────────────────────────────────────
+  [  28] MAP — Act 1, Floor 12, HP 67/75, Gold 329g
+    →  Moving to: Elite (node 083c)
+────────────────────────────────────────────────────
+  [  29] COMBAT — Act 1, Floor 13, HP 65/75, Gold 329g
+    [DBG] enemies at start: 
+    [DBG] player ram=8/8 hand=5 cards
+    ↩  End Turn  (turn 0) RAM=8/8 hand=[Emergency Reimage(0r), Hard Reset(0r), RAM Cache(2r), Stack Trace(2r), Guard(1r)]
+    ── Combat result: WIN, HP 65 → 65
+────────────────────────────────────────────────────
+  [  30] REWARD — Act 1, Floor 13, HP 65/75, Gold 379g
+    ★  Picked card: Signal Amplifier
+────────────────────────────────────────────────────
+  [  32] MAP — Act 1, Floor 13, HP 65/75, Gold 379g
+    →  Moving to: Event (node 83dc)
+────────────────────────────────────────────────────
+  [  33] EVENT — Act 1, Floor 14, HP 63/75, Gold 379g
+    ?  Event choice: decline
+────────────────────────────────────────────────────
+  [  34] MAP — Act 1, Floor 14, HP 63/75, Gold 379g
+    →  Moving to: Boss (node 5c91)
+────────────────────────────────────────────────────
+  [  35] COMBAT — Act 1, Floor 15, HP 61/75, Gold 379g
+    [DBG] enemies at start: E_OVERSEER_ROGUE_APEX(hp=236,maxHp=236)
+    [DBG] player ram=8/8 hand=5 cards
+    ▶  Play: Zero-Day Injector (2r) RAM=8/8
+    ▶  Play: System Quarantine (2r) RAM=6/8
+    ▶  Play: Strike (1r) RAM=4/8
+    ▶  Play: Guard (1r) RAM=3/8
+    ▶  Play: Index Cache (1r) RAM=2/8
+    ↩  End Turn  (turn 0) RAM=1/8 hand=[EMPTY]
+    ▶  Play: Zero-Day Injector (2r) RAM=3/8
+    ▶  Play: Signal Amplifier (1r) RAM=1/8
+    ▶  Play: Emergency Reimage (0r) RAM=0/8
+    ▶  Play: Hard Reset (0r) RAM=0/8
+    ↩  End Turn  (turn 1) RAM=0/8 hand=[RAM Cache(2r)]
+    ▶  Play: Zero-Day Injector (2r) RAM=2/8
+    ▶  Play: Emergency Reimage (0r) RAM=0/8
+    ↩  End Turn  (turn 2) RAM=0/8 hand=[System Quarantine(2r), Guard(1r), Index Cache(1r)]
+    ▶  Play: System Quarantine (2r) RAM=2/8
+    ▶  Play: Emergency Reimage (0r) RAM=0/8
+    ↩  End Turn  (turn 3) RAM=0/8 hand=[Index Cache(1r), RAM Cache(2r), Guard(1r)]
+    ▶  Play: Zero-Day Injector (2r) RAM=2/8
+    ▶  Play: Emergency Reimage (0r) RAM=0/8
+    ▶  Play: Hard Reset (0r) RAM=0/8
+    ↩  End Turn  (turn 4) RAM=0/8 hand=[Strike(1r), Guard(1r)]
+    ▶  Play: Zero-Day Injector (2r) RAM=2/8
+    ↩  End Turn  (turn 5) RAM=0/8 hand=[Stack Trace(2r), RAM Cache(2r), System Quarantine(2r), Guard(1r)]
+    ▶  Play: Zero-Day Injector (2r) RAM=2/8
+    ▶  Play: Emergency Reimage (0r) RAM=0/8
+    ↩  End Turn  (turn 6) RAM=0/8 hand=[Index Cache(1r), System Quarantine(2r), Strike(1r)]
+    ▶  Play: Zero-Day Injector (2r) RAM=2/8
+    ── Combat result: WIN, HP 61 → 21
+────────────────────────────────────────────────────
+  [  62] REWARD — Act 1, Floor 15, HP 21/75, Gold 478g
+    ★  Picked card: Packet Leech
+────────────────────────────────────────────────────
+  [  64] MAP — Act 2, Floor 15, HP 21/75, Gold 478g
+    →  Moving to: Combat (node 4610)
+────────────────────────────────────────────────────
+  [  65] COMBAT — Act 2, Floor 16, HP 19/75, Gold 478g
+    [DBG] enemies at start: E_STATIC_SCOUT_MK_II(hp=102,maxHp=102), E_VANTA_ENFORCER_SWARM(hp=76,maxHp=76)
+    [DBG] player ram=12/12 hand=5 cards
+    ▶  Play: Zero-Day Injector (2r) RAM=12/12
+    ▶  Play: Packet Leech (0r) RAM=10/12
+    ▶  Play: Hard Reset (0r) RAM=0/12
+    ↩  End Turn  (turn 0) RAM=0/12 hand=[RAM Cache(2r), Stack Trace(2r)]
+    ── Combat result: LOSS, HP 19 → 0
+════════════════════════════════════════════════════
+  FINAL STATE
+════════════════════════════════════════════════════
+  Mode   : GameOver
+  Act    : 2
+  Floor  : 16
+  HP     : 0 / 75
+  Gold   : 478g
+  MP     : 0
+  Steps  : 69
+  Deck   : 12 cards
+           Strike, Guard, RAM Cache, Zero-Day Injector, Emergency Reimage, Index Cache, Zero-Day Injector, Stack Trace, Hard Reset, System Quarantine, Signal Amplifier, Packet Leech
+  Errors : 0
+════════════════════════════════════════════════════

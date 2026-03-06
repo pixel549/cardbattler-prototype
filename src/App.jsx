@@ -2367,7 +2367,8 @@ function App() {
       }
 
       // ── Combat entered: initialise scratch data ──────────────────────────────
-      if (mode === 'Combat' && prevMode !== 'Combat') {
+      // Guard: skip if enemies haven't loaded yet (avoids phantom enemies:[] entries)
+      if (mode === 'Combat' && prevMode !== 'Combat' && (state.combat?.enemies?.length ?? 0) > 0) {
         const initEnemyHp = (state.combat?.enemies || []).reduce((s, e) => s + (e.hp ?? 0), 0);
         combatStatsRef.current = {
           act:                 state.run?.act   ?? 1,
@@ -2533,8 +2534,8 @@ function App() {
         // Card plays — count + sum RAM cost
         if (action.type === 'Combat_PlayCard' && combatStatsRef.current) {
           combatStatsRef.current.totalCardsPlayed++;
-          const hand = state.combat?.player?.piles?.hand ?? [];
-          const inst = hand.find(c => c.instanceId === action.instanceId);
+          const cid  = action.cardInstanceId;
+          const inst = state.combat?.cardInstances?.[cid];
           const cost = (inst?.defId && data.cards?.[inst.defId]?.costRAM) ?? 0;
           combatStatsRef.current.totalRAMSpent += cost;
         }

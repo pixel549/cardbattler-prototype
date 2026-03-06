@@ -248,9 +248,48 @@ function parseSpecialAbilitiesToPassives(specialAbilitiesJson) {
         continue;
       }
     }
+    // "On phase change: plays N extra card(s) immediately" + optional "gains N Firewall"
+    {
+      const m = s.match(/on phase change[:\s]+plays? (\d+) extra cards?/i);
+      if (m) {
+        const fw = s.match(/gains? (\d+) Firewall/i);
+        const ops = [{ op: '_SetPlaysThisTurn', amount: parseInt(m[1]) + 1 }];
+        if (fw) ops.push({ op: 'ApplyStatus', target: 'Self', statusId: 'Firewall', stacks: parseInt(fw[1]) });
+        passives.push({ trigger: 'PhaseChange', ops });
+        continue;
+      }
+    }
+    // "On phase change: gains N Firewall" (no extra card play)
+    {
+      const m = s.match(/on phase change[:\s]+gains? (\d+) Firewall/i);
+      if (m) {
+        passives.push({ trigger: 'PhaseChange', ops: [
+          { op: 'ApplyStatus', target: 'Self', statusId: 'Firewall', stacks: parseInt(m[1]) },
+        ]});
+        continue;
+      }
+    }
     // Other patterns not parsed — silently skip
   }
   return passives;
+}
+
+// Extract phase threshold percentages from specialAbilities strings.
+// Returns an array like [70, 35] or null if none found.
+function extractPhaseThresholdsFromSpecials(specialAbilitiesJson) {
+  let specs;
+  try { specs = JSON.parse(specialAbilitiesJson || '[]'); } catch { return null; }
+  if (!Array.isArray(specs)) return null;
+  for (const spec of specs) {
+    if (typeof spec !== 'string') continue;
+    // "Phases at 70% and 35% HP" or "Phases at 50% HP"
+    const m = spec.match(/phases? at\s+([\d%\s,and]+)HP/i);
+    if (m) {
+      const pcts = [...m[1].matchAll(/(\d+)%/g)].map(x => parseInt(x[1]));
+      if (pcts.length > 0) return pcts.sort((a, b) => b - a); // descending
+    }
+  }
+  return null;
 }
 
 // Role-based enemy ability card assignment.
@@ -320,12 +359,16 @@ function buildEnemies(filename) {
     const explicitPassives = toJson(r.passives, null) ?? extra.passives ?? [];
     const passives = [...specPassives, ...(Array.isArray(explicitPassives) ? explicitPassives : [])];
     const ai = toJson(r.ai, null) ?? extra.ai ?? null;
-    const phaseThresholdsPct = toJson(r.phaseThresholdsPct, null) ?? extra.phaseThresholdsPct ?? null;
+    const phaseThresholdsPct = toJson(r.phaseThresholdsPct, null)
+      ?? extra.phaseThresholdsPct
+      ?? extractPhaseThresholdsFromSpecials(r.specialAbilities || '[]')
+      ?? null;
 
     out[id] = {
       id,
       name: r.name || id,
       maxHP: toNum(r.maxHP, 30),
+      actionsPerTurn: toNum(r.actionsPerTurn, 1),
       rotation: rot,
       passives: Array.isArray(passives) ? passives : [],
       ai: ai && typeof ai === "object" ? ai : null,

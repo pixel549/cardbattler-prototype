@@ -1137,6 +1137,8 @@ function maybeTriggerMutation(state, data, rng, cardInstanceId) {
   const mods = state.ruleMods || {};
   let triggerChance = (odds?.triggerChance ?? 0.25);
   if (typeof mods.mutationTriggerChanceMult === "number") triggerChance *= mods.mutationTriggerChanceMult;
+  // OverclockSuite: mutations fire 2x more often (downside: mutations are 1 tier weaker)
+  if ((state.relicIds || []).includes('OverclockSuite')) triggerChance = Math.min(1, triggerChance * 2);
 
   const guaranteed = ci.useCounter === 0;
   const roll = rng.next();
@@ -1154,11 +1156,11 @@ function maybeTriggerMutation(state, data, rng, cardInstanceId) {
   let tier = forced || rollTier(rng, normalizeTierOdds(tierOdds));
   if (forced) state.forcedMutationTier = null;
 
-  // OverclockSuite: applied mutations are 1 tier weaker (A→A, B→A, C→B, etc.)
+  // OverclockSuite: applied mutations are 1 tier weaker (A→B, B→C, etc.)
   if ((state.relicIds || []).includes('OverclockSuite') && !forced) {
-    const tierOrder = ['A','B','C','D','E','F','G','H','I'];
+    const tierOrder = ['A','B','C','D','E'];
     const idx = tierOrder.indexOf(tier);
-    if (idx > 0) tier = tierOrder[idx - 1];
+    if (idx >= 0 && idx < tierOrder.length - 1) tier = tierOrder[idx + 1];
   }
 
   applyMutation(state, data, rng, cardInstanceId, tier);
@@ -1675,7 +1677,7 @@ function enemyTurn(state, data, rng, enemyId) {
   runEnemyPassives(state, "EveryNTurns", rng, enemyId, { enemyTurn: enemy.combatFlags.enemyTurn, turn: state.turn });
 
   const enemyDef = data.enemies[enemy.enemyDefId];
-  const basePlays = 1;
+  const basePlays = enemyDef?.actionsPerTurn || 1;
   const overridePlays = Number(enemy.combatFlags.playsThisTurnOverride ?? basePlays);
   const extra = Number(enemy.combatFlags.extraPlaysNow ?? 0);
   const plays = Math.max(1, overridePlays) + Math.max(0, extra);

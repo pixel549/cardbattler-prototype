@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "builtAt": "2026-03-04T12:23:10.756Z",
+  "builtAt": "2026-03-06T06:16:54.840Z",
   "cards": {
     "C-001": {
       "id": "C-001",
@@ -7940,6 +7940,7 @@
       "id": "E_HACKER_DRONE",
       "name": "Hacker Drone",
       "maxHP": 65,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-A2"
       ],
@@ -7970,6 +7971,7 @@
       "id": "E_FIREWALL_POD",
       "name": "Firewall Pod",
       "maxHP": 51,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-D2",
         "EC-D3"
@@ -7997,6 +7999,7 @@
       "id": "E_PATCH_SPRITE",
       "name": "Patch Sprite",
       "maxHP": 35,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-S1",
         "EC-A1"
@@ -8012,6 +8015,7 @@
       "id": "E_SIGNAL_IMP",
       "name": "Signal Imp",
       "maxHP": 64,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-C1",
         "EC-A1"
@@ -8039,6 +8043,7 @@
       "id": "E_CORRODE_RAT",
       "name": "Corrode Rat",
       "maxHP": 61,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-DB2"
       ],
@@ -8053,6 +8058,7 @@
       "id": "E_LEAK_WRAITH",
       "name": "Leak Wraith",
       "maxHP": 61,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-DB2"
       ],
@@ -8067,6 +8073,7 @@
       "id": "E_SCRAP_MINION",
       "name": "Scrap Minion",
       "maxHP": 12,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-A1"
       ],
@@ -8081,6 +8088,7 @@
       "id": "E_PULSE_SAPPER_ARRAY",
       "name": "Pulse Sapper Array",
       "maxHP": 65,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-A2"
       ],
@@ -8095,6 +8103,7 @@
       "id": "E_CHROME_CLERIC_PROTOCOL",
       "name": "Chrome Cleric Protocol",
       "maxHP": 41,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-C1",
         "EC-A1"
@@ -8110,6 +8119,7 @@
       "id": "E_VECTOR_RAT_MK_III",
       "name": "Vector Rat Mk III",
       "maxHP": 35,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-S1",
         "EC-A1"
@@ -8125,6 +8135,7 @@
       "id": "E_OBSIDIAN_BRUISER_PACK",
       "name": "Obsidian Bruiser Pack",
       "maxHP": 76,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-D2",
         "EC-D3"
@@ -8140,6 +8151,7 @@
       "id": "E_GLITCH_RUNNER_NODE",
       "name": "Glitch Runner Node",
       "maxHP": 65,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-A2"
       ],
@@ -8154,6 +8166,7 @@
       "id": "E_PULSE_SHAMAN_MK_I",
       "name": "Pulse Shaman Mk I",
       "maxHP": 41,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-C1",
         "EC-A1"
@@ -8169,6 +8182,7 @@
       "id": "E_ECHO_IMP_MK_II",
       "name": "Echo Imp Mk II",
       "maxHP": 35,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-S1",
         "EC-A1"
@@ -8184,6 +8198,7 @@
       "id": "E_VANTA_SENTINEL_PROTOCOL",
       "name": "Vanta Sentinel Protocol",
       "maxHP": 76,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-D2",
         "EC-D3"
@@ -8211,6 +8226,7 @@
       "id": "E_GHOST_DAEMON_SWARM",
       "name": "Ghost Daemon Swarm",
       "maxHP": 43,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-A2"
       ],
@@ -8225,6 +8241,7 @@
       "id": "E_CIPHER_POD_SHARD",
       "name": "Cipher Pod Shard",
       "maxHP": 85,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-A3"
       ],
@@ -8239,6 +8256,7 @@
       "id": "E_VANTA_DRONE_MK_III",
       "name": "Vanta Drone Mk III",
       "maxHP": 38,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-E2"
       ],
@@ -8253,6 +8271,7 @@
       "id": "E_VANTA_SCOUT_NODE",
       "name": "Vanta Scout Node",
       "maxHP": 145,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-A3",
         "EC-DB1"
@@ -8280,6 +8299,7 @@
       "id": "E_CIPHER_HACKER_SWARM",
       "name": "Cipher Hacker Swarm",
       "maxHP": 84,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-C1",
         "EC-A1"
@@ -8295,6 +8315,7 @@
       "id": "E_CIRCUIT_BRUISER_MK_III",
       "name": "Circuit Bruiser Mk III",
       "maxHP": 56,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-S1",
         "EC-A1"
@@ -8310,6 +8331,7 @@
       "id": "E_ECHO_ENFORCER_MK_I",
       "name": "Echo Enforcer Mk I",
       "maxHP": 61,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-DB2"
       ],
@@ -8337,6 +8359,7 @@
       "id": "E_CHROME_SAPPER_CREW",
       "name": "Chrome Sapper Crew",
       "maxHP": 65,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-A2"
       ],
@@ -8351,6 +8374,7 @@
       "id": "E_STATIC_POD_PROTOCOL",
       "name": "Static Pod Protocol",
       "maxHP": 64,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-C1",
         "EC-A1"
@@ -8366,6 +8390,7 @@
       "id": "E_PULSE_BRUISER_FRAME",
       "name": "Pulse Bruiser Frame",
       "maxHP": 85,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-A2"
       ],
@@ -8380,6 +8405,7 @@
       "id": "E_VECTOR_COURIER_ARRAY",
       "name": "Vector Courier Array",
       "maxHP": 59,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-E2"
       ],
@@ -8394,6 +8420,7 @@
       "id": "E_ROGUE_TECH_ARRAY",
       "name": "Rogue Tech Array",
       "maxHP": 39,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-DB2"
       ],
@@ -8408,6 +8435,7 @@
       "id": "E_GHOST_RUNNER_PROTOCOL",
       "name": "Ghost Runner Protocol",
       "maxHP": 81,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-DB2"
       ],
@@ -8422,6 +8450,7 @@
       "id": "E_ECHO_SNIPER_PACK",
       "name": "Echo Sniper Pack",
       "maxHP": 65,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-A2"
       ],
@@ -8452,6 +8481,7 @@
       "id": "E_STATIC_DRONE_MK_II",
       "name": "Static Drone Mk II",
       "maxHP": 76,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-D2",
         "EC-D3"
@@ -8467,6 +8497,7 @@
       "id": "E_RAZOR_SHAMAN_MK_II",
       "name": "Razor Shaman Mk II",
       "maxHP": 38,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-E2"
       ],
@@ -8481,6 +8512,7 @@
       "id": "E_HOLO_SHAMAN_CREW",
       "name": "Holo Shaman Crew",
       "maxHP": 76,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-D2",
         "EC-D3"
@@ -8512,6 +8544,7 @@
       "id": "E_VECTOR_DAEMON_FRAME",
       "name": "Vector Daemon Frame",
       "maxHP": 59,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-E2"
       ],
@@ -8526,6 +8559,7 @@
       "id": "E_VANTA_ENFORCER_SWARM",
       "name": "Vanta Enforcer Swarm",
       "maxHP": 59,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-E2"
       ],
@@ -8540,6 +8574,7 @@
       "id": "E_CHROME_SAPPER_NODE",
       "name": "Chrome Sapper Node",
       "maxHP": 65,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-A2"
       ],
@@ -8554,6 +8589,7 @@
       "id": "E_NULL_DAEMON_MK_II",
       "name": "Null Daemon Mk II",
       "maxHP": 56,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-S1",
         "EC-A1"
@@ -8569,6 +8605,7 @@
       "id": "E_KILO_ENFORCER_UNIT",
       "name": "Kilo Enforcer Unit",
       "maxHP": 96,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-D2",
         "EC-D2",
@@ -8585,6 +8622,7 @@
       "id": "E_CIPHER_HACKER_MK_II",
       "name": "Cipher Hacker Mk II",
       "maxHP": 81,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-DB3"
       ],
@@ -8599,6 +8637,7 @@
       "id": "E_STATIC_SAPPER_CELL",
       "name": "Static Sapper Cell",
       "maxHP": 84,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-C2",
         "EC-A2"
@@ -8614,6 +8653,7 @@
       "id": "E_KILO_COURIER_ARRAY",
       "name": "Kilo Courier Array",
       "maxHP": 81,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-DB2"
       ],
@@ -8628,6 +8668,7 @@
       "id": "E_ROGUE_SCOUT_SWARM",
       "name": "Rogue Scout Swarm",
       "maxHP": 38,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-E2"
       ],
@@ -8642,6 +8683,7 @@
       "id": "E_VANTA_BRUISER_PROXY",
       "name": "Vanta Bruiser Proxy",
       "maxHP": 59,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-E2"
       ],
@@ -8656,6 +8698,7 @@
       "id": "E_KILO_SNIPER_UNIT",
       "name": "Kilo Sniper Unit",
       "maxHP": 81,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-DB2"
       ],
@@ -8670,6 +8713,7 @@
       "id": "E_CIPHER_DRONE_PROTOCOL",
       "name": "Cipher Drone Protocol",
       "maxHP": 64,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-C1",
         "EC-A1"
@@ -8685,6 +8729,7 @@
       "id": "E_OBSIDIAN_SNIPER_MK_III",
       "name": "Obsidian Sniper Mk III",
       "maxHP": 51,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-D2",
         "EC-D3"
@@ -8700,6 +8745,7 @@
       "id": "E_CHROME_WARDEN_SWARM",
       "name": "Chrome Warden Swarm",
       "maxHP": 56,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-S1",
         "EC-A1"
@@ -8715,6 +8761,7 @@
       "id": "E_QUANTUM_HACKER_PACK",
       "name": "Quantum Hacker Pack",
       "maxHP": 51,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-D2",
         "EC-D3"
@@ -8730,6 +8777,7 @@
       "id": "E_ION_RAT_SUITE",
       "name": "Ion Rat Suite",
       "maxHP": 59,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-E2"
       ],
@@ -8744,6 +8792,7 @@
       "id": "E_GLITCH_WARDEN_SUITE",
       "name": "Glitch Warden Suite",
       "maxHP": 81,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-DB3"
       ],
@@ -8758,6 +8807,7 @@
       "id": "E_HOLO_SNIPER_SHARD",
       "name": "Holo Sniper Shard",
       "maxHP": 59,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-E2"
       ],
@@ -8772,6 +8822,7 @@
       "id": "E_VECTOR_MARAUDER_PROXY",
       "name": "Vector Marauder Proxy",
       "maxHP": 65,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-A2"
       ],
@@ -8798,6 +8849,7 @@
       "id": "E_VANTA_DRONE_FRAME",
       "name": "Vanta Drone Frame",
       "maxHP": 56,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-S1",
         "EC-A1"
@@ -8813,6 +8865,7 @@
       "id": "E_ION_SENTINEL_NODE",
       "name": "Ion Sentinel Node",
       "maxHP": 76,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-D2",
         "EC-D3"
@@ -8828,6 +8881,7 @@
       "id": "E_GHOST_CLERIC_SHARD",
       "name": "Ghost Cleric Shard",
       "maxHP": 56,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-S1",
         "EC-A1"
@@ -8843,6 +8897,7 @@
       "id": "E_STATIC_SCOUT_MK_II",
       "name": "Static Scout Mk II",
       "maxHP": 79,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-E2",
         "EC-A2"
@@ -8871,6 +8926,7 @@
       "id": "E_CHROME_BRUISER_SHARD",
       "name": "Chrome Bruiser Shard",
       "maxHP": 64,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-C1",
         "EC-A1"
@@ -8886,6 +8942,7 @@
       "id": "E_GLITCH_BRUISER_MK_II",
       "name": "Glitch Bruiser Mk II",
       "maxHP": 65,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-A2"
       ],
@@ -8900,6 +8957,7 @@
       "id": "E_STATIC_IMP_RIG",
       "name": "Static Imp Rig",
       "maxHP": 61,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-DB2"
       ],
@@ -8914,6 +8972,7 @@
       "id": "E_ECHO_SENTINEL_SHARD",
       "name": "Echo Sentinel Shard",
       "maxHP": 64,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-C1",
         "EC-A1"
@@ -8929,6 +8988,7 @@
       "id": "E_KILO_TECH_SWARM",
       "name": "Kilo Tech Swarm",
       "maxHP": 96,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-D2",
         "EC-D3"
@@ -8944,6 +9004,7 @@
       "id": "E_VECTOR_GOON_PROXY",
       "name": "Vector Goon Proxy",
       "maxHP": 96,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-D2",
         "EC-D2",
@@ -8960,6 +9021,7 @@
       "id": "E_ION_CLERIC_PROXY",
       "name": "Ion Cleric Proxy",
       "maxHP": 79,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-E2",
         "EC-A2"
@@ -8975,6 +9037,7 @@
       "id": "E_NULL_DAEMON_RIG",
       "name": "Null Daemon Rig",
       "maxHP": 61,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-DB2"
       ],
@@ -8989,6 +9052,7 @@
       "id": "E_VANTA_SAPPER_NODE",
       "name": "Vanta Sapper Node",
       "maxHP": 56,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-S1",
         "EC-A1"
@@ -9004,6 +9068,7 @@
       "id": "E_FLUX_POD_SHARD",
       "name": "Flux Pod Shard",
       "maxHP": 59,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-E2"
       ],
@@ -9018,6 +9083,7 @@
       "id": "E_VECTOR_HACKER_PACK",
       "name": "Vector Hacker Pack",
       "maxHP": 39,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-DB2"
       ],
@@ -9032,6 +9098,7 @@
       "id": "E_PULSE_RAT_MK_II",
       "name": "Pulse Rat Mk II",
       "maxHP": 65,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-A2"
       ],
@@ -9046,6 +9113,7 @@
       "id": "E_NEON_POD_SUITE",
       "name": "Neon Pod Suite",
       "maxHP": 64,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-C1",
         "EC-A1"
@@ -9061,6 +9129,7 @@
       "id": "E_RAZOR_ENFORCER_FRAME",
       "name": "Razor Enforcer Frame",
       "maxHP": 64,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-C1",
         "EC-A1"
@@ -9076,6 +9145,7 @@
       "id": "E_QUANTUM_TECH_NODE",
       "name": "Quantum Tech Node",
       "maxHP": 59,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-E2"
       ],
@@ -9090,6 +9160,7 @@
       "id": "E_ROGUE_POD_PROTOCOL",
       "name": "Rogue Pod Protocol",
       "maxHP": 59,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-E2"
       ],
@@ -9104,6 +9175,7 @@
       "id": "E_VANTA_ENFORCER_MK_I",
       "name": "Vanta Enforcer Mk I",
       "maxHP": 64,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-C1",
         "EC-A1"
@@ -9131,6 +9203,7 @@
       "id": "E_ION_SAPPER_RIG",
       "name": "Ion Sapper Rig",
       "maxHP": 96,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-D2",
         "EC-D3"
@@ -9146,6 +9219,7 @@
       "id": "E_RAZOR_RUNNER_PROXY",
       "name": "Razor Runner Proxy",
       "maxHP": 76,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-D2",
         "EC-D3"
@@ -9161,6 +9235,7 @@
       "id": "E_HOLO_SAPPER_CELL",
       "name": "Holo Sapper Cell",
       "maxHP": 65,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-A2"
       ],
@@ -9175,6 +9250,7 @@
       "id": "E_ROGUE_SNIPER_UNIT",
       "name": "Rogue Sniper Unit",
       "maxHP": 59,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-E2"
       ],
@@ -9189,6 +9265,7 @@
       "id": "E_PULSE_DAEMON_UNIT",
       "name": "Pulse Daemon Unit",
       "maxHP": 56,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-S1",
         "EC-A1"
@@ -9204,6 +9281,7 @@
       "id": "E_CIRCUIT_HACKER_ARRAY",
       "name": "Circuit Hacker Array",
       "maxHP": 81,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-DB2"
       ],
@@ -9218,6 +9296,7 @@
       "id": "E_GLITCH_TECH_PROTOCOL",
       "name": "Glitch Tech Protocol",
       "maxHP": 65,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-A2"
       ],
@@ -9232,6 +9311,7 @@
       "id": "E_CHROME_MARAUDER_CELL",
       "name": "Chrome Marauder Cell",
       "maxHP": 35,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-S1",
         "EC-A1"
@@ -9247,6 +9327,7 @@
       "id": "E_CIPHER_CLERIC_SHARD",
       "name": "Cipher Cleric Shard",
       "maxHP": 56,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-S1",
         "EC-A1"
@@ -9262,6 +9343,7 @@
       "id": "E_GHOST_GOON_MK_III",
       "name": "Ghost Goon Mk III",
       "maxHP": 64,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-C1",
         "EC-A1"
@@ -9277,6 +9359,7 @@
       "id": "E_RAZOR_CLERIC_MK_II",
       "name": "Razor Cleric Mk II",
       "maxHP": 43,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-A2"
       ],
@@ -9291,6 +9374,7 @@
       "id": "E_ECHO_SHAMAN_SWARM",
       "name": "Echo Shaman Swarm",
       "maxHP": 121,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-DB3"
       ],
@@ -9305,6 +9389,7 @@
       "id": "E_QUANTUM_POD_SUITE",
       "name": "Quantum Pod Suite",
       "maxHP": 96,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-D2",
         "EC-D3"
@@ -9320,6 +9405,7 @@
       "id": "E_NEON_SAPPER_MK_II",
       "name": "Neon Sapper Mk II",
       "maxHP": 76,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-S1",
         "EC-A1"
@@ -9348,6 +9434,7 @@
       "id": "E_HOLO_SHAMAN_MK_I",
       "name": "Holo Shaman Mk I",
       "maxHP": 76,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-D2",
         "EC-D3"
@@ -9363,6 +9450,7 @@
       "id": "E_HOLO_ENFORCER_MK_I",
       "name": "Holo Enforcer Mk I",
       "maxHP": 65,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-A2"
       ],
@@ -9377,6 +9465,7 @@
       "id": "E_VANTA_MARAUDER_MK_I",
       "name": "Vanta Marauder Mk I",
       "maxHP": 39,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-DB2"
       ],
@@ -9404,6 +9493,7 @@
       "id": "E_PULSE_SHAMAN_SUITE",
       "name": "Pulse Shaman Suite",
       "maxHP": 59,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-E2"
       ],
@@ -9418,6 +9508,7 @@
       "id": "E_HOLO_RAT_MK_II",
       "name": "Holo Rat Mk II",
       "maxHP": 61,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-DB2"
       ],
@@ -9432,6 +9523,7 @@
       "id": "E_HOLO_SCOUT_PROXY",
       "name": "Holo Scout Proxy",
       "maxHP": 76,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-D2",
         "EC-D3"
@@ -9447,6 +9539,7 @@
       "id": "E_CIRCUIT_TECH_RIG",
       "name": "Circuit Tech Rig",
       "maxHP": 76,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-D2",
         "EC-D3"
@@ -9474,6 +9567,7 @@
       "id": "E_STATIC_DAEMON_SWARM",
       "name": "Static Daemon Swarm",
       "maxHP": 85,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-A3"
       ],
@@ -9488,6 +9582,7 @@
       "id": "E_NEON_WARDEN_SUITE",
       "name": "Neon Warden Suite",
       "maxHP": 65,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-A2"
       ],
@@ -9514,6 +9609,7 @@
       "id": "E_CIRCUIT_DAEMON_ARRAY",
       "name": "Circuit Daemon Array",
       "maxHP": 38,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-E2"
       ],
@@ -9528,6 +9624,7 @@
       "id": "E_OBSIDIAN_TECH_RIG",
       "name": "Obsidian Tech Rig",
       "maxHP": 39,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-DB2"
       ],
@@ -9555,6 +9652,7 @@
       "id": "E_RAZOR_TECH_NODE",
       "name": "Razor Tech Node",
       "maxHP": 41,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-C1",
         "EC-A1"
@@ -9583,6 +9681,7 @@
       "id": "E_ECHO_DAEMON_CREW",
       "name": "Echo Daemon Crew",
       "maxHP": 61,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-DB2"
       ],
@@ -9609,6 +9708,7 @@
       "id": "E_OBSIDIAN_POD_MK_I",
       "name": "Obsidian Pod Mk I",
       "maxHP": 76,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-S1",
         "EC-A1"
@@ -9624,6 +9724,7 @@
       "id": "E_ION_SNIPER_RIG",
       "name": "Ion Sniper Rig",
       "maxHP": 59,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-E2"
       ],
@@ -9651,6 +9752,7 @@
       "id": "E_NULL_SHAMAN_UNIT",
       "name": "Null Shaman Unit",
       "maxHP": 56,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-S1",
         "EC-A1"
@@ -9682,6 +9784,7 @@
       "id": "E_HOLO_SNIPER_SUITE",
       "name": "Holo Sniper Suite",
       "maxHP": 127,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-C2",
         "EC-A2"
@@ -9697,6 +9800,7 @@
       "id": "E_FLUX_COURIER_PROXY",
       "name": "Flux Courier Proxy",
       "maxHP": 56,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-S1",
         "EC-A1"
@@ -9724,6 +9828,7 @@
       "id": "E_VANTA_TECH_NODE",
       "name": "Vanta Tech Node",
       "maxHP": 56,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-S1",
         "EC-A1"
@@ -9739,6 +9844,7 @@
       "id": "E_KILO_SNIPER_ARRAY",
       "name": "Kilo Sniper Array",
       "maxHP": 64,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-C1",
         "EC-A1"
@@ -9754,6 +9860,7 @@
       "id": "E_OBSIDIAN_HACKER_SWARM",
       "name": "Obsidian Hacker Swarm",
       "maxHP": 145,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-A3",
         "EC-DB1"
@@ -9785,6 +9892,7 @@
       "id": "E_HOLO_POD_NODE",
       "name": "Holo Pod Node",
       "maxHP": 61,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-DB2"
       ],
@@ -9815,6 +9923,7 @@
       "id": "E_ECHO_SNIPER_PACK_2",
       "name": "Echo Sniper Pack 2",
       "maxHP": 76,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-D2",
         "EC-D3"
@@ -9830,6 +9939,7 @@
       "id": "E_FLUX_SHAMAN_CREW",
       "name": "Flux Shaman Crew",
       "maxHP": 130,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-A3"
       ],
@@ -9844,6 +9954,7 @@
       "id": "E_HOLO_RUNNER_NODE",
       "name": "Holo Runner Node",
       "maxHP": 35,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-S1",
         "EC-A1"
@@ -9859,6 +9970,7 @@
       "id": "E_PULSE_SAPPER_CELL",
       "name": "Pulse Sapper Cell",
       "maxHP": 85,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-A2"
       ],
@@ -9873,6 +9985,7 @@
       "id": "E_RAZOR_SHAMAN_CREW",
       "name": "Razor Shaman Crew",
       "maxHP": 76,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-D2",
         "EC-D3"
@@ -9888,6 +10001,7 @@
       "id": "E_CIPHER_WARDEN_NODE",
       "name": "Cipher Warden Node",
       "maxHP": 64,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-C1",
         "EC-A1"
@@ -9903,6 +10017,7 @@
       "id": "E_CIPHER_SHAMAN_PROTOCOL",
       "name": "Cipher Shaman Protocol",
       "maxHP": 65,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-A2"
       ],
@@ -9917,6 +10032,7 @@
       "id": "E_VANTA_SCOUT_PACK",
       "name": "Vanta Scout Pack",
       "maxHP": 59,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-E2"
       ],
@@ -9931,6 +10047,7 @@
       "id": "E_STATIC_WARDEN_ARRAY",
       "name": "Static Warden Array",
       "maxHP": 61,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-DB2"
       ],
@@ -9945,6 +10062,7 @@
       "id": "E_NEON_COURIER_CREW",
       "name": "Neon Courier Crew",
       "maxHP": 79,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-E2"
       ],
@@ -9959,6 +10077,7 @@
       "id": "E_ROGUE_TECH_SHARD",
       "name": "Rogue Tech Shard",
       "maxHP": 79,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-E2",
         "EC-A2"
@@ -9974,6 +10093,7 @@
       "id": "E_VANTA_SAPPER_SHARD",
       "name": "Vanta Sapper Shard",
       "maxHP": 59,
+      "actionsPerTurn": 1,
       "rotation": [
         "EC-E2"
       ],
@@ -10000,6 +10120,7 @@
       "id": "E_ADMINISTRATOR_KILO_CORE",
       "name": "Administrator: Kilo Core",
       "maxHP": 230,
+      "actionsPerTurn": 3,
       "rotation": [
         "EC-A4",
         "EC-DB3",
@@ -10017,6 +10138,7 @@
       "id": "E_NEXUS_ROGUE_ORACLE",
       "name": "Nexus: Rogue Oracle",
       "maxHP": 181,
+      "actionsPerTurn": 2,
       "rotation": [
         "EC-A4",
         "EC-DB3",
@@ -10034,6 +10156,7 @@
       "id": "E_ADMINISTRATOR_NULL_GOLIATH",
       "name": "Administrator: Null Goliath",
       "maxHP": 189,
+      "actionsPerTurn": 2,
       "rotation": [
         "EC-A4",
         "EC-DB3",
@@ -10051,6 +10174,7 @@
       "id": "E_OVERSEER_VANTA_GOLIATH",
       "name": "Overseer: Vanta Goliath",
       "maxHP": 202,
+      "actionsPerTurn": 2,
       "rotation": [
         "EC-A4",
         "EC-DB3",
@@ -10068,6 +10192,7 @@
       "id": "E_NEXUS_ION_GOLIATH",
       "name": "Nexus: Ion Goliath",
       "maxHP": 150,
+      "actionsPerTurn": 2,
       "rotation": [
         "EC-A4",
         "EC-DB3",
@@ -10085,6 +10210,7 @@
       "id": "E_LEVIATHAN_GHOST_HYDRA",
       "name": "Leviathan: Ghost Hydra",
       "maxHP": 215,
+      "actionsPerTurn": 3,
       "rotation": [
         "EC-A4",
         "EC-DB3",
@@ -10102,6 +10228,7 @@
       "id": "E_TITAN_HOLO_APEX",
       "name": "Titan: Holo Apex",
       "maxHP": 187,
+      "actionsPerTurn": 2,
       "rotation": [
         "EC-A4",
         "EC-DB3",
@@ -10119,15 +10246,35 @@
       "id": "E_OVERSEER_STATIC_CORE",
       "name": "Overseer: Static Core",
       "maxHP": 180,
+      "actionsPerTurn": 2,
       "rotation": [
         "EC-A4",
         "EC-DB3",
         "EC-D2",
         "EC-A3"
       ],
-      "passives": [],
+      "passives": [
+        {
+          "trigger": "PhaseChange",
+          "ops": [
+            {
+              "op": "_SetPlaysThisTurn",
+              "amount": 2
+            },
+            {
+              "op": "ApplyStatus",
+              "target": "Self",
+              "statusId": "Firewall",
+              "stacks": 12
+            }
+          ]
+        }
+      ],
       "ai": null,
-      "phaseThresholdsPct": null,
+      "phaseThresholdsPct": [
+        70,
+        35
+      ],
       "role": "Boss",
       "difficulty": "74.8",
       "act": "Act 2"
@@ -10136,6 +10283,7 @@
       "id": "E_ARCHON_NULL_GOLIATH",
       "name": "Archon: Null Goliath",
       "maxHP": 250,
+      "actionsPerTurn": 3,
       "rotation": [
         "EC-A4",
         "EC-DB3",
@@ -10162,6 +10310,7 @@
       "id": "E_BOSS_NEON_MAINFRAME",
       "name": "Boss: Neon Mainframe",
       "maxHP": 188,
+      "actionsPerTurn": 2,
       "rotation": [
         "EC-A4",
         "EC-DB3",
@@ -10179,6 +10328,7 @@
       "id": "E_BOSS_VECTOR_MAINFRAME",
       "name": "Boss: Vector Mainframe",
       "maxHP": 184,
+      "actionsPerTurn": 3,
       "rotation": [
         "EC-A4",
         "EC-DB3",
@@ -10205,6 +10355,7 @@
       "id": "E_NEXUS_CHROME_WARDEN",
       "name": "Nexus: Chrome Warden",
       "maxHP": 197,
+      "actionsPerTurn": 3,
       "rotation": [
         "EC-A4",
         "EC-DB3",
@@ -10222,6 +10373,7 @@
       "id": "E_OVERSEER_CHROME_ORACLE",
       "name": "Overseer: Chrome Oracle",
       "maxHP": 150,
+      "actionsPerTurn": 2,
       "rotation": [
         "EC-A4",
         "EC-DB3",
@@ -10239,6 +10391,7 @@
       "id": "E_DIRECTOR_CIRCUIT_HYDRA",
       "name": "Director: Circuit Hydra",
       "maxHP": 165,
+      "actionsPerTurn": 2,
       "rotation": [
         "EC-A4",
         "EC-DB3",
@@ -10256,6 +10409,7 @@
       "id": "E_DIRECTOR_PULSE_MAINFRAME",
       "name": "Director: Pulse Mainframe",
       "maxHP": 181,
+      "actionsPerTurn": 2,
       "rotation": [
         "EC-A4",
         "EC-DB3",
@@ -10273,6 +10427,7 @@
       "id": "E_ADMINISTRATOR_CIPHER_MAINFRAME",
       "name": "Administrator: Cipher Mainframe",
       "maxHP": 209,
+      "actionsPerTurn": 2,
       "rotation": [
         "EC-A4",
         "EC-DB3",
@@ -10290,6 +10445,7 @@
       "id": "E_DIRECTOR_GHOST_ORACLE",
       "name": "Director: Ghost Oracle",
       "maxHP": 170,
+      "actionsPerTurn": 2,
       "rotation": [
         "EC-A4",
         "EC-DB3",
@@ -10307,6 +10463,7 @@
       "id": "E_OVERSEER_ROGUE_APEX",
       "name": "Overseer: Rogue Apex",
       "maxHP": 236,
+      "actionsPerTurn": 3,
       "rotation": [
         "EC-A4",
         "EC-DB3",
@@ -10324,6 +10481,7 @@
       "id": "E_LEVIATHAN_PULSE_CORE",
       "name": "Leviathan: Pulse Core",
       "maxHP": 206,
+      "actionsPerTurn": 2,
       "rotation": [
         "EC-A4",
         "EC-DB3",
@@ -10341,6 +10499,7 @@
       "id": "E_LEVIATHAN_NEON_APEX",
       "name": "Leviathan: Neon Apex",
       "maxHP": 207,
+      "actionsPerTurn": 3,
       "rotation": [
         "EC-A4",
         "EC-DB3",
@@ -10367,6 +10526,7 @@
       "id": "E_LEVIATHAN_CHROME_ORACLE",
       "name": "Leviathan: Chrome Oracle",
       "maxHP": 214,
+      "actionsPerTurn": 2,
       "rotation": [
         "EC-A4",
         "EC-DB3",
@@ -10393,6 +10553,7 @@
       "id": "E_ARCHON_PULSE_HYDRA",
       "name": "Archon: Pulse Hydra",
       "maxHP": 226,
+      "actionsPerTurn": 2,
       "rotation": [
         "EC-A4",
         "EC-DB3",
@@ -10410,6 +10571,7 @@
       "id": "E_LEVIATHAN_GHOST_GOLIATH",
       "name": "Leviathan: Ghost Goliath",
       "maxHP": 223,
+      "actionsPerTurn": 2,
       "rotation": [
         "EC-A4",
         "EC-DB3",
@@ -10427,6 +10589,7 @@
       "id": "E_OVERSEER_STATIC_WARDEN",
       "name": "Overseer: Static Warden",
       "maxHP": 151,
+      "actionsPerTurn": 2,
       "rotation": [
         "EC-A4",
         "EC-DB3",
@@ -10444,6 +10607,7 @@
       "id": "E_ARCHON_HOLO_ORACLE",
       "name": "Archon: Holo Oracle",
       "maxHP": 206,
+      "actionsPerTurn": 2,
       "rotation": [
         "EC-A4",
         "EC-DB3",
@@ -10470,6 +10634,7 @@
       "id": "E_ADMINISTRATOR_PULSE_CITADEL",
       "name": "Administrator: Pulse Citadel",
       "maxHP": 200,
+      "actionsPerTurn": 3,
       "rotation": [
         "EC-A4",
         "EC-DB3",
@@ -10487,6 +10652,7 @@
       "id": "E_LEVIATHAN_VANTA_CORE",
       "name": "Leviathan: Vanta Core",
       "maxHP": 212,
+      "actionsPerTurn": 3,
       "rotation": [
         "EC-A4",
         "EC-DB3",
@@ -10513,6 +10679,7 @@
       "id": "E_ARCHON_KILO_MAINFRAME",
       "name": "Archon: Kilo Mainframe",
       "maxHP": 155,
+      "actionsPerTurn": 2,
       "rotation": [
         "EC-A4",
         "EC-DB3",

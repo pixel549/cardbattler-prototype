@@ -289,7 +289,11 @@ function getCombatAction(combat, data, playstyle) {
 
   const { player, enemies, cardInstances } = combat;
   const aliveEnemies = (enemies || []).filter(e => e.hp > 0);
-  if (aliveEnemies.length === 0) return { type: 'Combat_EndTurn' };
+  // No alive enemies: trigger EndTurn so the engine's win-check fires.
+  // If enemies array itself is empty (bad encounter), return null to avoid a phantom win.
+  if (aliveEnemies.length === 0) {
+    return (enemies || []).length > 0 ? { type: 'Combat_EndTurn' } : null;
+  }
 
   let bestScore = -Infinity;
   let bestAction = null;

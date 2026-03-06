@@ -3,32 +3,26 @@
   "playstyle": "balanced",
   "finalMode": "GameOver",
   "act": 2,
-  "floor": 17,
+  "floor": 16,
   "hp": 0,
   "maxHP": 75,
-  "gold": 258,
-  "deckSize": 18,
+  "gold": 478,
+  "deckSize": 12,
   "deck": [
     "Strike",
     "Guard",
     "RAM Cache",
-    "Corrode Payload",
-    "Firewall Patch",
+    "Zero-Day Injector",
+    "Emergency Reimage",
     "Index Cache",
     "Zero-Day Injector",
     "Stack Trace",
     "Hard Reset",
-    "Heat Burst",
-    "Heat Burst",
-    "Heat Burst",
-    "Heat Burst",
-    "Burst Shot",
     "System Quarantine",
     "Signal Amplifier",
-    "Packet Leech",
-    "Defrag"
+    "Packet Leech"
   ],
-  "steps": 117,
+  "steps": 69,
   "encounters": [
     {
       "act": 1,
@@ -86,22 +80,11 @@
         "E_OVERSEER_ROGUE_APEX"
       ],
       "result": "win",
-      "hpAfter": 40
-    },
-    {
-      "act": 2,
-      "floor": 16,
-      "hpBefore": 38,
-      "enemies": [
-        "E_STATIC_SCOUT_MK_II",
-        "E_VANTA_ENFORCER_SWARM"
-      ],
-      "result": "win",
       "hpAfter": 21
     },
     {
       "act": 2,
-      "floor": 17,
+      "floor": 16,
       "hpBefore": 19,
       "enemies": [
         "E_STATIC_SCOUT_MK_II",

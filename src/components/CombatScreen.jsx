@@ -2147,27 +2147,38 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false }
         display: 'flex',
         alignItems: 'center',
         gap: 8,
-        padding: '5px 10px',
+        padding: '6px 10px',
         borderTop: `1px solid ${C.border}`,
         backgroundColor: C.bgDark,
         flexShrink: 0,
       }}>
         {/* Turn badge */}
-        <span style={{ fontFamily: MONO, fontSize: 10, color: C.neonCyan, fontWeight: 700, letterSpacing: '0.05em', flexShrink: 0 }}>
+        <div style={{
+          flexShrink: 0, padding: '2px 7px', borderRadius: 5,
+          fontFamily: MONO, fontSize: 9, fontWeight: 700, letterSpacing: '0.06em',
+          color: C.neonCyan, backgroundColor: `${C.neonCyan}15`,
+          border: `1px solid ${C.neonCyan}35`,
+        }}>
           T{combat.turn}
-        </span>
-        {/* HP */}
-        <div style={{ flex: 1, maxWidth: 140 }}>
-          <HealthBar current={player?.hp ?? 0} max={player?.maxHP ?? 1} height={12} showText={true} />
+        </div>
+        {/* HP — takes all available space */}
+        <div style={{ flex: 1 }}>
+          <HealthBar current={player?.hp ?? 0} max={player?.maxHP ?? 1} height={13} showText={true} />
         </div>
         {/* Firewall + block */}
         {(player?.statuses?.find(s => s.id === 'Firewall')?.stacks ?? 0) > 0 && (
-          <span style={{ fontFamily: MONO, fontSize: 10, color: C.neonCyan, flexShrink: 0 }}>
+          <span style={{
+            fontFamily: MONO, fontSize: 10, color: C.neonCyan, flexShrink: 0,
+            backgroundColor: `${C.neonCyan}12`, padding: '1px 6px', borderRadius: 4,
+          }}>
             🛡 {player.statuses.find(s => s.id === 'Firewall').stacks}
           </span>
         )}
         {(player?.block ?? 0) > 0 && (
-          <span style={{ fontFamily: MONO, fontSize: 10, color: C.neonCyan, fontWeight: 700, flexShrink: 0 }}>
+          <span style={{
+            fontFamily: MONO, fontSize: 10, color: C.neonCyan, fontWeight: 700, flexShrink: 0,
+            backgroundColor: `${C.neonCyan}12`, padding: '1px 6px', borderRadius: 4,
+          }}>
             ⬡ {player.block}
           </span>
         )}
@@ -2284,17 +2295,18 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false }
             <button
               onClick={handleEndTurn}
               style={{
-                padding: '6px 14px',
+                padding: '7px 18px',
                 borderRadius: '8px',
                 fontFamily: MONO,
                 fontWeight: 700,
                 textTransform: 'uppercase',
-                letterSpacing: '0.05em',
+                letterSpacing: '0.07em',
                 transition: 'all 0.15s ease',
                 backgroundColor: C.neonCyan,
                 color: '#000',
-                boxShadow: `0 0 14px ${C.neonCyan}40`,
-                fontSize: 11,
+                boxShadow: `0 0 18px ${C.neonCyan}55, 0 2px 0 rgba(255,255,255,0.15) inset`,
+                fontSize: 12,
+                border: 'none',
               }}
             >
               END TURN

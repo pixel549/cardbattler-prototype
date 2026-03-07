@@ -2351,7 +2351,7 @@ function App() {
         deckSnapshotsRef.current.push({
           act:   state.run.act,
           floor: curFloor,
-          cards: state.deck.master.map(c => c.defId),
+          cards: state.deck.master.map(cid => state.deck.cardInstances?.[cid]?.defId ?? null),
         });
       }
 
@@ -2598,7 +2598,8 @@ function App() {
     const batch      = runHistory.slice(batchStart - 1); // last 5 runs
     const pad        = n => String(n).padStart(3, '0');
     const psLabel    = (AI_PLAYSTYLES[aiPlaystyle]?.label ?? aiPlaystyle).replace(/\s+/g, '_');
-    const filename   = `ai_runs_${psLabel}_${pad(batchStart)}-${pad(batchEnd)}_${Date.now()}.json`;
+    const uid        = Math.random().toString(36).slice(2, 7);
+    const filename   = `ai_runs_${psLabel}_${pad(batchStart)}-${pad(batchEnd)}_${Date.now()}_${uid}.json`;
     const jsonStr    = JSON.stringify(batch, null, 2);
     writeToSaveDir(filename, jsonStr).then(ok => {
       if (!ok) fallbackDownload(filename, jsonStr);
@@ -2644,9 +2645,10 @@ function App() {
     const pad      = n => String(n).padStart(3, '0');
     const total    = runHistory.length;
     const psLabel  = (AI_PLAYSTYLES[aiPlaystyle]?.label ?? aiPlaystyle).replace(/\s+/g, '_');
+    const uid      = Math.random().toString(36).slice(2, 7);
     const filename = total > 0
-      ? `ai_runs_${psLabel}_${pad(1)}-${pad(total)}_${Date.now()}.json`
-      : `ai_runs_${psLabel}_empty_${Date.now()}.json`;
+      ? `ai_runs_${psLabel}_${pad(1)}-${pad(total)}_${Date.now()}_${uid}.json`
+      : `ai_runs_${psLabel}_empty_${Date.now()}_${uid}.json`;
 
     // Include current in-progress run if one exists
     const inProgressSnap = buildInProgressSnapshot();

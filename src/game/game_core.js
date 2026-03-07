@@ -344,8 +344,12 @@ function resolveCurrentNodeInternal(state, data, log) {
       encounterName = `Debug pool (${enemyIds.length} enemies)`;
     } else {
       const enc = pickEncounter(data, state.run.seed ^ state.run.floor, effectiveAct, effectiveKind);
-      enemyIds = enc.enemyIds;
-      encounterName = enc.name;
+      enemyIds = enc?.enemyIds?.length ? enc.enemyIds : null;
+      encounterName = enc?.name ?? 'Unknown';
+      if (!enemyIds) {
+        log({ t: "Error", msg: `Encounter "${encounterName}" returned no enemyIds — skipping combat node` });
+        return state;
+      }
     }
 
     state.mode = "Combat";

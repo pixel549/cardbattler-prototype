@@ -1106,7 +1106,28 @@ function applyFinalMutation(state, data, rng, cardInstanceId) {
 function applyMutation(state, data, rng, cardInstanceId, tier) {
   const pool = data.mutationPoolsByTier?.[tier] || [];
   if (pool.length === 0) return;
-  const mid = pool[rng.int(pool.length)];
+
+  // PatchNotes: roll 3 candidates and pick the best (prefer non-negative effects)
+  const numCandidates = (state.relicIds || []).includes('PatchNotes') ? 3 : 1;
+  let mid = pool[rng.int(pool.length)];
+  if (numCandidates > 1) {
+    const candidates = [mid];
+    for (let i = 1; i < numCandidates; i++) candidates.push(pool[rng.int(pool.length)]);
+    // Score: prefer positive ramCostDelta (−), positive useCounterDelta (+), no Disabled passive
+    const score = (id) => {
+      const m = data.mutations[id];
+      if (!m) return -99;
+      let s = 0;
+      if (m.ramCostDelta  < 0) s += 2;   // cheaper is better
+      if (m.ramCostDelta  > 0) s -= 2;
+      if (m.useCounterDelta > 0) s += 1;
+      if (m.useCounterDelta < 0) s -= 1;
+      if (m.patch?.includes('disabled:true')) s -= 3;
+      return s;
+    };
+    mid = candidates.reduce((best, c) => score(c) >= score(best) ? c : best, candidates[0]);
+  }
+
   const mut = data.mutations[mid];
   const ci = state.cardInstances[cardInstanceId];
   if (!ci || !mut) return;

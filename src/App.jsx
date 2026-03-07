@@ -205,12 +205,56 @@ const NODE_TYPE_DESCS = {
   Event:  'Unknown encounter',
 };
 
+/** BFS: collect every edge reachable from startId as a Set of "fromId-toId" strings. */
+function getAllReachableEdges(startId, nodes) {
+  const visited = new Set();
+  const edgeSet = new Set();
+  const queue = [startId];
+  while (queue.length) {
+    const nid = queue.shift();
+    if (visited.has(nid)) continue;
+    visited.add(nid);
+    for (const toId of (nodes[nid]?.next || [])) {
+      if (nodes[toId]) {
+        edgeSet.add(`${nid}-${toId}`);
+        queue.push(toId);
+      }
+    }
+  }
+  return edgeSet;
+}
+
+/** Return up to `depth` lookahead steps from a node as arrays of unique types per level. */
+function getPathAhead(startId, nodes, depth = 3) {
+  let frontier = [startId];
+  const levels = [];
+  for (let d = 0; d < depth; d++) {
+    const nexts = [];
+    for (const nid of frontier) {
+      for (const toId of (nodes[nid]?.next || [])) {
+        if (nodes[toId]) nexts.push(toId);
+      }
+    }
+    if (nexts.length === 0) break;
+    const types = [...new Set(nexts.map(nid => nodes[nid]?.type).filter(Boolean))];
+    levels.push(types);
+    frontier = nexts;
+  }
+  return levels;
+}
+
 function MapScreen({ state, data, onAction }) {
   const nodes   = state.map?.nodes || {};
   const curId   = state.map?.currentNodeId;
   const selNext = state.map?.selectableNext || [];
   const MONO    = "'JetBrains Mono', 'Fira Code', 'Consolas', monospace";
   const nodeList = Object.values(nodes);
+
+  // Preview-path state: tap a selectable node to see its full future path in orange
+  const [previewNodeId, setPreviewNodeId] = useState(null);
+  const previewEdgeSet = previewNodeId ? getAllReachableEdges(previewNodeId, nodes) : new Set();
+  // Also include the edge FROM current node TO previewNodeId
+  if (previewNodeId) previewEdgeSet.add(`${curId}-${previewNodeId}`);
 
   // Detour edge lookup (amber dashed lines)
   const detourSet = new Set((state.map?.detourEdges || []).map(([f, t]) => `${f}-${t}`));
@@ -244,38 +288,48 @@ function MapScreen({ state, data, onAction }) {
               <feGaussianBlur stdDeviation="2" result="b" />
               <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
             </filter>
+            <filter id="mglow-orange" x="-80%" y="-80%" width="260%" height="260%">
+              <feGaussianBlur stdDeviation="3" result="b" />
+              <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+            </filter>
           </defs>
 
           {/* Edges */}
           {edges.map(({ from, to }) => {
+            const edgeKey    = `${from.id}-${to.id}`;
             const isTraversed = from.cleared;
             const isHot      = (from.id === curId) && selNext.includes(to.id);
-            const isDetour   = detourSet.has(`${from.id}-${to.id}`);
+            const isDetour   = detourSet.has(edgeKey);
+            const isPreview  = previewEdgeSet.has(edgeKey);
 
             if (isDetour) {
-              // Amber dashed detour lines — sideways or backward cross-paths
               return (
                 <line
-                  key={`${from.id}-${to.id}`}
+                  key={edgeKey}
                   x1={mapNX(from.x)} y1={mapNY(from.y)}
                   x2={mapNX(to.x)}   y2={mapNY(to.y)}
-                  stroke={isTraversed ? '#FFAA0040' : isHot ? '#FFCC44' : '#FFAA0088'}
-                  strokeWidth={isTraversed ? 1.5 : isHot ? 2 : 1.5}
-                  strokeDasharray={isTraversed ? 'none' : '5 3'}
-                  filter={isHot ? 'url(#mglow-sm)' : undefined}
+                  stroke={isPreview ? '#FF8800dd' : isTraversed ? '#FFAA0040' : isHot ? '#FFCC44' : '#FFAA00aa'}
+                  strokeWidth={isPreview ? 3 : isTraversed ? 1.5 : isHot ? 2.5 : 2}
+                  strokeDasharray={isTraversed && !isPreview ? '4 3' : 'none'}
+                  filter={isPreview ? 'url(#mglow-orange)' : isHot ? 'url(#mglow-sm)' : undefined}
                 />
               );
             }
 
             return (
               <line
-                key={`${from.id}-${to.id}`}
+                key={edgeKey}
                 x1={mapNX(from.x)} y1={mapNY(from.y)}
                 x2={mapNX(to.x)}   y2={mapNY(to.y)}
-                stroke={isTraversed ? `${C.cyan}70` : isHot ? `${C.cyan}cc` : `${C.cyan}28`}
-                strokeWidth={isTraversed ? 2 : isHot ? 2 : 1.5}
-                strokeDasharray={isTraversed || isHot ? 'none' : '5 4'}
-                filter={isHot ? 'url(#mglow-sm)' : undefined}
+                stroke={
+                  isPreview   ? '#FF8800dd' :
+                  isTraversed ? `${C.cyan}55` :
+                  isHot       ? `${C.cyan}ee` :
+                                `${C.cyan}50`
+                }
+                strokeWidth={isPreview ? 3 : isTraversed ? 1.5 : isHot ? 3 : 2.5}
+                strokeDasharray="none"
+                filter={isPreview ? 'url(#mglow-orange)' : isHot ? 'url(#mglow-sm)' : undefined}
               />
             );
           })}
@@ -287,21 +341,40 @@ function MapScreen({ state, data, onAction }) {
             const isCur  = node.id === curId;
             const isSel  = selNext.includes(node.id);
             const isDone = node.cleared;
+            const isPrev = node.id === previewNodeId;
             const col  = NODE_COLORS[node.type] || '#888';
             const ico  = NODE_ICONS[node.type]  || '?';
             const R    = isCur ? 23 : isSel ? 21 : 17;
 
             return (
               <g key={node.id}
-                onClick={() => isSel && onAction({ type: 'SelectNextNode', nodeId: node.id })}
+                onClick={() => {
+                  if (!isSel) return;
+                  if (isPrev) {
+                    // Second tap on same node = confirm move
+                    onAction({ type: 'SelectNextNode', nodeId: node.id });
+                    setPreviewNodeId(null);
+                  } else {
+                    setPreviewNodeId(node.id);
+                  }
+                }}
                 style={{ cursor: isSel ? 'pointer' : 'default' }}
               >
+                {/* Orange preview ring */}
+                {isPrev && (
+                  <circle cx={cx} cy={cy} r={R + 12}
+                    fill="none"
+                    stroke="#FF880066"
+                    strokeWidth={2}
+                    filter="url(#mglow-orange)"
+                  />
+                )}
                 {/* Outer glow ring */}
                 {(isCur || isSel) && (
                   <circle cx={cx} cy={cy} r={R + (isCur ? 10 : 7)}
                     fill={`${col}${isCur ? '10' : '08'}`}
-                    stroke={`${col}${isCur ? '40' : '50'}`}
-                    strokeWidth={1.5}
+                    stroke={isPrev ? '#FF880088' : `${col}${isCur ? '40' : '50'}`}
+                    strokeWidth={isPrev ? 2 : 1.5}
                   />
                 )}
                 {/* Main circle */}
@@ -319,17 +392,20 @@ function MapScreen({ state, data, onAction }) {
                 >
                   {isDone ? '✓' : ico}
                 </text>
-                {/* Type label */}
-                {(isCur || isSel || isDone) && (
-                  <text x={cx} y={cy + R + 13} textAnchor="middle"
-                    fontSize={8}
-                    fill={isCur ? col : isSel ? `${col}cc` : `${col}44`}
-                    fontFamily="JetBrains Mono, monospace"
-                    letterSpacing="0.3"
-                  >
-                    {node.type.toUpperCase()}
-                  </text>
-                )}
+                {/* Type label — always visible, brightness varies by state */}
+                <text x={cx} y={cy + R + 13} textAnchor="middle"
+                  fontSize={isCur ? 8.5 : isSel ? 8 : 7.5}
+                  fill={
+                    isCur  ? col :
+                    isSel  ? `${col}dd` :
+                    isDone ? `${col}44` :
+                             `${col}66`
+                  }
+                  fontFamily="JetBrains Mono, monospace"
+                  letterSpacing="0.3"
+                >
+                  {isDone ? '' : node.type.toUpperCase()}
+                </text>
               </g>
             );
           })}
@@ -342,35 +418,73 @@ function MapScreen({ state, data, onAction }) {
               MOVE TO
             </div>
             {selNext.map(nodeId => {
-              const node  = nodes[nodeId];
-              const color = NODE_COLORS[node?.type] || '#888';
-              const icon  = NODE_ICONS[node?.type]  || '·';
-              const desc  = NODE_TYPE_DESCS[node?.type] || '';
+              const node    = nodes[nodeId];
+              const color   = NODE_COLORS[node?.type] || '#888';
+              const icon    = NODE_ICONS[node?.type]  || '·';
+              const desc    = NODE_TYPE_DESCS[node?.type] || '';
+              const ahead   = getPathAhead(nodeId, nodes, 3);
+              const isPrev  = previewNodeId === nodeId;
               return (
                 <button key={nodeId}
-                  onClick={() => onAction({ type: 'SelectNextNode', nodeId })}
+                  onMouseEnter={() => setPreviewNodeId(nodeId)}
+                  onMouseLeave={() => setPreviewNodeId(null)}
+                  onTouchStart={() => setPreviewNodeId(nodeId)}
+                  onClick={() => {
+                    onAction({ type: 'SelectNextNode', nodeId });
+                    setPreviewNodeId(null);
+                  }}
                   style={{
                     width: '100%', padding: '12px 14px', borderRadius: '12px',
                     fontFamily: MONO, textAlign: 'left', transition: 'all 0.15s',
-                    backgroundColor: `${color}0c`,
-                    border: `2px solid ${color}55`,
-                    boxShadow: `0 0 14px ${color}12`,
+                    backgroundColor: isPrev ? '#FF880015' : `${color}0c`,
+                    border: `2px solid ${isPrev ? '#FF8800aa' : color + '55'}`,
+                    boxShadow: isPrev ? '0 0 20px #FF880030' : `0 0 14px ${color}12`,
                     cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', gap: 12,
                   }}
                 >
-                  <div style={{
-                    width: 36, height: 36, borderRadius: 8, flexShrink: 0,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 18, backgroundColor: `${color}18`, border: `1px solid ${color}40`,
-                  }}>
-                    {icon}
+                  {/* Top row: icon + type + desc */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: ahead.length > 0 ? 8 : 0 }}>
+                    <div style={{
+                      width: 36, height: 36, borderRadius: 8, flexShrink: 0,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 18, backgroundColor: `${color}18`, border: `1px solid ${color}40`,
+                    }}>
+                      {icon}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 700, color, fontSize: 14 }}>{node?.type}</div>
+                      <div style={{ color: C.textMuted, fontSize: 11, marginTop: 2 }}>{desc}</div>
+                    </div>
+                    <div style={{ color: C.textMuted, fontSize: 18 }}>›</div>
                   </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 700, color, fontSize: 14 }}>{node?.type}</div>
-                    <div style={{ color: C.textMuted, fontSize: 11, marginTop: 2 }}>{desc}</div>
-                  </div>
-                  <div style={{ color: C.textMuted, fontSize: 18 }}>›</div>
+                  {/* Path preview: up to 3 steps ahead */}
+                  {ahead.length > 0 && (
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: 4,
+                      paddingLeft: 48, flexWrap: 'wrap',
+                    }}>
+                      <span style={{ color: C.textDim, fontSize: 9, marginRight: 2 }}>then:</span>
+                      {ahead.map((types, i) => (
+                        <span key={i} style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                          {i > 0 && <span style={{ color: C.textDim, fontSize: 9 }}>→</span>}
+                          {types.map((t, j) => (
+                            <span key={j} style={{
+                              fontSize: 9, fontFamily: MONO, fontWeight: 600,
+                              color: NODE_COLORS[t] || '#888',
+                              padding: '1px 5px', borderRadius: 4,
+                              backgroundColor: `${NODE_COLORS[t] || '#888'}15`,
+                              border: `1px solid ${NODE_COLORS[t] || '#888'}30`,
+                            }}>
+                              {NODE_ICONS[t] || '?'} {t}
+                            </span>
+                          ))}
+                          {types.length > 1 && (
+                            <span style={{ color: C.textDim, fontSize: 8 }}>(or)</span>
+                          )}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </button>
               );
             })}
@@ -405,13 +519,16 @@ function RewardScreen({ state, data, onAction }) {
   const choices = state.reward?.cardChoices || [];
   const relicChoices = state.reward?.relicChoices || [];
   const hasRelics = relicChoices.length > 0;
+  const goldEarned = state.reward?.goldEarned ?? null;
+  const nodeKind   = state.reward?.nodeKind ?? 'Combat';
   const MONO = "'JetBrains Mono', 'Fira Code', 'Consolas', monospace";
 
   return (
     <ScreenShell>
-      <div style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column' }}>
+      <RunHeader run={state.run} data={data} />
+      <div style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
         {/* Header */}
-        <div style={{ textAlign: 'center', paddingTop: '24px', paddingBottom: '24px' }}>
+        <div style={{ textAlign: 'center', paddingTop: '16px', paddingBottom: '12px' }}>
           <div
             className="animate-slide-up"
             style={{
@@ -424,6 +541,20 @@ function RewardScreen({ state, data, onAction }) {
           >
             VICTORY
           </div>
+          {/* Gold earned badge */}
+          {goldEarned != null && (
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              padding: '4px 14px', borderRadius: 20, marginBottom: 6,
+              backgroundColor: `${C.yellow}18`, border: `1px solid ${C.yellow}50`,
+              fontFamily: MONO, fontWeight: 700, fontSize: 13, color: C.yellow,
+            }}>
+              +{goldEarned}g
+              <span style={{ fontWeight: 400, fontSize: 10, color: C.textMuted }}>
+                {nodeKind === 'Boss' ? 'boss kill' : nodeKind === 'Elite' ? 'elite kill' : 'combat reward'}
+              </span>
+            </div>
+          )}
           <div style={{ fontFamily: MONO, color: C.textMuted, fontSize: 12 }}>
             {hasRelics ? 'Select a relic — then choose a card' : 'Select a card reward'}
           </div>
@@ -614,38 +745,27 @@ function ShopScreen({ state, data, onAction }) {
 
   return (
     <ScreenShell>
-      {/* Shop header */}
-      <div
-        className="safe-area-top"
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          paddingLeft: '16px',
-          paddingRight: '16px',
-          paddingTop: '12px',
-          paddingBottom: '12px',
-          backgroundColor: C.bgBar,
-          borderBottom: `1px solid ${C.border}`,
-        }}
-      >
-        <div style={{ fontFamily: MONO, fontWeight: 700, color: C.yellow, fontSize: 16 }}>
+      <RunHeader run={state.run} data={data} />
+      {/* Shop title bar */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '10px 16px',
+        backgroundColor: `${C.yellow}0a`,
+        borderBottom: `1px solid ${C.yellow}25`,
+      }}>
+        <div style={{ fontFamily: MONO, fontWeight: 700, color: C.yellow, fontSize: 15, letterSpacing: '0.06em' }}>
           🛒 MARKET
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontFamily: MONO, color: C.textMuted, fontSize: 11 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span style={{ fontFamily: MONO, color: C.textMuted, fontSize: 10 }}>
             ACT {state.run?.act} · FLOOR {state.run?.floor}
           </span>
-          <div
-            style={{
-              display: 'flex', alignItems: 'center', gap: '4px',
-              padding: '4px 12px', borderRadius: '8px',
-              fontFamily: MONO, fontWeight: 700,
-              backgroundColor: `${C.yellow}15`,
-              border: `1px solid ${C.yellow}40`,
-              color: C.yellow, fontSize: 14,
-            }}
-          >
+          <div style={{
+            padding: '3px 10px', borderRadius: '6px',
+            fontFamily: MONO, fontWeight: 700,
+            backgroundColor: `${C.yellow}18`, border: `1px solid ${C.yellow}50`,
+            color: C.yellow, fontSize: 13,
+          }}>
             {gold}g
           </div>
         </div>
@@ -656,8 +776,9 @@ function ShopScreen({ state, data, onAction }) {
         {/* Cards section */}
         {offers.some(o => o.kind === 'Card') && (
           <div style={{ marginBottom: '20px' }}>
-            <div style={{ fontFamily: MONO, fontSize: 10, color: C.textMuted, letterSpacing: '0.1em', marginBottom: '10px' }}>
-              CARDS FOR SALE
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+              <div style={{ width: 3, height: 14, borderRadius: 2, backgroundColor: C.cyan }} />
+              <span style={{ fontFamily: MONO, fontSize: 10, color: C.textMuted, letterSpacing: '0.12em' }}>CARDS FOR SALE</span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {offers.map((offer, i) => {
@@ -734,8 +855,9 @@ function ShopScreen({ state, data, onAction }) {
         {/* Services section */}
         {offers.some(o => o.kind === 'Service') && (
           <div style={{ marginBottom: '20px' }}>
-            <div style={{ fontFamily: MONO, fontSize: 10, color: C.textMuted, letterSpacing: '0.1em', marginBottom: '10px' }}>
-              SERVICES
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+              <div style={{ width: 3, height: 14, borderRadius: 2, backgroundColor: C.green }} />
+              <span style={{ fontFamily: MONO, fontSize: 10, color: C.textMuted, letterSpacing: '0.12em' }}>SERVICES</span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {offers.map((offer, i) => {
@@ -794,8 +916,9 @@ function ShopScreen({ state, data, onAction }) {
         {/* Relic section */}
         {offers.some(o => o.kind === 'Relic') && (
           <div style={{ marginBottom: '20px' }}>
-            <div style={{ fontFamily: MONO, fontSize: 10, color: C.textMuted, letterSpacing: '0.1em', marginBottom: '10px' }}>
-              RELICS
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+              <div style={{ width: 3, height: 14, borderRadius: 2, backgroundColor: C.purple }} />
+              <span style={{ fontFamily: MONO, fontSize: 10, color: C.textMuted, letterSpacing: '0.12em' }}>RELICS</span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {offers.map((offer, i) => {
@@ -835,8 +958,13 @@ function ShopScreen({ state, data, onAction }) {
                           <span style={{ fontFamily: MONO, fontWeight: 700, color: canAfford ? col : C.textMuted, fontSize: 14 }}>
                             {relic?.name || offer.relicId}
                           </span>
-                          <span style={{ fontFamily: MONO, fontSize: 9, color: C.textMuted, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                            [{tier}]
+                          <span style={{
+                            fontFamily: MONO, fontSize: 8, fontWeight: 700,
+                            textTransform: 'uppercase', letterSpacing: '0.08em',
+                            color: col, padding: '1px 6px', borderRadius: 4,
+                            backgroundColor: `${col}18`, border: `1px solid ${col}40`,
+                          }}>
+                            {tier}
                           </span>
                         </div>
                         <div style={{ fontFamily: MONO, marginTop: 2, color: C.textMuted, fontSize: 11 }}>
@@ -896,7 +1024,7 @@ function ShopScreen({ state, data, onAction }) {
                 transition: 'all 0.15s ease',
               }}
             >
-              🔄 {rerollCost === 0 ? 'Free' : `${rerollCost}g`}
+              ↻ REROLL{rerollCost === 0 ? ' (Free)' : ` · ${rerollCost}g`}
             </button>
           );
         })()}
@@ -1412,9 +1540,15 @@ function EventScreen({ state, data, onAction }) {
   }
 
   if (eventId === 'RestSite') {
+    const run = state.run;
+    const healAmt = run ? Math.ceil(run.maxHP * 0.30) : 0;
+    const hpAfterHeal = run ? Math.min(run.maxHP, run.hp + healAmt) : 0;
+    const hpPct = run?.maxHP ? Math.round((run.hp / run.maxHP) * 100) : 0;
+    const isFullHP = run?.hp >= run?.maxHP;
+
     return (
       <ScreenShell>
-        <RunHeader run={state.run} data={data} />
+        <RunHeader run={run} data={data} />
         <div style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
           <div
             className="animate-slide-up"
@@ -1422,25 +1556,47 @@ function EventScreen({ state, data, onAction }) {
               fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace",
               fontWeight: 700,
               fontSize: '24px',
-              marginBottom: '8px',
+              marginBottom: '4px',
               color: C.green,
             }}
           >
             REST SITE
           </div>
-          <div style={{ fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace", marginBottom: '32px', color: C.textMuted, fontSize: 12 }}>
+          {/* HP status indicator */}
+          {run && (
+            <div style={{
+              fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace",
+              marginBottom: '6px',
+              fontSize: 12,
+              display: 'flex', alignItems: 'center', gap: 8,
+            }}>
+              <span style={{ color: hpPct > 50 ? C.green : hpPct > 25 ? C.orange : C.red, fontWeight: 700 }}>
+                ♥ {run.hp}/{run.maxHP}
+              </span>
+              <span style={{ color: C.textMuted }}>({hpPct}%)</span>
+            </div>
+          )}
+          <div style={{ fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace", marginBottom: '24px', color: C.textMuted, fontSize: 12 }}>
             Choose an action
           </div>
 
           <div style={{ width: '100%', maxWidth: '320px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {[
-              { type: 'Rest_Heal', label: 'Rest', desc: 'Heal 30% HP', color: C.green, icon: '\u2665' },
-              { type: 'Rest_Repair', label: 'Repair', desc: 'Restore a card', color: C.cyan, icon: '\uD83D\uDD27' },
-              { type: 'Rest_Stabilise', label: 'Stabilise', desc: 'Stabilise a card', color: C.purple, icon: '\u25C6' },
+              {
+                type: 'Rest_Heal', label: 'Rest',
+                desc: isFullHP
+                  ? 'Already at full HP'
+                  : `Heal +${Math.min(healAmt, run.maxHP - run.hp)} HP → ${hpAfterHeal}/${run?.maxHP}`,
+                color: isFullHP ? C.textMuted : C.green,
+                icon: '\u2665',
+                disabled: isFullHP,
+              },
+              { type: 'Rest_Repair', label: 'Repair', desc: 'Restore a card\'s use counter', color: C.cyan, icon: '\uD83D\uDD27' },
+              { type: 'Rest_Stabilise', label: 'Stabilise', desc: 'Reset a card\'s mutation countdown', color: C.purple, icon: '\u25C6' },
             ].map(opt => (
               <button
                 key={opt.type}
-                onClick={() => onAction({ type: opt.type })}
+                onClick={() => !opt.disabled && onAction({ type: opt.type })}
                 style={{
                   width: '100%',
                   padding: '16px',
@@ -1451,7 +1607,8 @@ function EventScreen({ state, data, onAction }) {
                   backgroundColor: C.bgCard,
                   border: `2px solid ${opt.color}40`,
                   boxShadow: `0 0 16px ${opt.color}10`,
-                  cursor: 'pointer',
+                  cursor: opt.disabled ? 'not-allowed' : 'pointer',
+                  opacity: opt.disabled ? 0.5 : 1,
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -1864,13 +2021,14 @@ const DEATH_QUIPS = [
   'Runtime exception: fatal.',
 ];
 
-function GameOverScreen({ state, onNewRun }) {
+function GameOverScreen({ state, onNewRun, data }) {
   const MONO   = "'JetBrains Mono', 'Fira Code', 'Consolas', monospace";
   const run    = state.run   || {};
   const deck   = state.deck  || {};
   const quip   = DEATH_QUIPS[(run.floor ?? 0) % DEATH_QUIPS.length];
   const hpPct  = run.maxHP ? Math.round(((run.hp ?? 0) / run.maxHP) * 100) : 0;
   const isVictory = !!run.victory;
+  const relics = run.relicIds || [];
 
   const stats = [
     { label: 'ACT',       value: run.act   ?? 1 },
@@ -1933,7 +2091,7 @@ function GameOverScreen({ state, onNewRun }) {
         </div>
 
         {/* HP bar */}
-        <div style={{ marginBottom: 32 }}>
+        <div style={{ marginBottom: relics.length > 0 ? 16 : 32 }}>
           <div style={{ height: 4, borderRadius: 9999, backgroundColor: '#1a1a2a', overflow: 'hidden' }}>
             <div style={{
               height: '100%', borderRadius: 9999,
@@ -1947,6 +2105,37 @@ function GameOverScreen({ state, onNewRun }) {
             {hpPct}% HP remaining
           </div>
         </div>
+
+        {/* Relics collected */}
+        {relics.length > 0 && (
+          <div style={{ marginBottom: 24 }}>
+            <div style={{ fontFamily: MONO, fontSize: 9, color: C.textMuted, letterSpacing: '0.12em', marginBottom: 8 }}>
+              RELICS COLLECTED ({relics.length})
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, justifyContent: 'center' }}>
+              {relics.map(rid => {
+                const relic = data?.relics?.[rid];
+                const tier = relic?.rarity || relic?.tier || 'common';
+                const tierColors = { boss: C.red, rare: C.purple, uncommon: C.yellow };
+                const col = tierColors[tier] || C.cyan;
+                return (
+                  <div
+                    key={rid}
+                    title={relic?.description || rid}
+                    style={{
+                      fontFamily: MONO, fontSize: 10, fontWeight: 700,
+                      color: col, backgroundColor: `${col}15`,
+                      border: `1px solid ${col}40`, borderRadius: 6,
+                      padding: '3px 8px', whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {relic?.icon || '◈'} {relic?.name || rid}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         <button
           onClick={onNewRun}
@@ -2779,7 +2968,7 @@ function App() {
       content = <EventScreen state={state} data={data} onAction={handleAction} />;
       break;
     case 'GameOver':
-      content = <GameOverScreen state={state} onNewRun={startNewRun} />;
+      content = <GameOverScreen state={state} onNewRun={startNewRun} data={data} />;
       break;
     default:
       content = (

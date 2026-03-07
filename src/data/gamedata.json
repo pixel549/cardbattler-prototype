@@ -12277,18 +12277,9 @@
         "ENC_A1_N3_04",
         "ENC_A1_N3_05",
         "ENC_A1_N3_06",
-        "ENC-001",
-        "ENC-002",
-        "ENC-003",
-        "ENC-005",
-        "ENC-006",
-        "ENC-007",
-        "ENC-008",
-        "ENC-009",
-        "ENC-010",
-        "ENC-011",
-        "ENC-012",
-        "ENC_GEN_A1_MIX_1_3"
+        "ENC_A1_SPEC_CONTROL",
+        "ENC_A1_SPEC_DECAY",
+        "ENC_A1_SPEC_SCREEN"
       ]
     },
     {
@@ -12299,8 +12290,7 @@
         "ENC_A1_EL1_01",
         "ENC_A1_EL1_02",
         "ENC_A1_EL2_01",
-        "ENC_A1_EL2_02",
-        "ENC-004"
+        "ENC_A1_EL2_02"
       ]
     },
     {
@@ -12365,7 +12355,9 @@
         "ENC_A2_N3_04",
         "ENC_A2_N3_05",
         "ENC_A2_N3_06",
-        "ENC_GEN_A2_MIX_1_3"
+        "ENC_A2_SPEC_CONTROL",
+        "ENC_A2_SPEC_DECAY",
+        "ENC_A2_SPEC_SCREEN"
       ]
     },
     {
@@ -12383,7 +12375,17 @@
       "id": "ACT2_BOSS",
       "act": 2,
       "kind": "boss",
-      "encounterIds": []
+      "encounterIds": [
+        "ENC_BOSS_ADMINISTRATOR_CIPHER_MAINFRAME",
+        "ENC_BOSS_ADMINISTRATOR_KILO_CORE",
+        "ENC_BOSS_ADMINISTRATOR_NULL_GOLIATH",
+        "ENC_BOSS_ADMINISTRATOR_PULSE_CITADEL",
+        "ENC_BOSS_ARCHON_HOLO_ORACLE",
+        "ENC_BOSS_ARCHON_KILO_MAINFRAME",
+        "ENC_BOSS_OVERSEER_STATIC_CORE",
+        "ENC_BOSS_OVERSEER_VANTA_GOLIATH",
+        "ENC_BOSS_TITAN_HOLO_APEX"
+      ]
     },
     {
       "id": "ACT3_NORMAL",
@@ -12412,7 +12414,8 @@
         "ENC_A3_N3_04",
         "ENC_A3_N3_05",
         "ENC_A3_N3_06",
-        "ENC_GEN_A3_MIX_1_3"
+        "ENC_A3_SPEC_DECAY",
+        "ENC_A3_SPEC_SCREEN"
       ]
     },
     {
@@ -12430,7 +12433,17 @@
       "id": "ACT3_BOSS",
       "act": 3,
       "kind": "boss",
-      "encounterIds": []
+      "encounterIds": [
+        "ENC_BOSS_LEVIATHAN_CHROME_ORACLE",
+        "ENC_BOSS_LEVIATHAN_GHOST_GOLIATH",
+        "ENC_BOSS_LEVIATHAN_GHOST_HYDRA",
+        "ENC_BOSS_LEVIATHAN_NEON_APEX",
+        "ENC_BOSS_LEVIATHAN_PULSE_CORE",
+        "ENC_BOSS_LEVIATHAN_VANTA_CORE",
+        "ENC_BOSS_ARCHON_NULL_GOLIATH",
+        "ENC_BOSS_ARCHON_PULSE_HYDRA",
+        "ENC_BOSS_OVERSEER_ROGUE_APEX"
+      ]
     }
   ],
   "relics": {

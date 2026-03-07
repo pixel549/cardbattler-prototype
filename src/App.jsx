@@ -405,13 +405,16 @@ function RewardScreen({ state, data, onAction }) {
   const choices = state.reward?.cardChoices || [];
   const relicChoices = state.reward?.relicChoices || [];
   const hasRelics = relicChoices.length > 0;
+  const goldEarned = state.reward?.goldEarned ?? null;
+  const nodeKind   = state.reward?.nodeKind ?? 'Combat';
   const MONO = "'JetBrains Mono', 'Fira Code', 'Consolas', monospace";
 
   return (
     <ScreenShell>
-      <div style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column' }}>
+      <RunHeader run={state.run} data={data} />
+      <div style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
         {/* Header */}
-        <div style={{ textAlign: 'center', paddingTop: '24px', paddingBottom: '24px' }}>
+        <div style={{ textAlign: 'center', paddingTop: '16px', paddingBottom: '12px' }}>
           <div
             className="animate-slide-up"
             style={{
@@ -424,6 +427,20 @@ function RewardScreen({ state, data, onAction }) {
           >
             VICTORY
           </div>
+          {/* Gold earned badge */}
+          {goldEarned != null && (
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              padding: '4px 14px', borderRadius: 20, marginBottom: 6,
+              backgroundColor: `${C.yellow}18`, border: `1px solid ${C.yellow}50`,
+              fontFamily: MONO, fontWeight: 700, fontSize: 13, color: C.yellow,
+            }}>
+              +{goldEarned}g
+              <span style={{ fontWeight: 400, fontSize: 10, color: C.textMuted }}>
+                {nodeKind === 'Boss' ? 'boss kill' : nodeKind === 'Elite' ? 'elite kill' : 'combat reward'}
+              </span>
+            </div>
+          )}
           <div style={{ fontFamily: MONO, color: C.textMuted, fontSize: 12 }}>
             {hasRelics ? 'Select a relic — then choose a card' : 'Select a card reward'}
           </div>
@@ -1412,9 +1429,15 @@ function EventScreen({ state, data, onAction }) {
   }
 
   if (eventId === 'RestSite') {
+    const run = state.run;
+    const healAmt = run ? Math.ceil(run.maxHP * 0.30) : 0;
+    const hpAfterHeal = run ? Math.min(run.maxHP, run.hp + healAmt) : 0;
+    const hpPct = run?.maxHP ? Math.round((run.hp / run.maxHP) * 100) : 0;
+    const isFullHP = run?.hp >= run?.maxHP;
+
     return (
       <ScreenShell>
-        <RunHeader run={state.run} data={data} />
+        <RunHeader run={run} data={data} />
         <div style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
           <div
             className="animate-slide-up"
@@ -1422,25 +1445,47 @@ function EventScreen({ state, data, onAction }) {
               fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace",
               fontWeight: 700,
               fontSize: '24px',
-              marginBottom: '8px',
+              marginBottom: '4px',
               color: C.green,
             }}
           >
             REST SITE
           </div>
-          <div style={{ fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace", marginBottom: '32px', color: C.textMuted, fontSize: 12 }}>
+          {/* HP status indicator */}
+          {run && (
+            <div style={{
+              fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace",
+              marginBottom: '6px',
+              fontSize: 12,
+              display: 'flex', alignItems: 'center', gap: 8,
+            }}>
+              <span style={{ color: hpPct > 50 ? C.green : hpPct > 25 ? C.orange : C.red, fontWeight: 700 }}>
+                ♥ {run.hp}/{run.maxHP}
+              </span>
+              <span style={{ color: C.textMuted }}>({hpPct}%)</span>
+            </div>
+          )}
+          <div style={{ fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace", marginBottom: '24px', color: C.textMuted, fontSize: 12 }}>
             Choose an action
           </div>
 
           <div style={{ width: '100%', maxWidth: '320px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {[
-              { type: 'Rest_Heal', label: 'Rest', desc: 'Heal 30% HP', color: C.green, icon: '\u2665' },
-              { type: 'Rest_Repair', label: 'Repair', desc: 'Restore a card', color: C.cyan, icon: '\uD83D\uDD27' },
-              { type: 'Rest_Stabilise', label: 'Stabilise', desc: 'Stabilise a card', color: C.purple, icon: '\u25C6' },
+              {
+                type: 'Rest_Heal', label: 'Rest',
+                desc: isFullHP
+                  ? 'Already at full HP'
+                  : `Heal +${Math.min(healAmt, run.maxHP - run.hp)} HP → ${hpAfterHeal}/${run?.maxHP}`,
+                color: isFullHP ? C.textMuted : C.green,
+                icon: '\u2665',
+                disabled: isFullHP,
+              },
+              { type: 'Rest_Repair', label: 'Repair', desc: 'Restore a card\'s use counter', color: C.cyan, icon: '\uD83D\uDD27' },
+              { type: 'Rest_Stabilise', label: 'Stabilise', desc: 'Reset a card\'s mutation countdown', color: C.purple, icon: '\u25C6' },
             ].map(opt => (
               <button
                 key={opt.type}
-                onClick={() => onAction({ type: opt.type })}
+                onClick={() => !opt.disabled && onAction({ type: opt.type })}
                 style={{
                   width: '100%',
                   padding: '16px',
@@ -1451,7 +1496,8 @@ function EventScreen({ state, data, onAction }) {
                   backgroundColor: C.bgCard,
                   border: `2px solid ${opt.color}40`,
                   boxShadow: `0 0 16px ${opt.color}10`,
-                  cursor: 'pointer',
+                  cursor: opt.disabled ? 'not-allowed' : 'pointer',
+                  opacity: opt.disabled ? 0.5 : 1,
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -1864,13 +1910,14 @@ const DEATH_QUIPS = [
   'Runtime exception: fatal.',
 ];
 
-function GameOverScreen({ state, onNewRun }) {
+function GameOverScreen({ state, onNewRun, data }) {
   const MONO   = "'JetBrains Mono', 'Fira Code', 'Consolas', monospace";
   const run    = state.run   || {};
   const deck   = state.deck  || {};
   const quip   = DEATH_QUIPS[(run.floor ?? 0) % DEATH_QUIPS.length];
   const hpPct  = run.maxHP ? Math.round(((run.hp ?? 0) / run.maxHP) * 100) : 0;
   const isVictory = !!run.victory;
+  const relics = run.relicIds || [];
 
   const stats = [
     { label: 'ACT',       value: run.act   ?? 1 },
@@ -1933,7 +1980,7 @@ function GameOverScreen({ state, onNewRun }) {
         </div>
 
         {/* HP bar */}
-        <div style={{ marginBottom: 32 }}>
+        <div style={{ marginBottom: relics.length > 0 ? 16 : 32 }}>
           <div style={{ height: 4, borderRadius: 9999, backgroundColor: '#1a1a2a', overflow: 'hidden' }}>
             <div style={{
               height: '100%', borderRadius: 9999,
@@ -1947,6 +1994,37 @@ function GameOverScreen({ state, onNewRun }) {
             {hpPct}% HP remaining
           </div>
         </div>
+
+        {/* Relics collected */}
+        {relics.length > 0 && (
+          <div style={{ marginBottom: 24 }}>
+            <div style={{ fontFamily: MONO, fontSize: 9, color: C.textMuted, letterSpacing: '0.12em', marginBottom: 8 }}>
+              RELICS COLLECTED ({relics.length})
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, justifyContent: 'center' }}>
+              {relics.map(rid => {
+                const relic = data?.relics?.[rid];
+                const tier = relic?.rarity || relic?.tier || 'common';
+                const tierColors = { boss: C.red, rare: C.purple, uncommon: C.yellow };
+                const col = tierColors[tier] || C.cyan;
+                return (
+                  <div
+                    key={rid}
+                    title={relic?.description || rid}
+                    style={{
+                      fontFamily: MONO, fontSize: 10, fontWeight: 700,
+                      color: col, backgroundColor: `${col}15`,
+                      border: `1px solid ${col}40`, borderRadius: 6,
+                      padding: '3px 8px', whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {relic?.icon || '◈'} {relic?.name || rid}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         <button
           onClick={onNewRun}
@@ -2779,7 +2857,7 @@ function App() {
       content = <EventScreen state={state} data={data} onAction={handleAction} />;
       break;
     case 'GameOver':
-      content = <GameOverScreen state={state} onNewRun={startNewRun} />;
+      content = <GameOverScreen state={state} onNewRun={startNewRun} data={data} />;
       break;
     default:
       content = (

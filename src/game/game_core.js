@@ -607,6 +607,8 @@ export function dispatchGame(stateIn, data, action) {
 
         state.mode = "Reward";
         state.reward = makeCardRewards(data, state.run.seed ^ (state.run.floor * 777), state.run.act, nodeType);
+        state.reward.goldEarned = gold;
+        state.reward.nodeKind   = nodeType ?? 'Combat';
 
         // relic rewards
         if (nodeType === "Elite" || nodeType === "Boss") {

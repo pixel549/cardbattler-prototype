@@ -205,6 +205,25 @@ const NODE_TYPE_DESCS = {
   Event:  'Unknown encounter',
 };
 
+/** Return up to `depth` lookahead steps from a node as arrays of unique types per level. */
+function getPathAhead(startId, nodes, depth = 3) {
+  let frontier = [startId];
+  const levels = [];
+  for (let d = 0; d < depth; d++) {
+    const nexts = [];
+    for (const nid of frontier) {
+      for (const toId of (nodes[nid]?.next || [])) {
+        if (nodes[toId]) nexts.push(toId);
+      }
+    }
+    if (nexts.length === 0) break;
+    const types = [...new Set(nexts.map(nid => nodes[nid]?.type).filter(Boolean))];
+    levels.push(types);
+    frontier = nexts;
+  }
+  return levels;
+}
+
 function MapScreen({ state, data, onAction }) {
   const nodes   = state.map?.nodes || {};
   const curId   = state.map?.currentNodeId;
@@ -319,17 +338,20 @@ function MapScreen({ state, data, onAction }) {
                 >
                   {isDone ? '✓' : ico}
                 </text>
-                {/* Type label */}
-                {(isCur || isSel || isDone) && (
-                  <text x={cx} y={cy + R + 13} textAnchor="middle"
-                    fontSize={8}
-                    fill={isCur ? col : isSel ? `${col}cc` : `${col}44`}
-                    fontFamily="JetBrains Mono, monospace"
-                    letterSpacing="0.3"
-                  >
-                    {node.type.toUpperCase()}
-                  </text>
-                )}
+                {/* Type label — always visible, brightness varies by state */}
+                <text x={cx} y={cy + R + 13} textAnchor="middle"
+                  fontSize={isCur ? 8.5 : isSel ? 8 : 7.5}
+                  fill={
+                    isCur  ? col :
+                    isSel  ? `${col}dd` :
+                    isDone ? `${col}44` :
+                             `${col}66`
+                  }
+                  fontFamily="JetBrains Mono, monospace"
+                  letterSpacing="0.3"
+                >
+                  {isDone ? '' : node.type.toUpperCase()}
+                </text>
               </g>
             );
           })}
@@ -346,6 +368,7 @@ function MapScreen({ state, data, onAction }) {
               const color = NODE_COLORS[node?.type] || '#888';
               const icon  = NODE_ICONS[node?.type]  || '·';
               const desc  = NODE_TYPE_DESCS[node?.type] || '';
+              const ahead = getPathAhead(nodeId, nodes, 3);
               return (
                 <button key={nodeId}
                   onClick={() => onAction({ type: 'SelectNextNode', nodeId })}
@@ -356,21 +379,51 @@ function MapScreen({ state, data, onAction }) {
                     border: `2px solid ${color}55`,
                     boxShadow: `0 0 14px ${color}12`,
                     cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', gap: 12,
                   }}
                 >
-                  <div style={{
-                    width: 36, height: 36, borderRadius: 8, flexShrink: 0,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 18, backgroundColor: `${color}18`, border: `1px solid ${color}40`,
-                  }}>
-                    {icon}
+                  {/* Top row: icon + type + desc */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: ahead.length > 0 ? 8 : 0 }}>
+                    <div style={{
+                      width: 36, height: 36, borderRadius: 8, flexShrink: 0,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 18, backgroundColor: `${color}18`, border: `1px solid ${color}40`,
+                    }}>
+                      {icon}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 700, color, fontSize: 14 }}>{node?.type}</div>
+                      <div style={{ color: C.textMuted, fontSize: 11, marginTop: 2 }}>{desc}</div>
+                    </div>
+                    <div style={{ color: C.textMuted, fontSize: 18 }}>›</div>
                   </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 700, color, fontSize: 14 }}>{node?.type}</div>
-                    <div style={{ color: C.textMuted, fontSize: 11, marginTop: 2 }}>{desc}</div>
-                  </div>
-                  <div style={{ color: C.textMuted, fontSize: 18 }}>›</div>
+                  {/* Path preview: up to 3 steps ahead */}
+                  {ahead.length > 0 && (
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: 4,
+                      paddingLeft: 48, flexWrap: 'wrap',
+                    }}>
+                      <span style={{ color: C.textDim, fontSize: 9, marginRight: 2 }}>then:</span>
+                      {ahead.map((types, i) => (
+                        <span key={i} style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                          {i > 0 && <span style={{ color: C.textDim, fontSize: 9 }}>→</span>}
+                          {types.map((t, j) => (
+                            <span key={j} style={{
+                              fontSize: 9, fontFamily: MONO, fontWeight: 600,
+                              color: NODE_COLORS[t] || '#888',
+                              padding: '1px 5px', borderRadius: 4,
+                              backgroundColor: `${NODE_COLORS[t] || '#888'}15`,
+                              border: `1px solid ${NODE_COLORS[t] || '#888'}30`,
+                            }}>
+                              {NODE_ICONS[t] || '?'} {t}
+                            </span>
+                          ))}
+                          {types.length > 1 && (
+                            <span style={{ color: C.textDim, fontSize: 8 }}>(or)</span>
+                          )}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </button>
               );
             })}

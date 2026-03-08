@@ -1859,11 +1859,12 @@ function CompactPlayerHud({ player, ram = 0, maxRam = 0, powerPile = [], cardIns
   );
 }
 
-function MobilePlayerHud({ player, ram = 0, maxRam = 0, powerPile = [], cardInstances = {}, data }) {
+function MobilePlayerHud({ player, ram = 0, maxRam = 0, powerPile = [], cardInstances = {}, data, layoutMode = 'phone-portrait' }) {
   const hp = player?.hp ?? 0;
   const maxHp = player?.maxHP ?? 1;
   const firewallStacks = player?.statuses?.find((s) => s.id === 'Firewall')?.stacks ?? 0;
   const nonFirewallStatuses = (player?.statuses || []).filter((s) => s.id !== 'Firewall');
+  const isPhonePortrait = layoutMode === 'phone-portrait';
   const activePowers = powerPile
     .map((cid) => {
       const ci = cardInstances[cid];
@@ -1881,10 +1882,10 @@ function MobilePlayerHud({ player, ram = 0, maxRam = 0, powerPile = [], cardInst
       style={{
         display: 'flex',
         flexDirection: 'column',
-        gap: 8,
+        gap: isPhonePortrait ? 6 : 8,
         minWidth: 0,
         borderRadius: 14,
-        padding: '10px',
+        padding: isPhonePortrait ? '8px 9px' : '10px',
         background: 'linear-gradient(180deg, rgba(8,12,20,0.97) 0%, rgba(5,8,14,0.96) 100%)',
         border: `1px solid ${C.neonCyan}28`,
         boxShadow: `0 8px 22px rgba(0,0,0,0.26), 0 0 18px ${C.neonCyan}10`,
@@ -1892,10 +1893,10 @@ function MobilePlayerHud({ player, ram = 0, maxRam = 0, powerPile = [], cardInst
     >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <span style={{ fontFamily: MONO, fontSize: 8, fontWeight: 700, letterSpacing: '0.14em', color: C.textDim }}>
+          <span style={{ fontFamily: MONO, fontSize: isPhonePortrait ? 7 : 8, fontWeight: 700, letterSpacing: '0.14em', color: C.textDim }}>
             PLAYER
           </span>
-          <span style={{ fontFamily: MONO, fontSize: 8, color: C.neonCyan, letterSpacing: '0.08em' }}>
+          <span style={{ fontFamily: MONO, fontSize: isPhonePortrait ? 7 : 8, color: C.neonCyan, letterSpacing: '0.08em' }}>
             CORE STATUS
           </span>
         </div>
@@ -1907,7 +1908,7 @@ function MobilePlayerHud({ player, ram = 0, maxRam = 0, powerPile = [], cardInst
             border: `1px solid ${C.neonGreen}30`,
             color: C.neonGreen,
             fontFamily: MONO,
-            fontSize: 7,
+            fontSize: isPhonePortrait ? 6 : 7,
             fontWeight: 700,
             letterSpacing: '0.08em',
             textTransform: 'uppercase',
@@ -1924,15 +1925,15 @@ function MobilePlayerHud({ player, ram = 0, maxRam = 0, powerPile = [], cardInst
             style={{
               minWidth: 0,
               borderRadius: 12,
-              padding: '6px 7px',
+              padding: isPhonePortrait ? '5px 6px' : '6px 7px',
               background: chip.color === C.textDim ? 'rgba(255,255,255,0.03)' : `${chip.color}12`,
               border: `1px solid ${chip.color === C.textDim ? C.borderLight : `${chip.color}32`}`,
             }}
           >
-            <div style={{ fontFamily: MONO, fontSize: 7, fontWeight: 700, letterSpacing: '0.1em', color: chip.color, marginBottom: 3 }}>
+            <div style={{ fontFamily: MONO, fontSize: isPhonePortrait ? 6 : 7, fontWeight: 700, letterSpacing: '0.1em', color: chip.color, marginBottom: 2 }}>
               {chip.label}
             </div>
-            <div style={{ fontFamily: MONO, fontSize: 10, fontWeight: 700, color: C.textPrimary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            <div style={{ fontFamily: MONO, fontSize: isPhonePortrait ? 9 : 10, fontWeight: 700, color: C.textPrimary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {chip.value}
             </div>
           </div>
@@ -1943,32 +1944,32 @@ function MobilePlayerHud({ player, ram = 0, maxRam = 0, powerPile = [], cardInst
         style={{
           display: 'flex',
           flexDirection: 'column',
-          gap: 6,
-          padding: '8px 9px',
+          gap: isPhonePortrait ? 5 : 6,
+          padding: isPhonePortrait ? '7px 8px' : '8px 9px',
           borderRadius: 12,
           background: 'rgba(3,7,14,0.72)',
           border: `1px solid ${C.borderLight}`,
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-          <span style={{ fontFamily: MONO, fontSize: 7, fontWeight: 700, letterSpacing: '0.12em', color: C.textDim }}>
+          <span style={{ fontFamily: MONO, fontSize: isPhonePortrait ? 6 : 7, fontWeight: 700, letterSpacing: '0.12em', color: C.textDim }}>
             VITALS
           </span>
-          <span style={{ fontFamily: MONO, fontSize: 7, color: C.textSecondary }}>
+          <span style={{ fontFamily: MONO, fontSize: isPhonePortrait ? 6 : 7, color: C.textSecondary }}>
             HP and RAM
           </span>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-            <span style={{ fontFamily: MONO, fontSize: 8, fontWeight: 700, color: C.neonGreen }}>HP</span>
-            <span style={{ fontFamily: MONO, fontSize: 9, color: C.textPrimary }}>{hp}/{maxHp}</span>
+            <span style={{ fontFamily: MONO, fontSize: isPhonePortrait ? 7 : 8, fontWeight: 700, color: C.neonGreen }}>HP</span>
+            <span style={{ fontFamily: MONO, fontSize: isPhonePortrait ? 8 : 9, color: C.textPrimary }}>{hp}/{maxHp}</span>
           </div>
-          <HealthBar current={hp} max={maxHp} height={10} showText={false} />
+          <HealthBar current={hp} max={maxHp} height={isPhonePortrait ? 8 : 10} showText={false} />
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-            <span style={{ fontFamily: MONO, fontSize: 8, fontWeight: 700, color: C.neonCyan }}>RAM</span>
-            <span style={{ fontFamily: MONO, fontSize: 9, color: C.textPrimary }}>{ram}/{maxRam}</span>
+            <span style={{ fontFamily: MONO, fontSize: isPhonePortrait ? 7 : 8, fontWeight: 700, color: C.neonCyan }}>RAM</span>
+            <span style={{ fontFamily: MONO, fontSize: isPhonePortrait ? 8 : 9, color: C.textPrimary }}>{ram}/{maxRam}</span>
           </div>
           <RamBar ram={ram} maxRam={maxRam} compact={true} showLabel={false} />
         </div>
@@ -1979,19 +1980,19 @@ function MobilePlayerHud({ player, ram = 0, maxRam = 0, powerPile = [], cardInst
           {nonFirewallStatuses.map((status, index) => (
             <StatusBadge key={`${status.id}-${index}`} status={status} size="small" />
           ))}
-          {activePowers.slice(0, 3).map((power, index) => (
+          {activePowers.slice(0, isPhonePortrait ? 2 : 3).map((power, index) => (
             <div
               key={`${power.id || power.name}-${index}`}
               title={power.effects?.find((effect) => effect.op === 'RawText')?.text || power.name}
               style={{
                 fontFamily: MONO,
-                fontSize: 7,
+                fontSize: isPhonePortrait ? 6 : 7,
                 fontWeight: 700,
                 color: '#cc88ff',
                 backgroundColor: '#aa44ff12',
                 border: '1px solid #aa44ff30',
                 borderRadius: 999,
-                padding: '3px 7px',
+                padding: isPhonePortrait ? '2px 6px' : '3px 7px',
                 maxWidth: '100%',
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
@@ -2042,13 +2043,15 @@ function MobileUtilityPanel({
   onViewPile,
   onAuto,
   onEndTurn,
+  layoutMode = 'phone-portrait',
 }) {
+  const isPhonePortrait = layoutMode === 'phone-portrait';
   return (
     <div
       style={{
         display: 'flex',
         flexDirection: 'column',
-        gap: 8,
+        gap: isPhonePortrait ? 6 : 8,
         minWidth: 0,
       }}
     >
@@ -2056,8 +2059,8 @@ function MobileUtilityPanel({
         style={{
           display: 'flex',
           flexDirection: 'column',
-          gap: 6,
-          padding: '10px',
+          gap: isPhonePortrait ? 5 : 6,
+          padding: isPhonePortrait ? '8px 9px' : '10px',
           borderRadius: 14,
           background: 'linear-gradient(180deg, rgba(10,12,20,0.96) 0%, rgba(6,8,16,0.96) 100%)',
           border: `1px solid ${C.borderLight}`,
@@ -2065,10 +2068,10 @@ function MobileUtilityPanel({
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-          <span style={{ fontFamily: MONO, fontSize: 8, fontWeight: 700, letterSpacing: '0.12em', color: C.textDim }}>
+          <span style={{ fontFamily: MONO, fontSize: isPhonePortrait ? 7 : 8, fontWeight: 700, letterSpacing: '0.12em', color: C.textDim }}>
             DECK
           </span>
-          <span style={{ fontFamily: MONO, fontSize: 7, color: C.textSecondary }}>
+          <span style={{ fontFamily: MONO, fontSize: isPhonePortrait ? 6 : 7, color: C.textSecondary }}>
             Quick inspect
           </span>
         </div>
@@ -2083,8 +2086,8 @@ function MobileUtilityPanel({
         style={{
           display: 'flex',
           flexDirection: 'column',
-          gap: 7,
-          padding: '10px',
+          gap: isPhonePortrait ? 6 : 7,
+          padding: isPhonePortrait ? '8px 9px' : '10px',
           borderRadius: 14,
           background: 'linear-gradient(180deg, rgba(8,12,20,0.96) 0%, rgba(5,8,14,0.98) 100%)',
           border: `1px solid ${C.borderLight}`,
@@ -2096,11 +2099,11 @@ function MobileUtilityPanel({
             <span style={{ fontFamily: MONO, fontSize: 8, fontWeight: 700, letterSpacing: '0.12em', color: C.textDim }}>
               TURN
             </span>
-            <span style={{ fontFamily: MONO, fontSize: 8, color: C.textSecondary }}>
+            <span style={{ fontFamily: MONO, fontSize: isPhonePortrait ? 7 : 8, color: C.textSecondary }}>
               Hand {handCount}
             </span>
           </div>
-          <span style={{ fontFamily: MONO, fontSize: 7, color: C.textSecondary }}>
+          <span style={{ fontFamily: MONO, fontSize: isPhonePortrait ? 6 : 7, color: C.textSecondary }}>
             Center card plays
           </span>
         </div>
@@ -2111,7 +2114,7 @@ function MobileUtilityPanel({
             disabled={interactionLocked}
             style={{
               flex: '0 0 auto',
-              padding: '8px 10px',
+              padding: isPhonePortrait ? '7px 9px' : '8px 10px',
               borderRadius: 10,
               fontFamily: MONO,
               fontWeight: 700,
@@ -2121,7 +2124,7 @@ function MobileUtilityPanel({
               color: '#e9c9ff',
               border: `1px solid ${C.neonPurple}4a`,
               boxShadow: `0 0 14px ${C.neonPurple}16`,
-              fontSize: 8,
+              fontSize: isPhonePortrait ? 7 : 8,
               cursor: interactionLocked ? 'default' : 'pointer',
               opacity: interactionLocked ? 0.45 : 1,
             }}
@@ -2133,7 +2136,7 @@ function MobileUtilityPanel({
             disabled={interactionLocked}
             style={{
               flex: 1,
-              padding: '9px 12px',
+              padding: isPhonePortrait ? '8px 11px' : '9px 12px',
               borderRadius: 10,
               fontFamily: MONO,
               fontWeight: 700,
@@ -2142,7 +2145,7 @@ function MobileUtilityPanel({
               background: `linear-gradient(135deg, ${C.neonCyan} 0%, #84fff5 100%)`,
               color: '#021217',
               boxShadow: `0 0 18px ${C.neonCyan}42`,
-              fontSize: 9,
+              fontSize: isPhonePortrait ? 8 : 9,
               border: '1px solid rgba(255,255,255,0.22)',
               cursor: interactionLocked ? 'default' : 'pointer',
               opacity: interactionLocked ? 0.5 : 1,
@@ -2287,7 +2290,7 @@ function CenterCardDisplay({
 
   if (isMobileLayout) {
     const mobileCardWidth = layoutMode === 'phone-portrait'
-      ? 'min(48vw, 176px)'
+      ? 'min(42vw, 160px)'
       : 'clamp(122px, 18vw, 156px)';
 
     return (
@@ -2299,27 +2302,10 @@ function CenterCardDisplay({
           flexDirection: 'column',
           alignItems: 'center',
           gap: 8,
-          padding: '4px 0',
+          padding: layoutMode === 'phone-portrait' ? '2px 0' : '4px 0',
         }}
       >
-        <div
-          style={{
-            width: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 8,
-            padding: '0 2px',
-          }}
-        >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <span style={{ fontFamily: MONO, fontSize: 7, fontWeight: 700, letterSpacing: '0.14em', color: C.textDim }}>
-              ACTIVE CARD
-            </span>
-            <span style={{ fontFamily: MONO, fontSize: 9, color: C.textSecondary }}>
-              Centered card is the confirm step
-            </span>
-          </div>
+        <div style={{ width: '100%', display: 'flex', justifyContent: 'flex-end', padding: '0 2px' }}>
           <button
             onClick={onDismiss}
             style={{
@@ -2702,7 +2688,7 @@ function HandCard({ cardInstance, cardDef, isSelected, onSelect, canPlay, compac
   const h = compact ? 108 : 148;
   const badgeSize = compact ? 20 : 24;
   const badgeOffset = compact ? '-4px' : '-6px';
-  const artH = compact ? 36 : 60;
+  const artH = compact ? h : 60;
   const imgSrc = getCardImage(cardDef?.id);
   const touchStartRef = useRef(null);
   const touchMovedRef = useRef(false);
@@ -2941,7 +2927,7 @@ function HandCard({ cardInstance, cardDef, isSelected, onSelect, canPlay, compac
       {/* Card artwork */}
       <div style={{
         height: artH, overflow: 'hidden',
-        borderBottom: `1px solid ${color}30`,
+        borderBottom: compact ? 'none' : `1px solid ${color}30`,
         position: 'relative',
         backgroundColor: `${color}08`,
       }}>
@@ -2951,8 +2937,10 @@ function HandCard({ cardInstance, cardDef, isSelected, onSelect, canPlay, compac
             alt=""
             style={{
               width: '100%', height: '100%',
-              objectFit: 'cover', objectPosition: 'top center',
+              objectFit: 'cover', objectPosition: compact ? 'center center' : 'top center',
               display: 'block',
+              transform: compact ? 'scale(1.03)' : 'none',
+              filter: compact ? 'saturate(1.05) contrast(1.02) brightness(0.92)' : 'none',
             }}
           />
         ) : (
@@ -2964,13 +2952,28 @@ function HandCard({ cardInstance, cardDef, isSelected, onSelect, canPlay, compac
         {/* Type colour tint overlay */}
         <div style={{
           position: 'absolute', inset: 0,
-          background: `linear-gradient(to bottom, transparent 60%, ${C.bgCard}dd 100%)`,
+          background: compact
+            ? `linear-gradient(to bottom, transparent 22%, rgba(8,10,16,0.18) 48%, rgba(8,10,16,0.84) 78%, ${C.bgCard}f2 100%)`
+            : `linear-gradient(to bottom, transparent 60%, ${C.bgCard}dd 100%)`,
           pointerEvents: 'none',
         }} />
       </div>
 
       {/* Card content */}
-      <div style={{ padding: compact ? '4px 5px' : '6px 8px', display: 'flex', flexDirection: 'column', height: `calc(100% - ${artH}px)` }}>
+      <div style={{
+        padding: compact ? '5px 5px 4px' : '6px 8px',
+        display: 'flex',
+        flexDirection: 'column',
+        height: compact ? 'auto' : `calc(100% - ${artH}px)`,
+        position: compact ? 'absolute' : 'relative',
+        inset: compact ? 'auto 4px 4px 4px' : 'auto',
+        borderRadius: compact ? 8 : 0,
+        background: compact ? 'linear-gradient(180deg, rgba(8,10,16,0.18) 0%, rgba(8,10,16,0.74) 12%, rgba(8,10,16,0.92) 100%)' : 'transparent',
+        border: compact ? `1px solid ${color}22` : 'none',
+        boxShadow: compact ? '0 8px 20px rgba(0,0,0,0.24)' : 'none',
+        backdropFilter: compact ? 'blur(4px)' : 'none',
+        justifyContent: compact ? 'flex-end' : 'flex-start',
+      }}>
         {/* Name */}
         <div
           style={{
@@ -2982,7 +2985,8 @@ function HandCard({ cardInstance, cardDef, isSelected, onSelect, canPlay, compac
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
             color: C.textPrimary,
-            fontSize: compact ? 8 : 10,
+            fontSize: compact ? 9 : 10,
+            textShadow: compact ? '0 1px 10px rgba(0,0,0,0.55)' : 'none',
           }}
         >
           {cardDef?.name || 'Unknown'}
@@ -3011,7 +3015,7 @@ function HandCard({ cardInstance, cardDef, isSelected, onSelect, canPlay, compac
             fontFamily: MONO,
             lineHeight: 1.3,
             overflow: 'hidden',
-            color: C.textSecondary,
+            color: compact ? '#c5cbd5' : C.textSecondary,
             fontSize: compact ? 7 : 8.5,
             ...(compact ? { whiteSpace: 'nowrap', textOverflow: 'ellipsis' } : {}),
           }}
@@ -3815,11 +3819,11 @@ function ArcHand({
   const autoSnapReleaseRef = useRef(null);
   const isPhonePortrait = layoutMode === 'phone-portrait';
   const isPhoneLandscape = layoutMode === 'phone-landscape';
-  const CARD_W = isPhonePortrait ? 68 : isPhoneLandscape ? 72 : 78;
-  const CARD_H = isPhonePortrait ? 96 : isPhoneLandscape ? 100 : 108;
-  const CARD_STEP = isPhonePortrait ? 38 : isPhoneLandscape ? 40 : 44;
-  const MAX_DROP = isPhonePortrait ? 24 : isPhoneLandscape ? 28 : 34;
-  const MAX_ANGLE = isPhonePortrait ? 16 : isPhoneLandscape ? 18 : 20;
+  const CARD_W = isPhonePortrait ? 64 : isPhoneLandscape ? 72 : 78;
+  const CARD_H = isPhonePortrait ? 92 : isPhoneLandscape ? 100 : 108;
+  const CARD_STEP = isPhonePortrait ? 36 : isPhoneLandscape ? 40 : 44;
+  const MAX_DROP = isPhonePortrait ? 18 : isPhoneLandscape ? 28 : 34;
+  const MAX_ANGLE = isPhonePortrait ? 14 : isPhoneLandscape ? 18 : 20;
   const SLOT_H = CARD_H + MAX_DROP + 28;
   const visualCenterIndex = Math.max(0, hand.indexOf(activeCardId));
   const handWidth = isPhonePortrait
@@ -4559,6 +4563,7 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false }
         powerPile={powerPile}
         cardInstances={cardInstances}
         data={data}
+        layoutMode={layoutMode}
       />
       <MobileUtilityPanel
         handCount={hand.length}
@@ -4569,6 +4574,7 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false }
         onViewPile={setViewingPile}
         onAuto={() => onAction?.({ type: 'Combat_Simulate', maxTurns: 50 })}
         onEndTurn={handleEndTurn}
+        layoutMode={layoutMode}
       />
     </div>
   );
@@ -5027,12 +5033,12 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false }
             {centeredCardPanel}
           </div>
 
-          <div className="safe-area-bottom" style={{ flex: '0 0 auto', padding: '0 8px 6px' }}>
-            {mobileBottomPanels}
+          <div className="safe-area-bottom" style={{ flex: '0 0 auto', padding: '0 8px 4px' }}>
+            {handFan}
           </div>
 
-          <div className="safe-area-bottom" style={{ flex: '0 0 auto', padding: '0 8px 10px' }}>
-            {handFan}
+          <div className="safe-area-bottom" style={{ flex: '0 0 auto', padding: '0 8px 8px' }}>
+            {mobileBottomPanels}
           </div>
         </>
       )}

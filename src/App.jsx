@@ -83,6 +83,7 @@ const AI_EXPORT_OPTIONS_DEFAULTS = {
 };
 const AI_STALL_EXPORT_MS = 15000;
 const AI_STALL_RECOVER_MS = 28000;
+const NODE_AUTOSAVE_KEY = 'cb_node_autosave_v1';
 const AI_WATCHDOG_IDLE = {
   active: false,
   stagnantMs: 0,
@@ -90,6 +91,58 @@ const AI_WATCHDOG_IDLE = {
   recoveryTriggered: false,
   lastChangedAt: 0,
 };
+
+function buildNodeAutosaveToken(state) {
+  if (!state?.run || !state?.map?.currentNodeId) return null;
+  if (!['Combat', 'Shop', 'Event'].includes(state.mode)) return null;
+  return [
+    state.run.seed ?? 'seed',
+    state.run.act ?? 'act',
+    state.run.floor ?? 'floor',
+    state.map.currentNodeId,
+    state.mode,
+    state.event?.eventId ?? '',
+  ].join(':');
+}
+
+function buildNodeAutosaveState(state) {
+  const snapshot = JSON.parse(JSON.stringify(state));
+  snapshot.log = [];
+  snapshot.deckView = null;
+  if (snapshot.journal) {
+    snapshot.journal.actions = [];
+  }
+  return snapshot;
+}
+
+function writeNodeAutosave(state) {
+  const token = buildNodeAutosaveToken(state);
+  if (!token) return null;
+  const payload = {
+    version: 1,
+    savedAt: Date.now(),
+    token,
+    state: buildNodeAutosaveState(state),
+  };
+  localStorage.setItem(NODE_AUTOSAVE_KEY, JSON.stringify(payload));
+  return token;
+}
+
+function readNodeAutosave() {
+  try {
+    const raw = localStorage.getItem(NODE_AUTOSAVE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed?.state?.run || !parsed?.state?.map) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function clearNodeAutosave() {
+  localStorage.removeItem(NODE_AUTOSAVE_KEY);
+}
 
 function getFirewallStacksFromEntity(entity) {
   return entity?.statuses?.find((status) => status.id === 'Firewall')?.stacks ?? 0;
@@ -896,6 +949,241 @@ function MuteButton({ muted, onToggle }) {
     >
       {muted ? '🔇' : '🔊'}
     </button>
+  );
+}
+
+function PauseMenuButton({ onClick, open = false }) {
+  return (
+    <button
+      onClick={onClick}
+      title={open ? 'Close menu' : 'Open menu'}
+      style={{
+        position: 'fixed',
+        top: 10,
+        right: 10,
+        zIndex: 99999,
+        background: 'rgba(10,10,20,0.88)',
+        border: `1px solid ${open ? C.yellow + '55' : C.cyan + '55'}`,
+        borderRadius: 10,
+        color: open ? C.yellow : C.cyan,
+        fontSize: 12,
+        fontFamily: UI_MONO,
+        fontWeight: 700,
+        letterSpacing: '0.08em',
+        cursor: 'pointer',
+        padding: '8px 10px',
+        lineHeight: 1,
+        boxShadow: open ? `0 0 12px ${C.yellow}25` : `0 0 10px ${C.cyan}25`,
+        transition: 'all 0.15s',
+      }}
+    >
+      {open ? 'CLOSE' : 'MENU'}
+    </button>
+  );
+}
+
+const HOW_TO_PLAY = [
+  'Scroll the hand until the card you want is centered, then tap the centered card to play it.',
+  'RAM is your per-turn resource. Sequence setup and RAM gain before your heavy cards when you can.',
+  'Firewall absorbs damage before HP. If an enemy stacks Firewall, use shield-break or breach effects before damage cards.',
+  'Use the selected enemy panel to read HP, Firewall, and the next action without cluttering the enemy art.',
+  'Mutations are part of long-run planning. Non-core cards will change over time, so value both immediate output and future stability.',
+];
+
+const GLOSSARY_ITEMS = [
+  { term: 'HP', desc: 'Your health. If it reaches 0, the run ends.' },
+  { term: 'RAM', desc: 'The resource spent to play cards each turn.' },
+  { term: 'Firewall', desc: 'Persistent shielding that absorbs damage before HP until it is removed or spent.' },
+  { term: 'Core card', desc: 'A stable starter-grade card. Core cards do not follow the same mutation risk as normal mutable cards.' },
+  { term: 'Mutation', desc: 'A card change gained from use over time. You can roughly predict when it will happen, but not the exact result.' },
+  { term: 'Final mutation', desc: 'The late lifecycle rewrite or collapse of a heavily used mutable card.' },
+  { term: 'One-Shot', desc: 'The card is permanently removed after it is played.' },
+  { term: 'Exhaust', desc: 'The card leaves your deck for the rest of the current combat.' },
+  { term: 'Leak', desc: 'A damage-over-time effect that chips HP on later turns.' },
+  { term: 'Corrode', desc: 'Defense shredding pressure that strips Firewall so follow-up damage can stick.' },
+  { term: 'Overclock', desc: 'A tempo-boosting status that usually trades safety or future stability for immediate power.' },
+  { term: 'Power', desc: 'A persistent card effect that changes later turns after it is played.' },
+];
+
+function HelpCard({ title, children }) {
+  return (
+    <div
+      style={{
+        borderRadius: 14,
+        border: `1px solid ${C.border}`,
+        background: 'linear-gradient(180deg, rgba(14,16,26,0.96) 0%, rgba(9,11,18,0.98) 100%)',
+        padding: '14px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 10,
+      }}
+    >
+      <div style={{ fontFamily: UI_MONO, fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', color: C.cyan }}>
+        {title}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function PauseMenuOverlay({
+  open,
+  onClose,
+  soundMuted,
+  onToggleMute,
+  state,
+  showLog,
+  onDevAction,
+  onToggleLog,
+  aiPanel,
+}) {
+  if (!open) return null;
+
+  const isNarrow = typeof window !== 'undefined' ? window.innerWidth < 900 : false;
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 99998,
+        background: 'rgba(4,6,12,0.82)',
+        backdropFilter: 'blur(10px)',
+        display: 'flex',
+        alignItems: 'stretch',
+        justifyContent: 'center',
+        padding: isNarrow ? '54px 10px 12px' : '56px 14px 14px',
+      }}
+    >
+      <div
+        onClick={(event) => event.stopPropagation()}
+        style={{
+          width: 'min(1180px, 100%)',
+          maxHeight: '100%',
+          overflowY: 'auto',
+          borderRadius: 18,
+          border: `1px solid ${C.cyan}30`,
+          background: 'linear-gradient(180deg, rgba(8,10,18,0.98) 0%, rgba(5,7,14,0.99) 100%)',
+          boxShadow: '0 18px 48px rgba(0,0,0,0.45)',
+          padding: isNarrow ? '12px' : '14px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 12,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <div style={{ fontFamily: UI_MONO, fontSize: 11, fontWeight: 700, letterSpacing: '0.16em', color: C.cyan }}>
+              PAUSE MENU
+            </div>
+            <div style={{ fontFamily: UI_MONO, fontSize: 11, color: C.textDim }}>
+              {state?.mode === 'Combat' ? 'Combat tools, AI controls, and quick help.' : 'Run controls, debug tools, and quick help.'}
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            style={{
+              padding: '8px 10px',
+              borderRadius: 10,
+              border: `1px solid ${C.border}`,
+              background: 'rgba(255,255,255,0.03)',
+              color: C.text,
+              fontFamily: UI_MONO,
+              fontSize: 11,
+              fontWeight: 700,
+              letterSpacing: '0.08em',
+              cursor: 'pointer',
+            }}
+          >
+            CLOSE
+          </button>
+        </div>
+
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: isNarrow ? 'minmax(0, 1fr)' : 'minmax(320px, 420px) minmax(0, 1fr)',
+            gap: 12,
+            alignItems: 'start',
+          }}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }}>
+            <HelpCard title="SYSTEM">
+              <button
+                onClick={onToggleMute}
+                style={{
+                  padding: '10px 12px',
+                  borderRadius: 10,
+                  border: `1px solid ${soundMuted ? C.border : C.cyan + '50'}`,
+                  background: soundMuted ? 'rgba(255,255,255,0.03)' : `${C.cyan}12`,
+                  color: soundMuted ? C.text : C.cyan,
+                  fontFamily: UI_MONO,
+                  fontSize: 12,
+                  fontWeight: 700,
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                }}
+              >
+                {soundMuted ? 'Sound off - tap to unmute' : 'Sound on - tap to mute'}
+              </button>
+              <button
+                onClick={onToggleLog}
+                style={{
+                  padding: '8px 10px',
+                  borderRadius: 10,
+                  border: `1px solid ${showLog ? C.orange + '55' : C.border}`,
+                  background: showLog ? `${C.orange}15` : 'rgba(255,255,255,0.03)',
+                  color: showLog ? C.orange : C.text,
+                  fontFamily: UI_MONO,
+                  fontSize: 11,
+                  fontWeight: 700,
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                }}
+              >
+                {showLog ? 'Hide log overlay' : 'Show log overlay'}
+              </button>
+            </HelpCard>
+
+            <HelpCard title="AI AUTO-PLAY">
+              {aiPanel}
+            </HelpCard>
+
+            <HelpCard title="DEBUG TOOLS">
+              <DevButtons state={state} onDevAction={onDevAction} onToggleLog={onToggleLog} embedded={true} />
+            </HelpCard>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? 'minmax(0, 1fr)' : 'repeat(2, minmax(0, 1fr))', gap: 12, minWidth: 0 }}>
+            <HelpCard title="HOW TO PLAY">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {HOW_TO_PLAY.map((line, index) => (
+                  <div key={index} style={{ fontFamily: UI_MONO, fontSize: 12, lineHeight: 1.55, color: C.text }}>
+                    <span style={{ color: C.cyan, fontWeight: 700 }}>{index + 1}.</span> {line}
+                  </div>
+                ))}
+              </div>
+            </HelpCard>
+
+            <HelpCard title="GLOSSARY">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {GLOSSARY_ITEMS.map((item) => (
+                  <div key={item.term} style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                    <div style={{ fontFamily: UI_MONO, fontSize: 11, fontWeight: 700, color: C.yellow, letterSpacing: '0.08em' }}>
+                      {item.term}
+                    </div>
+                    <div style={{ fontFamily: UI_MONO, fontSize: 11, lineHeight: 1.45, color: C.text }}>
+                      {item.desc}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </HelpCard>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -2763,7 +3051,7 @@ function LoadingScreen() {
 // ============================================================
 // DEV TOOLS OVERLAY
 // ============================================================
-function DevButtons({ state, onDevAction, onToggleLog }) {
+function DevButtons({ state, onDevAction, onToggleLog, embedded = false }) {
   const [collapsed, setCollapsed] = useState(true);
 
   const copySnapshot = () => {
@@ -2793,7 +3081,7 @@ function DevButtons({ state, onDevAction, onToggleLog }) {
     cursor: 'pointer',
   };
 
-  if (collapsed) {
+  if (collapsed && !embedded) {
     return (
       <button
         onClick={() => setCollapsed(false)}
@@ -2823,13 +3111,24 @@ function DevButtons({ state, onDevAction, onToggleLog }) {
   }
 
   return (
-    <div style={{ position: 'fixed', bottom: '80px', right: '8px', zIndex: 50, display: 'flex', flexDirection: 'column', gap: '4px', maxWidth: 100 }}>
-      <button
-        onClick={() => setCollapsed(true)}
-        style={{ ...devBtnStyle, alignSelf: 'flex-start', backgroundColor: '#333', color: '#f66' }}
-      >
-        {'\u2715'} Close
-      </button>
+    <div style={{
+      position: embedded ? 'relative' : 'fixed',
+      bottom: embedded ? undefined : '80px',
+      right: embedded ? undefined : '8px',
+      zIndex: embedded ? 'auto' : 50,
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '4px',
+      maxWidth: embedded ? '100%' : 100,
+    }}>
+      {!embedded && (
+        <button
+          onClick={() => setCollapsed(true)}
+          style={{ ...devBtnStyle, alignSelf: 'flex-start', backgroundColor: '#333', color: '#f66' }}
+        >
+          {'\u2715'} Close
+        </button>
+      )}
       {[
         { label: '+100 HP', color: '#0ff', action: { type: 'Dev_AddHP', amount: 100 } },
         { label: '+100 Gold', color: '#ff0', action: { type: 'Dev_AddGold', amount: 100 } },
@@ -2966,6 +3265,7 @@ function App() {
   const [state, setState] = useState(null);
   const [error, setError] = useState(null);
   const [showLog, setShowLog] = useState(false);
+  const [showPauseMenu, setShowPauseMenu] = useState(false);
 
   // ── Sound mute toggle (persisted to localStorage) ────────────────────────
   const [soundMuted, setSoundMuted] = useState(() => {
@@ -2981,6 +3281,41 @@ function App() {
       return next;
     });
   }
+
+  useEffect(() => {
+    if (!showPauseMenu) return undefined;
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') setShowPauseMenu(false);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showPauseMenu]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const hasActiveRun = Boolean(state?.run) && state?.mode !== 'GameOver';
+    if (!hasActiveRun) {
+      backGuardPrimedRef.current = false;
+      return undefined;
+    }
+
+    if (!backGuardPrimedRef.current) {
+      window.history.pushState({ cardbattlerGuard: true }, '', window.location.href);
+      backGuardPrimedRef.current = true;
+    }
+
+    const onPopState = () => {
+      const liveState = stateRef.current;
+      if (!liveState?.run || liveState.mode === 'GameOver') return;
+      if (!showPauseMenu) {
+        window.history.pushState({ cardbattlerGuard: true }, '', window.location.href);
+        setShowPauseMenu(true);
+      }
+    };
+
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, [showPauseMenu, state?.mode, state?.run]);
 
   // ── URL params: read from global captured in index.html before React loaded ──
   const _up = (key) => window.__launchParams?.[key] ?? null;
@@ -3005,6 +3340,13 @@ function App() {
       return { ...AI_EXPORT_OPTIONS_DEFAULTS };
     }
   });
+
+  useEffect(() => {
+    if (showPauseMenu && aiEnabled && !aiPaused) {
+      setAiPaused(true);
+      setAiHandoffReason('Paused from menu');
+    }
+  }, [showPauseMenu, aiEnabled, aiPaused]);
   // ── Custom run config: explicit per-field overrides ─────────────────────
   // Each value is null (not set) or a concrete override.
   // lockedFields: Set of keys whose values survive AI randomise-each-run.
@@ -3040,6 +3382,8 @@ function App() {
   const dataRef      = useRef(data);
   const exportCurrentGameDataRef = useRef(async () => false);
   const startNewRunRef = useRef(() => {});
+  const autosaveTokenRef = useRef(null);
+  const backGuardPrimedRef = useRef(false);
   const aiStallRef = useRef({
     signature: null,
     lastChangedAt: 0,
@@ -3130,6 +3474,23 @@ function App() {
   }, [aiEnabled, aiPaused, state, data]);
 
   useEffect(() => {
+    if (!state?.run) return;
+    if (state.mode === 'GameOver') {
+      clearNodeAutosave();
+      autosaveTokenRef.current = null;
+      return;
+    }
+    const token = buildNodeAutosaveToken(state);
+    if (!token || token === autosaveTokenRef.current) return;
+    try {
+      const savedToken = writeNodeAutosave(state);
+      if (savedToken) autosaveTokenRef.current = savedToken;
+    } catch (err) {
+      console.error('Failed to write node autosave', err);
+    }
+  }, [state]);
+
+  useEffect(() => {
     loadGameData()
       .then(setData)
       .catch(err => setError(err.message));
@@ -3137,6 +3498,16 @@ function App() {
 
   useEffect(() => {
     if (data && !state) {
+      const autosave = readNodeAutosave();
+      if (autosave?.state) {
+        autosaveTokenRef.current = autosave.token || buildNodeAutosaveToken(autosave.state);
+        setAiHandoffReason('Resumed from node autosave.');
+        setState(autosave.state);
+        return;
+      }
+
+      clearNodeAutosave();
+      autosaveTokenRef.current = null;
       const initial = createInitialState();
       const seed = Date.now();
       let debugSeed = null;
@@ -3463,6 +3834,8 @@ function App() {
 
       const initial = createInitialState();
       const seed = Date.now();
+      clearNodeAutosave();
+      autosaveTokenRef.current = null;
       const next = dispatchWithJournal(initial, currentData, {
         type: 'NewRun',
         seed,
@@ -3787,6 +4160,8 @@ function App() {
   function startNewRun(overrideDebugSeed) {
     if (!data) return;
     setAiHandoffReason('');
+    clearNodeAutosave();
+    autosaveTokenRef.current = null;
     const initial = createInitialState();
     const seed = Date.now();
     let debugSeed = null;
@@ -3912,57 +4287,66 @@ function App() {
       );
   }
 
+  const aiPanel = (
+    <AIDebugPanel
+      embedded={true}
+      enabled={aiEnabled}              onToggle={toggleAiEnabled}
+      paused={aiPaused}                onTogglePause={toggleAiPause}
+      stopAtAct={aiStopAtAct}          onStopAtActChange={setAiStopAtAct}
+      stopAfterCombat={aiStopAfterCombat} onStopAfterCombatChange={setAiStopAfterCombat}
+      onTakeOverNow={takeOverNow}
+      speed={aiSpeed}                  onSpeedChange={setAiSpeed}
+      runHistory={runHistory}          onExport={exportRunData}
+      onExportCurrent={exportCurrentGameData}
+      currentState={state}
+      handoffReason={aiHandoffReason}
+      aiWatchdog={{ ...aiWatchdog, exportMs: AI_STALL_EXPORT_MS, recoveryMs: AI_STALL_RECOVER_MS }}
+      debugSeed={debugSeedInput}       onDebugSeedChange={setDebugSeedInput}
+      seedMode={seedMode}              onSeedModeChange={setSeedMode}
+      randomize={randomizeDebugSeed}   onRandomizeToggle={setRandomizeDebugSeed}
+      onRandomizeSeed={() => { setSeedMode('wild');     setDebugSeedInput(String(randomDebugSeed())); }}
+      onRandomizeSensibleSeed={() => { setSeedMode('sensible'); setDebugSeedInput(String(randomDebugSeed())); }}
+      aiPlaystyle={aiPlaystyle}        onPlaystyleChange={setAiPlaystyle}
+      saveDirName={saveDirName}        onSetSaveDir={pickSaveDir}
+      exportOptions={aiExportOptions}
+      onSetExportOption={(key, value) => setAiExportOptions(prev => normalizeAiExportOptions({ ...prev, [key]: value }))}
+      onSetAllExportOptions={(value) => setAiExportOptions(
+        normalizeAiExportOptions(Object.fromEntries(
+          Object.keys(AI_EXPORT_OPTIONS_DEFAULTS).map((key) => [key, value]),
+        )),
+      )}
+      customConfig={customConfig}      lockedFields={lockedFields}
+      onSetCustomField={(key, val) => setCustomConfig(prev => ({ ...prev, [key]: val }))}
+      onToggleLock={(key) => setLockedFields(prev => {
+        const next = new Set(prev);
+        next.has(key) ? next.delete(key) : next.add(key);
+        return next;
+      })}
+      onClearCustomConfig={() => setCustomConfig(CUSTOM_CONFIG_DEFAULTS)}
+      gameData={data}
+    />
+  );
+
   return (
     <>
       {content}
-      {/* Persistent mute toggle */}
-      <MuteButton muted={soundMuted} onToggle={toggleMute} />
+      <PauseMenuButton open={showPauseMenu} onClick={() => setShowPauseMenu((prev) => !prev)} />
+      <PauseMenuOverlay
+        open={showPauseMenu}
+        onClose={() => setShowPauseMenu(false)}
+        soundMuted={soundMuted}
+        onToggleMute={toggleMute}
+        state={state}
+        showLog={showLog}
+        onDevAction={handleAction}
+        onToggleLog={() => setShowLog(prev => !prev)}
+        aiPanel={aiPanel}
+      />
       {/* Deck picker overlay — appears on top of any screen when card selection is needed */}
       {state?.deckView && (
         <DeckPickerOverlay state={state} data={data} onAction={handleAction} />
       )}
-      {state.run && (
-        <>
-          <DevButtons state={state} onDevAction={handleAction} onToggleLog={() => setShowLog(prev => !prev)} />
-          {showLog && <LogOverlay log={state.log} />}
-        </>
-      )}
-      <AIDebugPanel
-        enabled={aiEnabled}              onToggle={toggleAiEnabled}
-        paused={aiPaused}                onTogglePause={toggleAiPause}
-        stopAtAct={aiStopAtAct}          onStopAtActChange={setAiStopAtAct}
-        stopAfterCombat={aiStopAfterCombat} onStopAfterCombatChange={setAiStopAfterCombat}
-        onTakeOverNow={takeOverNow}
-        speed={aiSpeed}                  onSpeedChange={setAiSpeed}
-        runHistory={runHistory}          onExport={exportRunData}
-        onExportCurrent={exportCurrentGameData}
-        currentState={state}
-        handoffReason={aiHandoffReason}
-        aiWatchdog={{ ...aiWatchdog, exportMs: AI_STALL_EXPORT_MS, recoveryMs: AI_STALL_RECOVER_MS }}
-        debugSeed={debugSeedInput}       onDebugSeedChange={setDebugSeedInput}
-        seedMode={seedMode}              onSeedModeChange={setSeedMode}
-        randomize={randomizeDebugSeed}   onRandomizeToggle={setRandomizeDebugSeed}
-        onRandomizeSeed={() => { setSeedMode('wild');     setDebugSeedInput(String(randomDebugSeed())); }}
-        onRandomizeSensibleSeed={() => { setSeedMode('sensible'); setDebugSeedInput(String(randomDebugSeed())); }}
-        aiPlaystyle={aiPlaystyle}        onPlaystyleChange={setAiPlaystyle}
-        saveDirName={saveDirName}        onSetSaveDir={pickSaveDir}
-        exportOptions={aiExportOptions}
-        onSetExportOption={(key, value) => setAiExportOptions(prev => normalizeAiExportOptions({ ...prev, [key]: value }))}
-        onSetAllExportOptions={(value) => setAiExportOptions(
-          normalizeAiExportOptions(Object.fromEntries(
-            Object.keys(AI_EXPORT_OPTIONS_DEFAULTS).map((key) => [key, value]),
-          )),
-        )}
-        customConfig={customConfig}      lockedFields={lockedFields}
-        onSetCustomField={(key, val) => setCustomConfig(prev => ({ ...prev, [key]: val }))}
-        onToggleLock={(key) => setLockedFields(prev => {
-          const next = new Set(prev);
-          next.has(key) ? next.delete(key) : next.add(key);
-          return next;
-        })}
-        onClearCustomConfig={() => setCustomConfig(CUSTOM_CONFIG_DEFAULTS)}
-        gameData={data}
-      />
+      {state.run && showLog && <LogOverlay log={state.log} />}
     </>
   );
 }

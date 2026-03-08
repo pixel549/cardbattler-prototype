@@ -134,6 +134,7 @@ export default function AIDebugPanel({
   onToggleLock,
   onClearCustomConfig,
   gameData,
+  embedded = false,
 }) {
   void onSeedModeChange;
   const runCount       = runHistory.length;
@@ -297,7 +298,7 @@ export default function AIDebugPanel({
   }
 
   // ── Minimized pill ──────────────────────────────────────────────────────────
-  if (minimized) {
+  if (minimized && !embedded) {
     return (
       <button
         onClick={toggleMinimized}
@@ -331,10 +332,10 @@ export default function AIDebugPanel({
   return (
     <div
       style={{
-        position: 'fixed',
-        left: 8,
-        top: 8,
-        zIndex: 9999,
+        position: embedded ? 'relative' : 'fixed',
+        left: embedded ? undefined : 8,
+        top: embedded ? undefined : 8,
+        zIndex: embedded ? 'auto' : 9999,
         backgroundColor: BG,
         border: `1px solid ${enabled ? psColor : BORDER}`,
         borderRadius: 10,
@@ -342,9 +343,10 @@ export default function AIDebugPanel({
         fontFamily: MONO,
         fontSize: 11,
         color: '#e0e0e0',
-        minWidth: 240,
-        maxWidth: 280,
-        maxHeight: 'calc(100vh - 16px)',
+        minWidth: embedded ? 0 : 240,
+        maxWidth: embedded ? '100%' : 280,
+        width: embedded ? '100%' : undefined,
+        maxHeight: embedded ? 'min(72vh, 820px)' : 'calc(100vh - 16px)',
         overflowY: 'auto',
         boxShadow: enabled ? `0 0 18px ${psColor}28` : '0 2px 12px rgba(0,0,0,0.6)',
         transition: 'border-color 0.2s, box-shadow 0.2s',
@@ -395,25 +397,26 @@ export default function AIDebugPanel({
           >
             {enabled ? 'ON' : 'OFF'}
           </button>
-          {/* Minimize button — always shown */}
-          <button
-            onClick={toggleMinimized}
-            title="Minimise panel"
-            style={{
-              padding: '2px 7px',
-              borderRadius: 4,
-              border: '1px solid #3a3a5a',
-              backgroundColor: 'transparent',
-              color: DIM,
-              fontFamily: MONO,
-              fontSize: 10,
-              fontWeight: 700,
-              cursor: 'pointer',
-              lineHeight: 1,
-            }}
-          >
-            _
-          </button>
+          {!embedded && (
+            <button
+              onClick={toggleMinimized}
+              title="Minimise panel"
+              style={{
+                padding: '2px 7px',
+                borderRadius: 4,
+                border: '1px solid #3a3a5a',
+                backgroundColor: 'transparent',
+                color: DIM,
+                fontFamily: MONO,
+                fontSize: 10,
+                fontWeight: 700,
+                cursor: 'pointer',
+                lineHeight: 1,
+              }}
+            >
+              _
+            </button>
+          )}
         </div>
       </div>
 

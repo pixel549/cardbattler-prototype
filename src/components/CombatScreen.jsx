@@ -1426,6 +1426,58 @@ function EnemyCard({ enemy, isTargeted, onClick, actingType, data, compact = fal
   );
 }
 
+function FirewallBar({ current, max, height = 12, showText = true, glow = true }) {
+  const safeMax = Math.max(1, max || 0);
+  const safeCurrent = Math.max(0, Math.min(current || 0, safeMax));
+  const pct = Math.max(0, Math.min(100, (safeCurrent / safeMax) * 100));
+  const color = C.neonCyan;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', width: '100%' }}>
+      <div
+        style={{
+          position: 'relative',
+          borderRadius: '6px',
+          overflow: 'hidden',
+          height,
+          backgroundColor: '#101929',
+          width: '100%',
+          border: `1px solid ${color}35`,
+        }}
+      >
+        <div
+          style={{
+            height: '100%',
+            borderRadius: '5px',
+            transition: 'all 0.45s ease-out',
+            width: `${pct}%`,
+            background: `linear-gradient(90deg, ${color}B8 0%, ${color} 100%)`,
+            boxShadow: glow ? `0 0 12px ${color}55, inset 0 1px 0 rgba(255,255,255,0.18)` : 'none',
+          }}
+        />
+        {showText && (
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontFamily: MONO,
+              fontSize: height > 16 ? 12 : 10,
+              fontWeight: 700,
+              color: '#fff',
+              textShadow: '0 1px 3px rgba(0,0,0,0.8)',
+            }}
+          >
+            {safeCurrent}/{safeMax}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function EnemyFocusPanel({ enemy, intentBadges = EMPTY_ARRAY, compact = false }) {
   if (!enemy) return null;
 
@@ -1680,11 +1732,6 @@ function CompactPlayerHud({ player, ram = 0, maxRam = 0, powerPile = [], cardIns
     const ci = cardInstances[cid];
     return ci ? data?.cards?.[ci.defId] : null;
   }).filter(Boolean);
-  const statChips = [
-    { label: 'HP', value: `${hp}/${maxHp}`, color: getHealthColor(hp, maxHp) },
-    { label: 'RAM', value: `${ram}/${maxRam}`, color: C.neonCyan },
-    { label: 'FW', value: firewallStacks, color: firewallStacks > 0 ? C.neonCyan : C.textDim },
-  ];
 
   return (
     <div
@@ -1730,29 +1777,6 @@ function CompactPlayerHud({ player, ram = 0, maxRam = 0, powerPile = [], cardIns
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 6 }}>
-        {statChips.map((chip) => (
-          <div
-            key={chip.label}
-            style={{
-              minWidth: 0,
-              borderRadius: 12,
-              padding: '7px 8px',
-              background: chip.color === C.textDim ? 'rgba(255,255,255,0.03)' : `${chip.color}12`,
-              border: `1px solid ${chip.color === C.textDim ? C.borderLight : `${chip.color}35`}`,
-              boxShadow: chip.color === C.textDim ? 'none' : `0 0 12px ${chip.color}10`,
-            }}
-          >
-            <div style={{ fontFamily: MONO, fontSize: 8, fontWeight: 700, letterSpacing: '0.1em', color: chip.color, marginBottom: 4 }}>
-              {chip.label}
-            </div>
-            <div style={{ fontFamily: MONO, fontSize: 11, fontWeight: 700, color: C.textPrimary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {chip.value}
-            </div>
-          </div>
-        ))}
-      </div>
-
       <div
         style={{
           display: 'flex',
@@ -1769,8 +1793,19 @@ function CompactPlayerHud({ player, ram = 0, maxRam = 0, powerPile = [], cardIns
             CORE VITALS
           </span>
           <span style={{ fontFamily: MONO, fontSize: 8, color: C.textSecondary }}>
-            Sustain and sequencing
+            Firewall, HP, RAM
           </span>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+            <span style={{ fontFamily: MONO, fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', color: C.neonCyan }}>
+              FW
+            </span>
+            <span style={{ fontFamily: MONO, fontSize: 10, color: C.textPrimary }}>
+              {firewallStacks}<span style={{ color: C.textDim }}>/</span>{maxHp}
+            </span>
+          </div>
+          <FirewallBar current={firewallStacks} max={maxHp} height={12} showText={false} />
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
@@ -1871,11 +1906,6 @@ function MobilePlayerHud({ player, ram = 0, maxRam = 0, powerPile = [], cardInst
       return ci ? data?.cards?.[ci.defId] : null;
     })
     .filter(Boolean);
-  const summaryChips = [
-    { label: 'HP', value: `${hp}/${maxHp}`, color: getHealthColor(hp, maxHp) },
-    { label: 'RAM', value: `${ram}/${maxRam}`, color: C.neonCyan },
-    { label: 'FW', value: String(firewallStacks), color: firewallStacks > 0 ? C.neonCyan : C.textDim },
-  ];
 
   return (
     <div
@@ -1918,28 +1948,6 @@ function MobilePlayerHud({ player, ram = 0, maxRam = 0, powerPile = [], cardInst
         </span>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 6 }}>
-        {summaryChips.map((chip) => (
-          <div
-            key={chip.label}
-            style={{
-              minWidth: 0,
-              borderRadius: 12,
-              padding: isPhonePortrait ? '5px 6px' : '6px 7px',
-              background: chip.color === C.textDim ? 'rgba(255,255,255,0.03)' : `${chip.color}12`,
-              border: `1px solid ${chip.color === C.textDim ? C.borderLight : `${chip.color}32`}`,
-            }}
-          >
-            <div style={{ fontFamily: MONO, fontSize: isPhonePortrait ? 6 : 7, fontWeight: 700, letterSpacing: '0.1em', color: chip.color, marginBottom: 2 }}>
-              {chip.label}
-            </div>
-            <div style={{ fontFamily: MONO, fontSize: isPhonePortrait ? 9 : 10, fontWeight: 700, color: C.textPrimary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {chip.value}
-            </div>
-          </div>
-        ))}
-      </div>
-
       <div
         style={{
           display: 'flex',
@@ -1956,8 +1964,15 @@ function MobilePlayerHud({ player, ram = 0, maxRam = 0, powerPile = [], cardInst
             VITALS
           </span>
           <span style={{ fontFamily: MONO, fontSize: isPhonePortrait ? 6 : 7, color: C.textSecondary }}>
-            HP and RAM
+            Firewall, HP, RAM
           </span>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+            <span style={{ fontFamily: MONO, fontSize: isPhonePortrait ? 7 : 8, fontWeight: 700, color: C.neonCyan }}>FW</span>
+            <span style={{ fontFamily: MONO, fontSize: isPhonePortrait ? 8 : 9, color: C.textPrimary }}>{firewallStacks}/{maxHp}</span>
+          </div>
+          <FirewallBar current={firewallStacks} max={maxHp} height={isPhonePortrait ? 8 : 10} showText={false} />
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>

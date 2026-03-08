@@ -284,6 +284,44 @@ a:focus:not(:focus-visible) {
 .card-play-flash { animation: card-play-flash 0.35s ease-out forwards; }
 
 /* ── Scanline CRT overlay ── */
+@keyframes combat-ui-flash {
+  0% { opacity: 0; }
+  18% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes enemy-impact-damage {
+  0% { opacity: 0; transform: scale(0.98); }
+  28% { opacity: 1; transform: scale(1.02); }
+  100% { opacity: 0; transform: scale(1); }
+}
+
+@keyframes enemy-impact-shield {
+  0% { opacity: 0; transform: scale(0.99); }
+  40% { opacity: 1; transform: scale(1.01); }
+  100% { opacity: 0; transform: scale(1); }
+}
+
+@keyframes enemy-impact-defeat {
+  0% { opacity: 0; transform: scale(0.96); filter: brightness(1.1); }
+  22% { opacity: 1; transform: scale(1.04); filter: brightness(1.55); }
+  100% { opacity: 0; transform: scale(1); filter: brightness(1); }
+}
+
+@keyframes player-zone-impact {
+  0% { opacity: 0; transform: scale(0.96); }
+  26% { opacity: 1; transform: scale(1.01); }
+  100% { opacity: 0; transform: scale(1); }
+}
+
+.combat-ui-flash { animation: combat-ui-flash 0.32s ease-out forwards; }
+.enemy-impact-damage { animation: enemy-impact-damage 0.34s ease-out forwards; }
+.enemy-impact-shield { animation: enemy-impact-shield 0.3s ease-out forwards; }
+.enemy-impact-defeat { animation: enemy-impact-defeat 0.58s cubic-bezier(0.18,0.84,0.24,1) forwards; }
+.player-zone-impact-damage,
+.player-zone-impact-shield,
+.player-zone-impact-heal { animation: player-zone-impact 0.42s ease-out forwards; }
+
 .scanlines::after {
   content: '';
   position: fixed;

@@ -296,8 +296,8 @@ function extractPhaseThresholdsFromSpecials(specialAbilitiesJson) {
 // Each entry maps a role → { easy, normal, hard, boss } rotation arrays.
 const ENEMY_ROLE_ROTATIONS = {
   'Attack':           { easy: ['EC-A1'], normal: ['EC-A2'], hard: ['EC-A3'], boss: ['EC-A3','EC-A2','EC-A4'] },
-  'Defense/Tank':     { easy: ['EC-D3','EC-A1','EC-D4'], normal: ['EC-D3','EC-D5','EC-D4','EC-A2'], hard: ['EC-D2','EC-D5','EC-D4','EC-A3'], boss: ['EC-D2','EC-D4','EC-A2','EC-D5'] },
-  'Support/Heal':     { easy: ['EC-S1','EC-A1'], normal: ['EC-S1','EC-A1','EC-S1'], hard: ['EC-S2','EC-A2'], boss: ['EC-S2','EC-A2','EC-S1'] },
+  'Defense/Tank':     { easy: ['EC-D3','EC-A1','EC-D4'], normal: ['EC-D3','EC-A2','EC-D4','EC-A1'], hard: ['EC-D2','EC-A3','EC-D4','EC-A2'], boss: ['EC-D2','EC-A3','EC-D4','EC-A2'] },
+  'Support/Heal':     { easy: ['EC-A1','EC-S1','EC-A1'], normal: ['EC-A1','EC-S1','EC-A2','EC-A1'], hard: ['EC-A2','EC-S2','EC-A2','EC-A1'], boss: ['EC-A2','EC-S2','EC-A3','EC-S1'] },
   'Control':          { easy: ['EC-C1'], normal: ['EC-C1','EC-A1'], hard: ['EC-C2','EC-A2'], boss: ['EC-C2','EC-A2','EC-C2'] },
   'Debuff/DoT':       { easy: ['EC-DB1'], normal: ['EC-DB1','EC-A1'], hard: ['EC-DB2','EC-A1'], boss: ['EC-DB3','EC-A2','EC-DB2'] },
   'Economy pressure': { easy: ['EC-E1'], normal: ['EC-E2'], hard: ['EC-E2','EC-A2'], boss: ['EC-E2','EC-A3','EC-C1'] },
@@ -364,10 +364,20 @@ function buildEnemies(filename) {
       ?? extractPhaseThresholdsFromSpecials(r.specialAbilities || '[]')
       ?? null;
 
+    const actNum = parseInt(String(actStr).replace(/\D/g, ''), 10) || 1;
+    let maxHP = toNum(r.maxHP, 30);
+    if (actNum === 1) {
+      if (role === 'Support/Heal') maxHP = Math.max(18, maxHP - 6);
+      else if (role === 'Defense/Tank') maxHP = Math.max(24, maxHP - 8);
+      else if (String(difficulty).toLowerCase() === 'boss' || role === 'Boss') {
+        maxHP = Math.max(110, Math.round(maxHP * 0.9));
+      }
+    }
+
     out[id] = {
       id,
       name: r.name || id,
-      maxHP: toNum(r.maxHP, 30),
+      maxHP,
       actionsPerTurn: toNum(r.actionsPerTurn, 1),
       rotation: rot,
       passives: Array.isArray(passives) ? passives : [],

@@ -36,6 +36,15 @@ function getEncounterTotalHP(def, data) {
   ), 0);
 }
 
+function getEncounterRoleCounts(def, data) {
+  const counts = {};
+  for (const enemyId of def?.enemyIds || []) {
+    const role = data?.enemies?.[enemyId]?.role || 'Unknown';
+    counts[role] = (counts[role] || 0) + 1;
+  }
+  return counts;
+}
+
 function filterEarlyActEncounters(defs, data, act, kind, floor) {
   if (act !== 1 || kind !== "normal") return defs;
   if (!Number.isFinite(floor) || floor <= 0) return defs;
@@ -48,15 +57,38 @@ function filterEarlyActEncounters(defs, data, act, kind, floor) {
   if (floor <= 2) {
     return keepIfAny((def) => (
       getEncounterEnemyCount(def) <= 2
-      && getEncounterTotalHP(def, data) <= 145
+      && getEncounterTotalHP(def, data) <= 138
+      && (() => {
+        const roles = getEncounterRoleCounts(def, data);
+        const slowRoles = (roles['Support/Heal'] || 0) + (roles['Defense/Tank'] || 0) + (roles['Control'] || 0);
+        return slowRoles <= 1 && !((roles['Support/Heal'] || 0) > 0 && (roles['Defense/Tank'] || 0) > 0);
+      })()
     ));
   }
 
   if (floor <= 4) {
     return keepIfAny((def) => (
-      getEncounterEnemyCount(def) <= 2
-      || getEncounterTotalHP(def, data) <= 150
+      (() => {
+        const roles = getEncounterRoleCounts(def, data);
+        const slowRoles = (roles['Support/Heal'] || 0) + (roles['Defense/Tank'] || 0) + (roles['Control'] || 0);
+        const supportTankCombo = (roles['Support/Heal'] || 0) > 0 && (roles['Defense/Tank'] || 0) > 0;
+        return !supportTankCombo
+          && slowRoles <= 2
+          && (
+            getEncounterEnemyCount(def) <= 2
+            || getEncounterTotalHP(def, data) <= 152
+          );
+      })()
     ));
+  }
+
+  if (floor <= 7) {
+    return keepIfAny((def) => {
+      const roles = getEncounterRoleCounts(def, data);
+      const supportTankCombo = (roles['Support/Heal'] || 0) > 0 && (roles['Defense/Tank'] || 0) > 0;
+      if (!supportTankCombo) return true;
+      return getEncounterTotalHP(def, data) <= 156;
+    });
   }
 
   return defs;

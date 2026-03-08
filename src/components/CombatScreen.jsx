@@ -10,7 +10,7 @@ import { sfx } from '../game/sounds';
  * 1. Enemy zone (top) - enemies with prominent HP bars, status effects, intent
  * 2. Center zone - selected card display with mutation callouts
  * 3. Player zone - player stats (left) + hand cards (right)
- * 4. Bottom bar - RAM blocks + pile counts + END TURN
+ * 4. Bottom bar - RAM pips + pile counts + END TURN
  */
 
 // ============================================================
@@ -342,13 +342,13 @@ function getIntentColor(intentType) {
 // ============================================================
 /* legacy status descriptions retained during mojibake cleanup
 const LEGACY_STATUS_DESCRIPTIONS = {
-  Firewall:        'Persistent shield — absorbs incoming damage before block/HP. Does NOT reset each turn.',
+  Firewall:        'Persistent shield — absorbs incoming damage before HP and soft-decays each turn.',
   Weak:            'Deal 25% less damage while active. Decays 1/turn.',
   Vulnerable:      'Take 50% more incoming damage while active. Decays 1/turn.',
   Leak:            'DoT: 1 damage per stack each turn (data hemorrhage). Decays 1/turn.',
   ExposedPorts:    'Take 40% more incoming damage while active. Decays 1/turn.',
   SensorGlitch:    'Reduces outgoing damage −15% per stack (max 60%). Decays 1/turn.',
-  Corrode:         'Strips block AND deals 1 HP damage per stack each turn. Decays 1/turn.',
+  Corrode:         'Strips Firewall and deals 1 HP damage per stack each turn. Decays 1/turn.',
   Underclock:      'Reduces outgoing damage −10% per stack (max 50%). Decays 1/turn.',
   Overclock:       'Boosts outgoing damage +25% per stack (max +150%). Decays 1/turn.',
   Nanoflow:        'Heals HP equal to stacks at start of each turn. Decays 1/turn.',
@@ -357,7 +357,7 @@ const LEGACY_STATUS_DESCRIPTIONS = {
   Throttled:       'Reduces outgoing damage −15% per stack (max 60%). Decays 1/turn.',
   TraceBeacon:     'Tracking marker: take +20% damage per stack from all sources.',
   Burn:            'DoT: 2 HP damage per stack each turn. Decays 1/turn.',
-  CorruptedSector: 'Cannot gain block this turn. Decays 1/turn.',
+  CorruptedSector: 'Cannot gain Firewall this turn. Decays 1/turn.',
   DazedPackets:    'Scrambled packets: −20% outgoing damage per stack (max 80%). Decays 1/turn.',
 };
 
@@ -431,7 +431,7 @@ function classifyRawTextLine(text, perspective) {
     if (/deal that much damage/.test(t) || /apply that much damage/.test(t)) return C.neonRed;
     if (/strip \d+ firewall/.test(t))             return C.neonRed;
     if (/apply \d+ /.test(t) || /apply [a-z]/i.test(t.toLowerCase())) return C.neonRed; // debuffs player
-    if (/gain \d+ firewall/.test(t))              return '#ff9944';    // enemy blocks → neutral/bad
+  if (/gain \d+ firewall/.test(t))              return '#ff9944';    // enemy defense gain -> neutral/bad
     if (/gain \d+ nanoflow/.test(t) || /heal \d+ hp/.test(t)) return '#ff9944'; // enemy heals → bad
     return '#ff9944'; // default for enemy: amber/warning
   }
@@ -1190,12 +1190,12 @@ function HealthBar({ current, max, height = 14, segmented = false, showText = tr
 // ============================================================
 // ENEMY CARD (prominent, top zone)
 // ============================================================
-function EnemyCard({ enemy, isTargeted, onClick, actingType, data }) {
+function EnemyCard({ enemy, isTargeted, onClick, actingType, data, compact = false, impact = null }) {
   const intentColor = getIntentColor(enemy.intent?.type);
   const imgSrc      = getEnemyImage(enemy.enemyDefId);
   const intentCardDef = data?.cards?.[enemy.intent?.cardDefId];
   const intentBadges = getIntentEffectBadges(enemy, intentCardDef);
-  const cardIntentBadges = intentBadges.slice(0, 2);
+  const cardIntentBadges = intentBadges.slice(0, compact ? 1 : 2);
   const enemyName = enemy.name ?? 'Unknown Target';
   const firewallStacks = enemy?.statuses?.find((status) => status.id === 'Firewall')?.stacks ?? 0;
   const nonFirewallStatuses = (enemy?.statuses || []).filter((status) => status.id !== 'Firewall');
@@ -1203,6 +1203,7 @@ function EnemyCard({ enemy, isTargeted, onClick, actingType, data }) {
                     : actingType === 'Debuff'  ? 'enemy-act-debuff'
                     : actingType               ? 'enemy-act-defend'
                     : '';
+  const statusPreview = nonFirewallStatuses.slice(0, compact ? 3 : 6);
 
   if (imgSrc) {
     // ── Image card: artwork fills the card, stats overlaid ──
@@ -1213,17 +1214,17 @@ function EnemyCard({ enemy, isTargeted, onClick, actingType, data }) {
         style={{
           position: 'relative',
           flexShrink: 0,
-          width: 'clamp(122px, 19vw, 164px)',
+          width: compact ? 'clamp(82px, 24vw, 104px)' : 'clamp(122px, 19vw, 164px)',
           aspectRatio: '13 / 18',
           padding: 0,
           border: `2px solid ${isTargeted ? C.neonCyan : 'transparent'}`,
-          borderRadius: '10px',
+          borderRadius: compact ? '9px' : '10px',
           overflow: 'hidden',
           backgroundColor: C.bgCard,
           cursor: 'pointer',
           transition: 'all 0.2s ease',
           boxShadow: isTargeted
-            ? `0 0 28px ${C.neonCyan}60`
+            ? `0 0 ${compact ? 18 : 28}px ${C.neonCyan}60`
             : '0 4px 16px rgba(0,0,0,0.7)',
           display: 'flex',
           alignItems: 'stretch',
@@ -1258,19 +1259,36 @@ function EnemyCard({ enemy, isTargeted, onClick, actingType, data }) {
           }}
         />
 
+        {impact && (
+          <div
+            key={`${enemy.id}-${impact.token}`}
+            className={`enemy-impact-${impact.type}`}
+            style={{
+              position: 'absolute',
+              inset: 0,
+              pointerEvents: 'none',
+              background: impact.type === 'shield'
+                ? 'radial-gradient(circle at 50% 42%, rgba(0,240,255,0.22) 0%, rgba(0,240,255,0.08) 34%, transparent 72%)'
+                : impact.type === 'defeat'
+                  ? 'radial-gradient(circle at 50% 42%, rgba(255,107,0,0.26) 0%, rgba(255,68,51,0.12) 36%, transparent 76%)'
+                  : 'radial-gradient(circle at 50% 42%, rgba(255,68,51,0.24) 0%, rgba(255,68,51,0.1) 34%, transparent 74%)',
+            }}
+          />
+        )}
+
         {isTargeted && (
           <div
             style={{
               position: 'absolute',
-              top: 8,
-              left: 8,
-              padding: '3px 6px',
+              top: compact ? 5 : 8,
+              left: compact ? 5 : 8,
+              padding: compact ? '2px 5px' : '3px 6px',
               borderRadius: 999,
               background: `${C.neonCyan}18`,
               border: `1px solid ${C.neonCyan}45`,
               color: C.neonCyan,
               fontFamily: MONO,
-              fontSize: 7,
+              fontSize: compact ? 6 : 7,
               fontWeight: 700,
               letterSpacing: '0.12em',
               textTransform: 'uppercase',
@@ -1285,19 +1303,19 @@ function EnemyCard({ enemy, isTargeted, onClick, actingType, data }) {
         <div
           style={{
             position: 'absolute',
-            top: 8,
-            right: 8,
+            top: compact ? 5 : 8,
+            right: compact ? 5 : 8,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'flex-end',
-            gap: 4,
-            maxWidth: '62%',
-            padding: '4px 5px',
+            gap: compact ? 3 : 4,
+            maxWidth: compact ? '74%' : '62%',
+            padding: compact ? '3px 4px' : '4px 5px',
             borderRadius: 999,
             background: 'rgba(4,8,14,0.68)',
             border: `1px solid ${intentColor}35`,
             boxShadow: `0 6px 16px rgba(0,0,0,0.26), 0 0 10px ${intentColor}10`,
-            backdropFilter: 'blur(4px)',
+            backdropFilter: compact ? 'blur(2px)' : 'blur(4px)',
           }}
         >
           {cardIntentBadges.map((badge, index) => (
@@ -1310,12 +1328,14 @@ function EnemyCard({ enemy, isTargeted, onClick, actingType, data }) {
           bottom: 0,
           left: 0,
           right: 0,
-          padding: enemy.statuses?.length > 0 ? '18px 9px 9px' : '10px 9px 9px',
+          padding: statusPreview.length > 0
+            ? (compact ? '11px 6px 6px' : '18px 9px 9px')
+            : (compact ? '6px' : '10px 9px 9px'),
           background: 'linear-gradient(180deg, rgba(8,10,16,0.02) 0%, rgba(8,10,16,0.12) 28%, rgba(8,10,16,0.68) 100%)',
         }}>
-          {enemy.statuses?.length > 0 && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px', justifyContent: 'center', marginBottom: 6 }}>
-              {enemy.statuses.slice(0, 6).map((s, i) => (
+          {statusPreview.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px', justifyContent: 'center', marginBottom: compact ? 4 : 6 }}>
+              {statusPreview.map((s, i) => (
                 <StatusBadge key={`${s.id}-${i}`} status={s} size="small" />
               ))}
             </div>
@@ -1323,7 +1343,7 @@ function EnemyCard({ enemy, isTargeted, onClick, actingType, data }) {
           <HealthBar
             current={enemy.hp}
             max={enemy.maxHP}
-            height={14}
+            height={compact ? 10 : 14}
             segmented={false}
             showText={false}
             glow={false}
@@ -1341,21 +1361,38 @@ function EnemyCard({ enemy, isTargeted, onClick, actingType, data }) {
       style={{
         position: 'relative',
         flexShrink: 0,
-        borderRadius: '10px',
+        borderRadius: compact ? '9px' : '10px',
         transition: 'all 0.2s ease',
         backgroundColor: C.bgCard,
         border: `2px solid ${isTargeted ? C.neonCyan : C.border}`,
         boxShadow: isTargeted
           ? `0 0 24px ${C.neonCyan}40, inset 0 0 20px ${C.neonCyan}06`
           : `0 2px 12px rgba(0,0,0,0.5)`,
-        padding: '10px 14px',
-        minWidth: 140,
-        maxWidth: 180,
+        padding: compact ? '8px 10px' : '10px 14px',
+        minWidth: compact ? 92 : 140,
+        maxWidth: compact ? 116 : 180,
         display: 'flex',
         flexDirection: 'column',
         gap: '6px',
       }}
     >
+      {impact && (
+        <div
+          key={`${enemy.id}-fallback-${impact.token}`}
+          className={`enemy-impact-${impact.type}`}
+          style={{
+            position: 'absolute',
+            inset: 0,
+            pointerEvents: 'none',
+            borderRadius: compact ? '9px' : '10px',
+            background: impact.type === 'shield'
+              ? 'radial-gradient(circle at 50% 42%, rgba(0,240,255,0.22) 0%, rgba(0,240,255,0.08) 34%, transparent 72%)'
+              : impact.type === 'defeat'
+                ? 'radial-gradient(circle at 50% 42%, rgba(255,107,0,0.26) 0%, rgba(255,68,51,0.12) 36%, transparent 76%)'
+                : 'radial-gradient(circle at 50% 42%, rgba(255,68,51,0.24) 0%, rgba(255,68,51,0.1) 34%, transparent 74%)',
+          }}
+        />
+      )}
       <div style={{
         fontFamily: MONO,
         fontWeight: 700,
@@ -1363,24 +1400,24 @@ function EnemyCard({ enemy, isTargeted, onClick, actingType, data }) {
         textOverflow: 'ellipsis',
         whiteSpace: 'nowrap',
         color: isTargeted ? C.neonCyan : C.textPrimary,
-        fontSize: 11,
+        fontSize: compact ? 9 : 11,
         letterSpacing: '0.03em',
         textTransform: 'uppercase',
       }}>
         {enemyName ? `${enemyName}.EXE` : 'UNKNOWN.EXE'}
       </div>
-      <HealthBar current={enemy.hp} max={enemy.maxHP} height={16} segmented={enemy.maxHP <= 30} showText={true} />
+      <HealthBar current={enemy.hp} max={enemy.maxHP} height={compact ? 12 : 16} segmented={enemy.maxHP <= 30} showText={!compact} />
       {firewallStacks > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px', padding: '2px 8px', borderRadius: '4px', fontFamily: MONO, fontWeight: 700, backgroundColor: `${C.neonCyan}15`, color: C.neonCyan, fontSize: 11, border: `1px solid ${C.neonCyan}30` }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px', padding: compact ? '2px 6px' : '2px 8px', borderRadius: '4px', fontFamily: MONO, fontWeight: 700, backgroundColor: `${C.neonCyan}15`, color: C.neonCyan, fontSize: compact ? 9 : 11, border: `1px solid ${C.neonCyan}30` }}>
             {'\u25A3'} {firewallStacks}
           </div>
         </div>
       )}
-      <StatusRow statuses={nonFirewallStatuses} size="small" justify="center" />
+      <StatusRow statuses={statusPreview} size="small" justify="center" />
       <div style={{ borderRadius: '6px', backgroundColor: `${intentColor}12`, border: `1px solid ${intentColor}30`, padding: '5px 6px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', flexWrap: 'wrap' }}>
-          {intentBadges.map((badge, index) => (
+          {(compact ? intentBadges.slice(0, 1) : intentBadges).map((badge, index) => (
             <IntentEffectBadge key={`${enemy.id}-intent-fallback-${index}`} badge={badge} />
           ))}
         </div>
@@ -1389,41 +1426,22 @@ function EnemyCard({ enemy, isTargeted, onClick, actingType, data }) {
   );
 }
 
-function getEnemyFocusInsights(enemy) {
-  const firewallStacks = enemy?.statuses?.find((status) => status.id === 'Firewall')?.stacks ?? 0;
-  const hpPct = enemy?.maxHP > 0 ? enemy.hp / enemy.maxHP : 1;
-  const insights = [];
-
-  if (firewallStacks > 0) insights.push('Firewall is up: breach, strip, or Firewall spend lines are stronger before burst damage.');
-  if (enemy?.intent?.type === 'Attack') insights.push('Incoming attack queued next turn. Consider sustain or a faster kill line.');
-  if (enemy?.intent?.type === 'Defense') insights.push('This target is extending the fight. Pressure it before the defense loop compounds.');
-  if (enemy?.intent?.type === 'Debuff') insights.push('Status pressure incoming. Ending this target early reduces future drag.');
-  if (enemy?.intent?.type === 'Buff') insights.push('Buff turn detected. A clean hit window may be open before it scales.');
-  if (hpPct <= 0.33) insights.push('Low integrity: direct damage may finish it before it gets another full turn.');
-  if (insights.length === 0) insights.push('No immediate protection shown. This is a clean pressure target.');
-
-  return insights.slice(0, 2);
-}
-
-function EnemyFocusPanel({ enemy, intentBadges = EMPTY_ARRAY }) {
+function EnemyFocusPanel({ enemy, intentBadges = EMPTY_ARRAY, compact = false }) {
   if (!enemy) return null;
 
   const firewallStacks = enemy?.statuses?.find((status) => status.id === 'Firewall')?.stacks ?? 0;
-  const nonFirewallStatuses = (enemy?.statuses || []).filter((status) => status.id !== 'Firewall');
   const intentColor = getIntentColor(enemy.intent?.type);
-  const insights = getEnemyFocusInsights(enemy);
-  const primaryInsight = insights[0] || 'No immediate pressure read.';
 
   return (
     <div
       style={{
-        width: 'clamp(220px, 24vw, 268px)',
+        width: compact ? '100%' : 'clamp(208px, 22vw, 248px)',
         minWidth: 0,
         display: 'flex',
         flexDirection: 'column',
-        gap: 8,
-        padding: '10px',
-        borderRadius: 16,
+        gap: compact ? 6 : 8,
+        padding: compact ? '8px' : '10px',
+        borderRadius: compact ? 14 : 16,
         background: 'linear-gradient(180deg, rgba(8,12,20,0.97) 0%, rgba(5,8,14,0.95) 100%)',
         border: `1px solid ${C.neonCyan}30`,
         boxShadow: `0 0 28px ${C.neonCyan}10, 0 12px 28px rgba(0,0,0,0.28)`,
@@ -1431,25 +1449,25 @@ function EnemyFocusPanel({ enemy, intentBadges = EMPTY_ARRAY }) {
     >
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
-          <span style={{ fontFamily: MONO, fontSize: 8, fontWeight: 700, letterSpacing: '0.14em', color: C.textDim }}>
-            ENEMY ANALYSIS
+          <span style={{ fontFamily: MONO, fontSize: compact ? 7 : 8, fontWeight: 700, letterSpacing: '0.14em', color: C.textDim }}>
+            {compact ? 'TARGET' : 'ENEMY ANALYSIS'}
           </span>
-          <span style={{ fontFamily: MONO, fontSize: 11, fontWeight: 700, color: C.textPrimary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <span style={{ fontFamily: MONO, fontSize: compact ? 10 : 11, fontWeight: 700, color: C.textPrimary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {enemy.name ?? 'Unknown Target'}
           </span>
-          <span style={{ fontFamily: MONO, fontSize: 8, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: intentColor }}>
+          <span style={{ fontFamily: MONO, fontSize: compact ? 7 : 8, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: intentColor }}>
             {enemy.intent?.type || 'Intent'}
           </span>
         </div>
         <div
           style={{
-            padding: '4px 8px',
+            padding: compact ? '3px 7px' : '4px 8px',
             borderRadius: 999,
             background: `${intentColor}18`,
             border: `1px solid ${intentColor}38`,
             color: intentColor,
             fontFamily: MONO,
-            fontSize: 8,
+            fontSize: compact ? 7 : 8,
             fontWeight: 700,
             letterSpacing: '0.12em',
             textTransform: 'uppercase',
@@ -1457,21 +1475,17 @@ function EnemyFocusPanel({ enemy, intentBadges = EMPTY_ARRAY }) {
           }}
           >
             Focused
-          </div>
+        </div>
         </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 6 }}>
-        <div style={{ borderRadius: 12, padding: '6px 8px', background: `${getHealthColor(enemy.hp, enemy.maxHP)}12`, border: `1px solid ${getHealthColor(enemy.hp, enemy.maxHP)}34` }}>
-          <div style={{ fontFamily: MONO, fontSize: 8, fontWeight: 700, letterSpacing: '0.1em', color: getHealthColor(enemy.hp, enemy.maxHP), marginBottom: 3 }}>HP</div>
-          <div style={{ fontFamily: MONO, fontSize: 11, fontWeight: 700, color: C.textPrimary }}>{enemy.hp}/{enemy.maxHP}</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: compact ? 5 : 6 }}>
+        <div style={{ borderRadius: 12, padding: compact ? '5px 7px' : '6px 8px', background: `${getHealthColor(enemy.hp, enemy.maxHP)}12`, border: `1px solid ${getHealthColor(enemy.hp, enemy.maxHP)}34` }}>
+          <div style={{ fontFamily: MONO, fontSize: compact ? 7 : 8, fontWeight: 700, letterSpacing: '0.1em', color: getHealthColor(enemy.hp, enemy.maxHP), marginBottom: 3 }}>HP</div>
+          <div style={{ fontFamily: MONO, fontSize: compact ? 10 : 11, fontWeight: 700, color: C.textPrimary }}>{enemy.hp}/{enemy.maxHP}</div>
         </div>
-        <div style={{ borderRadius: 12, padding: '6px 8px', background: firewallStacks > 0 ? `${C.neonCyan}12` : 'rgba(255,255,255,0.03)', border: `1px solid ${firewallStacks > 0 ? `${C.neonCyan}34` : C.borderLight}` }}>
-          <div style={{ fontFamily: MONO, fontSize: 8, fontWeight: 700, letterSpacing: '0.1em', color: firewallStacks > 0 ? C.neonCyan : C.textDim, marginBottom: 3 }}>FW</div>
-          <div style={{ fontFamily: MONO, fontSize: 11, fontWeight: 700, color: C.textPrimary }}>{firewallStacks}</div>
-        </div>
-        <div style={{ borderRadius: 12, padding: '6px 8px', background: 'rgba(255,255,255,0.03)', border: `1px solid ${C.borderLight}` }}>
-          <div style={{ fontFamily: MONO, fontSize: 8, fontWeight: 700, letterSpacing: '0.1em', color: C.textDim, marginBottom: 3 }}>STATUS</div>
-          <div style={{ fontFamily: MONO, fontSize: 11, fontWeight: 700, color: C.textPrimary }}>{nonFirewallStatuses.length}</div>
+        <div style={{ borderRadius: 12, padding: compact ? '5px 7px' : '6px 8px', background: firewallStacks > 0 ? `${C.neonCyan}12` : 'rgba(255,255,255,0.03)', border: `1px solid ${firewallStacks > 0 ? `${C.neonCyan}34` : C.borderLight}` }}>
+          <div style={{ fontFamily: MONO, fontSize: compact ? 7 : 8, fontWeight: 700, letterSpacing: '0.1em', color: firewallStacks > 0 ? C.neonCyan : C.textDim, marginBottom: 3 }}>FW</div>
+          <div style={{ fontFamily: MONO, fontSize: compact ? 10 : 11, fontWeight: 700, color: C.textPrimary }}>{firewallStacks}</div>
         </div>
       </div>
 
@@ -1480,57 +1494,19 @@ function EnemyFocusPanel({ enemy, intentBadges = EMPTY_ARRAY }) {
           display: 'flex',
           flexDirection: 'column',
           gap: 5,
-          padding: '8px 9px',
+          padding: compact ? '7px 8px' : '8px 9px',
           borderRadius: 12,
           background: 'rgba(3,7,14,0.72)',
           border: `1px solid ${C.borderLight}`,
         }}
       >
-        <div style={{ fontFamily: MONO, fontSize: 8, fontWeight: 700, letterSpacing: '0.12em', color: C.textDim }}>
+        <div style={{ fontFamily: MONO, fontSize: compact ? 7 : 8, fontWeight: 700, letterSpacing: '0.12em', color: C.textDim }}>
           NEXT ACTION
         </div>
         <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
           {intentBadges.map((badge, index) => (
             <IntentEffectBadge key={`${enemy.id}-focus-${index}`} badge={badge} />
           ))}
-        </div>
-      </div>
-
-      {nonFirewallStatuses.length > 0 && (
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 4,
-            padding: '8px 9px',
-            borderRadius: 12,
-            background: 'rgba(6,10,18,0.72)',
-            border: `1px solid ${C.borderLight}`,
-          }}
-        >
-          <span style={{ fontFamily: MONO, fontSize: 8, letterSpacing: '0.1em', color: C.textDim }}>
-            ACTIVE EFFECTS
-          </span>
-          <StatusRow statuses={nonFirewallStatuses} size="small" justify="flex-start" />
-        </div>
-      )}
-
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 5,
-          padding: '8px 9px',
-          borderRadius: 12,
-          background: 'rgba(12,8,18,0.7)',
-          border: `1px solid ${intentColor}28`,
-        }}
-      >
-        <div style={{ fontFamily: MONO, fontSize: 8, fontWeight: 700, letterSpacing: '0.12em', color: intentColor }}>
-          TACTICAL READ
-        </div>
-        <div style={{ fontFamily: MONO, fontSize: 9, color: '#c7cfda', lineHeight: 1.45 }}>
-          {primaryInsight}
         </div>
       </div>
     </div>
@@ -1543,8 +1519,8 @@ function EnemyFocusPanel({ enemy, intentBadges = EMPTY_ARRAY }) {
 function PlayerPanel({ player, ram = 0, maxRam = 0, powerPile = [], cardInstances = {}, data }) {
   const hp = player?.hp ?? 0;
   const maxHp = player?.maxHP ?? 1;
-  const block = 0;
   const firewallStacks = player?.statuses?.find(s => s.id === 'Firewall')?.stacks ?? 0;
+  const block = 0;
   const nonFirewallStatuses = (player?.statuses || []).filter(s => s.id !== 'Firewall');
   // Active Power cards
   const activePowers = powerPile.map(cid => {
@@ -1883,10 +1859,307 @@ function CompactPlayerHud({ player, ram = 0, maxRam = 0, powerPile = [], cardIns
   );
 }
 
+function MobilePlayerHud({ player, ram = 0, maxRam = 0, powerPile = [], cardInstances = {}, data }) {
+  const hp = player?.hp ?? 0;
+  const maxHp = player?.maxHP ?? 1;
+  const firewallStacks = player?.statuses?.find((s) => s.id === 'Firewall')?.stacks ?? 0;
+  const nonFirewallStatuses = (player?.statuses || []).filter((s) => s.id !== 'Firewall');
+  const activePowers = powerPile
+    .map((cid) => {
+      const ci = cardInstances[cid];
+      return ci ? data?.cards?.[ci.defId] : null;
+    })
+    .filter(Boolean);
+  const summaryChips = [
+    { label: 'HP', value: `${hp}/${maxHp}`, color: getHealthColor(hp, maxHp) },
+    { label: 'RAM', value: `${ram}/${maxRam}`, color: C.neonCyan },
+    { label: 'FW', value: String(firewallStacks), color: firewallStacks > 0 ? C.neonCyan : C.textDim },
+  ];
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 8,
+        minWidth: 0,
+        borderRadius: 14,
+        padding: '10px',
+        background: 'linear-gradient(180deg, rgba(8,12,20,0.97) 0%, rgba(5,8,14,0.96) 100%)',
+        border: `1px solid ${C.neonCyan}28`,
+        boxShadow: `0 8px 22px rgba(0,0,0,0.26), 0 0 18px ${C.neonCyan}10`,
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <span style={{ fontFamily: MONO, fontSize: 8, fontWeight: 700, letterSpacing: '0.14em', color: C.textDim }}>
+            PLAYER
+          </span>
+          <span style={{ fontFamily: MONO, fontSize: 8, color: C.neonCyan, letterSpacing: '0.08em' }}>
+            CORE STATUS
+          </span>
+        </div>
+        <span
+          style={{
+            padding: '3px 7px',
+            borderRadius: 999,
+            background: `${C.neonGreen}14`,
+            border: `1px solid ${C.neonGreen}30`,
+            color: C.neonGreen,
+            fontFamily: MONO,
+            fontSize: 7,
+            fontWeight: 700,
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase',
+          }}
+        >
+          Center = play
+        </span>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 6 }}>
+        {summaryChips.map((chip) => (
+          <div
+            key={chip.label}
+            style={{
+              minWidth: 0,
+              borderRadius: 12,
+              padding: '6px 7px',
+              background: chip.color === C.textDim ? 'rgba(255,255,255,0.03)' : `${chip.color}12`,
+              border: `1px solid ${chip.color === C.textDim ? C.borderLight : `${chip.color}32`}`,
+            }}
+          >
+            <div style={{ fontFamily: MONO, fontSize: 7, fontWeight: 700, letterSpacing: '0.1em', color: chip.color, marginBottom: 3 }}>
+              {chip.label}
+            </div>
+            <div style={{ fontFamily: MONO, fontSize: 10, fontWeight: 700, color: C.textPrimary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {chip.value}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 6,
+          padding: '8px 9px',
+          borderRadius: 12,
+          background: 'rgba(3,7,14,0.72)',
+          border: `1px solid ${C.borderLight}`,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+          <span style={{ fontFamily: MONO, fontSize: 7, fontWeight: 700, letterSpacing: '0.12em', color: C.textDim }}>
+            VITALS
+          </span>
+          <span style={{ fontFamily: MONO, fontSize: 7, color: C.textSecondary }}>
+            HP and RAM
+          </span>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+            <span style={{ fontFamily: MONO, fontSize: 8, fontWeight: 700, color: C.neonGreen }}>HP</span>
+            <span style={{ fontFamily: MONO, fontSize: 9, color: C.textPrimary }}>{hp}/{maxHp}</span>
+          </div>
+          <HealthBar current={hp} max={maxHp} height={10} showText={false} />
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+            <span style={{ fontFamily: MONO, fontSize: 8, fontWeight: 700, color: C.neonCyan }}>RAM</span>
+            <span style={{ fontFamily: MONO, fontSize: 9, color: C.textPrimary }}>{ram}/{maxRam}</span>
+          </div>
+          <RamBar ram={ram} maxRam={maxRam} compact={true} showLabel={false} />
+        </div>
+      </div>
+
+      {(nonFirewallStatuses.length > 0 || activePowers.length > 0) && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+          {nonFirewallStatuses.map((status, index) => (
+            <StatusBadge key={`${status.id}-${index}`} status={status} size="small" />
+          ))}
+          {activePowers.slice(0, 3).map((power, index) => (
+            <div
+              key={`${power.id || power.name}-${index}`}
+              title={power.effects?.find((effect) => effect.op === 'RawText')?.text || power.name}
+              style={{
+                fontFamily: MONO,
+                fontSize: 7,
+                fontWeight: 700,
+                color: '#cc88ff',
+                backgroundColor: '#aa44ff12',
+                border: '1px solid #aa44ff30',
+                borderRadius: 999,
+                padding: '3px 7px',
+                maxWidth: '100%',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              {power.name}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PileCountButton({ label, count, color, onClick, compact = false }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 6,
+        minWidth: 0,
+        padding: compact ? '6px 8px' : '7px 12px',
+        borderRadius: 10,
+        fontFamily: MONO,
+        fontSize: compact ? 9 : 11,
+        color: C.textPrimary,
+        backgroundColor: `${color}12`,
+        border: `1px solid ${color}32`,
+        boxShadow: `0 0 14px ${color}10`,
+      }}
+    >
+      <span style={{ color, fontWeight: 700 }}>{count}</span>
+      <span style={{ color: C.textPrimary, whiteSpace: 'nowrap' }}>{label}</span>
+    </button>
+  );
+}
+
+function MobileUtilityPanel({
+  handCount,
+  drawCount,
+  discardCount,
+  exhaustCount,
+  interactionLocked,
+  onViewPile,
+  onAuto,
+  onEndTurn,
+}) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 8,
+        minWidth: 0,
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 6,
+          padding: '10px',
+          borderRadius: 14,
+          background: 'linear-gradient(180deg, rgba(10,12,20,0.96) 0%, rgba(6,8,16,0.96) 100%)',
+          border: `1px solid ${C.borderLight}`,
+          boxShadow: '0 8px 22px rgba(0,0,0,0.22)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+          <span style={{ fontFamily: MONO, fontSize: 8, fontWeight: 700, letterSpacing: '0.12em', color: C.textDim }}>
+            DECK
+          </span>
+          <span style={{ fontFamily: MONO, fontSize: 7, color: C.textSecondary }}>
+            Quick inspect
+          </span>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 6 }}>
+          <PileCountButton label="Draw" count={drawCount} color={C.neonCyan} onClick={() => onViewPile('draw')} compact={true} />
+          <PileCountButton label="Disc" count={discardCount} color={C.neonOrange} onClick={() => onViewPile('discard')} compact={true} />
+          <PileCountButton label="Exh" count={exhaustCount} color={C.neonRed} onClick={() => onViewPile('exhaust')} compact={true} />
+        </div>
+      </div>
+
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 7,
+          padding: '10px',
+          borderRadius: 14,
+          background: 'linear-gradient(180deg, rgba(8,12,20,0.96) 0%, rgba(5,8,14,0.98) 100%)',
+          border: `1px solid ${C.borderLight}`,
+          boxShadow: '0 8px 22px rgba(0,0,0,0.22)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <span style={{ fontFamily: MONO, fontSize: 8, fontWeight: 700, letterSpacing: '0.12em', color: C.textDim }}>
+              TURN
+            </span>
+            <span style={{ fontFamily: MONO, fontSize: 8, color: C.textSecondary }}>
+              Hand {handCount}
+            </span>
+          </div>
+          <span style={{ fontFamily: MONO, fontSize: 7, color: C.textSecondary }}>
+            Center card plays
+          </span>
+        </div>
+
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            onClick={onAuto}
+            disabled={interactionLocked}
+            style={{
+              flex: '0 0 auto',
+              padding: '8px 10px',
+              borderRadius: 10,
+              fontFamily: MONO,
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+              backgroundColor: `${C.neonPurple}22`,
+              color: '#e9c9ff',
+              border: `1px solid ${C.neonPurple}4a`,
+              boxShadow: `0 0 14px ${C.neonPurple}16`,
+              fontSize: 8,
+              cursor: interactionLocked ? 'default' : 'pointer',
+              opacity: interactionLocked ? 0.45 : 1,
+            }}
+          >
+            Auto
+          </button>
+          <button
+            onClick={onEndTurn}
+            disabled={interactionLocked}
+            style={{
+              flex: 1,
+              padding: '9px 12px',
+              borderRadius: 10,
+              fontFamily: MONO,
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+              background: `linear-gradient(135deg, ${C.neonCyan} 0%, #84fff5 100%)`,
+              color: '#021217',
+              boxShadow: `0 0 18px ${C.neonCyan}42`,
+              fontSize: 9,
+              border: '1px solid rgba(255,255,255,0.22)',
+              cursor: interactionLocked ? 'default' : 'pointer',
+              opacity: interactionLocked ? 0.5 : 1,
+            }}
+          >
+            End Turn
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ============================================================
 // MUTATION DETAIL PANEL
 // ============================================================
-function MutationDetailPanel({ mid, data, align = 'left' }) {
+function MutationDetailPanel({ mid, data, align = 'left', compact = false }) {
   const mut  = data?.mutations?.[mid];
   const col  = getMutColor(mid);
   const lbl  = getMutLabel(mid);
@@ -1895,8 +2168,8 @@ function MutationDetailPanel({ mid, data, align = 'left' }) {
   return (
     <div
       style={{
-        padding: '8px 10px',
-        borderRadius: 10,
+        padding: compact ? '6px 8px' : '8px 10px',
+        borderRadius: compact ? 9 : 10,
         fontFamily: MONO,
         background: `linear-gradient(180deg, ${col}12 0%, rgba(8,10,16,0.84) 100%)`,
         border: `1px solid ${col}45`,
@@ -1905,38 +2178,38 @@ function MutationDetailPanel({ mid, data, align = 'left' }) {
         textAlign: align,
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: align === 'right' ? 'flex-end' : 'flex-start', gap: 6, marginBottom: 6 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: align === 'right' ? 'flex-end' : 'flex-start', gap: compact ? 5 : 6, marginBottom: compact ? 5 : 6 }}>
         <span
           style={{
             display: 'inline-flex',
             alignItems: 'center',
             justifyContent: 'center',
-            minWidth: 24,
-            height: 20,
-            padding: '0 6px',
+            minWidth: compact ? 22 : 24,
+            height: compact ? 18 : 20,
+            padding: compact ? '0 5px' : '0 6px',
             borderRadius: 999,
             backgroundColor: `${col}22`,
             border: `1px solid ${col}55`,
             color: col,
-            fontSize: 9,
+            fontSize: compact ? 8 : 9,
             fontWeight: 700,
             letterSpacing: '0.05em',
           }}
         >
           {lbl}
         </span>
-        <span style={{ fontSize: 10, fontWeight: 700, color: col, lineHeight: 1.3 }}>
+        <span style={{ fontSize: compact ? 9 : 10, fontWeight: 700, color: col, lineHeight: 1.3 }}>
           {mut?.name || mid}
         </span>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         {lines.length > 0 ? lines.map((line, index) => (
-          <div key={`${mid}-line-${index}`} style={{ fontSize: 9, lineHeight: 1.45, color: '#c7cfda' }}>
+          <div key={`${mid}-line-${index}`} style={{ fontSize: compact ? 8 : 9, lineHeight: 1.45, color: '#c7cfda' }}>
             {renderKeywordText(line, `${mid}-detail-${index}`)}
           </div>
         )) : (
-          <div style={{ fontSize: 9, lineHeight: 1.45, color: C.textDim }}>
+          <div style={{ fontSize: compact ? 8 : 9, lineHeight: 1.45, color: C.textDim }}>
             No extra mutation behaviour.
           </div>
         )}
@@ -1957,7 +2230,10 @@ function CenterCardDisplay({
   onActivate,
   canActivate = false,
   activateHint = 'Tap to play',
+  layoutMode = 'desktop',
 }) {
+  const isMobileLayout = layoutMode !== 'desktop';
+
   if (!cardInstance || !cardDef || dismissed) {
     return (
       <div
@@ -1965,7 +2241,7 @@ function CenterCardDisplay({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          minHeight: 120,
+          minHeight: isMobileLayout ? 88 : 120,
           width: '100%',
         }}
       >
@@ -1974,21 +2250,21 @@ function CenterCardDisplay({
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            gap: 6,
-            padding: '14px 18px',
-            borderRadius: 16,
+            gap: isMobileLayout ? 5 : 6,
+            padding: isMobileLayout ? '10px 12px' : '14px 18px',
+            borderRadius: isMobileLayout ? 14 : 16,
             background: 'linear-gradient(180deg, rgba(8,12,20,0.82) 0%, rgba(5,8,14,0.72) 100%)',
             border: `1px solid ${C.borderLight}`,
             boxShadow: '0 10px 28px rgba(0,0,0,0.24)',
           }}
         >
-          <div style={{ fontFamily: MONO, fontSize: 8, fontWeight: 700, letterSpacing: '0.14em', color: C.textDim }}>
+          <div style={{ fontFamily: MONO, fontSize: isMobileLayout ? 7 : 8, fontWeight: 700, letterSpacing: '0.14em', color: C.textDim }}>
             ACTIVE CARD
           </div>
-          <span style={{ fontFamily: MONO, color: C.textPrimary, fontSize: 12, textAlign: 'center' }}>
+          <span style={{ fontFamily: MONO, color: C.textPrimary, fontSize: isMobileLayout ? 10 : 12, textAlign: 'center' }}>
             {dismissed ? 'Swipe the hand to reopen the focused card' : 'Swipe the hand to focus a card'}
           </span>
-          <span style={{ fontFamily: MONO, color: C.textSecondary, fontSize: 10, letterSpacing: '0.04em', textAlign: 'center' }}>
+          <span style={{ fontFamily: MONO, color: C.textSecondary, fontSize: isMobileLayout ? 9 : 10, letterSpacing: '0.04em', textAlign: 'center' }}>
             {dismissed ? 'Tap the centered hand card when you are ready' : 'Tap the centered card to play it'}
           </span>
         </div>
@@ -2008,6 +2284,226 @@ function CenterCardDisplay({
 
   const leftMutations = mutations.filter((_, i) => i % 2 === 0);
   const rightMutations = mutations.filter((_, i) => i % 2 === 1);
+
+  if (isMobileLayout) {
+    const mobileCardWidth = layoutMode === 'phone-portrait'
+      ? 'min(48vw, 176px)'
+      : 'clamp(122px, 18vw, 156px)';
+
+    return (
+      <div
+        className="animate-slide-up"
+        style={{
+          width: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 8,
+          padding: '4px 0',
+        }}
+      >
+        <div
+          style={{
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 8,
+            padding: '0 2px',
+          }}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <span style={{ fontFamily: MONO, fontSize: 7, fontWeight: 700, letterSpacing: '0.14em', color: C.textDim }}>
+              ACTIVE CARD
+            </span>
+            <span style={{ fontFamily: MONO, fontSize: 9, color: C.textSecondary }}>
+              Centered card is the confirm step
+            </span>
+          </div>
+          <button
+            onClick={onDismiss}
+            style={{
+              padding: '5px 8px',
+              borderRadius: 999,
+              fontFamily: MONO,
+              fontSize: 7,
+              fontWeight: 700,
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              background: 'rgba(255,255,255,0.04)',
+              color: C.textSecondary,
+              border: `1px solid ${C.borderLight}`,
+            }}
+          >
+            Hide
+          </button>
+        </div>
+
+        <div
+          role="button"
+          tabIndex={canActivate ? 0 : -1}
+          aria-disabled={!canActivate}
+          title={activateHint}
+          onClick={canActivate ? onActivate : undefined}
+          onKeyDown={canActivate ? (event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              onActivate?.();
+            }
+          } : undefined}
+          style={{
+            position: 'relative',
+            borderRadius: 12,
+            width: mobileCardWidth,
+            aspectRatio: '13 / 18',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'flex-end',
+            backgroundColor: C.bgCard,
+            border: `2px solid ${color}70`,
+            boxShadow: `0 0 28px ${color}24, 0 8px 24px rgba(0,0,0,0.55)`,
+            overflow: 'hidden',
+            cursor: canActivate ? 'pointer' : 'default',
+            flexShrink: 0,
+          }}
+        >
+          {imgSrc ? (
+            <img
+              src={imgSrc}
+              alt=""
+              style={{
+                position: 'absolute',
+                inset: 0,
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                objectPosition: 'center center',
+                display: 'block',
+                transform: 'scale(1.02)',
+                filter: 'saturate(1.04) contrast(1.02) brightness(0.9)',
+              }}
+            />
+          ) : (
+            <div
+              style={{
+                position: 'absolute',
+                inset: 0,
+                background: `linear-gradient(145deg, ${color}22 0%, ${C.bgCard} 48%, ${color}0c 100%)`,
+              }}
+            />
+          )}
+
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background: `
+                radial-gradient(circle at 24% 16%, ${color}28 0%, transparent 34%),
+                linear-gradient(180deg, rgba(8,10,16,0.08) 0%, rgba(8,10,16,0.24) 24%, rgba(8,10,16,0.78) 58%, rgba(8,10,16,0.95) 100%)
+              `,
+              pointerEvents: 'none',
+            }}
+          />
+
+          <div
+            style={{
+              position: 'absolute',
+              top: 8,
+              left: 8,
+              width: 26,
+              height: 26,
+              borderRadius: '9999px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: 700,
+              fontFamily: MONO,
+              zIndex: 10,
+              backgroundColor: color,
+              color: '#000',
+              boxShadow: `0 0 10px ${color}80`,
+              fontSize: 12,
+            }}
+          >
+            {cost}
+          </div>
+
+          <div
+            style={{
+              position: 'relative',
+              zIndex: 2,
+              margin: 'auto 8px 8px',
+              padding: '10px 9px 8px',
+              borderRadius: 12,
+              background: 'linear-gradient(180deg, rgba(8,10,16,0.18) 0%, rgba(8,10,16,0.74) 12%, rgba(8,10,16,0.92) 100%)',
+              border: `1px solid ${color}22`,
+              boxShadow: '0 8px 20px rgba(0,0,0,0.24)',
+              backdropFilter: 'blur(4px)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 6,
+              minHeight: '44%',
+            }}
+          >
+            <div style={{ fontFamily: MONO, fontWeight: 700, color: C.textPrimary, fontSize: 12, textShadow: '0 1px 10px rgba(0,0,0,0.55)' }}>
+              {cardDef.name}
+            </div>
+            <div style={{ fontFamily: MONO, textTransform: 'uppercase', color, fontSize: 8, letterSpacing: '0.1em' }}>
+              {cardDef.type}
+            </div>
+
+            <div style={{ fontFamily: MONO, color: '#bcc3cf', fontSize: 10, lineHeight: 1.45, display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {effectLines.map((line, i) => (
+                <div key={i}>{renderKeywordText(line, `center-effect-mobile-${i}`)}</div>
+              ))}
+            </div>
+
+            {visibleTags.length > 0 && (
+              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                {visibleTags.map((tag, i) => (
+                  <KeywordTooltipToken key={i} text={tag} asChip={true} />
+                ))}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto', paddingTop: '6px', borderTop: `1px solid ${color}20` }}>
+              <div style={{ fontFamily: MONO, color: C.textDim, fontSize: 8 }}>
+                NEXT: <span style={{ color: C.textPrimary, fontWeight: 700 }}>{nextMutationIn ?? '-'}</span>
+              </div>
+              <div style={{ fontFamily: MONO, color: isDecaying ? C.neonOrange : C.textDim, fontSize: 8 }}>
+                FINAL: <span style={{ fontWeight: 700 }}>{finalMutationIn ?? '-'}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {mutations.length > 0 && (
+          <div
+            style={{
+              width: '100%',
+              display: 'flex',
+              gap: 6,
+              overflowX: 'auto',
+              paddingBottom: 2,
+              WebkitOverflowScrolling: 'touch',
+              scrollbarWidth: 'none',
+            }}
+          >
+            {mutations.map((mid, index) => (
+              <div key={`${mid}-mobile-${index}`} style={{ flex: '0 0 min(180px, 60vw)' }}>
+                <MutationDetailPanel
+                  mid={mid}
+                  data={data}
+                  align="left"
+                  compact={true}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div
@@ -2208,10 +2704,51 @@ function HandCard({ cardInstance, cardDef, isSelected, onSelect, canPlay, compac
   const badgeOffset = compact ? '-4px' : '-6px';
   const artH = compact ? 36 : 60;
   const imgSrc = getCardImage(cardDef?.id);
+  const touchStartRef = useRef(null);
+  const touchMovedRef = useRef(false);
+
+  const clearTouchGesture = useCallback(() => {
+    touchStartRef.current = null;
+    touchMovedRef.current = false;
+  }, []);
+
+  const handlePointerDown = useCallback((e) => {
+    if (e.pointerType !== 'touch') return;
+    touchStartRef.current = { x: e.clientX, y: e.clientY };
+    touchMovedRef.current = false;
+  }, []);
+
+  const handlePointerMove = useCallback((e) => {
+    if (e.pointerType !== 'touch' || !touchStartRef.current) return;
+    const dx = Math.abs(e.clientX - touchStartRef.current.x);
+    const dy = Math.abs(e.clientY - touchStartRef.current.y);
+    if (dx > 10 || dy > 10) {
+      touchMovedRef.current = true;
+    }
+  }, []);
+
+  const handlePointerUp = useCallback(() => {
+    window.setTimeout(() => {
+      clearTouchGesture();
+    }, 0);
+  }, [clearTouchGesture]);
+
+  const handleClick = useCallback((e) => {
+    if (touchMovedRef.current) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    onSelect?.();
+  }, [onSelect]);
 
   return (
     <button
-      onClick={onSelect}
+      onClick={handleClick}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={clearTouchGesture}
       aria-pressed={isSelected}
       title={isSelected ? 'Focused in center' : 'Tap to center'}
       onMouseEnter={showTooltip && onHover ? (e) => onHover(cardDef, e.clientX, e.clientY) : undefined}
@@ -2236,6 +2773,9 @@ function HandCard({ cardInstance, cardDef, isSelected, onSelect, canPlay, compac
         opacity: canPlay ? 1 : 0.4,
         overflow: 'hidden',
         outline: showTooltip ? `1px solid ${C.neonYellow}30` : undefined,
+        touchAction: compact ? 'pan-x' : 'manipulation',
+        userSelect: 'none',
+        WebkitTapHighlightColor: 'transparent',
       }}
     >
       {/* Bricked overlay */}
@@ -3014,7 +3554,7 @@ function CombatPlayAnimationLayer({ animation, data, enemies = EMPTY_ARRAY, card
 }
 
 // ============================================================
-// RAM BAR (large labeled blocks)
+// RAM BAR (large labeled pips)
 // ============================================================
 function RamBar({ ram, maxRam, compact = false, showLabel = true }) {
   return (
@@ -3264,27 +3804,55 @@ function ArcHand({
   locked = false,
   aiPaused,
   onHover,
+  layoutMode = 'desktop',
 }) {
   const n = hand.length;
   const containerRef = useRef(null);
   const cardRefs = useRef(new Map());
   const scrollFrameRef = useRef(null);
-  const CARD_W = 78;
-  const CARD_H = 108;
-  const CARD_STEP = 44;
-  const MAX_DROP = 34;
-  const MAX_ANGLE = 20;
+  const scrollIdleRef = useRef(null);
+  const autoSnapRef = useRef(false);
+  const autoSnapReleaseRef = useRef(null);
+  const isPhonePortrait = layoutMode === 'phone-portrait';
+  const isPhoneLandscape = layoutMode === 'phone-landscape';
+  const CARD_W = isPhonePortrait ? 68 : isPhoneLandscape ? 72 : 78;
+  const CARD_H = isPhonePortrait ? 96 : isPhoneLandscape ? 100 : 108;
+  const CARD_STEP = isPhonePortrait ? 38 : isPhoneLandscape ? 40 : 44;
+  const MAX_DROP = isPhonePortrait ? 24 : isPhoneLandscape ? 28 : 34;
+  const MAX_ANGLE = isPhonePortrait ? 16 : isPhoneLandscape ? 18 : 20;
   const SLOT_H = CARD_H + MAX_DROP + 28;
   const visualCenterIndex = Math.max(0, hand.indexOf(activeCardId));
+  const handWidth = isPhonePortrait
+    ? '100%'
+    : isPhoneLandscape
+      ? 'min(56vw, 360px)'
+      : 'min(60vw, 320px)';
+  const handMaxWidth = isPhonePortrait ? 'none' : (isPhoneLandscape ? 360 : 320);
+  const handMinWidth = isPhonePortrait ? 0 : 180;
+  const handMarginLeft = isPhonePortrait ? 0 : 'auto';
 
   const setCardRef = useCallback((cid, node) => {
     if (node) cardRefs.current.set(cid, node);
     else cardRefs.current.delete(cid);
   }, []);
 
-  const syncFocusedCard = useCallback(() => {
+  const clearScrollIdle = useCallback(() => {
+    if (scrollIdleRef.current != null) {
+      window.clearTimeout(scrollIdleRef.current);
+      scrollIdleRef.current = null;
+    }
+  }, []);
+
+  const clearAutoSnapRelease = useCallback(() => {
+    if (autoSnapReleaseRef.current != null) {
+      window.clearTimeout(autoSnapReleaseRef.current);
+      autoSnapReleaseRef.current = null;
+    }
+  }, []);
+
+  const getNearestCardId = useCallback(() => {
     const container = containerRef.current;
-    if (!container || hand.length === 0) return;
+    if (!container || hand.length === 0) return null;
 
     const centerX = container.scrollLeft + (container.clientWidth / 2);
     let nextCardId = hand[0];
@@ -3301,10 +3869,16 @@ function ArcHand({
       }
     }
 
+    return nextCardId;
+  }, [hand]);
+
+  const syncFocusedCard = useCallback(() => {
+    const nextCardId = getNearestCardId();
     if (nextCardId && nextCardId !== activeCardId) {
       onFocusCard(nextCardId);
     }
-  }, [activeCardId, hand, onFocusCard]);
+    return nextCardId;
+  }, [activeCardId, getNearestCardId, onFocusCard]);
 
   const centerCard = useCallback((cid, behavior = 'smooth') => {
     const container = containerRef.current;
@@ -3320,6 +3894,19 @@ function ArcHand({
     });
   }, []);
 
+  const settleFocusedCard = useCallback(() => {
+    if (autoSnapRef.current) return;
+    const nextCardId = syncFocusedCard();
+    if (!nextCardId) return;
+    autoSnapRef.current = true;
+    centerCard(nextCardId, 'smooth');
+    clearAutoSnapRelease();
+    autoSnapReleaseRef.current = window.setTimeout(() => {
+      autoSnapRef.current = false;
+      autoSnapReleaseRef.current = null;
+    }, 220);
+  }, [centerCard, clearAutoSnapRelease, syncFocusedCard]);
+
   useEffect(() => {
     if (n === 0) return undefined;
     const rafId = requestAnimationFrame(() => syncFocusedCard());
@@ -3328,23 +3915,25 @@ function ArcHand({
 
   useEffect(() => {
     return () => {
+      clearScrollIdle();
+      clearAutoSnapRelease();
       if (scrollFrameRef.current != null) {
         cancelAnimationFrame(scrollFrameRef.current);
       }
     };
-  }, []);
+  }, [clearAutoSnapRelease, clearScrollIdle]);
 
   if (n === 0) {
     return (
       <div
         style={{
-          width: 'min(60vw, 320px)',
-          minWidth: 180,
-          height: 92,
+          width: handWidth,
+          minWidth: handMinWidth,
+          height: isPhonePortrait ? 84 : 92,
           display: 'flex',
           alignItems: 'flex-end',
           justifyContent: 'center',
-          marginLeft: 'auto',
+          marginLeft: handMarginLeft,
         }}
       >
         <span style={{ fontFamily: MONO, fontSize: 11, color: C.textDim }}>— no cards —</span>
@@ -3357,10 +3946,10 @@ function ArcHand({
       style={{
         position: 'relative',
         overflow: 'visible',
-        width: 'min(60vw, 320px)',
-        maxWidth: 320,
-        minWidth: 180,
-        marginLeft: 'auto',
+        width: handWidth,
+        maxWidth: handMaxWidth,
+        minWidth: handMinWidth,
+        marginLeft: handMarginLeft,
         pointerEvents: locked ? 'none' : 'auto',
         opacity: locked ? 0.82 : 1,
       }}
@@ -3370,9 +3959,9 @@ function ArcHand({
         style={{
           position: 'absolute',
           left: '50%',
-          top: 18,
+          top: isPhonePortrait ? 12 : 18,
           transform: 'translateX(-50%)',
-          width: CARD_W + 26,
+          width: CARD_W + (isPhonePortrait ? 18 : 26),
           height: CARD_H + 10,
           borderRadius: 18,
           border: `1px solid ${C.neonCyan}20`,
@@ -3388,8 +3977,8 @@ function ArcHand({
           position: 'absolute',
           right: 6,
           bottom: 8,
-          width: '82%',
-          height: CARD_H + 24,
+          width: isPhonePortrait ? '88%' : '82%',
+          height: CARD_H + (isPhonePortrait ? 18 : 24),
           borderRadius: '999px 999px 24px 24px',
           background: `radial-gradient(circle at 72% 100%, ${C.neonCyan}12 0%, transparent 70%)`,
           pointerEvents: 'none',
@@ -3399,12 +3988,23 @@ function ArcHand({
       <div
         ref={containerRef}
         data-hand-scroll="true"
+        onPointerDown={() => {
+          autoSnapRef.current = false;
+          clearAutoSnapRelease();
+          clearScrollIdle();
+        }}
         onScroll={() => {
           if (scrollFrameRef.current != null) return;
           scrollFrameRef.current = requestAnimationFrame(() => {
             scrollFrameRef.current = null;
             syncFocusedCard();
           });
+          clearScrollIdle();
+          if (!autoSnapRef.current) {
+            scrollIdleRef.current = window.setTimeout(() => {
+              settleFocusedCard();
+            }, 110);
+          }
         }}
         style={{
           height: SLOT_H,
@@ -3412,8 +4012,8 @@ function ArcHand({
           overflowY: 'visible',
           display: 'flex',
           alignItems: 'flex-start',
-          paddingTop: 14,
-          paddingBottom: 12,
+          paddingTop: isPhonePortrait ? 10 : 14,
+          paddingBottom: isPhonePortrait ? 8 : 12,
           paddingInline: `calc(50% - ${CARD_W / 2}px)`,
           scrollSnapType: 'x mandatory',
           scrollPaddingInline: `calc(50% - ${CARD_W / 2}px)`,
@@ -3424,6 +4024,7 @@ function ArcHand({
           msOverflowStyle: 'none',
           position: 'relative',
           zIndex: 1,
+          maskImage: isPhonePortrait ? 'linear-gradient(90deg, transparent 0%, #000 8%, #000 92%, transparent 100%)' : undefined,
         }}
       >
         {hand.map((cid, idx) => {
@@ -3497,12 +4098,67 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false }
   const [tooltip, setTooltip] = useState({ cardDef: null, x: 0, y: 0 });
   const [scryDiscard, setScryDiscard] = useState(new Set());
   const [floats, setFloats] = useState([]);
+  const [enemyImpactMap, setEnemyImpactMap] = useState(EMPTY_OBJECT);
+  const [playerImpact, setPlayerImpact] = useState(null);
+  const [combatFlash, setCombatFlash] = useState(null);
   const lastLogLenRef = useRef(0);
   const floatIdRef = useRef(0);
   const playAnimationIdRef = useRef(0);
   const prevHandRef = useRef([]);
   const logInitRef = useRef(false);
   const waitingForEndTurnLogsRef = useRef(false);
+  const enemyImpactTimeoutsRef = useRef({});
+  const playerImpactTimeoutRef = useRef(null);
+  const combatFlashTimeoutRef = useRef(null);
+  const [viewport, setViewport] = useState(() => ({
+    width: typeof window !== 'undefined' ? window.innerWidth : 1280,
+    height: typeof window !== 'undefined'
+      ? Math.round(window.visualViewport?.height || window.innerHeight)
+      : 720,
+  }));
+
+  const triggerEnemyImpact = useCallback((enemyId, type = 'damage') => {
+    if (!enemyId) return;
+    const token = `${type}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    setEnemyImpactMap((prev) => ({ ...prev, [enemyId]: { type, token } }));
+    if (enemyImpactTimeoutsRef.current[enemyId]) {
+      clearTimeout(enemyImpactTimeoutsRef.current[enemyId]);
+    }
+    enemyImpactTimeoutsRef.current[enemyId] = setTimeout(() => {
+      setEnemyImpactMap((prev) => {
+        if (!prev[enemyId]) return prev;
+        const next = { ...prev };
+        delete next[enemyId];
+        return next;
+      });
+      delete enemyImpactTimeoutsRef.current[enemyId];
+    }, type === 'defeat' ? 620 : 360);
+  }, []);
+
+  const triggerPlayerImpact = useCallback((type = 'damage') => {
+    const token = `${type}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    setPlayerImpact({ type, token });
+    if (playerImpactTimeoutRef.current) clearTimeout(playerImpactTimeoutRef.current);
+    playerImpactTimeoutRef.current = setTimeout(() => {
+      setPlayerImpact(null);
+      playerImpactTimeoutRef.current = null;
+    }, type === 'heal' ? 520 : 420);
+  }, []);
+
+  const triggerCombatFlash = useCallback((type = 'damage', zone = 'enemy') => {
+    const rgba =
+      type === 'heal' ? 'rgba(0, 255, 107, 0.18)'
+      : type === 'shield' ? 'rgba(0, 240, 255, 0.16)'
+      : type === 'defeat' ? 'rgba(255, 107, 0, 0.18)'
+      : 'rgba(255, 68, 51, 0.18)';
+    const token = `${type}-${zone}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    setCombatFlash({ type, zone, rgba, token });
+    if (combatFlashTimeoutRef.current) clearTimeout(combatFlashTimeoutRef.current);
+    combatFlashTimeoutRef.current = setTimeout(() => {
+      setCombatFlash(null);
+      combatFlashTimeoutRef.current = null;
+    }, 320);
+  }, []);
 
   const combat = state?.combat;
   const globalLog = state?.log ?? EMPTY_ARRAY;
@@ -3517,10 +4173,18 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false }
   const powerPile = player?.piles?.power ?? EMPTY_ARRAY;
   const ram = player?.ram ?? 0;
   const maxRam = player?.maxRAM ?? 0;
-  const firewallStacks = player?.statuses?.find(s => s.id === 'Firewall')?.stacks ?? 0;
-  const nonFirewallStatuses = (player?.statuses || []).filter(s => s.id !== 'Firewall');
   const hasQueuedAnimations = Boolean(activeAnimation) || animationQueue.length > 0;
   const interactionLocked = endTurnPending || hasQueuedAnimations;
+  const layoutMode = viewport.width <= 820
+    ? (viewport.height >= viewport.width ? 'phone-portrait' : 'phone-landscape')
+    : 'desktop';
+  const isPhoneLayout = layoutMode !== 'desktop';
+  const isPhonePortrait = layoutMode === 'phone-portrait';
+  const isPhoneLandscape = layoutMode === 'phone-landscape';
+  const isVeryNarrowPhone = isPhonePortrait && viewport.width < 380;
+  const portraitFocusWidth = viewport.width < 420 ? 136 : 148;
+  const landscapeFocusWidth = viewport.width < 720 ? 156 : 168;
+  const landscapeSidebarWidth = viewport.width < 720 ? 224 : 244;
 
   const activeInstance = activeCardId ? cardInstances[activeCardId] : null;
   const activeDef = activeInstance ? data?.cards?.[activeInstance.defId] : null;
@@ -3531,6 +4195,32 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false }
   const focusActiveCard = useCallback((cardId) => {
     setCenterCardDismissed(false);
     setActiveCardId(cardId);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+
+    const syncViewport = () => {
+      setViewport({
+        width: window.innerWidth,
+        height: Math.round(window.visualViewport?.height || window.innerHeight),
+      });
+    };
+
+    syncViewport();
+    window.addEventListener('resize', syncViewport);
+    window.visualViewport?.addEventListener('resize', syncViewport);
+
+    return () => {
+      window.removeEventListener('resize', syncViewport);
+      window.visualViewport?.removeEventListener('resize', syncViewport);
+    };
+  }, []);
+
+  useEffect(() => () => {
+    Object.values(enemyImpactTimeoutsRef.current).forEach((timeoutId) => clearTimeout(timeoutId));
+    if (playerImpactTimeoutRef.current) clearTimeout(playerImpactTimeoutRef.current);
+    if (combatFlashTimeoutRef.current) clearTimeout(combatFlashTimeoutRef.current);
   }, []);
 
   // Reset target when enemies change
@@ -3646,8 +4336,17 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false }
         const { targetId, finalDamage, protectionAbsorbed, firewallAbsorbed, blocked } = entry.data || {};
         const absorbed = protectionAbsorbed ?? firewallAbsorbed ?? blocked ?? 0;
         const isPlayerTarget = targetId === 'player' || targetId === state?.run?.playerId;
+        const targetEnemy = !isPlayerTarget ? enemies.find((enemy) => enemy.id === targetId) : null;
         if (finalDamage > 0) {
           sfx.damage();
+          if (isPlayerTarget) {
+            triggerPlayerImpact('damage');
+            triggerCombatFlash('damage', 'player');
+          } else if (targetId) {
+            const impactType = targetEnemy?.hp <= 0 ? 'defeat' : 'damage';
+            triggerEnemyImpact(targetId, impactType);
+            triggerCombatFlash(impactType, 'enemy');
+          }
           newFloats.push({
             id: ++floatIdRef.current,
             text: `-${finalDamage}`,
@@ -3658,6 +4357,12 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false }
         }
         if (absorbed > 0) {
           sfx.block();
+          if (isPlayerTarget) {
+            triggerPlayerImpact('shield');
+            triggerCombatFlash('shield', 'player');
+          } else if (targetId) {
+            triggerEnemyImpact(targetId, 'shield');
+          }
           newFloats.push({
             id: ++floatIdRef.current,
             text: `□ ${absorbed}`,
@@ -3672,6 +4377,10 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false }
         if (healMatch) {
           sfx.heal();
           const isPlayerTarget = !msg.startsWith('enemy_');
+          if (isPlayerTarget) {
+            triggerPlayerImpact('heal');
+            triggerCombatFlash('heal', 'player');
+          }
           newFloats.push({
             id: ++floatIdRef.current,
             text: `+${healMatch[1]}`,
@@ -3708,7 +4417,7 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false }
       waitingForEndTurnLogsRef.current = false;
       if (!sawEnemyCard) setEndTurnPending(false);
     }
-  }, [cardInstances, combat, data?.mutations, globalLog, state?.run?.playerId]);
+  }, [cardInstances, combat, data?.mutations, enemies, globalLog, state?.run?.playerId, triggerCombatFlash, triggerEnemyImpact, triggerPlayerImpact]);
 
   useEffect(() => {
     if (activeAnimation || animationQueue.length === 0) return;
@@ -3754,6 +4463,242 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false }
     setEndTurnPending(true);
     onAction?.({ type: 'Combat_EndTurn' });
   };
+
+  const enemyCardsStrip = (
+    <div
+      style={{
+        minWidth: 0,
+        display: 'flex',
+        justifyContent: isPhoneLayout ? 'flex-start' : 'flex-end',
+        overflowX: 'auto',
+        overflowY: 'visible',
+        padding: '0 2px 4px',
+        WebkitOverflowScrolling: 'touch',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          gap: isPhoneLayout ? 8 : 10,
+          justifyContent: 'center',
+          alignItems: 'stretch',
+          minWidth: 'fit-content',
+          padding: '0 4px',
+        }}
+      >
+        {visibleEnemies.map((enemy, i) => (
+          <EnemyCard
+            key={enemy.id}
+            enemy={enemy}
+            isTargeted={i === targetedEnemyIndex}
+            onClick={() => {
+              if (!interactionLocked) setTargetedEnemyIndex(i);
+            }}
+            actingType={activeAnimation?.actor === 'enemy' && activeAnimation.enemyId === enemy.id ? activeAnimation.intentType : null}
+            data={data}
+            compact={isPhoneLayout}
+            impact={enemyImpactMap[enemy.id] ?? null}
+          />
+        ))}
+      </div>
+    </div>
+  );
+
+  const enemyFocusPanel = (
+    <EnemyFocusPanel
+      enemy={targetedEnemy}
+      intentBadges={targetedIntentBadges}
+      compact={isPhoneLayout}
+    />
+  );
+
+  const centeredCardPanel = (
+    <CenterCardDisplay
+      cardInstance={activeInstance}
+      cardDef={activeDef}
+      data={data}
+      dismissed={centerCardDismissed}
+      onDismiss={() => setCenterCardDismissed(true)}
+      onActivate={() => handlePlayCard(activeCardId)}
+      canActivate={!interactionLocked && !!activeCardId && canPlayCard(activeCardId)}
+      activateHint={interactionLocked ? 'Resolving action' : (activeCardId && canPlayCard(activeCardId) ? 'Tap to play' : 'Not enough RAM')}
+      layoutMode={layoutMode}
+    />
+  );
+
+  const handFan = (
+    <ArcHand
+      hand={hand}
+      cardInstances={cardInstances}
+      data={data}
+      activeCardId={activeCardId}
+      onFocusCard={focusActiveCard}
+      canPlayCard={(cid) => !interactionLocked && canPlayCard(cid)}
+      locked={interactionLocked}
+      aiPaused={aiPaused}
+      onHover={(cd, x, y) => setTooltip({ cardDef: cd, x, y })}
+      layoutMode={layoutMode}
+    />
+  );
+
+  const mobileBottomPanels = (
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: isPhonePortrait
+          ? (isVeryNarrowPhone ? 'minmax(0, 1fr)' : 'minmax(0, 1fr) minmax(0, 1fr)')
+          : 'minmax(0, 1fr)',
+        gap: 8,
+        width: '100%',
+      }}
+    >
+      <MobilePlayerHud
+        player={player}
+        ram={ram}
+        maxRam={maxRam}
+        powerPile={powerPile}
+        cardInstances={cardInstances}
+        data={data}
+      />
+      <MobileUtilityPanel
+        handCount={hand.length}
+        drawCount={drawPile.length}
+        discardCount={discardPile.length}
+        exhaustCount={exhaustPile.length}
+        interactionLocked={interactionLocked}
+        onViewPile={setViewingPile}
+        onAuto={() => onAction?.({ type: 'Combat_Simulate', maxTurns: 50 })}
+        onEndTurn={handleEndTurn}
+      />
+    </div>
+  );
+
+  const desktopBottomDock = (
+    <div
+      className="safe-area-bottom"
+      style={{
+        display: 'flex',
+        flexWrap: 'wrap',
+        alignItems: 'stretch',
+        justifyContent: 'space-between',
+        gap: '10px',
+        margin: '0 10px 14px',
+        padding: '10px 12px 12px',
+        background: 'linear-gradient(180deg, rgba(9,12,20,0.94) 0%, rgba(6,9,16,0.98) 100%)',
+        border: `1px solid ${C.borderLight}`,
+        borderRadius: 18,
+        boxShadow: '0 14px 32px rgba(0,0,0,0.34)',
+      }}
+    >
+      <CompactPlayerHud
+        player={player}
+        ram={ram}
+        maxRam={maxRam}
+        powerPile={powerPile}
+        cardInstances={cardInstances}
+        data={data}
+      />
+
+      <div style={{ flex: '1 1 340px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: '10px', justifyContent: 'space-between' }}>
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 8,
+            padding: '10px 12px',
+            borderRadius: 16,
+            background: 'linear-gradient(180deg, rgba(10,12,20,0.96) 0%, rgba(6,8,16,0.96) 100%)',
+            border: `1px solid ${C.borderLight}`,
+            boxShadow: '0 10px 24px rgba(0,0,0,0.24)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+            <span style={{ fontFamily: MONO, fontSize: 8, fontWeight: 700, letterSpacing: '0.12em', color: C.textDim }}>
+              DECK PILES
+            </span>
+            <span style={{ fontFamily: MONO, fontSize: 8, color: C.textSecondary }}>
+              Inspect state quickly
+            </span>
+          </div>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            <PileCountButton label="Draw" count={drawPile.length} color={C.neonCyan} onClick={() => setViewingPile('draw')} />
+            <PileCountButton label="Discard" count={discardPile.length} color={C.neonOrange} onClick={() => setViewingPile('discard')} />
+            <PileCountButton label="Exhaust" count={exhaustPile.length} color={C.neonRed} onClick={() => setViewingPile('exhaust')} />
+          </div>
+        </div>
+
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '10px',
+            flexWrap: 'wrap',
+            padding: '10px 12px',
+            borderRadius: 16,
+            background: 'linear-gradient(180deg, rgba(8,12,20,0.96) 0%, rgba(5,8,14,0.98) 100%)',
+            border: `1px solid ${C.borderLight}`,
+            boxShadow: '0 10px 24px rgba(0,0,0,0.24)',
+          }}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <span style={{ fontFamily: MONO, fontSize: 8, fontWeight: 700, letterSpacing: '0.12em', color: C.textDim }}>
+              COMBAT OPS
+            </span>
+            <span style={{ fontFamily: MONO, fontSize: 9, color: C.textSecondary }}>
+              Hand {hand.length} | tap centered card to play
+            </span>
+          </div>
+          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+            <button
+              onClick={() => onAction?.({ type: 'Combat_Simulate', maxTurns: 50 })}
+              disabled={interactionLocked}
+              style={{
+                padding: '8px 12px',
+                borderRadius: '10px',
+                fontFamily: MONO,
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+                transition: 'all 0.15s ease',
+                backgroundColor: `${C.neonPurple}22`,
+                color: '#e9c9ff',
+                border: `1px solid ${C.neonPurple}4a`,
+                boxShadow: `0 0 14px ${C.neonPurple}16`,
+                fontSize: 9,
+                cursor: interactionLocked ? 'default' : 'pointer',
+                opacity: interactionLocked ? 0.45 : 1,
+              }}
+            >
+              AUTO
+            </button>
+            <button
+              onClick={handleEndTurn}
+              disabled={interactionLocked}
+              style={{
+                padding: '8px 16px',
+                borderRadius: '10px',
+                fontFamily: MONO,
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+                transition: 'all 0.15s ease',
+                background: `linear-gradient(135deg, ${C.neonCyan} 0%, #84fff5 100%)`,
+                color: '#021217',
+                boxShadow: `0 0 18px ${C.neonCyan}42`,
+                fontSize: 11,
+                border: '1px solid rgba(255,255,255,0.22)',
+                cursor: interactionLocked ? 'default' : 'pointer',
+                opacity: interactionLocked ? 0.5 : 1,
+              }}
+            >
+              END TURN
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 
   // Victory / Defeat sound (runs once when combatOver flips to true)
   useEffect(() => {
@@ -3913,10 +4858,12 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false }
   return (
     <div
       style={{
-        height: '100vh',
+        minHeight: '100vh',
+        height: '100dvh',
         display: 'flex',
         flexDirection: 'column',
-        overflow: 'hidden',
+        overflowX: 'hidden',
+        overflowY: isPhoneLayout ? 'auto' : 'hidden',
         backgroundColor: C.bg,
         backgroundImage: `
           linear-gradient(${C.neonCyan}03 1px, transparent 1px),
@@ -3927,6 +4874,44 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false }
       }}
     >
       {/* ── Floating damage / heal numbers overlay ── */}
+      {combatFlash && (
+        <div
+          key={`combat-flash-${combatFlash.token}`}
+          className="combat-ui-flash"
+          style={{
+            position: 'absolute',
+            inset: 0,
+            pointerEvents: 'none',
+            zIndex: 180,
+            background: combatFlash.zone === 'player'
+              ? `radial-gradient(circle at 50% 78%, ${combatFlash.rgba} 0%, transparent 38%)`
+              : `radial-gradient(circle at 50% 20%, ${combatFlash.rgba} 0%, transparent 34%)`,
+          }}
+        />
+      )}
+
+      {playerImpact && (
+        <div
+          key={`player-impact-${playerImpact.token}`}
+          className={`player-zone-impact-${playerImpact.type}`}
+          style={{
+            position: 'absolute',
+            left: isPhoneLayout ? '4%' : '8%',
+            right: isPhoneLayout ? '4%' : '8%',
+            bottom: isPhoneLayout ? '12%' : '7%',
+            height: isPhoneLayout ? '28%' : '23%',
+            pointerEvents: 'none',
+            zIndex: 170,
+            borderRadius: 28,
+            background: playerImpact.type === 'heal'
+              ? 'radial-gradient(circle at 50% 78%, rgba(0,255,107,0.18) 0%, rgba(0,255,107,0.08) 28%, transparent 70%)'
+              : playerImpact.type === 'shield'
+                ? 'radial-gradient(circle at 50% 78%, rgba(0,240,255,0.18) 0%, rgba(0,240,255,0.08) 30%, transparent 72%)'
+                : 'radial-gradient(circle at 50% 78%, rgba(255,68,51,0.2) 0%, rgba(255,68,51,0.08) 30%, transparent 72%)',
+          }}
+        />
+      )}
+
       {floats.length > 0 && (
         <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 500 }}>
           {floats.map(f => (
@@ -3956,314 +4941,152 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false }
 
       <CombatPlayAnimationLayer animation={activeAnimation} data={data} enemies={enemies} cardInstances={cardInstances} />
 
-      {/* ============ ZONE A: ENEMIES (top) ============ */}
-      <div
-        className="safe-area-top"
-        style={{
-          flex: '0 0 auto',
-          minHeight: 'clamp(248px, 31vh, 330px)',
-          display: 'flex',
-          alignItems: 'flex-start',
-          justifyContent: 'center',
-          padding: '18px 10px 12px',
-          overflow: 'visible',
-        }}
-      >
-        <div
-          style={{
-            width: 'min(100%, 1120px)',
-            display: 'grid',
-            gridTemplateColumns: 'minmax(0, 1fr) clamp(220px, 24vw, 268px)',
-            alignItems: 'start',
-            gap: 12,
-          }}
-        >
+      {!isPhoneLayout && (
+        <>
           <div
+            className="safe-area-top"
             style={{
-              minWidth: 0,
+              flex: '0 0 auto',
+              minHeight: 'clamp(248px, 31vh, 330px)',
               display: 'flex',
-              justifyContent: 'flex-end',
-              overflowX: 'auto',
-              overflowY: 'hidden',
-              padding: '0 2px 4px',
+              alignItems: 'flex-start',
+              justifyContent: 'center',
+              padding: '18px 10px 12px',
+              overflow: 'visible',
             }}
           >
-            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', alignItems: 'stretch', minWidth: 'fit-content', padding: '0 4px' }}>
-              {visibleEnemies.map((enemy, i) => (
-                <EnemyCard
-                  key={enemy.id}
-                  enemy={enemy}
-                  isTargeted={i === targetedEnemyIndex}
-                  onClick={() => {
-                    if (!interactionLocked) setTargetedEnemyIndex(i);
-                  }}
-                  actingType={activeAnimation?.actor === 'enemy' && activeAnimation.enemyId === enemy.id ? activeAnimation.intentType : null}
-                  data={data}
-                />
-              ))}
+            <div
+              style={{
+                width: 'min(100%, 1120px)',
+                display: 'grid',
+                gridTemplateColumns: 'minmax(0, 1fr) clamp(220px, 24vw, 268px)',
+                alignItems: 'start',
+                gap: 12,
+              }}
+            >
+              {enemyCardsStrip}
+              {enemyFocusPanel}
             </div>
           </div>
 
-          <EnemyFocusPanel enemy={targetedEnemy} intentBadges={targetedIntentBadges} />
-        </div>
-      </div>
+          <div style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: '0 8px',
+            minHeight: 0,
+            overflow: 'hidden',
+          }}>
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 0, overflow: 'auto', width: '100%' }}>
+              {centeredCardPanel}
+            </div>
+          </div>
 
-      {/* ============ ZONE B: CENTER CARD (middle) ============ */}
-      <div style={{
-        flex: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: '0 8px',
-        minHeight: 0,
-        overflow: 'hidden',
-      }}>
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 0, overflow: 'auto', width: '100%' }}>
-          <CenterCardDisplay
-            cardInstance={activeInstance}
-            cardDef={activeDef}
-            data={data}
-            dismissed={centerCardDismissed}
-            onDismiss={() => setCenterCardDismissed(true)}
-            onActivate={() => handlePlayCard(activeCardId)}
-            canActivate={!interactionLocked && !!activeCardId && canPlayCard(activeCardId)}
-            activateHint={interactionLocked ? 'Resolving action' : (activeCardId && canPlayCard(activeCardId) ? 'Tap to play' : 'Not enough RAM')}
-          />
-        </div>
-      </div>
+          {handFan}
+          {desktopBottomDock}
+        </>
+      )}
 
-      {/* ============ ZONE C: COMPACT PLAYER STATS ============ */}
-      <div style={{
-        display: 'none',
-        alignItems: 'center',
-        gap: 8,
-        padding: '5px 10px',
-        borderTop: `1px solid ${C.border}`,
-        backgroundColor: C.bgDark,
-        flexShrink: 0,
-      }}>
-        {/* Firewall */}
-        {firewallStacks > 0 && (
-          <span style={{ fontFamily: MONO, fontSize: 10, color: C.neonCyan, flexShrink: 0 }}>
-            🛡 {player.statuses.find(s => s.id === 'Firewall').stacks}
-          </span>
-        )}
-        {(player?.block ?? 0) > 0 && (
-          <span style={{ fontFamily: MONO, fontSize: 10, color: C.neonCyan, fontWeight: 700, flexShrink: 0 }}>
-            ⬡ {player.block}
-          </span>
-        )}
-        {/* Other statuses (compact) */}
-        <StatusRow statuses={nonFirewallStatuses} size="small" />
-      </div>
-
-      {/* ============ ZONE C2: ARC HAND ============ */}
-      <ArcHand
-        hand={hand}
-        cardInstances={cardInstances}
-        data={data}
-        activeCardId={activeCardId}
-        onFocusCard={focusActiveCard}
-        canPlayCard={(cid) => !interactionLocked && canPlayCard(cid)}
-        locked={interactionLocked}
-        aiPaused={aiPaused}
-        onHover={(cd, x, y) => setTooltip({ cardDef: cd, x, y })}
-      />
-
-      <div
-        style={{
-          display: 'none',
-          padding: '0 10px 6px 10px',
-          backgroundColor: C.bgDark,
-          flexShrink: 0,
-        }}
-      >
-        <HealthBar current={player?.hp ?? 0} max={player?.maxHP ?? 1} height={12} showText={true} />
-      </div>
-
-      {/* ============ ZONE D: PLAYER HUD + ACTION BUTTONS (bottom) ============ */}
-      <div
-        className="safe-area-bottom"
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          alignItems: 'stretch',
-          justifyContent: 'space-between',
-          gap: '10px',
-          margin: '0 10px 14px',
-          padding: '10px 12px 12px',
-          background: 'linear-gradient(180deg, rgba(9,12,20,0.94) 0%, rgba(6,9,16,0.98) 100%)',
-          border: `1px solid ${C.borderLight}`,
-          borderRadius: 18,
-          boxShadow: '0 14px 32px rgba(0,0,0,0.34)',
-        }}
-        >
-          <CompactPlayerHud
-            player={player}
-            ram={ram}
-            maxRam={maxRam}
-          powerPile={powerPile}
-          cardInstances={cardInstances}
-          data={data}
-          />
-
-        <div style={{ flex: '1 1 340px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: '10px', justifyContent: 'space-between' }}>
+      {isPhonePortrait && (
+        <>
           <div
+            className="safe-area-top"
             style={{
+              flex: '0 0 auto',
+              padding: '10px 8px 6px',
               display: 'flex',
-              flexDirection: 'column',
-              gap: 8,
-              padding: '10px 12px',
-              borderRadius: 16,
-              background: 'linear-gradient(180deg, rgba(10,12,20,0.96) 0%, rgba(6,8,16,0.96) 100%)',
-              border: `1px solid ${C.borderLight}`,
-              boxShadow: '0 10px 24px rgba(0,0,0,0.24)',
+              justifyContent: 'center',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-              <span style={{ fontFamily: MONO, fontSize: 8, fontWeight: 700, letterSpacing: '0.12em', color: C.textDim }}>
-                DECK PILES
-              </span>
-              <span style={{ fontFamily: MONO, fontSize: 8, color: C.textSecondary }}>
-                Inspect state quickly
-              </span>
-            </div>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-              <button
-                onClick={() => setViewingPile('draw')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '7px 12px',
-                  borderRadius: '10px',
-                  fontFamily: MONO,
-                  transition: 'all 0.15s ease',
-                  backgroundColor: `${C.neonCyan}10`,
-                  border: `1px solid ${C.neonCyan}32`,
-                  fontSize: 11,
-                  color: C.textPrimary,
-                  boxShadow: `0 0 14px ${C.neonCyan}10`,
-                }}
-              >
-                <span style={{ color: C.neonCyan, fontWeight: 700 }}>{drawPile.length}</span>
-                <span style={{ color: '#bfefff' }}>Draw</span>
-              </button>
-              <button
-                onClick={() => setViewingPile('discard')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '7px 12px',
-                  borderRadius: '10px',
-                  fontFamily: MONO,
-                  transition: 'all 0.15s ease',
-                  backgroundColor: `${C.neonOrange}12`,
-                  border: `1px solid ${C.neonOrange}32`,
-                  fontSize: 11,
-                  color: C.textPrimary,
-                  boxShadow: `0 0 14px ${C.neonOrange}10`,
-                }}
-              >
-                <span style={{ color: C.neonOrange, fontWeight: 700 }}>{discardPile.length}</span>
-                <span style={{ color: '#ffd8bf' }}>Discard</span>
-              </button>
-              <button
-                onClick={() => setViewingPile('exhaust')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '7px 12px',
-                  borderRadius: '10px',
-                  fontFamily: MONO,
-                  transition: 'all 0.15s ease',
-                  backgroundColor: `${C.neonRed}12`,
-                  border: `1px solid ${C.neonRed}32`,
-                  fontSize: 11,
-                  color: C.textPrimary,
-                  boxShadow: `0 0 14px ${C.neonRed}10`,
-                }}
-              >
-                <span style={{ color: C.neonRed, fontWeight: 700 }}>{exhaustPile.length}</span>
-                <span style={{ color: '#ffd0d0' }}>Exhaust</span>
-              </button>
+            <div
+              style={{
+                width: '100%',
+                display: 'grid',
+                gridTemplateColumns: `minmax(0, 1fr) ${portraitFocusWidth}px`,
+                gap: 8,
+                alignItems: 'start',
+              }}
+            >
+              {enemyCardsStrip}
+              {enemyFocusPanel}
             </div>
           </div>
 
           <div
             style={{
+              flex: '0 0 auto',
+              padding: '0 8px 8px',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: '10px',
-              flexWrap: 'wrap',
-              padding: '10px 12px',
-              borderRadius: 16,
-              background: 'linear-gradient(180deg, rgba(8,12,20,0.96) 0%, rgba(5,8,14,0.98) 100%)',
-              border: `1px solid ${C.borderLight}`,
-              boxShadow: '0 10px 24px rgba(0,0,0,0.24)',
+              justifyContent: 'center',
+              minHeight: 0,
             }}
           >
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-              <span style={{ fontFamily: MONO, fontSize: 8, fontWeight: 700, letterSpacing: '0.12em', color: C.textDim }}>
-                COMBAT OPS
-              </span>
-              <span style={{ fontFamily: MONO, fontSize: 9, color: C.textSecondary }}>
-                Hand {hand.length} | tap centered card to play
-              </span>
-            </div>
-            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-              <button
-                onClick={() => onAction?.({ type: 'Combat_Simulate', maxTurns: 50 })}
-                disabled={interactionLocked}
-                style={{
-                  padding: '8px 12px',
-                  borderRadius: '10px',
-                  fontFamily: MONO,
-                  fontWeight: 700,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.08em',
-                  transition: 'all 0.15s ease',
-                  backgroundColor: `${C.neonPurple}22`,
-                  color: '#e9c9ff',
-                  border: `1px solid ${C.neonPurple}4a`,
-                  boxShadow: `0 0 14px ${C.neonPurple}16`,
-                  fontSize: 9,
-                  cursor: interactionLocked ? 'default' : 'pointer',
-                  opacity: interactionLocked ? 0.45 : 1,
-                }}
-              >
-                AUTO
-              </button>
-              <button
-                onClick={handleEndTurn}
-                disabled={interactionLocked}
-                style={{
-                  padding: '8px 16px',
-                  borderRadius: '10px',
-                  fontFamily: MONO,
-                  fontWeight: 700,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.08em',
-                  transition: 'all 0.15s ease',
-                  background: `linear-gradient(135deg, ${C.neonCyan} 0%, #84fff5 100%)`,
-                  color: '#021217',
-                  boxShadow: `0 0 18px ${C.neonCyan}42`,
-                  fontSize: 11,
-                  border: '1px solid rgba(255,255,255,0.22)',
-                  cursor: interactionLocked ? 'default' : 'pointer',
-                  opacity: interactionLocked ? 0.5 : 1,
-                }}
-              >
-                END TURN
-              </button>
+            {centeredCardPanel}
+          </div>
+
+          <div className="safe-area-bottom" style={{ flex: '0 0 auto', padding: '0 8px 6px' }}>
+            {mobileBottomPanels}
+          </div>
+
+          <div className="safe-area-bottom" style={{ flex: '0 0 auto', padding: '0 8px 10px' }}>
+            {handFan}
+          </div>
+        </>
+      )}
+
+      {isPhoneLandscape && (
+        <>
+          <div
+            className="safe-area-top"
+            style={{
+              flex: '0 0 auto',
+              padding: '10px 10px 6px',
+              display: 'flex',
+              justifyContent: 'center',
+            }}
+          >
+            <div
+              style={{
+                width: '100%',
+                display: 'grid',
+                gridTemplateColumns: `minmax(0, 1fr) ${landscapeFocusWidth}px`,
+                gap: 10,
+                alignItems: 'start',
+              }}
+            >
+              {enemyCardsStrip}
+              {enemyFocusPanel}
             </div>
           </div>
-        </div>
-      </div>
+
+          <div
+            style={{
+              flex: 1,
+              minHeight: 0,
+              display: 'grid',
+              gridTemplateColumns: `minmax(0, 1fr) ${landscapeSidebarWidth}px`,
+              gap: 10,
+              padding: '0 10px 10px',
+            }}
+          >
+            <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 10, justifyContent: 'space-between' }}>
+              <div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {centeredCardPanel}
+              </div>
+              <div style={{ flex: '0 0 auto' }}>
+                {handFan}
+              </div>
+            </div>
+
+            <div className="safe-area-bottom" style={{ minWidth: 0, display: 'flex', alignItems: 'stretch' }}>
+              {mobileBottomPanels}
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Pile viewer modal */}
       {viewingPile && (

@@ -117,6 +117,7 @@ export default function AIDebugPanel({
   runHistory, onExport, onExportCurrent,
   currentState,
   handoffReason = '',
+  aiWatchdog = null,
   debugSeed, onDebugSeedChange,
   seedMode, onSeedModeChange,
   randomize, onRandomizeToggle,
@@ -138,6 +139,14 @@ export default function AIDebugPanel({
   const runCount       = runHistory.length;
   const status         = enabled ? getStatusLabel(currentState) : '—';
   const visibleStatus = enabled ? getStatusLabel(currentState) : (handoffReason || 'Idle');
+  const watchdog = aiWatchdog || {
+    active: false,
+    stagnantMs: 0,
+    exportTriggered: false,
+    recoveryTriggered: false,
+    exportMs: 0,
+    recoveryMs: 0,
+  };
   const [presetKey,      setPresetKey]      = useState('');
   const [seedOpen,       setSeedOpen]       = useState(false);
   const [customOpen,     setCustomOpen]     = useState(false);
@@ -160,6 +169,30 @@ export default function AIDebugPanel({
   const patchActivations = (currentState?.combat?.log ?? [])
     .filter(e => e.t === 'MutPatch').length;
   const psColor        = PLAYSTYLE_COLORS[aiPlaystyle] || CYAN;
+  const watchdogState = !enabled
+    ? 'OFF'
+    : paused
+      ? 'PAUSED'
+      : watchdog.recoveryTriggered
+        ? 'RECOVERING'
+        : watchdog.exportTriggered
+          ? 'EXPORTED'
+          : 'WATCHING';
+  const watchdogColor = !enabled
+    ? DIM
+    : paused
+      ? YELLOW
+      : watchdog.recoveryTriggered
+        ? ORANGE
+        : watchdog.exportTriggered
+          ? YELLOW
+          : CYAN;
+  const stagnantLabel = watchdog.active
+    ? `${(watchdog.stagnantMs / 1000).toFixed(watchdog.stagnantMs >= 10000 ? 0 : 1)}s`
+    : '0.0s';
+  const thresholdLabel = watchdog.exportMs && watchdog.recoveryMs
+    ? `${Math.round(watchdog.exportMs / 1000)}s / ${Math.round(watchdog.recoveryMs / 1000)}s`
+    : '—';
 
   const seedNum = parsedSeed(debugSeed);
   // Use the correct decoder based on which mode is active
@@ -398,6 +431,33 @@ export default function AIDebugPanel({
       </div>
 
       {/* ── Live run stats ── */}
+      <div style={{
+        marginBottom: 8,
+        padding: '5px 6px',
+        borderRadius: 5,
+        border: `1px solid ${watchdogColor}33`,
+        backgroundColor: `${watchdogColor}10`,
+      }}>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: 8,
+          marginBottom: 2,
+        }}>
+          <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.08em', color: watchdogColor }}>
+            WATCHDOG
+          </span>
+          <span style={{ fontSize: 8, color: watchdogColor, fontWeight: 700 }}>
+            {watchdogState}
+          </span>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 9 }}>
+          <span style={{ color: '#e0e0e0' }}>stuck {stagnantLabel}</span>
+          <span style={{ color: DIM }}>export / recover {thresholdLabel}</span>
+        </div>
+      </div>
+
       {currentState?.run && (
         <div style={{
           display: 'grid',

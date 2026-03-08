@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "builtAt": "2026-03-08T13:18:20.337Z",
+  "builtAt": "2026-03-08T14:43:39.018Z",
   "cards": {
     "C-001": {
       "id": "C-001",
@@ -5590,7 +5590,7 @@
           "op": "ApplyStatus",
           "target": "Self",
           "statusId": "Firewall",
-          "stacks": 6
+          "stacks": 5
         }
       ],
       "defaultUseCounter": 999,
@@ -5623,7 +5623,7 @@
           "op": "ApplyStatus",
           "target": "Self",
           "statusId": "Firewall",
-          "stacks": 8
+          "stacks": 6
         }
       ],
       "defaultUseCounter": 999,
@@ -5656,12 +5656,12 @@
           "op": "ApplyStatus",
           "target": "Self",
           "statusId": "Firewall",
-          "stacks": 4
+          "stacks": 3
         },
         {
           "op": "DealDamage",
           "target": "Enemy",
-          "amount": 6
+          "amount": 7
         }
       ],
       "defaultUseCounter": 999,
@@ -5755,7 +5755,7 @@
         {
           "op": "Heal",
           "target": "Self",
-          "amount": 8
+          "amount": 6
         }
       ],
       "defaultUseCounter": 999,
@@ -5787,12 +5787,12 @@
         {
           "op": "Heal",
           "target": "Self",
-          "amount": 15
+          "amount": 11
         },
         {
           "op": "DealDamage",
           "target": "Enemy",
-          "amount": 4
+          "amount": 5
         }
       ],
       "defaultUseCounter": 999,
@@ -8181,13 +8181,13 @@
     "E_FIREWALL_POD": {
       "id": "E_FIREWALL_POD",
       "name": "Firewall Pod",
-      "maxHP": 51,
+      "maxHP": 43,
       "actionsPerTurn": 1,
       "rotation": [
         "EC-D3",
-        "EC-D5",
+        "EC-A2",
         "EC-D4",
-        "EC-A2"
+        "EC-A1"
       ],
       "passives": [
         {
@@ -8211,12 +8211,13 @@
     "E_PATCH_SPRITE": {
       "id": "E_PATCH_SPRITE",
       "name": "Patch Sprite",
-      "maxHP": 35,
+      "maxHP": 29,
       "actionsPerTurn": 1,
       "rotation": [
-        "EC-S1",
         "EC-A1",
-        "EC-S1"
+        "EC-S1",
+        "EC-A2",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
@@ -8334,12 +8335,13 @@
     "E_VECTOR_RAT_MK_III": {
       "id": "E_VECTOR_RAT_MK_III",
       "name": "Vector Rat Mk III",
-      "maxHP": 35,
+      "maxHP": 29,
       "actionsPerTurn": 1,
       "rotation": [
-        "EC-S1",
         "EC-A1",
-        "EC-S1"
+        "EC-S1",
+        "EC-A2",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
@@ -8351,13 +8353,13 @@
     "E_OBSIDIAN_BRUISER_PACK": {
       "id": "E_OBSIDIAN_BRUISER_PACK",
       "name": "Obsidian Bruiser Pack",
-      "maxHP": 76,
+      "maxHP": 68,
       "actionsPerTurn": 1,
       "rotation": [
         "EC-D3",
-        "EC-D5",
+        "EC-A2",
         "EC-D4",
-        "EC-A2"
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
@@ -8400,12 +8402,13 @@
     "E_ECHO_IMP_MK_II": {
       "id": "E_ECHO_IMP_MK_II",
       "name": "Echo Imp Mk II",
-      "maxHP": 35,
+      "maxHP": 29,
       "actionsPerTurn": 1,
       "rotation": [
-        "EC-S1",
         "EC-A1",
-        "EC-S1"
+        "EC-S1",
+        "EC-A2",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
@@ -8417,13 +8420,13 @@
     "E_VANTA_SENTINEL_PROTOCOL": {
       "id": "E_VANTA_SENTINEL_PROTOCOL",
       "name": "Vanta Sentinel Protocol",
-      "maxHP": 76,
+      "maxHP": 68,
       "actionsPerTurn": 1,
       "rotation": [
         "EC-D3",
-        "EC-D5",
+        "EC-A2",
         "EC-D4",
-        "EC-A2"
+        "EC-A1"
       ],
       "passives": [
         {
@@ -8539,9 +8542,10 @@
       "maxHP": 56,
       "actionsPerTurn": 1,
       "rotation": [
-        "EC-S1",
         "EC-A1",
-        "EC-S1"
+        "EC-S1",
+        "EC-A2",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
@@ -8710,9 +8714,9 @@
       "actionsPerTurn": 1,
       "rotation": [
         "EC-D3",
-        "EC-D5",
+        "EC-A2",
         "EC-D4",
-        "EC-A2"
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
@@ -8743,9 +8747,9 @@
       "actionsPerTurn": 1,
       "rotation": [
         "EC-D3",
-        "EC-D5",
+        "EC-A2",
         "EC-D4",
-        "EC-A2"
+        "EC-A1"
       ],
       "passives": [
         {
@@ -8821,9 +8825,10 @@
       "maxHP": 56,
       "actionsPerTurn": 1,
       "rotation": [
-        "EC-S1",
         "EC-A1",
-        "EC-S1"
+        "EC-S1",
+        "EC-A2",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
@@ -8839,9 +8844,9 @@
       "actionsPerTurn": 1,
       "rotation": [
         "EC-D2",
-        "EC-D5",
+        "EC-A3",
         "EC-D4",
-        "EC-A3"
+        "EC-A2"
       ],
       "passives": [],
       "ai": null,
@@ -8963,13 +8968,13 @@
     "E_OBSIDIAN_SNIPER_MK_III": {
       "id": "E_OBSIDIAN_SNIPER_MK_III",
       "name": "Obsidian Sniper Mk III",
-      "maxHP": 51,
+      "maxHP": 43,
       "actionsPerTurn": 1,
       "rotation": [
         "EC-D3",
-        "EC-D5",
+        "EC-A2",
         "EC-D4",
-        "EC-A2"
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
@@ -8981,12 +8986,13 @@
     "E_CHROME_WARDEN_SWARM": {
       "id": "E_CHROME_WARDEN_SWARM",
       "name": "Chrome Warden Swarm",
-      "maxHP": 56,
+      "maxHP": 50,
       "actionsPerTurn": 1,
       "rotation": [
-        "EC-S1",
         "EC-A1",
-        "EC-S1"
+        "EC-S1",
+        "EC-A2",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
@@ -8998,13 +9004,13 @@
     "E_QUANTUM_HACKER_PACK": {
       "id": "E_QUANTUM_HACKER_PACK",
       "name": "Quantum Hacker Pack",
-      "maxHP": 51,
+      "maxHP": 43,
       "actionsPerTurn": 1,
       "rotation": [
         "EC-D3",
-        "EC-D5",
+        "EC-A2",
         "EC-D4",
-        "EC-A2"
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
@@ -9092,9 +9098,10 @@
       "maxHP": 56,
       "actionsPerTurn": 1,
       "rotation": [
-        "EC-S1",
         "EC-A1",
-        "EC-S1"
+        "EC-S1",
+        "EC-A2",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
@@ -9110,9 +9117,9 @@
       "actionsPerTurn": 1,
       "rotation": [
         "EC-D3",
-        "EC-D5",
+        "EC-A2",
         "EC-D4",
-        "EC-A2"
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
@@ -9124,12 +9131,13 @@
     "E_GHOST_CLERIC_SHARD": {
       "id": "E_GHOST_CLERIC_SHARD",
       "name": "Ghost Cleric Shard",
-      "maxHP": 56,
+      "maxHP": 50,
       "actionsPerTurn": 1,
       "rotation": [
-        "EC-S1",
         "EC-A1",
-        "EC-S1"
+        "EC-S1",
+        "EC-A2",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
@@ -9237,9 +9245,9 @@
       "actionsPerTurn": 1,
       "rotation": [
         "EC-D3",
-        "EC-D5",
+        "EC-A2",
         "EC-D4",
-        "EC-A2"
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
@@ -9255,9 +9263,9 @@
       "actionsPerTurn": 1,
       "rotation": [
         "EC-D2",
-        "EC-D5",
+        "EC-A3",
         "EC-D4",
-        "EC-A3"
+        "EC-A2"
       ],
       "passives": [],
       "ai": null,
@@ -9304,9 +9312,10 @@
       "maxHP": 56,
       "actionsPerTurn": 1,
       "rotation": [
-        "EC-S1",
         "EC-A1",
-        "EC-S1"
+        "EC-S1",
+        "EC-A2",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
@@ -9458,9 +9467,9 @@
       "actionsPerTurn": 1,
       "rotation": [
         "EC-D3",
-        "EC-D5",
+        "EC-A2",
         "EC-D4",
-        "EC-A2"
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
@@ -9476,9 +9485,9 @@
       "actionsPerTurn": 1,
       "rotation": [
         "EC-D3",
-        "EC-D5",
+        "EC-A2",
         "EC-D4",
-        "EC-A2"
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
@@ -9523,9 +9532,10 @@
       "maxHP": 56,
       "actionsPerTurn": 1,
       "rotation": [
-        "EC-S1",
         "EC-A1",
-        "EC-S1"
+        "EC-S1",
+        "EC-A2",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
@@ -9568,12 +9578,13 @@
     "E_CHROME_MARAUDER_CELL": {
       "id": "E_CHROME_MARAUDER_CELL",
       "name": "Chrome Marauder Cell",
-      "maxHP": 35,
+      "maxHP": 29,
       "actionsPerTurn": 1,
       "rotation": [
-        "EC-S1",
         "EC-A1",
-        "EC-S1"
+        "EC-S1",
+        "EC-A2",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
@@ -9588,9 +9599,10 @@
       "maxHP": 56,
       "actionsPerTurn": 1,
       "rotation": [
-        "EC-S1",
         "EC-A1",
-        "EC-S1"
+        "EC-S1",
+        "EC-A2",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
@@ -9653,9 +9665,9 @@
       "actionsPerTurn": 1,
       "rotation": [
         "EC-D3",
-        "EC-D5",
+        "EC-A2",
         "EC-D4",
-        "EC-A2"
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
@@ -9670,9 +9682,10 @@
       "maxHP": 76,
       "actionsPerTurn": 1,
       "rotation": [
-        "EC-S1",
         "EC-A1",
-        "EC-S1"
+        "EC-S1",
+        "EC-A2",
+        "EC-A1"
       ],
       "passives": [
         {
@@ -9701,9 +9714,9 @@
       "actionsPerTurn": 1,
       "rotation": [
         "EC-D3",
-        "EC-D5",
+        "EC-A2",
         "EC-D4",
-        "EC-A2"
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
@@ -9790,13 +9803,13 @@
     "E_HOLO_SCOUT_PROXY": {
       "id": "E_HOLO_SCOUT_PROXY",
       "name": "Holo Scout Proxy",
-      "maxHP": 68,
+      "maxHP": 60,
       "actionsPerTurn": 1,
       "rotation": [
         "EC-D3",
-        "EC-D5",
+        "EC-A2",
         "EC-D4",
-        "EC-A2"
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
@@ -9808,13 +9821,13 @@
     "E_CIRCUIT_TECH_RIG": {
       "id": "E_CIRCUIT_TECH_RIG",
       "name": "Circuit Tech Rig",
-      "maxHP": 76,
+      "maxHP": 68,
       "actionsPerTurn": 1,
       "rotation": [
         "EC-D3",
-        "EC-D5",
+        "EC-A2",
         "EC-D4",
-        "EC-A2"
+        "EC-A1"
       ],
       "passives": [
         {
@@ -9984,9 +9997,10 @@
       "maxHP": 76,
       "actionsPerTurn": 1,
       "rotation": [
-        "EC-S1",
         "EC-A1",
-        "EC-S1"
+        "EC-S1",
+        "EC-A2",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
@@ -10029,9 +10043,10 @@
       "maxHP": 56,
       "actionsPerTurn": 1,
       "rotation": [
-        "EC-S1",
         "EC-A1",
-        "EC-S1"
+        "EC-S1",
+        "EC-A2",
+        "EC-A1"
       ],
       "passives": [
         {
@@ -10078,9 +10093,10 @@
       "maxHP": 56,
       "actionsPerTurn": 1,
       "rotation": [
-        "EC-S1",
         "EC-A1",
-        "EC-S1"
+        "EC-S1",
+        "EC-A2",
+        "EC-A1"
       ],
       "passives": [
         {
@@ -10107,9 +10123,10 @@
       "maxHP": 56,
       "actionsPerTurn": 1,
       "rotation": [
-        "EC-S1",
         "EC-A1",
-        "EC-S1"
+        "EC-S1",
+        "EC-A2",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
@@ -10205,9 +10222,9 @@
       "actionsPerTurn": 1,
       "rotation": [
         "EC-D3",
-        "EC-D5",
+        "EC-A2",
         "EC-D4",
-        "EC-A2"
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
@@ -10234,12 +10251,13 @@
     "E_HOLO_RUNNER_NODE": {
       "id": "E_HOLO_RUNNER_NODE",
       "name": "Holo Runner Node",
-      "maxHP": 30,
+      "maxHP": 24,
       "actionsPerTurn": 1,
       "rotation": [
-        "EC-S1",
         "EC-A1",
-        "EC-S1"
+        "EC-S1",
+        "EC-A2",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
@@ -10270,9 +10288,9 @@
       "actionsPerTurn": 1,
       "rotation": [
         "EC-D3",
-        "EC-D5",
+        "EC-A2",
         "EC-D4",
-        "EC-A2"
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
@@ -10440,7 +10458,7 @@
     "E_ADMINISTRATOR_NULL_GOLIATH": {
       "id": "E_ADMINISTRATOR_NULL_GOLIATH",
       "name": "Administrator: Null Goliath",
-      "maxHP": 189,
+      "maxHP": 170,
       "actionsPerTurn": 2,
       "rotation": [
         "EC-A4",
@@ -10476,7 +10494,7 @@
     "E_NEXUS_ION_GOLIATH": {
       "id": "E_NEXUS_ION_GOLIATH",
       "name": "Nexus: Ion Goliath",
-      "maxHP": 150,
+      "maxHP": 135,
       "actionsPerTurn": 2,
       "rotation": [
         "EC-A4",
@@ -10512,7 +10530,7 @@
     "E_TITAN_HOLO_APEX": {
       "id": "E_TITAN_HOLO_APEX",
       "name": "Titan: Holo Apex",
-      "maxHP": 187,
+      "maxHP": 168,
       "actionsPerTurn": 2,
       "rotation": [
         "EC-A4",
@@ -10657,7 +10675,7 @@
     "E_OVERSEER_CHROME_ORACLE": {
       "id": "E_OVERSEER_CHROME_ORACLE",
       "name": "Overseer: Chrome Oracle",
-      "maxHP": 150,
+      "maxHP": 135,
       "actionsPerTurn": 2,
       "rotation": [
         "EC-A4",
@@ -10675,7 +10693,7 @@
     "E_DIRECTOR_CIRCUIT_HYDRA": {
       "id": "E_DIRECTOR_CIRCUIT_HYDRA",
       "name": "Director: Circuit Hydra",
-      "maxHP": 165,
+      "maxHP": 149,
       "actionsPerTurn": 2,
       "rotation": [
         "EC-A4",
@@ -10693,7 +10711,7 @@
     "E_DIRECTOR_PULSE_MAINFRAME": {
       "id": "E_DIRECTOR_PULSE_MAINFRAME",
       "name": "Director: Pulse Mainframe",
-      "maxHP": 181,
+      "maxHP": 163,
       "actionsPerTurn": 2,
       "rotation": [
         "EC-A4",
@@ -10729,7 +10747,7 @@
     "E_DIRECTOR_GHOST_ORACLE": {
       "id": "E_DIRECTOR_GHOST_ORACLE",
       "name": "Director: Ghost Oracle",
-      "maxHP": 170,
+      "maxHP": 153,
       "actionsPerTurn": 2,
       "rotation": [
         "EC-A4",
@@ -10873,7 +10891,7 @@
     "E_OVERSEER_STATIC_WARDEN": {
       "id": "E_OVERSEER_STATIC_WARDEN",
       "name": "Overseer: Static Warden",
-      "maxHP": 151,
+      "maxHP": 136,
       "actionsPerTurn": 2,
       "rotation": [
         "EC-A4",
@@ -10963,7 +10981,7 @@
     "E_ARCHON_KILO_MAINFRAME": {
       "id": "E_ARCHON_KILO_MAINFRAME",
       "name": "Archon: Kilo Mainframe",
-      "maxHP": 155,
+      "maxHP": 140,
       "actionsPerTurn": 2,
       "rotation": [
         "EC-A4",

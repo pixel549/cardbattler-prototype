@@ -81,6 +81,98 @@ const AI_EXPORT_OPTIONS_DEFAULTS = {
   floor: true,
   decks: true,
 };
+const AI_STALL_EXPORT_MS = 15000;
+const AI_STALL_RECOVER_MS = 28000;
+const AI_WATCHDOG_IDLE = {
+  active: false,
+  stagnantMs: 0,
+  exportTriggered: false,
+  recoveryTriggered: false,
+  lastChangedAt: 0,
+};
+
+function getFirewallStacksFromEntity(entity) {
+  return entity?.statuses?.find((status) => status.id === 'Firewall')?.stacks ?? 0;
+}
+
+function getAiStateSignature(state) {
+  if (!state) return 'none';
+
+  const base = [
+    state.mode ?? 'Unknown',
+    state.run?.act ?? 'x',
+    state.run?.floor ?? 'x',
+    state.run?.hp ?? 'x',
+    state.run?.gold ?? 'x',
+  ];
+
+  if (state.mode === 'Combat' && state.combat) {
+    const player = state.combat.player ?? {};
+    const handBits = (player.piles?.hand || [])
+      .map((cid) => {
+        const ci = state.combat.cardInstances?.[cid];
+        return ci ? `${ci.defId}:${ci.useCounter ?? 0}:${ci.finalMutationCountdown ?? 0}` : cid;
+      })
+      .join('|');
+    const enemyBits = (state.combat.enemies || [])
+      .map((enemy) => `${enemy.id}:${enemy.hp}:${getFirewallStacksFromEntity(enemy)}`)
+      .join('|');
+    return [
+      ...base,
+      state.combat.turn ?? 0,
+      player.hp ?? state.run?.hp ?? 0,
+      player.ram ?? 0,
+      getFirewallStacksFromEntity(player),
+      state.combat._scryPending ? 'scry' : 'combat',
+      handBits,
+      enemyBits,
+    ].join('::');
+  }
+
+  if (state.mode === 'Map' && state.map) {
+    return [
+      ...base,
+      state.map.currentNodeId ?? 'start',
+      (state.map.selectableNext || []).join(','),
+    ].join('::');
+  }
+
+  if (state.mode === 'Reward' && state.reward) {
+    return [
+      ...base,
+      (state.reward.cardChoices || []).join(','),
+      (state.reward.relicChoices || []).join(','),
+    ].join('::');
+  }
+
+  if (state.mode === 'Shop' && state.shop) {
+    return [
+      ...base,
+      (state.shop.offers || []).map((offer) => `${offer.kind}:${offer.defId ?? offer.relicId ?? offer.serviceId ?? '?'}`).join(','),
+      state.run?.gold ?? 0,
+    ].join('::');
+  }
+
+  if (state.mode === 'Event' && state.event) {
+    return [
+      ...base,
+      state.event.eventId ?? 'event',
+      state.event.pendingSelectOp ?? '',
+      (state.event.choices || []).map((choice) => choice.id || choice.label || '?').join(','),
+    ].join('::');
+  }
+
+  if (state.deckView && state.deck) {
+    return [
+      ...base,
+      'deckView',
+      state.shop?.pendingService ?? state.event?.pendingSelectOp ?? '',
+      (state.deck.master || []).length,
+    ].join('::');
+  }
+
+  return base.join('::');
+}
 
 function normalizeAiExportOptions(raw = null) {
   const out = { ...AI_EXPORT_OPTIONS_DEFAULTS };
@@ -2904,6 +2996,7 @@ function App() {
   const [aiStopAtAct, setAiStopAtAct]   = useState(null);
   const [aiStopAfterCombat, setAiStopAfterCombat] = useState(false);
   const [aiHandoffReason, setAiHandoffReason] = useState('');
+  const [aiWatchdog, setAiWatchdog] = useState(AI_WATCHDOG_IDLE);
   const [aiExportOptions, setAiExportOptions] = useState(() => {
     try {
       const stored = localStorage.getItem('cb_ai_export_options');
@@ -2945,6 +3038,14 @@ function App() {
   const aiTimerRef   = useRef(null);
   const stateRef     = useRef(state);
   const dataRef      = useRef(data);
+  const exportCurrentGameDataRef = useRef(async () => false);
+  const startNewRunRef = useRef(() => {});
+  const aiStallRef = useRef({
+    signature: null,
+    lastChangedAt: 0,
+    exportTriggered: false,
+    recoveryTriggered: false,
+  });
   // ── Per-run accumulator refs (all cleared on GameOver) ───────────────────
   const pendingEncountersRef  = useRef([]);   // finalised combat entries
   const pendingCardEventsRef  = useRef([]);   // reward offers + picks
@@ -3062,6 +3163,23 @@ function App() {
     }
   }, []);
 
+  const resetAiStallTracker = useCallback((signature = null) => {
+    const now = Date.now();
+    aiStallRef.current = {
+      signature,
+      lastChangedAt: now,
+      exportTriggered: false,
+      recoveryTriggered: false,
+    };
+    setAiWatchdog({
+      active: Boolean(signature),
+      stagnantMs: 0,
+      exportTriggered: false,
+      recoveryTriggered: false,
+      lastChangedAt: signature ? now : 0,
+    });
+  }, []);
+
   const stopAiForTakeover = useCallback((reason = 'Manual takeover ready.') => {
     clearAiTimer();
     aiEnabledRef.current = false;
@@ -3070,7 +3188,54 @@ function App() {
     setAiPaused(false);
     setAiStopAfterCombat(false);
     setAiHandoffReason(reason);
-  }, [clearAiTimer]);
+    resetAiStallTracker(null);
+  }, [clearAiTimer, resetAiStallTracker]);
+
+  const archiveInProgressRun = useCallback((outcome = 'stalled_restart', outcomeReason = 'AI stall auto-restart') => {
+    const currentState = stateRef.current;
+    const currentData = dataRef.current;
+    if (!currentState?.run || !currentData) return false;
+    const liveEncounter = combatStatsRef.current
+      ? finalizeEncounterForExport(
+          combatStatsRef.current,
+          currentState,
+          currentState.mode,
+          currentState.mode === 'Combat'
+            ? 'in_progress'
+            : (currentState.mode === 'Reward'
+                ? 'win'
+                : (currentState.mode === 'GameOver' ? 'loss' : combatStatsRef.current.result)),
+        )
+      : null;
+    const idx = ++runIndexRef.current;
+    const archived = {
+      ...buildRunRecord({
+        runIndex: idx,
+        state: currentState,
+        data: currentData,
+        seedMode,
+        aiPlaystyle,
+        encounters: liveEncounter
+          ? [...pendingEncountersRef.current, liveEncounter]
+          : pendingEncountersRef.current,
+        deckSnapshots: deckSnapshotsRef.current,
+        cardEvents: pendingCardEventsRef.current,
+        floorEvents: pendingFloorEventsRef.current,
+        outcome,
+      }),
+      outcomeReason,
+      endMode: currentState.mode ?? null,
+      watchdogTerminated: true,
+    };
+    combatStatsRef.current = null;
+    pendingEncountersRef.current = [];
+    pendingCardEventsRef.current = [];
+    pendingFloorEventsRef.current = [];
+    deckSnapshotsRef.current = [];
+    lastFloorRef.current = null;
+    setRunHistory((prev) => [...prev, archived]);
+    return true;
+  }, [aiPlaystyle, seedMode]);
 
   const runAiStepRef = useRef(() => {});
 
@@ -3091,6 +3256,62 @@ function App() {
       const currentState = stateRef.current;
       const currentData = dataRef.current;
       if (!currentState || !currentData) return;
+
+      const signature = getAiStateSignature(currentState);
+      const now = Date.now();
+      if (aiStallRef.current.signature !== signature) {
+        resetAiStallTracker(signature);
+      } else {
+        const stagnantMs = now - (aiStallRef.current.lastChangedAt || now);
+        if (stagnantMs >= AI_STALL_EXPORT_MS && !aiStallRef.current.exportTriggered) {
+          aiStallRef.current.exportTriggered = true;
+          setAiWatchdog((prev) => ({
+            ...prev,
+            active: true,
+            stagnantMs,
+            exportTriggered: true,
+          }));
+          setAiHandoffReason('AI stall detected. Exporting current run snapshot.');
+          queueMicrotask(() => {
+            exportCurrentGameDataRef.current?.().catch?.(() => {});
+          });
+        }
+        if (stagnantMs >= AI_STALL_RECOVER_MS && !aiStallRef.current.recoveryTriggered) {
+          aiStallRef.current.recoveryTriggered = true;
+          setAiWatchdog((prev) => ({
+            ...prev,
+            active: true,
+            stagnantMs,
+            exportTriggered: true,
+            recoveryTriggered: true,
+          }));
+
+          if (currentState.mode === 'Combat' && !currentState.combat?.combatOver) {
+            console.warn('[AI] stall detected in combat, forcing end turn once');
+            setAiHandoffReason('AI stall detected. Forced an end turn to recover.');
+            setState((prev) => {
+              try {
+                return dispatchWithJournal(prev, currentData, { type: 'Combat_EndTurn' });
+              } catch (e) {
+                console.error('[AI] stall recovery end turn failed', e);
+                return prev;
+              }
+            });
+            scheduleAiTick(Math.min(220, aiSpeed));
+            return;
+          }
+
+          console.warn('[AI] stall detected outside combat, exporting and starting a fresh run');
+          setAiHandoffReason('AI stall detected. Exported snapshot and started a fresh run.');
+          archiveInProgressRun('stalled_restart', 'AI stall auto-restart');
+          queueMicrotask(() => {
+            exportCurrentGameDataRef.current?.().catch?.(() => {});
+            startNewRunRef.current?.();
+          });
+          scheduleAiTick(Math.min(220, aiSpeed));
+          return;
+        }
+      }
 
       const mode = currentState.mode;
       const prevMode = prevModeRef.current;
@@ -3251,6 +3472,7 @@ function App() {
         lockedKeys: [...lockedFields],
       });
       setState(next);
+      resetAiStallTracker(getAiStateSignature(next));
       prevModeRef.current = null;
       scheduleAiTick(Math.min(120, aiSpeed));
       return;
@@ -3385,10 +3607,12 @@ function App() {
     aiSpeed,
     aiStopAfterCombat,
     aiStopAtAct,
+    archiveInProgressRun,
     customConfig,
     debugSeedInput,
     lockedFields,
     randomizeDebugSeed,
+    resetAiStallTracker,
     scheduleAiTick,
     seedMode,
     stopAiForTakeover,
@@ -3401,6 +3625,43 @@ function App() {
     }
     return clearAiTimer;
   }, [aiEnabled, aiPaused, aiSpeed, data, state ? 1 : 0, clearAiTimer, scheduleAiTick]);
+
+  useEffect(() => {
+    if (!aiEnabled || aiPaused) {
+      setAiWatchdog(AI_WATCHDOG_IDLE);
+      return undefined;
+    }
+    const syncWatchdog = () => {
+      const stallState = aiStallRef.current;
+      const stagnantMs = stallState.signature
+        ? Math.max(0, Date.now() - (stallState.lastChangedAt || Date.now()))
+        : 0;
+      setAiWatchdog((prev) => {
+        const next = {
+          active: Boolean(stallState.signature),
+          stagnantMs,
+          exportTriggered: stallState.exportTriggered,
+          recoveryTriggered: stallState.recoveryTriggered,
+          lastChangedAt: stallState.lastChangedAt || 0,
+        };
+        const prevSeconds = Math.floor((prev.stagnantMs || 0) / 1000);
+        const nextSeconds = Math.floor((next.stagnantMs || 0) / 1000);
+        if (
+          prev.active === next.active
+          && prev.exportTriggered === next.exportTriggered
+          && prev.recoveryTriggered === next.recoveryTriggered
+          && prev.lastChangedAt === next.lastChangedAt
+          && prevSeconds === nextSeconds
+        ) {
+          return prev;
+        }
+        return next;
+      });
+    };
+    syncWatchdog();
+    const intervalId = setInterval(syncWatchdog, 1000);
+    return () => clearInterval(intervalId);
+  }, [aiEnabled, aiPaused]);
 
   // ── Auto-export every 5 completed runs ────────────────────────────────────
   useEffect(() => {
@@ -3492,6 +3753,7 @@ function App() {
   // Keep window.exportGameData fresh so close-ai-grid.ps1 can trigger it via CDP
   useEffect(() => { window.exportGameData = exportRunData; }, [exportRunData]);
   useEffect(() => { window.exportCurrentGameData = exportCurrentGameData; }, [exportCurrentGameData]);
+  useEffect(() => { exportCurrentGameDataRef.current = exportCurrentGameData; }, [exportCurrentGameData]);
 
   const toggleAiEnabled = useCallback(() => {
     const next = !aiEnabledRef.current;
@@ -3500,20 +3762,23 @@ function App() {
     aiPausedRef.current = false;
     setAiEnabled(next);
     setAiPaused(false);
+    resetAiStallTracker(next ? getAiStateSignature(stateRef.current) : null);
     if (next) {
       setAiHandoffReason('');
     }
-  }, [clearAiTimer]);
+  }, [clearAiTimer, resetAiStallTracker]);
 
   const toggleAiPause = useCallback(() => {
     const next = !aiPausedRef.current;
     clearAiTimer();
     aiPausedRef.current = next;
     setAiPaused(next);
+    if (next) resetAiStallTracker(null);
+    else resetAiStallTracker(getAiStateSignature(stateRef.current));
     if (!next) {
       setAiHandoffReason('');
     }
-  }, [clearAiTimer]);
+  }, [clearAiTimer, resetAiStallTracker]);
 
   const takeOverNow = useCallback(() => {
     stopAiForTakeover('Manual takeover engaged.');
@@ -3536,8 +3801,10 @@ function App() {
       customOverrides: buildCustomOverrides(customConfig),
       lockedKeys: [...lockedFields],
     });
+    resetAiStallTracker(getAiStateSignature(newState));
     setState(newState);
   }
+  useEffect(() => { startNewRunRef.current = startNewRun; }, [startNewRun]);
 
   const handleAction = (action) => {
     if (action.type === 'Dev_AddHP') {
@@ -3671,6 +3938,7 @@ function App() {
         onExportCurrent={exportCurrentGameData}
         currentState={state}
         handoffReason={aiHandoffReason}
+        aiWatchdog={{ ...aiWatchdog, exportMs: AI_STALL_EXPORT_MS, recoveryMs: AI_STALL_RECOVER_MS }}
         debugSeed={debugSeedInput}       onDebugSeedChange={setDebugSeedInput}
         seedMode={seedMode}              onSeedModeChange={setSeedMode}
         randomize={randomizeDebugSeed}   onRandomizeToggle={setRandomizeDebugSeed}

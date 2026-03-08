@@ -1,0 +1,41 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(wc:*)",
+      "Bash(npm run build:*)",
+      "Bash(timeout /t 8 /nobreak)",
+      "Bash(npm run build:content:*)",
+      "Bash(npm run validate:content:*)",
+      "Bash(npx vite:*)",
+      "Bash(cmd.exe /c start http://localhost:5203)",
+      "Bash(rtk npm run dev:*)",
+      "Bash(where npm:*)",
+      "Bash(where:*)",
+      "Bash(npm run dev:*)",
+      "Bash(rtk grep:*)",
+      "Bash(rtk ls:*)",
+      "Bash(dir:*)",
+      "Bash(powershell -Command:*)",
+      "Bash(timeout:*)",
+      "Bash(rtk npm run build:*)",
+      "Bash(rtk --version:*)",
+      "Bash($env:PATH)",
+      "Bash(rtk proxy:*)",
+      "Bash(cmd /c \"echo %PATH%\")",
+      "Bash(tr:*)",
+      "Bash(set PATH)",
+      "Bash(rtk npm --version)",
+      "Bash(rtk:*)",
+      "Bash(cmd /c \"setx PATH \"\"%PATH%;C:\\\\Program Files\\\\nodejs\"\" /M\")",
+      "Bash(curl:*)",
+      "Bash(node -e:*)",
+      "Bash(python3:*)",
+      "Bash(ls -la \"C:\\\\Users\\\\jaste\\\\cardbattler\\\\Concept_art\\\\Cyberpunk Enemy Character Cards - Grok\"\" 2>/dev/null | grep -v ''^d'' || echo \"Directory access failed, trying alternative method... \")",
+      "Bash(node tools/build_content.cjs:*)",
+      "Bash(node tools/validate_content.cjs:*)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(node node_modules/vite/bin/vite.js:*)",
+      "Bash(node:*)"
+    ]
+  }
+}

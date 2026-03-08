@@ -1,124 +1,123 @@
 {
-  "seed": 42,
+  "seed": 555,
   "playstyle": "balanced",
   "finalMode": "GameOver",
-  "act": 2,
-  "floor": 16,
+  "act": 1,
+  "floor": 15,
   "hp": 0,
   "maxHP": 75,
-  "gold": 478,
-  "deckSize": 12,
+  "gold": 99,
+  "deckSize": 20,
   "deck": [
     "Strike",
     "Guard",
-    "RAM Cache",
+    "Patch",
+    "Charge Pack",
+    "Shieldbreak Pulse",
     "Zero-Day Injector",
-    "Emergency Reimage",
-    "Index Cache",
-    "Zero-Day Injector",
-    "Stack Trace",
-    "Hard Reset",
-    "System Quarantine",
-    "Signal Amplifier",
-    "Packet Leech"
+    "Hook Script",
+    "Firewall Top-Up",
+    "Blood Battery",
+    "Underclock Pulse",
+    "Cold Boot",
+    "Sandbox Shot",
+    "Hot Swap",
+    "Hot Swap",
+    "Heat Burst",
+    "Heat Burst",
+    "Heat Burst",
+    "Heat Burst",
+    "Heavy Shot",
+    "RAM Burst"
   ],
-  "steps": 69,
+  "steps": 199,
   "encounters": [
     {
       "act": 1,
       "floor": 2,
       "hpBefore": 75,
-      "enemies": [],
+      "enemies": [
+        "E_HOLO_RUNNER_NODE",
+        "E_HOLO_SHAMAN_CREW"
+      ],
       "result": "win",
-      "hpAfter": 75
+      "hpAfter": 64
+    },
+    {
+      "act": 1,
+      "floor": 3,
+      "hpBefore": 64,
+      "enemies": [
+        "E_LEAK_WRAITH"
+      ],
+      "result": "win",
+      "hpAfter": 59
     },
     {
       "act": 1,
       "floor": 4,
-      "hpBefore": 75,
-      "enemies": [],
+      "hpBefore": 59,
+      "enemies": [
+        "E_HOLO_POD_NODE",
+        "E_HOLO_SAPPER_CELL"
+      ],
       "result": "win",
-      "hpAfter": 75
+      "hpAfter": 57
     },
     {
       "act": 1,
-      "floor": 6,
-      "hpBefore": 75,
-      "enemies": [],
+      "floor": 5,
+      "hpBefore": 57,
+      "enemies": [
+        "E_HOLO_SCOUT_PROXY",
+        "E_HOLO_SNIPER_SHARD"
+      ],
       "result": "win",
-      "hpAfter": 75
+      "hpAfter": 46
     },
     {
       "act": 1,
       "floor": 7,
-      "hpBefore": 75,
-      "enemies": [],
+      "hpBefore": 69,
+      "enemies": [
+        "E_VECTOR_GOON_PROXY",
+        "E_CIPHER_POD_SHARD"
+      ],
       "result": "win",
-      "hpAfter": 75
+      "hpAfter": 61
     },
     {
       "act": 1,
-      "floor": 12,
-      "hpBefore": 67,
-      "enemies": [],
+      "floor": 10,
+      "hpBefore": 71,
+      "enemies": [
+        "E_ION_SNIPER_RIG"
+      ],
       "result": "win",
-      "hpAfter": 67
+      "hpAfter": 71
     },
     {
       "act": 1,
       "floor": 13,
       "hpBefore": 65,
-      "enemies": [],
+      "enemies": [
+        "E_CIPHER_HACKER_MK_II",
+        "E_CIRCUIT_HACKER_ARRAY"
+      ],
       "result": "win",
-      "hpAfter": 65
+      "hpAfter": 45
     },
     {
       "act": 1,
       "floor": 15,
-      "hpBefore": 61,
+      "hpBefore": 60,
       "enemies": [
-        "E_OVERSEER_ROGUE_APEX"
-      ],
-      "result": "win",
-      "hpAfter": 21
-    },
-    {
-      "act": 2,
-      "floor": 16,
-      "hpBefore": 19,
-      "enemies": [
-        "E_STATIC_SCOUT_MK_II",
-        "E_VANTA_ENFORCER_SWARM"
+        "E_ARCHON_NULL_GOLIATH"
       ],
       "result": "loss",
       "hpAfter": 0
     }
   ],
-  "events": [
-    {
-      "act": 1,
-      "floor": 3,
-      "eventId": "NeuralBooster",
-      "choice": "sell"
-    },
-    {
-      "act": 1,
-      "floor": 5,
-      "eventId": "AbandonedLab",
-      "choice": "leave"
-    },
-    {
-      "act": 1,
-      "floor": 10,
-      "eventId": "ShadowBroker",
-      "choice": "browse"
-    },
-    {
-      "act": 1,
-      "floor": 14,
-      "eventId": "Extraction",
-      "choice": "decline"
-    }
-  ],
+  "events": [],
   "errors": []
 }

@@ -8,7 +8,7 @@ import { sfx } from '../game/sounds';
  *
  * Layout (top to bottom):
  * 1. Enemy zone (top) - enemies with prominent HP bars, status effects, intent
- * 2. Center zone - selected card display with mutation callouts + EXECUTE
+ * 2. Center zone - selected card display with mutation callouts
  * 3. Player zone - player stats (left) + hand cards (right)
  * 4. Bottom bar - RAM blocks + pile counts + END TURN
  */
@@ -46,6 +46,9 @@ const TYPE_COLORS = {
   Status: C.textDim,
   default: C.neonCyan,
 };
+
+const EMPTY_ARRAY = [];
+const EMPTY_OBJECT = {};
 
 // ============================================================
 // STATUS EFFECT ICONS & COLORS
@@ -89,6 +92,12 @@ function getHealthColor(current, max) {
   return C.neonRed;
 }
 
+function formatMutationCounter(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return null;
+  return Math.max(0, Math.ceil(numeric));
+}
+
 // ── Mutation tier/polarity colour system ──
 // Polarity derived from ID: '+' = positive, '-S' = special, else negative
 const MUT_COLORS_NEG = { A:'#999', B:'#b8a020', C:'#cc6010', D:'#dd3310', E:'#ee1818', F:'#dd0828', G:'#cc0040', H:'#bb0060', I:'#aa0080', J:'#880000' };
@@ -117,6 +126,194 @@ function getMutLabel(id) {
   return t;
 }
 
+function parseMutationPatch(patchStr) {
+  if (!patchStr) return [];
+  const entries = [];
+  for (const segment of String(patchStr).split('|')) {
+    const tokens = segment.split(':');
+    if (tokens.length < 2) continue;
+    let i = 0;
+    const trigger = tokens[i++];
+    let chance = null;
+    let condition = null;
+    if (tokens[i] === 'chance') {
+      i++;
+      chance = parseFloat(tokens[i++]) || null;
+    }
+    if (tokens[i]?.startsWith('If')) condition = tokens[i++];
+    const op = tokens[i++];
+    const args = tokens.slice(i);
+    if (trigger && op) entries.push({ trigger, chance, condition, op, args });
+  }
+  return entries;
+}
+
+function formatMutationMultiplier(multiplier) {
+  return Math.round(Math.abs((multiplier - 1) * 100));
+}
+
+function describeMutationPatchEntry(entry) {
+  const chancePrefix = entry.chance != null ? `${Math.round(entry.chance * 100)}% chance ` : '';
+  const triggerPrefix =
+    entry.trigger === 'passive' ? 'Passive: '
+      : entry.trigger === 'onPlay' ? 'On play: '
+        : entry.trigger === 'onApply' ? 'When gained: '
+          : entry.trigger === 'onTurnStart' ? 'At turn start: '
+            : entry.trigger === 'onMutate' ? 'When this mutates: '
+              : entry.trigger === 'onBrick' ? 'On brick: '
+                : `${humanizeStatusId(entry.trigger)}: `;
+  const conditionPrefix =
+    entry.condition === 'IfInHand' ? 'while in hand, '
+      : entry.condition === 'IfExactKill' ? 'if this exact-kills, '
+        : entry.condition === 'IfEnemyWeak' ? 'if an enemy is Weak, '
+          : '';
+
+  switch (entry.op) {
+    case 'DealSelfDamage':
+      if (entry.args[0] === 'EffectHalf') return `${triggerPrefix}${conditionPrefix}take damage equal to half this card's base damage`;
+      return `${triggerPrefix}${conditionPrefix}take ${entry.args[0] || 0} damage`;
+    case 'FirstPlayExtraCost':
+      return `${triggerPrefix}first play each combat costs +${entry.args[0] || 0} RAM`;
+    case 'EffectMult': {
+      const mult = parseFloat(entry.args[0]) || 1;
+      return mult < 1
+        ? `${triggerPrefix}all effects are ${formatMutationMultiplier(mult)}% weaker`
+        : `${triggerPrefix}all effects are ${formatMutationMultiplier(mult)}% stronger`;
+    }
+    case 'DamageMult': {
+      const mult = parseFloat(entry.args[0]) || 1;
+      return mult < 1
+        ? `${triggerPrefix}damage is ${formatMutationMultiplier(mult)}% lower`
+        : `${triggerPrefix}damage is ${formatMutationMultiplier(mult)}% higher`;
+    }
+    case 'RandomizeEffectMult':
+      return `${triggerPrefix}effects roll between ${Math.round((parseFloat(entry.args[0]) || 0) * 100)}% and ${Math.round((parseFloat(entry.args[1]) || 0) * 100)}% power`;
+    case 'MutationChanceMult': {
+      const mult = parseFloat(entry.args[0]) || 1;
+      return mult < 1
+        ? `${triggerPrefix}future mutations arrive ${formatMutationMultiplier(mult)}% slower`
+        : `${triggerPrefix}future mutations arrive ${formatMutationMultiplier(mult)}% faster`;
+    }
+    case 'CountdownMult': {
+      const mult = parseFloat(entry.args[0]) || 1;
+      return mult < 1
+        ? `${triggerPrefix}final mutation countdown moves ${formatMutationMultiplier(mult)}% slower`
+        : `${triggerPrefix}final mutation countdown moves ${formatMutationMultiplier(mult)}% faster`;
+    }
+    case 'DrawMod':
+      return `${triggerPrefix}draw is modified by ${entry.args[0] || 0}`;
+    case 'ApplySelfStatus':
+      return `${triggerPrefix}${conditionPrefix}gain ${entry.args[1] || 1} ${humanizeStatusId(entry.args[0])}`;
+    case 'ApplyEnemyStatus':
+      return `${triggerPrefix}${conditionPrefix}apply ${entry.args[1] || 1} ${humanizeStatusId(entry.args[0])}`;
+    case 'LoseRAM':
+      return `${triggerPrefix}${conditionPrefix}lose ${entry.args[0] || 0} RAM`;
+    case 'GainFirewall':
+      return `${triggerPrefix}${conditionPrefix}gain ${entry.args[0] || 0} Firewall`;
+    case 'LoseFirewall':
+      return `${triggerPrefix}${conditionPrefix}lose ${entry.args[0] || 0} Firewall`;
+    case 'ClearSelfFirewall':
+      return `${triggerPrefix}${conditionPrefix}lose all Firewall`;
+    case 'Fizzle':
+      return `${chancePrefix}${triggerPrefix}${conditionPrefix}fizzles and does nothing`;
+    case 'SwapTarget':
+      return `${chancePrefix}${triggerPrefix}${conditionPrefix}can hit the wrong target`;
+    case 'DeferredPlay':
+      return `${triggerPrefix}resolves on a delay`;
+    case 'NotFirst':
+      return `${triggerPrefix}cannot be the first card played this turn`;
+    case 'MustPlayFirst':
+      return `${triggerPrefix}must be the first card played this turn`;
+    case 'AddCopyToHand':
+      return `${triggerPrefix}${conditionPrefix}add a ${entry.args[0] || ''} copy to hand`.trim();
+    case 'DelayedSelfDamage':
+      return `${triggerPrefix}${conditionPrefix}take ${entry.args[0] || 0} delayed damage`;
+    case 'AccelerateCountdown':
+      return `${triggerPrefix}${conditionPrefix}final mutation countdown drops by ${entry.args[0] || 0}`;
+    case 'IncreaseCostPermanent':
+      return `${triggerPrefix}${conditionPrefix}permanently costs +${entry.args[0] || 0} RAM`;
+    case 'ReduceMaxRAM':
+      return `${triggerPrefix}lose ${entry.args[0] || 0} max RAM`;
+    case 'ReduceMaxHP':
+      return `${triggerPrefix}lose ${entry.args[0] || 0} max HP`;
+    case 'SpreadMutation':
+      return `${triggerPrefix}spread ${entry.args[0] || 1} extra mutation to another card`;
+    case 'CopyMutationTo':
+      return `${triggerPrefix}copy a mutation to another card`;
+    case 'AffectAdjacentCard':
+      return `${chancePrefix}${triggerPrefix}${conditionPrefix}can affect a neighbouring hand card`;
+    case 'MaxHandMod':
+      return `${triggerPrefix}max hand size ${entry.args[0] || 0}`;
+    case 'SplitDamageSelf':
+      return `${triggerPrefix}${Math.round((parseFloat(entry.args[0]) || 0) * 100)}% of its damage reflects back to you`;
+    case 'DelayEffect':
+      return `${triggerPrefix}effects are delayed by ${entry.args[0] || 0} turn`;
+    case 'RandomizeCost':
+      return `${triggerPrefix}RAM cost becomes unstable`;
+    case 'InvertEffects':
+      return `${triggerPrefix}effects invert`;
+    case 'UnstableTiming':
+      return `${triggerPrefix}timing becomes unstable`;
+    case 'ChokePenalty':
+      return `${triggerPrefix}unused-turn penalty applies`;
+    case 'GrantEnemyEffect':
+      return `${triggerPrefix}grants an enemy part of this effect`;
+    case 'HiddenInvert':
+      return `${triggerPrefix}behaves opposite to expectation`;
+    case 'LoseType':
+      return `${triggerPrefix}loses its card type`;
+    case 'RequireHPAbove':
+      return `${triggerPrefix}only works above ${entry.args[0] || 0}% HP`;
+    case 'ConditionalPenalty':
+      return `${triggerPrefix}conditional penalty applies`;
+    case 'DisabledBelowHP':
+      return `${triggerPrefix}is disabled below ${entry.args[0] || 0}% HP`;
+    case 'RequireEnemyStatus':
+      return `${triggerPrefix}needs an affected enemy to work`;
+    case 'CannotFollowPrevious':
+      return `${triggerPrefix}cannot be played right after the previous card`;
+    case 'LockedSlot':
+      return `${triggerPrefix}is locked to one hand slot`;
+    case 'PlayWindowTurns':
+      return `${triggerPrefix}must be played within ${entry.args[0] || 0} turn`;
+    case 'Disabled':
+      return `${triggerPrefix}card is disabled`;
+    case 'NoEffect':
+      return `${triggerPrefix}card has no effect`;
+    case 'TransferToEnemy':
+      return `${triggerPrefix}jumps to the enemy network`;
+    case 'LockHand':
+      return `${triggerPrefix}locks the rest of your hand`;
+    case 'MutationResist':
+      return `${triggerPrefix}${Math.round((parseFloat(entry.args[0]) || 0) * 100)}% resistance to future mutations`;
+    case 'SelfDamageResist':
+      return `${triggerPrefix}${Math.round((parseFloat(entry.args[0]) || 0) * 100)}% less mutation self-damage`;
+    case 'MutationTierBias':
+      return `${triggerPrefix}future mutations bias toward ${String(entry.args[0] || '').toLowerCase()} tiers`;
+    case 'MutationBlock':
+      return `${triggerPrefix}blocks ${entry.args[0] || 0} future mutation`;
+    case 'RAMBufferMod':
+      return `${triggerPrefix}RAM buffer +${entry.args[0] || 0}`;
+    default:
+      return `${triggerPrefix}${conditionPrefix}${entry.op}${entry.args.length ? ` (${entry.args.join(', ')})` : ''}`;
+  }
+}
+
+function getMutationDetailLines(mut) {
+  if (!mut) return [];
+  const lines = [];
+  if (mut.ramCostDelta > 0) lines.push(`Costs +${mut.ramCostDelta} RAM`);
+  if (mut.ramCostDelta < 0) lines.push(`Costs ${Math.abs(mut.ramCostDelta)} less RAM`);
+  if (mut.useCounterDelta > 0) lines.push(`Mutates ${mut.useCounterDelta} use${mut.useCounterDelta === 1 ? '' : 's'} later`);
+  if (mut.useCounterDelta < 0) lines.push(`Mutates ${Math.abs(mut.useCounterDelta)} use${Math.abs(mut.useCounterDelta) === 1 ? '' : 's'} sooner`);
+  if (mut.finalCountdownDelta > 0) lines.push(`Final mutation delayed by ${mut.finalCountdownDelta}`);
+  if (mut.finalCountdownDelta < 0) lines.push(`Final mutation accelerated by ${Math.abs(mut.finalCountdownDelta)}`);
+  for (const entry of parseMutationPatch(mut.patch)) {
+    lines.push(describeMutationPatchEntry(entry));
+  }
+  return lines;
+}
+
 function getIntentIcon(intentType) {
   switch (intentType) {
     case 'Attack':  return '\u2694';   // ⚔
@@ -143,7 +340,8 @@ function getIntentColor(intentType) {
 // ============================================================
 // STATUS DESCRIPTIONS (shown in tooltips on hover/tap)
 // ============================================================
-const STATUS_DESCRIPTIONS = {
+/* legacy status descriptions retained during mojibake cleanup
+const LEGACY_STATUS_DESCRIPTIONS = {
   Firewall:        'Persistent shield — absorbs incoming damage before block/HP. Does NOT reset each turn.',
   Weak:            'Deal 25% less damage while active. Decays 1/turn.',
   Vulnerable:      'Take 50% more incoming damage while active. Decays 1/turn.',
@@ -162,6 +360,37 @@ const STATUS_DESCRIPTIONS = {
   CorruptedSector: 'Cannot gain block this turn. Decays 1/turn.',
   DazedPackets:    'Scrambled packets: −20% outgoing damage per stack (max 80%). Decays 1/turn.',
 };
+
+*/
+
+const STATUS_DESCRIPTIONS = {
+  Firewall:        'Persistent shield - absorbs incoming damage before HP and soft-decays by 20% each turn.',
+  Weak:            'Deal 25% less damage while active. Decays 1/turn.',
+  Vulnerable:      'Take 50% more incoming damage while active. Decays 1/turn.',
+  Leak:            'DoT: 1 damage per stack each turn (data hemorrhage). Decays 1/turn.',
+  ExposedPorts:    'Take 40% more incoming damage while active. Decays 1/turn.',
+  SensorGlitch:    'Reduces outgoing damage -15% per stack (max 60%). Decays 1/turn.',
+  Corrode:         'Strips Firewall and deals 1 HP damage per stack each turn. Decays 1/turn.',
+  Underclock:      'Reduces outgoing damage -10% per stack (max 50%). Decays 1/turn.',
+  Overclock:       'Boosts outgoing damage +25% per stack (max +150%). Decays 1/turn.',
+  Nanoflow:        'Heals HP equal to stacks at start of each turn. Decays 1/turn.',
+  TargetSpoof:     'Confused targeting: -25% damage per stack (max 75%). Decays 1/turn.',
+  Overheat:        'DoT: deals stacks x HP damage to self each turn. Decays 1/turn.',
+  Throttled:       'Reduces outgoing damage -15% per stack (max 60%). Decays 1/turn.',
+  TraceBeacon:     'Tracking marker: take +20% damage per stack from all sources.',
+  Burn:            'DoT: 2 HP damage per stack each turn. Decays 1/turn.',
+  CorruptedSector: 'Cannot gain Firewall this turn. Decays 1/turn.',
+  DazedPackets:    'Scrambled packets: -20% outgoing damage per stack (max 80%). Decays 1/turn.',
+};
+
+function formatStatusEffectDescription(statusId, stacks, verb = 'Apply') {
+  const normalizedStatusId = normalizeStatusId(statusId);
+  const statusLabel = humanizeStatusId(normalizedStatusId);
+  const amount = stacks ?? '?';
+  const baseLine = `${verb} ${amount} ${statusLabel}.`;
+  const detail = STATUS_DESCRIPTIONS[normalizedStatusId];
+  return detail ? `${baseLine} ${detail}` : baseLine;
+}
 
 // ============================================================
 // EFFECT COLOUR CODING (from player perspective)
@@ -199,6 +428,8 @@ function classifyRawTextLine(text, perspective) {
   } else {
     // enemy card — classify from player's perspective
     if (/deal \d+ damage/.test(t))                return C.neonRed;    // enemy attacks → bad
+    if (/deal that much damage/.test(t) || /apply that much damage/.test(t)) return C.neonRed;
+    if (/strip \d+ firewall/.test(t))             return C.neonRed;
     if (/apply \d+ /.test(t) || /apply [a-z]/i.test(t.toLowerCase())) return C.neonRed; // debuffs player
     if (/gain \d+ firewall/.test(t))              return '#ff9944';    // enemy blocks → neutral/bad
     if (/gain \d+ nanoflow/.test(t) || /heal \d+ hp/.test(t)) return '#ff9944'; // enemy heals → bad
@@ -219,7 +450,7 @@ function classifyOp(eff, perspective) {
   } else {
     if (eff.op === 'DealDamage') return C.neonRed;
     if (eff.op === 'ApplyStatus') return C.neonRed;
-    return '#ff9944'; // enemy block/heal = amber
+    return '#ff9944'; // enemy defense/heal = amber
   }
 }
 
@@ -229,7 +460,7 @@ function formatOpLine(eff) {
   if (eff.op === 'Heal')       return `Heal ${eff.amount} HP`;
   if (eff.op === 'GainRAM')    return `Gain ${eff.amount} RAM`;
   if (eff.op === 'DrawCards')  return `Draw ${eff.amount} card${eff.amount > 1 ? 's' : ''}`;
-  if (eff.op === 'ApplyStatus') return `Apply ${eff.stacks} ${eff.statusId}`;
+  if (eff.op === 'ApplyStatus') return `Apply ${eff.stacks} ${humanizeStatusId(eff.statusId)}`;
   if (eff.op === 'LoseRAM')    return `Lose ${eff.amount} RAM`;
   return eff.op;
 }
@@ -281,11 +512,11 @@ function formatEffects(effects) {
   if (!effects || effects.length === 0) return 'No effect';
   return effects.map(e => {
     if (e.op === 'DealDamage') return `${e.amount} dmg`;
-    if (e.op === 'GainBlock') return `+${e.amount} blk`;
+    if (e.op === 'GainBlock') return `+${e.amount} FW`;
     if (e.op === 'Heal') return `+${e.amount} hp`;
     if (e.op === 'GainRAM') return `+${e.amount} RAM`;
     if (e.op === 'DrawCards') return `Draw ${e.amount}`;
-    if (e.op === 'ApplyStatus') return `${e.stacks}x ${e.statusId}`;
+    if (e.op === 'ApplyStatus') return `${e.stacks}x ${humanizeStatusId(e.statusId)}`;
     if (e.op === 'RawText') return e.text;
     return e.op;
   }).join(' \u00B7 ');
@@ -295,14 +526,499 @@ function formatEffectsLong(effects) {
   if (!effects || effects.length === 0) return ['No effect'];
   return effects.map(e => {
     if (e.op === 'DealDamage') return `Deal ${e.amount} damage`;
-    if (e.op === 'GainBlock') return `Gain ${e.amount} Block`;
+    if (e.op === 'GainBlock') return `Gain ${e.amount} Firewall`;
     if (e.op === 'Heal') return `Heal ${e.amount} HP`;
     if (e.op === 'GainRAM') return `Gain ${e.amount} RAM`;
     if (e.op === 'DrawCards') return `Draw ${e.amount} card${e.amount > 1 ? 's' : ''}`;
-    if (e.op === 'ApplyStatus') return `Apply ${e.stacks} ${e.statusId}`;
+    if (e.op === 'ApplyStatus') return `Apply ${e.stacks} ${humanizeStatusId(e.statusId)}`;
     if (e.op === 'RawText') return e.text;
     return e.op;
   });
+}
+
+function humanizeStatusId(rawStatusId) {
+  return normalizeStatusId(rawStatusId)?.replace(/([a-z])([A-Z])/g, '$1 $2') || rawStatusId;
+}
+
+function normalizeStatusId(rawStatusId) {
+  if (!rawStatusId) return rawStatusId;
+  const matchedId = Object.keys(STATUS_META).find((statusId) => statusId.toLowerCase() === rawStatusId.toLowerCase());
+  return matchedId || rawStatusId;
+}
+
+const CARD_KEYWORD_DESCRIPTIONS = {
+  Volatile: 'Volatile - discarded after use.',
+  OneShot: 'One-Shot - permanently removed after use.',
+  Exhaust: 'Exhaust - removed from the deck for the rest of this combat.',
+  Ethereal: 'Ethereal - exhausted if not played this turn.',
+  Power: 'Power - stays in play permanently and provides ongoing passive effects.',
+  Core: 'Core - stable starter code that does not mutate.',
+};
+
+const CARD_KEYWORD_COLORS = {
+  Volatile: C.neonOrange,
+  OneShot: C.neonRed,
+  Exhaust: C.neonPurple,
+  Ethereal: C.neonPurple,
+  Power: C.neonPurple,
+  Core: C.neonCyan,
+};
+
+const CARD_KEYWORD_ICONS = {
+  Volatile: '!',
+  OneShot: '1x',
+  Exhaust: 'EXH',
+  Ethereal: 'ETH',
+  Power: 'PWR',
+  Core: 'CORE',
+};
+
+const CARD_KEYWORD_ALIAS_TO_ID = {
+  firewall: 'Firewall',
+  weak: 'Weak',
+  vulnerable: 'Vulnerable',
+  leak: 'Leak',
+  'exposed ports': 'ExposedPorts',
+  exposedports: 'ExposedPorts',
+  'sensor glitch': 'SensorGlitch',
+  sensorglitch: 'SensorGlitch',
+  corrode: 'Corrode',
+  underclock: 'Underclock',
+  overclock: 'Overclock',
+  overclocked: 'Overclock',
+  nanoflow: 'Nanoflow',
+  'target spoof': 'TargetSpoof',
+  targetspoof: 'TargetSpoof',
+  throttled: 'Throttled',
+  'trace beacon': 'TraceBeacon',
+  tracebeacon: 'TraceBeacon',
+  overheat: 'Overheat',
+  'corrupted sector': 'CorruptedSector',
+  corruptedsector: 'CorruptedSector',
+  'dazed packets': 'DazedPackets',
+  dazedpackets: 'DazedPackets',
+  volatile: 'Volatile',
+  oneshot: 'OneShot',
+  'one shot': 'OneShot',
+  exhaust: 'Exhaust',
+  ethereal: 'Ethereal',
+  power: 'Power',
+  core: 'Core',
+};
+
+const CARD_KEYWORD_PATTERNS = [
+  'Sensor Glitch',
+  'Exposed Ports',
+  'Target Spoof',
+  'Trace Beacon',
+  'Corrupted Sector',
+  'Dazed Packets',
+  'Overclocked',
+  'Overclock',
+  'Underclock',
+  'Firewall',
+  'Vulnerable',
+  'Nanoflow',
+  'Throttled',
+  'Overheat',
+  'Corrode',
+  'Volatile',
+  'One Shot',
+  'OneShot',
+  'Exhaust',
+  'Ethereal',
+  'Power',
+  'Core',
+  'Weak',
+  'Leak',
+].sort((a, b) => b.length - a.length);
+
+const CARD_KEYWORD_REGEX = new RegExp(`\\b(${CARD_KEYWORD_PATTERNS.map((token) => token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})\\b`, 'gi');
+
+function normalizeKeywordLookup(rawKeyword) {
+  return String(rawKeyword || '')
+    .toLowerCase()
+    .replace(/[^a-z]+/g, ' ')
+    .trim();
+}
+
+function getCardKeywordInfo(rawKeyword) {
+  const keywordId = CARD_KEYWORD_ALIAS_TO_ID[normalizeKeywordLookup(rawKeyword)];
+  if (!keywordId) return null;
+
+  if (STATUS_DESCRIPTIONS[keywordId]) {
+    const meta = getStatusMeta(keywordId);
+    return {
+      id: keywordId,
+      label: humanizeStatusId(keywordId),
+      color: meta.color,
+      icon: meta.icon,
+      description: STATUS_DESCRIPTIONS[keywordId],
+    };
+  }
+
+  return {
+    id: keywordId,
+    label: keywordId === 'OneShot' ? 'One-Shot' : keywordId,
+    color: CARD_KEYWORD_COLORS[keywordId] || C.neonCyan,
+    icon: CARD_KEYWORD_ICONS[keywordId] || 'i',
+    description: CARD_KEYWORD_DESCRIPTIONS[keywordId],
+  };
+}
+
+function getVisibleCardTags(tags = EMPTY_ARRAY) {
+  return tags.filter((tag) => Boolean(getCardKeywordInfo(tag)));
+}
+
+function KeywordTooltipToken({ text, asChip = false, compact = false }) {
+  const info = getCardKeywordInfo(text);
+  const [tipVisible, setTipVisible] = React.useState(false);
+  const [tipPos, setTipPos] = React.useState({ x: 0, y: 0 });
+  const holdRef = useRef(null);
+  const suppressClickRef = useRef(false);
+
+  if (!info) return <>{text}</>;
+
+  const openFromTarget = (target, x = null, y = null) => {
+    const rect = target.getBoundingClientRect();
+    setTipPos({
+      x: x ?? rect.left + (rect.width / 2),
+      y: y ?? rect.top,
+    });
+    setTipVisible(true);
+  };
+
+  const clearHold = () => {
+    if (holdRef.current) {
+      window.clearTimeout(holdRef.current);
+      holdRef.current = null;
+    }
+  };
+
+  const tokenStyle = asChip ? {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: compact ? 3 : 4,
+    padding: compact ? '1px 4px' : '2px 6px',
+    borderRadius: 4,
+    fontFamily: MONO,
+    fontSize: compact ? 7 : 8,
+    fontWeight: 700,
+    backgroundColor: `${info.color}16`,
+    color: info.color,
+    border: `1px solid ${info.color}30`,
+    boxShadow: '0 1px 6px rgba(0,0,0,0.22)',
+    cursor: 'help',
+    pointerEvents: 'auto',
+  } : {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 3,
+    fontFamily: MONO,
+    color: info.color,
+    textDecoration: `underline dotted ${info.color}`,
+    textUnderlineOffset: '0.16em',
+    cursor: 'help',
+    pointerEvents: 'auto',
+  };
+
+  return (
+    <span style={{ position: 'relative', display: 'inline-flex' }}>
+      <span
+        title={`${info.label}: ${info.description}`}
+        onMouseEnter={(e) => { e.stopPropagation(); openFromTarget(e.currentTarget, e.clientX, e.clientY); }}
+        onMouseLeave={() => setTipVisible(false)}
+        onPointerDown={(e) => {
+          if (e.pointerType !== 'touch') return;
+          e.stopPropagation();
+          suppressClickRef.current = false;
+          clearHold();
+          holdRef.current = window.setTimeout(() => {
+            suppressClickRef.current = true;
+            openFromTarget(e.currentTarget);
+          }, 420);
+        }}
+        onPointerUp={(e) => {
+          if (e.pointerType === 'touch') e.stopPropagation();
+          clearHold();
+        }}
+        onPointerCancel={clearHold}
+        onPointerLeave={clearHold}
+        onClick={(e) => {
+          e.stopPropagation();
+          if (suppressClickRef.current) {
+            e.preventDefault();
+            suppressClickRef.current = false;
+            return;
+          }
+          openFromTarget(e.currentTarget);
+          setTipVisible((visible) => !visible);
+        }}
+        style={tokenStyle}
+      >
+        {asChip && <span style={{ fontSize: compact ? 6 : 7 }}>{info.icon}</span>}
+        <span>{text}</span>
+      </span>
+      {tipVisible && (
+        <div
+          style={{
+            position: 'fixed',
+            left: Math.min(tipPos.x + 8, window.innerWidth - 220),
+            top: tipPos.y - 8,
+            transform: 'translateY(-100%)',
+            zIndex: 9999,
+            backgroundColor: '#0d0d18',
+            border: `1px solid ${info.color}50`,
+            borderRadius: 8,
+            padding: '7px 10px',
+            maxWidth: 210,
+            boxShadow: `0 4px 20px rgba(0,0,0,0.85), 0 0 12px ${info.color}20`,
+            pointerEvents: 'none',
+          }}
+        >
+          <div style={{ fontFamily: MONO, fontWeight: 700, fontSize: 9, color: info.color, marginBottom: 4, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+            {info.icon} {info.label}
+          </div>
+          <div style={{ fontFamily: MONO, fontSize: 9, color: '#b0b0b0', lineHeight: 1.5 }}>
+            {info.description}
+          </div>
+        </div>
+      )}
+    </span>
+  );
+}
+
+function renderKeywordText(text, keyPrefix, options = {}) {
+  if (!text) return text;
+  const parts = String(text).split(CARD_KEYWORD_REGEX);
+  return parts.map((part, index) => {
+    const info = getCardKeywordInfo(part);
+    if (!info) return <React.Fragment key={`${keyPrefix}-${index}`}>{part}</React.Fragment>;
+    return (
+      <KeywordTooltipToken
+        key={`${keyPrefix}-${index}`}
+        text={part}
+        asChip={options.asChip}
+        compact={options.compact}
+      />
+    );
+  });
+}
+
+function parseIntentRawTextBadges(text, enemy) {
+  if (!text) return EMPTY_ARRAY;
+
+  const firewallStacks = enemy?.statuses?.find((status) => status.id === 'Firewall')?.stacks ?? 0;
+  const parts = text.split(/(?:\.\s*|\s*;\s*|\s*\|\s*)/).map((part) => part.trim()).filter(Boolean);
+  const badges = [];
+
+  for (const part of parts) {
+    let match = null;
+
+    if ((match = part.match(/deal\s+(\d+)\s+damage/i))) {
+      badges.push({ icon: '\u2694', value: match[1], label: 'Damage', description: part, color: C.neonRed });
+      continue;
+    }
+    if ((match = part.match(/gain\s+(\d+)\s+(?:block|firewall)/i))) {
+      badges.push({
+        icon: getStatusMeta('Firewall').icon,
+        value: match[1],
+        label: 'Firewall',
+        description: formatStatusEffectDescription('Firewall', match[1], 'Gain'),
+        color: getStatusMeta('Firewall').color,
+      });
+      continue;
+    }
+    if ((match = part.match(/heal\s+(\d+)\s+hp/i))) {
+      badges.push({ icon: '\u2665', value: match[1], label: 'Heal', description: part, color: C.neonGreen });
+      continue;
+    }
+    if ((match = part.match(/gain\s+(\d+)\s+ram/i))) {
+      badges.push({ icon: '\u26A1', value: match[1], label: 'RAM', description: part, color: C.neonYellow });
+      continue;
+    }
+    if ((match = part.match(/draw\s+(\d+)/i))) {
+      badges.push({ icon: '\u21BB', value: match[1], label: 'Draw', description: part, color: C.textPrimary });
+      continue;
+    }
+    if ((match = part.match(/strip\s+(\d+)\s+firewall/i))) {
+      badges.push({ icon: getStatusMeta('Firewall').icon, value: `-${match[1]}`, label: 'Strip Firewall', description: part, color: C.neonOrange });
+      continue;
+    }
+    if ((match = part.match(/gain\s+(\d+)\s+firewall/i))) {
+      badges.push({
+        icon: getStatusMeta('Firewall').icon,
+        value: match[1],
+        label: 'Firewall',
+        description: formatStatusEffectDescription('Firewall', match[1], 'Gain'),
+        color: getStatusMeta('Firewall').color,
+      });
+      continue;
+    }
+    if ((match = part.match(/apply\s+(\d+)\s+([A-Za-z]+(?:\s+[A-Za-z]+)*)/i))) {
+      const statusId = normalizeStatusId(match[2]);
+      const meta = getStatusMeta(statusId);
+      badges.push({
+        icon: meta.icon,
+        value: match[1],
+        label: humanizeStatusId(statusId),
+        description: formatStatusEffectDescription(statusId, match[1]),
+        color: meta.color,
+      });
+      continue;
+    }
+    if (/lose all firewall/i.test(part) && /deal that much damage/i.test(part)) {
+      badges.push({
+        icon: getStatusMeta('Firewall').icon,
+        value: firewallStacks || '0',
+        label: 'Spend Firewall',
+        description: part,
+        color: getStatusMeta('Firewall').color,
+      });
+      badges.push({
+        icon: '\u2694',
+        value: enemy?.intent?.amount ?? '?',
+        label: 'Variable Damage',
+        description: 'Deal damage equal to Firewall spent.',
+        color: C.neonRed,
+      });
+    }
+  }
+
+  return badges;
+}
+
+function getIntentEffectBadges(enemy, intentCardDef) {
+  const intentType = enemy?.intent?.type;
+  const intentName = enemy?.intent?.name || intentType || 'Intent';
+  const intentColor = getIntentColor(intentType);
+  const badges = [];
+
+  for (const effect of intentCardDef?.effects ?? EMPTY_ARRAY) {
+    if (effect.op === 'DealDamage' && effect.amount != null) {
+      badges.push({ icon: '\u2694', value: effect.amount, label: intentName, description: `Deal ${effect.amount} damage.`, color: C.neonRed });
+      continue;
+    }
+    if (effect.op === 'GainBlock' && effect.amount != null) {
+      badges.push({
+        icon: getStatusMeta('Firewall').icon,
+        value: effect.amount,
+        label: intentName,
+        description: formatStatusEffectDescription('Firewall', effect.amount, 'Gain'),
+        color: getStatusMeta('Firewall').color,
+      });
+      continue;
+    }
+    if (effect.op === 'Heal' && effect.amount != null) {
+      badges.push({ icon: '\u2665', value: effect.amount, label: intentName, description: `Heal ${effect.amount} HP.`, color: C.neonGreen });
+      continue;
+    }
+    if (effect.op === 'GainRAM' && effect.amount != null) {
+      badges.push({ icon: '\u26A1', value: effect.amount, label: intentName, description: `Gain ${effect.amount} RAM.`, color: C.neonYellow });
+      continue;
+    }
+    if (effect.op === 'DrawCards' && effect.amount != null) {
+      badges.push({ icon: '\u21BB', value: effect.amount, label: intentName, description: `Draw ${effect.amount} card${effect.amount === 1 ? '' : 's'}.`, color: C.textPrimary });
+      continue;
+    }
+    if (effect.op === 'ApplyStatus' && effect.statusId) {
+      const meta = getStatusMeta(effect.statusId);
+      badges.push({
+        icon: meta.icon,
+        value: effect.stacks ?? '?',
+        label: humanizeStatusId(effect.statusId),
+        description: formatStatusEffectDescription(effect.statusId, effect.stacks),
+        color: meta.color,
+      });
+      continue;
+    }
+    if (effect.op === 'RawText') {
+      badges.push(...parseIntentRawTextBadges(effect.text, enemy));
+    }
+  }
+
+  if (badges.length > 0) return badges;
+
+  return [{
+    icon: getIntentIcon(intentType),
+    value: enemy?.intent?.amount ?? '?',
+    label: intentName,
+    description: intentCardDef?.effects?.length ? formatEffectsLong(intentCardDef.effects).join(' ') : intentName,
+    color: intentColor,
+  }];
+}
+
+function IntentEffectBadge({ badge }) {
+  const [tipVisible, setTipVisible] = React.useState(false);
+  const [tipPos, setTipPos] = React.useState({ x: 0, y: 0 });
+
+  const handleInteract = (e) => {
+    e.stopPropagation();
+    setTipPos({ x: e.clientX, y: e.clientY });
+    setTipVisible((visible) => !visible);
+  };
+
+  const handleEnter = (e) => {
+    e.stopPropagation();
+    setTipPos({ x: e.clientX, y: e.clientY });
+    setTipVisible(true);
+  };
+
+  return (
+    <div style={{ position: 'relative', display: 'inline-flex' }}>
+      <div
+        title={badge.label}
+        onClick={handleInteract}
+        onMouseEnter={handleEnter}
+        onMouseLeave={() => setTipVisible(false)}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 4,
+          padding: '3px 7px',
+          borderRadius: 999,
+          fontFamily: MONO,
+          fontSize: 11,
+          fontWeight: 700,
+          backgroundColor: 'rgba(0,0,0,0.76)',
+          color: badge.color,
+          border: `1px solid ${badge.color}55`,
+          boxShadow: `0 0 10px ${badge.color}18`,
+          whiteSpace: 'nowrap',
+          cursor: 'help',
+          lineHeight: 1,
+        }}
+      >
+        <span style={{ fontSize: 12 }}>{badge.icon}</span>
+        <span>{badge.value}</span>
+      </div>
+      {tipVisible && (
+        <div
+          style={{
+            position: 'fixed',
+            left: Math.min(tipPos.x + 8, (typeof window !== 'undefined' ? window.innerWidth : 1280) - 230),
+            top: tipPos.y - 8,
+            transform: 'translateY(-100%)',
+            zIndex: 9999,
+            backgroundColor: '#0d0d18',
+            border: `1px solid ${badge.color}50`,
+            borderRadius: 8,
+            padding: '7px 10px',
+            maxWidth: 220,
+            boxShadow: `0 4px 20px rgba(0,0,0,0.85), 0 0 12px ${badge.color}18`,
+            pointerEvents: 'none',
+          }}
+        >
+          <div style={{ fontFamily: MONO, fontWeight: 700, fontSize: 9, color: badge.color, marginBottom: 4, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+            {badge.icon} {badge.label}
+          </div>
+          <div style={{ fontFamily: MONO, fontSize: 9, color: '#b0b0b0', lineHeight: 1.5 }}>
+            {badge.description}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ============================================================
@@ -475,10 +1191,14 @@ function HealthBar({ current, max, height = 14, segmented = false, showText = tr
 // ENEMY CARD (prominent, top zone)
 // ============================================================
 function EnemyCard({ enemy, isTargeted, onClick, actingType, data }) {
-  const intentIcon  = getIntentIcon(enemy.intent?.type);
   const intentColor = getIntentColor(enemy.intent?.type);
   const imgSrc      = getEnemyImage(enemy.enemyDefId);
   const intentCardDef = data?.cards?.[enemy.intent?.cardDefId];
+  const intentBadges = getIntentEffectBadges(enemy, intentCardDef);
+  const cardIntentBadges = intentBadges.slice(0, 2);
+  const enemyName = enemy.name ?? 'Unknown Target';
+  const firewallStacks = enemy?.statuses?.find((status) => status.id === 'Firewall')?.stacks ?? 0;
+  const nonFirewallStatuses = (enemy?.statuses || []).filter((status) => status.id !== 'Firewall');
   const actClass    = actingType === 'Attack'  ? 'enemy-act-attack'
                     : actingType === 'Debuff'  ? 'enemy-act-debuff'
                     : actingType               ? 'enemy-act-defend'
@@ -493,17 +1213,20 @@ function EnemyCard({ enemy, isTargeted, onClick, actingType, data }) {
         style={{
           position: 'relative',
           flexShrink: 0,
+          width: 'clamp(122px, 19vw, 164px)',
+          aspectRatio: '13 / 18',
           padding: 0,
           border: `2px solid ${isTargeted ? C.neonCyan : 'transparent'}`,
           borderRadius: '10px',
           overflow: 'hidden',
-          background: 'transparent',
+          backgroundColor: C.bgCard,
           cursor: 'pointer',
           transition: 'all 0.2s ease',
           boxShadow: isTargeted
             ? `0 0 28px ${C.neonCyan}60`
             : '0 4px 16px rgba(0,0,0,0.7)',
-          display: 'block',
+          display: 'flex',
+          alignItems: 'stretch',
         }}
       >
         {/* Full artwork — no cropping */}
@@ -511,138 +1234,98 @@ function EnemyCard({ enemy, isTargeted, onClick, actingType, data }) {
           src={imgSrc}
           alt={enemy.name ?? 'Enemy'}
           style={{
+            position: 'absolute',
+            inset: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            objectPosition: 'center center',
             display: 'block',
-            height: '26vh',
-            width: 'auto',
-            maxWidth: '150px',
-            minWidth: '80px',
+            transform: 'scale(1.02)',
+            filter: 'saturate(1.04) contrast(1.03) brightness(0.88)',
           }}
         />
 
-        {/* Intent badge — top-right */}
-        <div style={{
-          position: 'absolute',
-          top: 6,
-          right: 6,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'flex-end',
-          gap: '2px',
-        }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '4px',
-            padding: '3px 8px',
-            borderRadius: '6px',
-            backgroundColor: 'rgba(0,0,0,0.75)',
-            border: `1px solid ${intentColor}60`,
-          }}>
-            <span style={{ fontSize: 13 }}>{intentIcon}</span>
-            <span style={{ fontFamily: MONO, fontWeight: 700, color: intentColor, fontSize: 13 }}>
-              {enemy.intent?.amount ?? '?'}
-            </span>
-          </div>
-          {enemy.intent?.name && (
-            <div style={{
-              padding: '1px 6px',
-              borderRadius: '4px',
-              backgroundColor: 'rgba(0,0,0,0.7)',
-              fontFamily: MONO,
-              fontSize: 8,
-              color: intentColor,
-              opacity: 0.85,
-              maxWidth: 100,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}>
-              {enemy.intent.name}
-            </div>
-          )}
-          {intentCardDef?.effects?.length > 0 && (
-            <div style={{
-              padding: '2px 6px',
-              borderRadius: '4px',
-              backgroundColor: 'rgba(0,0,0,0.7)',
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background: `
+              radial-gradient(circle at 24% 14%, ${intentColor}18 0%, transparent 30%),
+              linear-gradient(180deg, rgba(8,10,16,0.08) 0%, rgba(8,10,16,0.12) 30%, rgba(8,10,16,0.34) 62%, rgba(8,10,16,0.82) 100%)
+            `,
+            pointerEvents: 'none',
+          }}
+        />
+
+        {isTargeted && (
+          <div
+            style={{
+              position: 'absolute',
+              top: 8,
+              left: 8,
+              padding: '3px 6px',
+              borderRadius: 999,
+              background: `${C.neonCyan}18`,
+              border: `1px solid ${C.neonCyan}45`,
+              color: C.neonCyan,
               fontFamily: MONO,
               fontSize: 7,
-              color: '#888',
-              maxWidth: 110,
-              lineHeight: 1.4,
-            }}>
-              {formatEffects(intentCardDef.effects)}
-            </div>
-          )}
-        </div>
-
-        {/* Block badge — top-left (only when active) */}
-        {enemy.block > 0 && (
-          <div style={{
-            position: 'absolute',
-            top: 6,
-            left: 6,
-            display: 'flex',
-            alignItems: 'center',
-            gap: '3px',
-            padding: '3px 7px',
-            borderRadius: '6px',
-            backgroundColor: 'rgba(0,0,0,0.75)',
-            border: `1px solid ${C.neonCyan}50`,
-            fontFamily: MONO,
-            fontWeight: 700,
-            color: C.neonCyan,
-            fontSize: 11,
-          }}>
-            {'\uD83D\uDEE1'} {enemy.block}
+              fontWeight: 700,
+              letterSpacing: '0.12em',
+              textTransform: 'uppercase',
+              boxShadow: `0 0 10px ${C.neonCyan}18`,
+              pointerEvents: 'none',
+            }}
+          >
+            Target
           </div>
         )}
 
-        {/* Bottom overlay: name + status effects + HP bar */}
+        <div
+          style={{
+            position: 'absolute',
+            top: 8,
+            right: 8,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'flex-end',
+            gap: 4,
+            maxWidth: '62%',
+            padding: '4px 5px',
+            borderRadius: 999,
+            background: 'rgba(4,8,14,0.68)',
+            border: `1px solid ${intentColor}35`,
+            boxShadow: `0 6px 16px rgba(0,0,0,0.26), 0 0 10px ${intentColor}10`,
+            backdropFilter: 'blur(4px)',
+          }}
+        >
+          {cardIntentBadges.map((badge, index) => (
+            <IntentEffectBadge key={`${enemy.id}-intent-${index}`} badge={badge} />
+          ))}
+        </div>
+
         <div style={{
           position: 'absolute',
           bottom: 0,
           left: 0,
           right: 0,
-          padding: '20px 6px 6px',
-          background: 'linear-gradient(transparent, rgba(0,0,0,0.88) 40%)',
+          padding: enemy.statuses?.length > 0 ? '18px 9px 9px' : '10px 9px 9px',
+          background: 'linear-gradient(180deg, rgba(8,10,16,0.02) 0%, rgba(8,10,16,0.12) 28%, rgba(8,10,16,0.68) 100%)',
         }}>
-          {/* Enemy name */}
-          {enemy.name && (
-            <div style={{
-              fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace",
-              fontSize: 9,
-              fontWeight: 700,
-              color: '#e0e0e0',
-              textAlign: 'center',
-              letterSpacing: '0.04em',
-              textTransform: 'uppercase',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-              marginBottom: 3,
-              opacity: 0.9,
-            }}>
-              {enemy.name}
-            </div>
-          )}
-
-          {/* Status effects */}
           {enemy.statuses?.length > 0 && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px', justifyContent: 'center', marginBottom: 4 }}>
-              {enemy.statuses.map((s, i) => (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px', justifyContent: 'center', marginBottom: 6 }}>
+              {enemy.statuses.slice(0, 6).map((s, i) => (
                 <StatusBadge key={`${s.id}-${i}`} status={s} size="small" />
               ))}
             </div>
           )}
-
-          {/* HP bar */}
           <HealthBar
             current={enemy.hp}
             max={enemy.maxHP}
             height={14}
             segmented={false}
-            showText={true}
+            showText={false}
             glow={false}
           />
         </div>
@@ -684,41 +1367,183 @@ function EnemyCard({ enemy, isTargeted, onClick, actingType, data }) {
         letterSpacing: '0.03em',
         textTransform: 'uppercase',
       }}>
-        {enemy.name ? `${enemy.name}.EXE` : 'UNKNOWN.EXE'}
+        {enemyName ? `${enemyName}.EXE` : 'UNKNOWN.EXE'}
       </div>
       <HealthBar current={enemy.hp} max={enemy.maxHP} height={16} segmented={enemy.maxHP <= 30} showText={true} />
-      {enemy.block > 0 && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px', padding: '2px 8px', borderRadius: '4px', fontFamily: MONO, fontWeight: 700, backgroundColor: `${C.neonCyan}15`, color: C.neonCyan, fontSize: 11, border: `1px solid ${C.neonCyan}30` }}>
-          {'\uD83D\uDEE1'} {enemy.block}
+      {firewallStacks > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px', padding: '2px 8px', borderRadius: '4px', fontFamily: MONO, fontWeight: 700, backgroundColor: `${C.neonCyan}15`, color: C.neonCyan, fontSize: 11, border: `1px solid ${C.neonCyan}30` }}>
+            {'\u25A3'} {firewallStacks}
+          </div>
         </div>
       )}
-      <StatusRow statuses={enemy.statuses} size="small" justify="center" />
-      <div style={{ borderRadius: '6px', backgroundColor: `${intentColor}12`, border: `1px solid ${intentColor}30`, padding: '4px 8px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
-          <span style={{ fontSize: 14 }}>{intentIcon}</span>
-          <span style={{ fontFamily: MONO, fontWeight: 700, color: intentColor, fontSize: 14 }}>{enemy.intent?.amount ?? '?'}</span>
-          {enemy.intent?.name && (
-            <span style={{ fontFamily: MONO, color: C.textDim, fontSize: 8, marginLeft: '2px' }}>{enemy.intent.name}</span>
-          )}
+      <StatusRow statuses={nonFirewallStatuses} size="small" justify="center" />
+      <div style={{ borderRadius: '6px', backgroundColor: `${intentColor}12`, border: `1px solid ${intentColor}30`, padding: '5px 6px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', flexWrap: 'wrap' }}>
+          {intentBadges.map((badge, index) => (
+            <IntentEffectBadge key={`${enemy.id}-intent-fallback-${index}`} badge={badge} />
+          ))}
         </div>
-        {intentCardDef?.effects?.length > 0 && (
-          <div style={{ fontFamily: MONO, fontSize: 7.5, color: '#777', textAlign: 'center', marginTop: 2, lineHeight: 1.4 }}>
-            {formatEffects(intentCardDef.effects)}
-          </div>
-        )}
       </div>
     </button>
+  );
+}
+
+function getEnemyFocusInsights(enemy) {
+  const firewallStacks = enemy?.statuses?.find((status) => status.id === 'Firewall')?.stacks ?? 0;
+  const hpPct = enemy?.maxHP > 0 ? enemy.hp / enemy.maxHP : 1;
+  const insights = [];
+
+  if (firewallStacks > 0) insights.push('Firewall is up: breach, strip, or Firewall spend lines are stronger before burst damage.');
+  if (enemy?.intent?.type === 'Attack') insights.push('Incoming attack queued next turn. Consider sustain or a faster kill line.');
+  if (enemy?.intent?.type === 'Defense') insights.push('This target is extending the fight. Pressure it before the defense loop compounds.');
+  if (enemy?.intent?.type === 'Debuff') insights.push('Status pressure incoming. Ending this target early reduces future drag.');
+  if (enemy?.intent?.type === 'Buff') insights.push('Buff turn detected. A clean hit window may be open before it scales.');
+  if (hpPct <= 0.33) insights.push('Low integrity: direct damage may finish it before it gets another full turn.');
+  if (insights.length === 0) insights.push('No immediate protection shown. This is a clean pressure target.');
+
+  return insights.slice(0, 2);
+}
+
+function EnemyFocusPanel({ enemy, intentBadges = EMPTY_ARRAY }) {
+  if (!enemy) return null;
+
+  const firewallStacks = enemy?.statuses?.find((status) => status.id === 'Firewall')?.stacks ?? 0;
+  const nonFirewallStatuses = (enemy?.statuses || []).filter((status) => status.id !== 'Firewall');
+  const intentColor = getIntentColor(enemy.intent?.type);
+  const insights = getEnemyFocusInsights(enemy);
+  const primaryInsight = insights[0] || 'No immediate pressure read.';
+
+  return (
+    <div
+      style={{
+        width: 'clamp(220px, 24vw, 268px)',
+        minWidth: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 8,
+        padding: '10px',
+        borderRadius: 16,
+        background: 'linear-gradient(180deg, rgba(8,12,20,0.97) 0%, rgba(5,8,14,0.95) 100%)',
+        border: `1px solid ${C.neonCyan}30`,
+        boxShadow: `0 0 28px ${C.neonCyan}10, 0 12px 28px rgba(0,0,0,0.28)`,
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
+          <span style={{ fontFamily: MONO, fontSize: 8, fontWeight: 700, letterSpacing: '0.14em', color: C.textDim }}>
+            ENEMY ANALYSIS
+          </span>
+          <span style={{ fontFamily: MONO, fontSize: 11, fontWeight: 700, color: C.textPrimary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {enemy.name ?? 'Unknown Target'}
+          </span>
+          <span style={{ fontFamily: MONO, fontSize: 8, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: intentColor }}>
+            {enemy.intent?.type || 'Intent'}
+          </span>
+        </div>
+        <div
+          style={{
+            padding: '4px 8px',
+            borderRadius: 999,
+            background: `${intentColor}18`,
+            border: `1px solid ${intentColor}38`,
+            color: intentColor,
+            fontFamily: MONO,
+            fontSize: 8,
+            fontWeight: 700,
+            letterSpacing: '0.12em',
+            textTransform: 'uppercase',
+            whiteSpace: 'nowrap',
+          }}
+          >
+            Focused
+          </div>
+        </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 6 }}>
+        <div style={{ borderRadius: 12, padding: '6px 8px', background: `${getHealthColor(enemy.hp, enemy.maxHP)}12`, border: `1px solid ${getHealthColor(enemy.hp, enemy.maxHP)}34` }}>
+          <div style={{ fontFamily: MONO, fontSize: 8, fontWeight: 700, letterSpacing: '0.1em', color: getHealthColor(enemy.hp, enemy.maxHP), marginBottom: 3 }}>HP</div>
+          <div style={{ fontFamily: MONO, fontSize: 11, fontWeight: 700, color: C.textPrimary }}>{enemy.hp}/{enemy.maxHP}</div>
+        </div>
+        <div style={{ borderRadius: 12, padding: '6px 8px', background: firewallStacks > 0 ? `${C.neonCyan}12` : 'rgba(255,255,255,0.03)', border: `1px solid ${firewallStacks > 0 ? `${C.neonCyan}34` : C.borderLight}` }}>
+          <div style={{ fontFamily: MONO, fontSize: 8, fontWeight: 700, letterSpacing: '0.1em', color: firewallStacks > 0 ? C.neonCyan : C.textDim, marginBottom: 3 }}>FW</div>
+          <div style={{ fontFamily: MONO, fontSize: 11, fontWeight: 700, color: C.textPrimary }}>{firewallStacks}</div>
+        </div>
+        <div style={{ borderRadius: 12, padding: '6px 8px', background: 'rgba(255,255,255,0.03)', border: `1px solid ${C.borderLight}` }}>
+          <div style={{ fontFamily: MONO, fontSize: 8, fontWeight: 700, letterSpacing: '0.1em', color: C.textDim, marginBottom: 3 }}>STATUS</div>
+          <div style={{ fontFamily: MONO, fontSize: 11, fontWeight: 700, color: C.textPrimary }}>{nonFirewallStatuses.length}</div>
+        </div>
+      </div>
+
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 5,
+          padding: '8px 9px',
+          borderRadius: 12,
+          background: 'rgba(3,7,14,0.72)',
+          border: `1px solid ${C.borderLight}`,
+        }}
+      >
+        <div style={{ fontFamily: MONO, fontSize: 8, fontWeight: 700, letterSpacing: '0.12em', color: C.textDim }}>
+          NEXT ACTION
+        </div>
+        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+          {intentBadges.map((badge, index) => (
+            <IntentEffectBadge key={`${enemy.id}-focus-${index}`} badge={badge} />
+          ))}
+        </div>
+      </div>
+
+      {nonFirewallStatuses.length > 0 && (
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 4,
+            padding: '8px 9px',
+            borderRadius: 12,
+            background: 'rgba(6,10,18,0.72)',
+            border: `1px solid ${C.borderLight}`,
+          }}
+        >
+          <span style={{ fontFamily: MONO, fontSize: 8, letterSpacing: '0.1em', color: C.textDim }}>
+            ACTIVE EFFECTS
+          </span>
+          <StatusRow statuses={nonFirewallStatuses} size="small" justify="flex-start" />
+        </div>
+      )}
+
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 5,
+          padding: '8px 9px',
+          borderRadius: 12,
+          background: 'rgba(12,8,18,0.7)',
+          border: `1px solid ${intentColor}28`,
+        }}
+      >
+        <div style={{ fontFamily: MONO, fontSize: 8, fontWeight: 700, letterSpacing: '0.12em', color: intentColor }}>
+          TACTICAL READ
+        </div>
+        <div style={{ fontFamily: MONO, fontSize: 9, color: '#c7cfda', lineHeight: 1.45 }}>
+          {primaryInsight}
+        </div>
+      </div>
+    </div>
   );
 }
 
 // ============================================================
 // PLAYER STATS PANEL (bottom-left)
 // ============================================================
-function PlayerPanel({ player, turn, powerPile = [], cardInstances = {}, data }) {
+function PlayerPanel({ player, ram = 0, maxRam = 0, powerPile = [], cardInstances = {}, data }) {
   const hp = player?.hp ?? 0;
   const maxHp = player?.maxHP ?? 1;
-  const block = player?.block ?? 0;
-  // Firewall is now a persistent status, not regular block
+  const block = 0;
   const firewallStacks = player?.statuses?.find(s => s.id === 'Firewall')?.stacks ?? 0;
   const nonFirewallStatuses = (player?.statuses || []).filter(s => s.id !== 'Firewall');
   // Active Power cards
@@ -730,38 +1555,76 @@ function PlayerPanel({ player, turn, powerPile = [], cardInstances = {}, data })
   return (
     <div
       style={{
-        flexShrink: 0,
-        width: 110,
-        borderRadius: '10px',
-        padding: '8px',
-        backgroundColor: C.bgCard,
-        border: `1px solid ${C.border}`,
+        flex: '1 1 248px',
+        minWidth: 220,
+        maxWidth: 320,
+        borderRadius: '14px',
+        padding: '10px 12px',
+        background: 'linear-gradient(180deg, rgba(10,14,24,0.96) 0%, rgba(7,10,18,0.94) 100%)',
+        border: `1px solid ${C.neonCyan}30`,
+        boxShadow: `0 0 24px ${C.neonCyan}10`,
         display: 'flex',
         flexDirection: 'column',
-        gap: '6px',
+        gap: '8px',
         justifyContent: 'center',
       }}
     >
-      {/* Turn badge */}
-      <div
-        style={{
-          textAlign: 'center',
-          fontSize: 10,
-          fontFamily: MONO,
-          fontWeight: 700,
-          color: C.neonCyan,
-          paddingBottom: '4px',
-          borderBottom: `1px solid ${C.border}`,
-          letterSpacing: '0.05em',
-        }}
-      >
-        TURN {turn}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <span style={{ fontFamily: MONO, fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', color: C.textDim }}>
+            PLAYER
+          </span>
+          <span style={{ fontFamily: MONO, fontSize: 8, letterSpacing: '0.08em', color: C.neonCyan }}>
+            SYSTEM STATUS
+          </span>
+        </div>
+        <div style={{ display: 'flex', gap: '4px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+          <div
+            title={`Firewall: ${firewallStacks} (persistent shield)`}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              fontSize: 10,
+              fontFamily: MONO,
+              fontWeight: 700,
+              color: firewallStacks > 0 ? C.neonCyan : C.textDim,
+              backgroundColor: firewallStacks > 0 ? `${C.neonCyan}16` : `${C.textDim}10`,
+              borderRadius: 999,
+              padding: '4px 8px',
+              border: `1px solid ${firewallStacks > 0 ? `${C.neonCyan}45` : `${C.textDim}24`}`,
+            }}
+          >
+            {'\u25A3'} FW {firewallStacks}
+          </div>
+        </div>
       </div>
 
-      {/* HP bar - prominent */}
-      <HealthBar current={hp} max={maxHp} height={14} showText={true} />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+          <span style={{ fontFamily: MONO, fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', color: C.neonGreen }}>
+            HP
+          </span>
+          <span style={{ fontFamily: MONO, fontSize: 10, color: C.textPrimary }}>
+            {hp}<span style={{ color: C.textDim }}>/</span>{maxHp}
+          </span>
+        </div>
+        <HealthBar current={hp} max={maxHp} height={12} showText={false} />
+      </div>
 
-      {/* Firewall shield badge (persistent) + Block badge (temporary) */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+          <span style={{ fontFamily: MONO, fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', color: C.neonCyan }}>
+            RAM
+          </span>
+          <span style={{ fontFamily: MONO, fontSize: 10, color: C.textPrimary }}>
+            {ram}<span style={{ color: C.textDim }}>/</span>{maxRam}
+          </span>
+        </div>
+        <RamBar ram={ram} maxRam={maxRam} compact={true} showLabel={false} />
+      </div>
+
+      {/* Firewall shield badge (persistent) */}
       <div style={{ display: 'flex', gap: '3px', justifyContent: 'center', flexWrap: 'wrap' }}>
         <div
           title={`Firewall: ${firewallStacks} (persistent shield — not reset each turn)`}
@@ -830,60 +1693,305 @@ function PlayerPanel({ player, turn, powerPile = [], cardInstances = {}, data })
   );
 }
 
-// ============================================================
-// MUTATION CALLOUT (speech-bubble style)
-// ============================================================
-function MutationCallout({ mid, data, connectorSide }) {
-  const mut  = data?.mutations?.[mid];
-  const col  = getMutColor(mid);
-  const lbl  = getMutLabel(mid);
-  const label = (
-    <div
-      style={{
-        padding: '3px 6px',
-        borderRadius: '5px',
-        fontFamily: MONO,
-        backgroundColor: `${col}14`,
-        border: `1px solid ${col}55`,
-        color: col,
-        fontSize: 8,
-        lineHeight: 1.3,
-        maxWidth: 90,
-      }}
-    >
-      <span style={{ fontWeight: 700, marginRight: 3, opacity: 0.85 }}>{lbl}</span>
-      {mut?.name || mid}
-    </div>
-  );
-  const connector = <div style={{ width: 12, height: 1, backgroundColor: `${col}55`, flexShrink: 0 }} />;
+void PlayerPanel;
+
+function CompactPlayerHud({ player, ram = 0, maxRam = 0, powerPile = [], cardInstances = {}, data }) {
+  const hp = player?.hp ?? 0;
+  const maxHp = player?.maxHP ?? 1;
+  const firewallStacks = player?.statuses?.find((s) => s.id === 'Firewall')?.stacks ?? 0;
+  const nonFirewallStatuses = (player?.statuses || []).filter((s) => s.id !== 'Firewall');
+  const activePowers = powerPile.map((cid) => {
+    const ci = cardInstances[cid];
+    return ci ? data?.cards?.[ci.defId] : null;
+  }).filter(Boolean);
+  const statChips = [
+    { label: 'HP', value: `${hp}/${maxHp}`, color: getHealthColor(hp, maxHp) },
+    { label: 'RAM', value: `${ram}/${maxRam}`, color: C.neonCyan },
+    { label: 'FW', value: firewallStacks, color: firewallStacks > 0 ? C.neonCyan : C.textDim },
+  ];
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center' }}>
-      {connectorSide === 'right' && label}
-      {connectorSide === 'right' && connector}
-      {connectorSide === 'left' && connector}
-      {connectorSide === 'left' && label}
+    <div
+      style={{
+        flex: '1 1 280px',
+        minWidth: 240,
+        maxWidth: 380,
+        borderRadius: 16,
+        padding: '12px',
+        background: 'linear-gradient(180deg, rgba(8,12,20,0.97) 0%, rgba(5,8,14,0.96) 100%)',
+        border: `1px solid ${C.neonCyan}34`,
+        boxShadow: `0 0 28px ${C.neonCyan}12, inset 0 1px 0 rgba(255,255,255,0.04)`,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 10,
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+          <span style={{ fontFamily: MONO, fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', color: C.textDim }}>
+            PLAYER CORE
+          </span>
+          <span style={{ fontFamily: MONO, fontSize: 8, letterSpacing: '0.1em', color: C.neonCyan }}>
+            SYSTEMS ONLINE
+          </span>
+        </div>
+        <div
+          style={{
+            alignSelf: 'center',
+            padding: '4px 8px',
+            borderRadius: 999,
+            background: `${C.neonGreen}14`,
+            border: `1px solid ${C.neonGreen}34`,
+            color: C.neonGreen,
+            fontFamily: MONO,
+            fontSize: 8,
+            fontWeight: 700,
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase',
+          }}
+        >
+          Center card = play
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 6 }}>
+        {statChips.map((chip) => (
+          <div
+            key={chip.label}
+            style={{
+              minWidth: 0,
+              borderRadius: 12,
+              padding: '7px 8px',
+              background: chip.color === C.textDim ? 'rgba(255,255,255,0.03)' : `${chip.color}12`,
+              border: `1px solid ${chip.color === C.textDim ? C.borderLight : `${chip.color}35`}`,
+              boxShadow: chip.color === C.textDim ? 'none' : `0 0 12px ${chip.color}10`,
+            }}
+          >
+            <div style={{ fontFamily: MONO, fontSize: 8, fontWeight: 700, letterSpacing: '0.1em', color: chip.color, marginBottom: 4 }}>
+              {chip.label}
+            </div>
+            <div style={{ fontFamily: MONO, fontSize: 11, fontWeight: 700, color: C.textPrimary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {chip.value}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 7,
+          padding: '10px',
+          borderRadius: 14,
+          background: 'rgba(3,7,14,0.72)',
+          border: `1px solid ${C.borderLight}`,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+          <span style={{ fontFamily: MONO, fontSize: 8, fontWeight: 700, letterSpacing: '0.12em', color: C.textDim }}>
+            CORE VITALS
+          </span>
+          <span style={{ fontFamily: MONO, fontSize: 8, color: C.textSecondary }}>
+            Sustain and sequencing
+          </span>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+            <span style={{ fontFamily: MONO, fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', color: C.neonGreen }}>
+              HP
+            </span>
+            <span style={{ fontFamily: MONO, fontSize: 10, color: C.textPrimary }}>
+              {hp}<span style={{ color: C.textDim }}>/</span>{maxHp}
+            </span>
+          </div>
+          <HealthBar current={hp} max={maxHp} height={12} showText={false} />
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+            <span style={{ fontFamily: MONO, fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', color: C.neonCyan }}>
+              RAM
+            </span>
+            <span style={{ fontFamily: MONO, fontSize: 10, color: C.textPrimary }}>
+              {ram}<span style={{ color: C.textDim }}>/</span>{maxRam}
+            </span>
+          </div>
+          <RamBar ram={ram} maxRam={maxRam} compact={true} showLabel={false} />
+        </div>
+      </div>
+
+      {nonFirewallStatuses.length > 0 && (
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 5,
+            padding: '9px 10px',
+            borderRadius: 14,
+            background: 'rgba(6,10,18,0.72)',
+            border: `1px solid ${C.borderLight}`,
+          }}
+        >
+          <span style={{ fontFamily: MONO, fontSize: 8, letterSpacing: '0.1em', color: C.textDim }}>
+            STATUSES
+          </span>
+          <StatusRow statuses={nonFirewallStatuses} size="small" justify="flex-start" />
+        </div>
+      )}
+
+      {activePowers.length > 0 && (
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 5,
+            padding: '9px 10px',
+            borderRadius: 14,
+            background: 'rgba(14,8,20,0.72)',
+            border: '1px solid #6f3fbf55',
+          }}
+        >
+          <span style={{ fontFamily: MONO, fontSize: 8, letterSpacing: '0.1em', color: '#aa66ff' }}>
+            POWERS
+          </span>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+            {activePowers.map((def, i) => (
+              <div
+                key={i}
+                title={def.effects?.find((e) => e.op === 'RawText')?.text || ''}
+                style={{
+                  fontFamily: MONO,
+                  fontSize: 8,
+                  color: '#cc88ff',
+                  backgroundColor: '#aa44ff12',
+                  border: '1px solid #aa44ff30',
+                  borderRadius: 999,
+                  padding: '2px 7px',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  maxWidth: '100%',
+                }}
+              >
+                {def.name}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 // ============================================================
-// CENTER CARD with 4-CORNER MUTATION CALLOUTS
+// MUTATION DETAIL PANEL
 // ============================================================
-function CenterCardDisplay({ cardInstance, cardDef, data }) {
-  if (!cardInstance || !cardDef) {
+function MutationDetailPanel({ mid, data, align = 'left' }) {
+  const mut  = data?.mutations?.[mid];
+  const col  = getMutColor(mid);
+  const lbl  = getMutLabel(mid);
+  const lines = getMutationDetailLines(mut);
+
+  return (
+    <div
+      style={{
+        padding: '8px 10px',
+        borderRadius: 10,
+        fontFamily: MONO,
+        background: `linear-gradient(180deg, ${col}12 0%, rgba(8,10,16,0.84) 100%)`,
+        border: `1px solid ${col}45`,
+        color: C.textPrimary,
+        boxShadow: `0 0 18px ${col}14`,
+        textAlign: align,
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: align === 'right' ? 'flex-end' : 'flex-start', gap: 6, marginBottom: 6 }}>
+        <span
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minWidth: 24,
+            height: 20,
+            padding: '0 6px',
+            borderRadius: 999,
+            backgroundColor: `${col}22`,
+            border: `1px solid ${col}55`,
+            color: col,
+            fontSize: 9,
+            fontWeight: 700,
+            letterSpacing: '0.05em',
+          }}
+        >
+          {lbl}
+        </span>
+        <span style={{ fontSize: 10, fontWeight: 700, color: col, lineHeight: 1.3 }}>
+          {mut?.name || mid}
+        </span>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {lines.length > 0 ? lines.map((line, index) => (
+          <div key={`${mid}-line-${index}`} style={{ fontSize: 9, lineHeight: 1.45, color: '#c7cfda' }}>
+            {renderKeywordText(line, `${mid}-detail-${index}`)}
+          </div>
+        )) : (
+          <div style={{ fontSize: 9, lineHeight: 1.45, color: C.textDim }}>
+            No extra mutation behaviour.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// CENTER CARD with mutation detail side panels
+// ============================================================
+function CenterCardDisplay({
+  cardInstance,
+  cardDef,
+  data,
+  dismissed = false,
+  onDismiss,
+  onActivate,
+  canActivate = false,
+  activateHint = 'Tap to play',
+}) {
+  if (!cardInstance || !cardDef || dismissed) {
     return (
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          minHeight: 100,
+          minHeight: 120,
+          width: '100%',
         }}
       >
-        <span style={{ fontFamily: MONO, color: C.textDim, fontSize: 12 }}>
-          Tap a card to inspect
-        </span>
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 6,
+            padding: '14px 18px',
+            borderRadius: 16,
+            background: 'linear-gradient(180deg, rgba(8,12,20,0.82) 0%, rgba(5,8,14,0.72) 100%)',
+            border: `1px solid ${C.borderLight}`,
+            boxShadow: '0 10px 28px rgba(0,0,0,0.24)',
+          }}
+        >
+          <div style={{ fontFamily: MONO, fontSize: 8, fontWeight: 700, letterSpacing: '0.14em', color: C.textDim }}>
+            ACTIVE CARD
+          </div>
+          <span style={{ fontFamily: MONO, color: C.textPrimary, fontSize: 12, textAlign: 'center' }}>
+            {dismissed ? 'Swipe the hand to reopen the focused card' : 'Swipe the hand to focus a card'}
+          </span>
+          <span style={{ fontFamily: MONO, color: C.textSecondary, fontSize: 10, letterSpacing: '0.04em', textAlign: 'center' }}>
+            {dismissed ? 'Tap the centered hand card when you are ready' : 'Tap the centered card to play it'}
+          </span>
+        </div>
       </div>
     );
   }
@@ -893,144 +2001,185 @@ function CenterCardDisplay({ cardInstance, cardDef, data }) {
   const mutations = cardInstance.appliedMutations || [];
   const effectLines = formatEffectsLong(cardDef.effects);
   const isDecaying = cardInstance.finalMutationCountdown <= 3;
+  const nextMutationIn = formatMutationCounter(cardInstance.useCounter);
+  const finalMutationIn = formatMutationCounter(cardInstance.finalMutationCountdown);
+  const imgSrc = getCardImage(cardDef?.id);
+  const visibleTags = getVisibleCardTags(cardDef.tags || EMPTY_ARRAY);
 
-  // Split mutations into 4 corners
-  const topLeftMuts = mutations.filter((_, i) => i % 4 === 0);
-  const topRightMuts = mutations.filter((_, i) => i % 4 === 1);
-  const bottomLeftMuts = mutations.filter((_, i) => i % 4 === 2);
-  const bottomRightMuts = mutations.filter((_, i) => i % 4 === 3);
+  const leftMutations = mutations.filter((_, i) => i % 2 === 0);
+  const rightMutations = mutations.filter((_, i) => i % 2 === 1);
 
   return (
-    <div className="animate-slide-up" style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 180 }}>
-      {/* Top-left mutations */}
-      {topLeftMuts.length > 0 && (
-        <div style={{ position: 'absolute', left: 0, top: 0, display: 'flex', flexDirection: 'column', gap: '4px', zIndex: 10, maxWidth: 95 }}>
-          {topLeftMuts.map((mid, i) => (
-            <MutationCallout key={i} mid={mid} data={data} connectorSide="right" />
-          ))}
-        </div>
-      )}
-
-      {/* Top-right mutations */}
-      {topRightMuts.length > 0 && (
-        <div style={{ position: 'absolute', right: 0, top: 0, display: 'flex', flexDirection: 'column', gap: '4px', zIndex: 10, maxWidth: 95 }}>
-          {topRightMuts.map((mid, i) => (
-            <MutationCallout key={i} mid={mid} data={data} connectorSide="left" />
-          ))}
-        </div>
-      )}
-
-      {/* Center card */}
+    <div
+      className="animate-slide-up"
+      onClick={onDismiss}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 700,
+        pointerEvents: 'auto',
+        padding: '0 clamp(12px, 4vw, 32px)',
+      }}
+    >
       <div
-        style={{
-          position: 'relative',
-          borderRadius: '12px',
-          zIndex: 20,
-          width: 170,
-          backgroundColor: C.bgCard,
-          border: `2px solid ${color}70`,
-          boxShadow: `0 0 30px ${color}20, 0 4px 24px rgba(0,0,0,0.5)`,
-          overflow: 'hidden',
-        }}
+        onClick={(event) => event.stopPropagation()}
+        style={{ position: 'relative', display: 'flex', alignItems: 'stretch', justifyContent: 'center', gap: 12, width: 'min(100%, 660px)', minHeight: 180, pointerEvents: 'auto' }}
       >
-        {/* Cost badge */}
+        <div style={{ flex: '1 1 0', minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 8, maxHeight: 'min(62vh, 460px)', overflowY: 'auto', padding: '4px 0 4px 2px' }}>
+          {leftMutations.map((mid, i) => (
+            <MutationDetailPanel key={`left-${mid}-${i}`} mid={mid} data={data} align="right" />
+          ))}
+        </div>
+
         <div
+          role="button"
+          tabIndex={canActivate ? 0 : -1}
+          aria-disabled={!canActivate}
+          title={activateHint}
+          onClick={canActivate ? onActivate : undefined}
+          onKeyDown={canActivate ? (event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              onActivate?.();
+            }
+          } : undefined}
           style={{
-            position: 'absolute',
-            top: '8px',
-            left: '8px',
-            width: '28px',
-            height: '28px',
-            borderRadius: '9999px',
+            position: 'relative',
+            borderRadius: '12px',
+            zIndex: 20,
+            width: 'min(44vw, 178px)',
+            aspectRatio: '13 / 18',
             display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontWeight: 700,
-            fontFamily: MONO,
-            zIndex: 10,
-            backgroundColor: color,
-            color: '#000',
-            boxShadow: `0 0 10px ${color}80`,
-            fontSize: 14,
+            flexDirection: 'column',
+            justifyContent: 'flex-end',
+            backgroundColor: C.bgCard,
+            border: `2px solid ${color}70`,
+            boxShadow: `0 0 40px ${color}28, 0 8px 32px rgba(0,0,0,0.7)`,
+            overflow: 'hidden',
+            cursor: canActivate ? 'pointer' : 'default',
+            flexShrink: 0,
           }}
         >
-          {cost}
+          {imgSrc ? (
+            <img
+              src={imgSrc}
+              alt=""
+              style={{
+                position: 'absolute',
+                inset: 0,
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                objectPosition: 'center center',
+                display: 'block',
+                transform: 'scale(1.02)',
+                filter: 'saturate(1.04) contrast(1.02) brightness(0.9)',
+              }}
+            />
+          ) : (
+            <div
+              style={{
+                position: 'absolute',
+                inset: 0,
+                background: `linear-gradient(145deg, ${color}22 0%, ${C.bgCard} 48%, ${color}0c 100%)`,
+              }}
+            />
+          )}
+
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background: `
+                radial-gradient(circle at 24% 16%, ${color}28 0%, transparent 34%),
+                linear-gradient(180deg, rgba(8,10,16,0.08) 0%, rgba(8,10,16,0.24) 24%, rgba(8,10,16,0.78) 58%, rgba(8,10,16,0.95) 100%)
+              `,
+              pointerEvents: 'none',
+            }}
+          />
+
+          <div
+            style={{
+              position: 'absolute',
+              top: '8px',
+              left: '8px',
+              width: '28px',
+              height: '28px',
+              borderRadius: '9999px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: 700,
+              fontFamily: MONO,
+              zIndex: 10,
+              backgroundColor: color,
+              color: '#000',
+              boxShadow: `0 0 10px ${color}80`,
+              fontSize: 14,
+            }}
+          >
+            {cost}
+          </div>
+
+          <div
+            style={{
+              position: 'relative',
+              zIndex: 2,
+              margin: 'auto 10px 10px',
+              padding: '12px 10px 10px',
+              borderRadius: 14,
+              background: 'linear-gradient(180deg, rgba(8,10,16,0.14) 0%, rgba(8,10,16,0.72) 14%, rgba(8,10,16,0.92) 100%)',
+              border: `1px solid ${color}22`,
+              boxShadow: '0 10px 24px rgba(0,0,0,0.24)',
+              backdropFilter: 'blur(4px)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 8,
+              minHeight: '46%',
+            }}
+          >
+            <div style={{ fontFamily: MONO, fontWeight: 700, marginBottom: '2px', color: C.textPrimary, fontSize: 14, textShadow: '0 1px 10px rgba(0,0,0,0.55)' }}>
+              {cardDef.name}
+            </div>
+            <div style={{ fontFamily: MONO, textTransform: 'uppercase', color, fontSize: 9, letterSpacing: '0.1em' }}>
+              {cardDef.type}
+            </div>
+
+            <div style={{ fontFamily: MONO, color: '#bcc3cf', fontSize: 11, lineHeight: 1.5, display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {effectLines.map((line, i) => (
+                <div key={i}>{renderKeywordText(line, `center-effect-${i}`)}</div>
+              ))}
+            </div>
+
+            {visibleTags.length > 0 && (
+              <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                {visibleTags.map((tag, i) => (
+                  <KeywordTooltipToken key={i} text={tag} asChip={true} />
+                ))}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto', paddingTop: '6px', borderTop: `1px solid ${color}20` }}>
+              <div style={{ fontFamily: MONO, color: C.textDim, fontSize: 9 }}>
+                NEXT: <span style={{ color: C.textPrimary, fontWeight: 700 }}>{nextMutationIn ?? '-'}</span>
+              </div>
+              <div style={{ fontFamily: MONO, color: isDecaying ? C.neonOrange : C.textDim, fontSize: 9 }}>
+                FINAL: <span style={{ fontWeight: 700 }}>{finalMutationIn ?? '-'}</span>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Card art area */}
-        <div
-          style={{
-            height: 60,
-            background: `linear-gradient(135deg, ${color}15 0%, ${C.bgCard} 60%, ${color}08 100%)`,
-            borderBottom: `1px solid ${color}30`,
-          }}
-        />
-
-        {/* Card body */}
-        <div style={{ padding: '10px' }}>
-          <div style={{ fontFamily: MONO, fontWeight: 700, marginBottom: '2px', color: C.textPrimary, fontSize: 14 }}>
-            {cardDef.name}
-          </div>
-          <div style={{ fontFamily: MONO, textTransform: 'uppercase', marginBottom: '8px', color, fontSize: 9, letterSpacing: '0.1em' }}>
-            {cardDef.type}
-          </div>
-
-          <div style={{ fontFamily: MONO, color: C.textSecondary, fontSize: 11, lineHeight: 1.5 }}>
-            {effectLines.map((line, i) => (
-              <div key={i}>{line}</div>
-            ))}
-          </div>
-
-          {/* Bottom stats row */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '8px', paddingTop: '6px', borderTop: `1px solid ${color}20` }}>
-            <div style={{ fontFamily: MONO, color: C.textDim, fontSize: 9 }}>
-              USES: <span style={{ color: C.textPrimary, fontWeight: 700 }}>{cardInstance.useCounter}</span>
-            </div>
-            <div style={{ fontFamily: MONO, color: isDecaying ? C.neonOrange : C.textDim, fontSize: 9 }}>
-              MUT: <span style={{ fontWeight: 700 }}>{cardInstance.finalMutationCountdown}</span>
-            </div>
-          </div>
+        <div style={{ flex: '1 1 0', minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 8, maxHeight: 'min(62vh, 460px)', overflowY: 'auto', padding: '4px 2px 4px 0' }}>
+          {rightMutations.map((mid, i) => (
+            <MutationDetailPanel key={`right-${mid}-${i}`} mid={mid} data={data} align="left" />
+          ))}
         </div>
-
-        {/* Tags */}
-        {cardDef.tags?.length > 0 && (
-          <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', padding: '0 10px 8px' }}>
-            {cardDef.tags.map((tag, i) => (
-              <span
-                key={i}
-                style={{
-                  padding: '2px 4px',
-                  borderRadius: '4px',
-                  fontFamily: MONO,
-                  backgroundColor: '#1a1a2a',
-                  color: C.textDim,
-                  fontSize: 8,
-                }}
-              >
-                {tag}
-              </span>
-            ))}
-          </div>
-        )}
       </div>
 
-      {/* Bottom-left mutations */}
-      {bottomLeftMuts.length > 0 && (
-        <div style={{ position: 'absolute', left: 0, bottom: 0, display: 'flex', flexDirection: 'column', gap: '4px', zIndex: 10, maxWidth: 95 }}>
-          {bottomLeftMuts.map((mid, i) => (
-            <MutationCallout key={i} mid={mid} data={data} connectorSide="right" />
-          ))}
-        </div>
-      )}
-
-      {/* Bottom-right mutations */}
-      {bottomRightMuts.length > 0 && (
-        <div style={{ position: 'absolute', right: 0, bottom: 0, display: 'flex', flexDirection: 'column', gap: '4px', zIndex: 10, maxWidth: 95 }}>
-          {bottomRightMuts.map((mid, i) => (
-            <MutationCallout key={i} mid={mid} data={data} connectorSide="left" />
-          ))}
-        </div>
-      )}
     </div>
   );
 }
@@ -1043,6 +2192,7 @@ function HandCard({ cardInstance, cardDef, isSelected, onSelect, canPlay, compac
   const cost = Math.max(0, (cardDef?.costRAM || 0) + (cardInstance?.ramCostDelta || 0));
   const hasMutations = cardInstance?.appliedMutations?.length > 0;
   const countdown = cardInstance?.finalMutationCountdown;
+  const visibleCountdown = formatMutationCounter(countdown);
   const isDecaying = countdown != null && countdown <= 3;
   const isBricked   = cardInstance?.finalMutationId === 'J_BRICK';
   const isRewritten  = cardInstance?.finalMutationId === 'J_REWRITE';
@@ -1052,16 +2202,18 @@ function HandCard({ cardInstance, cardDef, isSelected, onSelect, canPlay, compac
   const isExhaust   = (cardDef?.tags || []).includes('Exhaust') || (cardDef?.tags || []).includes('Ethereal');
   const isPower     = (cardDef?.tags || []).includes('Power') || cardDef?.type === 'Power';
 
-  const w = compact ? 72 : 105;
-  const h = compact ? 100 : 148;
-  const badgeSize = compact ? 18 : 24;
+  const w = compact ? 78 : 105;
+  const h = compact ? 108 : 148;
+  const badgeSize = compact ? 20 : 24;
   const badgeOffset = compact ? '-4px' : '-6px';
-  const artH = compact ? 32 : 60;
+  const artH = compact ? 36 : 60;
   const imgSrc = getCardImage(cardDef?.id);
 
   return (
     <button
       onClick={onSelect}
+      aria-pressed={isSelected}
+      title={isSelected ? 'Focused in center' : 'Tap to center'}
       onMouseEnter={showTooltip && onHover ? (e) => onHover(cardDef, e.clientX, e.clientY) : undefined}
       onMouseMove={showTooltip && onHover ? (e) => onHover(cardDef, e.clientX, e.clientY) : undefined}
       onMouseLeave={showTooltip && onHover ? () => onHover(null, 0, 0) : undefined}
@@ -1151,7 +2303,7 @@ function HandCard({ cardInstance, cardDef, isSelected, onSelect, canPlay, compac
       </div>
 
       {/* Countdown badge (top-right) */}
-      {countdown != null && (
+      {visibleCountdown != null && (
         <div
           style={{
             position: 'absolute',
@@ -1173,7 +2325,7 @@ function HandCard({ cardInstance, cardDef, isSelected, onSelect, canPlay, compac
             fontSize: compact ? 8 : 10,
           }}
         >
-          {countdown}
+          {visibleCountdown}
         </div>
       )}
 
@@ -1362,23 +2514,524 @@ function HandCard({ cardInstance, cardDef, isSelected, onSelect, canPlay, compac
   );
 }
 
+const PLAYER_PLAY_ANIMATION_MS = 460;
+const MUTATION_DISCOVERY_MS = 1750;
+const MUTATION_REPEAT_LINGER_MS = 1220;
+const ENEMY_PLAY_ANIMATION_MS = {
+  Attack: 720,
+  Defense: 620,
+  Buff: 620,
+  Debuff: 700,
+  Unknown: 640,
+};
+
+function getPlayAnimationDuration(actor, intentType) {
+  if (actor === 'player') return PLAYER_PLAY_ANIMATION_MS;
+  return ENEMY_PLAY_ANIMATION_MS[intentType] || ENEMY_PLAY_ANIMATION_MS.Unknown;
+}
+
+function getPlayAnimationMeta(actor, intentType, cardType) {
+  if (actor === 'player') {
+    const accent = getCardColor(cardType);
+    return {
+      accent,
+      className: 'play-card-player',
+      label: 'PLAYER',
+      badge: 'RUN',
+      badgeColor: accent,
+    };
+  }
+
+  switch (intentType) {
+    case 'Attack':
+      return { accent: C.neonRed, className: 'play-card-enemy-attack', label: 'ATTACK', badge: getIntentIcon(intentType), badgeColor: C.neonRed };
+    case 'Defense':
+      return { accent: C.neonCyan, className: 'play-card-enemy-defense', label: 'DEFEND', badge: getIntentIcon(intentType), badgeColor: C.neonCyan };
+    case 'Buff':
+      return { accent: C.neonGreen, className: 'play-card-enemy-buff', label: 'BOOST', badge: getIntentIcon(intentType), badgeColor: C.neonGreen };
+    case 'Debuff':
+      return { accent: C.neonPurple, className: 'play-card-enemy-debuff', label: 'JAM', badge: getIntentIcon(intentType), badgeColor: C.neonPurple };
+    default:
+      return { accent: C.neonOrange, className: 'play-card-enemy-defense', label: 'SYSTEM', badge: getIntentIcon(intentType), badgeColor: C.neonOrange };
+  }
+}
+
+function getEnemyAnimationAnchor(enemyId, enemies) {
+  const count = Math.max(1, enemies?.length || 0);
+  const index = Math.max(0, enemies?.findIndex((enemy) => enemy.id === enemyId) ?? 0);
+  const pct = 24 + (((index + 0.5) / count) * 52);
+  return { left: `${pct}%`, top: '18%' };
+}
+
+function getMutationAnimationInfo(mutationId, data) {
+  const mutation = data?.mutations?.[mutationId];
+  return {
+    mutation,
+    color: getMutColor(mutationId || 'A-01'),
+    label: mutationId ? getMutLabel(mutationId) : '?',
+    name: mutation?.name || mutationId || 'Mutation',
+    lines: getMutationDetailLines(mutation),
+  };
+}
+
+function MutationDiscoveryOverlay({ animation, data }) {
+  const { color, label, name, lines } = getMutationAnimationInfo(animation.mutationId, data);
+  const cardDef = data?.cards?.[animation.defId];
+
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 790,
+        pointerEvents: 'none',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <div
+        className="mutation-discovery-popup"
+        style={{
+          width: 'min(88vw, 360px)',
+          padding: '14px 16px 16px',
+          borderRadius: 16,
+          border: `1px solid ${color}70`,
+          background: `linear-gradient(180deg, rgba(9,10,18,0.96) 0%, rgba(12,14,24,0.98) 100%)`,
+          boxShadow: `0 0 30px ${color}28, 0 20px 44px rgba(0,0,0,0.55)`,
+          backdropFilter: 'blur(12px)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+          <div
+            style={{
+              minWidth: 32,
+              height: 32,
+              padding: '0 10px',
+              borderRadius: 999,
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: `${color}24`,
+              border: `1px solid ${color}60`,
+              color,
+              fontFamily: MONO,
+              fontWeight: 700,
+              fontSize: 13,
+              letterSpacing: '0.06em',
+            }}
+          >
+            {label}
+          </div>
+          <div>
+            <div style={{ fontFamily: MONO, color, fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+              New Mutation
+            </div>
+            <div style={{ fontFamily: MONO, color: C.textPrimary, fontSize: 16, fontWeight: 700, marginTop: 2 }}>
+              {name}
+            </div>
+          </div>
+        </div>
+
+        {cardDef && (
+          <div style={{ fontFamily: MONO, color: '#cbd3de', fontSize: 11, marginBottom: 8 }}>
+            Applied to <span style={{ color: C.textPrimary, fontWeight: 700 }}>{cardDef.name}</span>
+          </div>
+        )}
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+          {lines.slice(0, 3).map((line, index) => (
+            <div key={`${animation.id}-line-${index}`} style={{ fontFamily: MONO, color: '#b9c2cf', fontSize: 11, lineHeight: 1.5 }}>
+              {line}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MutationRepeatOverlay({ animation, data, cardInstances }) {
+  const cardDef = data?.cards?.[animation.defId];
+  const cardInstance = cardInstances?.[animation.cardInstanceId];
+  const imgSrc = getCardImage(animation.defId);
+  const cardColor = getCardColor(cardDef?.type);
+  const { color: mutationColor, label, name } = getMutationAnimationInfo(animation.mutationId, data);
+
+  if (!cardDef || !cardInstance) return null;
+
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 790,
+        pointerEvents: 'none',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <div
+        className="mutation-repeat-card"
+        style={{
+          position: 'relative',
+          width: 'min(46vw, 188px)',
+          aspectRatio: '13 / 18',
+          borderRadius: 14,
+          overflow: 'hidden',
+          border: `2px solid ${cardColor}80`,
+          backgroundColor: C.bgCard,
+          boxShadow: `0 0 40px ${mutationColor}24, 0 20px 40px rgba(0,0,0,0.58)`,
+        }}
+      >
+        {imgSrc ? (
+          <img
+            src={imgSrc}
+            alt=""
+            style={{
+              position: 'absolute',
+              inset: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              objectPosition: 'center center',
+              filter: 'saturate(1.06) brightness(0.92)',
+            }}
+          />
+        ) : (
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background: `linear-gradient(145deg, ${cardColor}22 0%, ${C.bgCard} 48%, ${cardColor}0c 100%)`,
+            }}
+          />
+        )}
+
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background: `
+              radial-gradient(circle at 26% 18%, ${mutationColor}26 0%, transparent 34%),
+              linear-gradient(180deg, rgba(8,10,16,0.08) 0%, rgba(8,10,16,0.24) 24%, rgba(8,10,16,0.76) 58%, rgba(8,10,16,0.94) 100%)
+            `,
+          }}
+        />
+
+        <div
+          style={{
+            position: 'absolute',
+            top: 9,
+            left: 9,
+            width: 30,
+            height: 30,
+            borderRadius: 999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontWeight: 700,
+            fontFamily: MONO,
+            backgroundColor: cardColor,
+            color: '#000',
+            boxShadow: `0 0 10px ${cardColor}80`,
+            fontSize: 14,
+          }}
+        >
+          {Math.max(0, (cardDef.costRAM || 0) + (cardInstance.ramCostDelta || 0))}
+        </div>
+
+        <div
+          className="mutation-symbol-pop"
+          style={{
+            position: 'absolute',
+            top: 12,
+            right: 12,
+            minWidth: 34,
+            height: 34,
+            padding: '0 8px',
+            borderRadius: 999,
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: `${mutationColor}24`,
+            border: `1px solid ${mutationColor}66`,
+            color: mutationColor,
+            fontFamily: MONO,
+            fontWeight: 700,
+            fontSize: 12,
+            letterSpacing: '0.06em',
+            boxShadow: `0 0 14px ${mutationColor}35`,
+          }}
+        >
+          {label}
+        </div>
+
+        <div
+          style={{
+            position: 'relative',
+            zIndex: 2,
+            margin: 'auto 10px 10px',
+            padding: '12px 10px 10px',
+            borderRadius: 14,
+            background: 'linear-gradient(180deg, rgba(8,10,16,0.16) 0%, rgba(8,10,16,0.74) 14%, rgba(8,10,16,0.92) 100%)',
+            border: `1px solid ${cardColor}22`,
+            boxShadow: '0 10px 24px rgba(0,0,0,0.24)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 8,
+            minHeight: '46%',
+          }}
+        >
+          <div style={{ fontFamily: MONO, fontWeight: 700, color: C.textPrimary, fontSize: 14, textShadow: '0 1px 10px rgba(0,0,0,0.55)' }}>
+            {cardDef.name}
+          </div>
+          <div style={{ fontFamily: MONO, textTransform: 'uppercase', color: cardColor, fontSize: 9, letterSpacing: '0.1em' }}>
+            {cardDef.type}
+          </div>
+          <div style={{ fontFamily: MONO, color: mutationColor, fontSize: 11, fontWeight: 700, lineHeight: 1.35 }}>
+            {label} {name}
+          </div>
+          <div style={{ fontFamily: MONO, color: '#c0c8d3', fontSize: 9, lineHeight: 1.45 }}>
+            Mutation reapplied. Symbol added before the card is filed away.
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CombatPlayAnimationLayer({ animation, data, enemies = EMPTY_ARRAY, cardInstances = {} }) {
+  if (!animation) return null;
+
+  if (animation.kind === 'mutationPopup') {
+    return <MutationDiscoveryOverlay animation={animation} data={data} />;
+  }
+
+  if (animation.kind === 'mutationRepeat') {
+    return <MutationRepeatOverlay animation={animation} data={data} cardInstances={cardInstances} />;
+  }
+
+  const cardDef = data?.cards?.[animation.defId];
+  const accentBase = animation.actor === 'player' ? cardDef?.type : animation.intentType;
+  const meta = getPlayAnimationMeta(animation.actor, animation.intentType, accentBase);
+  const accent = meta.accent;
+  const imgSrc = getCardImage(animation.defId);
+  const anchor = animation.actor === 'enemy'
+    ? getEnemyAnimationAnchor(animation.enemyId, enemies)
+    : { left: '74%', top: '74%' };
+  const effectLines = cardDef?.effects ? formatEffectsLong(cardDef.effects) : [];
+  const previewLine = effectLines[0] || (animation.actor === 'enemy' ? `${animation.intentType || 'Unknown'} action` : 'Executing card');
+  const cost = Math.max(0, cardDef?.costRAM || 0);
+  const bodyLabel = animation.actor === 'enemy'
+    ? (animation.enemyName || 'Enemy protocol')
+    : (cardDef?.type || 'Player');
+
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 780,
+        pointerEvents: 'none',
+        overflow: 'hidden',
+      }}
+    >
+      <div
+        className={`play-card-overlay ${meta.className}`}
+        style={{
+          position: 'absolute',
+          left: anchor.left,
+          top: anchor.top,
+          width: 'clamp(128px, 30vw, 172px)',
+          minHeight: 184,
+          borderRadius: 16,
+          overflow: 'hidden',
+          transform: 'translate(-50%, -50%)',
+          border: `2px solid ${accent}88`,
+          background: `linear-gradient(180deg, rgba(16,18,28,0.96) 0%, rgba(9,10,18,0.98) 100%)`,
+          boxShadow: `0 0 34px ${accent}44, 0 18px 44px rgba(0,0,0,0.58)`,
+          '--play-accent': accent,
+          '--play-glow': `${accent}66`,
+        }}
+      >
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background: `linear-gradient(135deg, ${accent}12 0%, transparent 45%, ${accent}18 100%)`,
+          }}
+        />
+
+        {animation.actor === 'player' && (
+          <div
+            style={{
+              position: 'absolute',
+              top: 10,
+              left: 10,
+              width: 28,
+              height: 28,
+              borderRadius: 999,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: accent,
+              color: '#000',
+              fontFamily: MONO,
+              fontWeight: 700,
+              fontSize: 14,
+              zIndex: 2,
+            }}
+          >
+            {cost}
+          </div>
+        )}
+
+        <div
+          style={{
+            position: 'absolute',
+            top: 10,
+            right: 10,
+            padding: '4px 8px',
+            borderRadius: 999,
+            border: `1px solid ${meta.badgeColor}66`,
+            backgroundColor: 'rgba(0,0,0,0.55)',
+            color: meta.badgeColor,
+            fontFamily: MONO,
+            fontWeight: 700,
+            fontSize: 10,
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase',
+            zIndex: 2,
+          }}
+        >
+          {meta.badge}
+        </div>
+
+        <div
+          style={{
+            height: 84,
+            position: 'relative',
+            overflow: 'hidden',
+            borderBottom: `1px solid ${accent}30`,
+            backgroundColor: `${accent}10`,
+          }}
+        >
+          {imgSrc ? (
+            <img
+              src={imgSrc}
+              alt=""
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                objectPosition: 'top center',
+                display: 'block',
+                filter: animation.actor === 'enemy' ? 'saturate(0.9) brightness(0.9)' : 'none',
+              }}
+            />
+          ) : (
+            <div
+              style={{
+                height: '100%',
+                background: `linear-gradient(135deg, ${accent}1c 0%, ${C.bgCard} 52%, ${accent}08 100%)`,
+              }}
+            />
+          )}
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background: 'linear-gradient(to bottom, transparent 48%, rgba(9,10,18,0.94) 100%)',
+            }}
+          />
+        </div>
+
+        <div style={{ position: 'relative', padding: '12px 12px 14px' }}>
+          <div
+            style={{
+              fontFamily: MONO,
+              fontWeight: 700,
+              color: C.textPrimary,
+              fontSize: 13,
+              lineHeight: 1.25,
+              marginBottom: 3,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {cardDef?.name || (animation.actor === 'enemy' ? 'Enemy action' : 'Player action')}
+          </div>
+          <div
+            style={{
+              fontFamily: MONO,
+              color: accent,
+              fontSize: 9,
+              letterSpacing: '0.12em',
+              textTransform: 'uppercase',
+              marginBottom: 8,
+            }}
+          >
+            {meta.label}
+          </div>
+          <div
+            style={{
+              fontFamily: MONO,
+              color: C.textSecondary,
+              fontSize: 10,
+              lineHeight: 1.45,
+              minHeight: 28,
+            }}
+          >
+            {previewLine}
+          </div>
+          <div
+            style={{
+              marginTop: 10,
+              paddingTop: 8,
+              borderTop: `1px solid ${accent}24`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 10,
+              fontFamily: MONO,
+              fontSize: 9,
+              color: C.textDim,
+              letterSpacing: '0.04em',
+              textTransform: 'uppercase',
+            }}
+          >
+            <span>{bodyLabel}</span>
+            <span>{animation.actor === 'enemy' ? (animation.intentType || 'Unknown') : 'Play'}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ============================================================
 // RAM BAR (large labeled blocks)
 // ============================================================
-function RamBar({ ram, maxRam }) {
+function RamBar({ ram, maxRam, compact = false, showLabel = true }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-      <span style={{
-        fontSize: 11,
-        color: C.neonCyan,
-        fontWeight: 700,
-        fontFamily: MONO,
-        letterSpacing: '0.08em',
-        textShadow: `0 0 8px ${C.neonCyan}40`,
-      }}>
-        RAM
-      </span>
-      <div style={{ flex: 1, display: 'flex', gap: '3px', alignItems: 'center' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: compact ? '5px' : '6px' }}>
+      {showLabel && (
+        <span style={{
+          fontSize: compact ? 9 : 11,
+          color: C.neonCyan,
+          fontWeight: 700,
+          fontFamily: MONO,
+          letterSpacing: '0.08em',
+          textShadow: `0 0 8px ${C.neonCyan}40`,
+        }}>
+          RAM
+        </span>
+      )}
+      <div style={{ flex: 1, display: 'flex', gap: compact ? '2px' : '3px', alignItems: 'center' }}>
         {Array.from({ length: maxRam }).map((_, i) => {
           const filled = i < ram;
           return (
@@ -1386,8 +3039,8 @@ function RamBar({ ram, maxRam }) {
               key={i}
               style={{
                 flex: 1,
-                height: 18,
-                maxWidth: 32,
+                height: compact ? 12 : 18,
+                maxWidth: compact ? 24 : 32,
                 borderRadius: 4,
                 transition: 'all 0.25s ease',
                 backgroundColor: filled ? C.neonCyan : '#1a1a2a',
@@ -1400,7 +3053,7 @@ function RamBar({ ram, maxRam }) {
             >
               <span style={{
                 fontFamily: MONO,
-                fontSize: 7,
+                fontSize: compact ? 6 : 7,
                 fontWeight: 700,
                 color: filled ? '#000' : '#333',
                 letterSpacing: '-0.02em',
@@ -1412,7 +3065,7 @@ function RamBar({ ram, maxRam }) {
         })}
       </div>
       <span style={{
-        fontSize: 12,
+        fontSize: compact ? 10 : 12,
         color: C.neonCyan,
         fontFamily: MONO,
         fontWeight: 700,
@@ -1498,6 +3151,7 @@ function PileViewer({ title, cards, cardInstances, data, onClose }) {
               const cst = Math.max(0, (def?.costRAM || 0) + (ci?.ramCostDelta || 0));
               const muts      = ci?.appliedMutations?.length ?? 0;
               const countdown = ci?.finalMutationCountdown ?? null;
+              const visibleCountdown = formatMutationCounter(countdown);
               const isBricked  = ci?.finalMutationId === 'J_BRICK';
               const isRewrite  = ci?.finalMutationId === 'J_REWRITE';
               const isDecaying = countdown != null && countdown <= 3 && !ci?.finalMutationId;
@@ -1566,7 +3220,7 @@ function PileViewer({ title, cards, cardInstances, data, onClose }) {
                       )}
 
                       {/* Countdown badge */}
-                      {countdown != null && !ci?.finalMutationId && (
+                      {visibleCountdown != null && !ci?.finalMutationId && (
                         <div style={{
                           display: 'inline-flex',
                           alignItems: 'center',
@@ -1582,7 +3236,7 @@ function PileViewer({ title, cards, cardInstances, data, onClose }) {
                           boxShadow: isDecaying ? `0 0 6px ${C.neonOrange}40` : 'none',
                           marginLeft: 'auto',
                         }}>
-                          ⏱{countdown}
+                          ⏱{visibleCountdown}
                         </div>
                       )}
                     </div>
@@ -1600,111 +3254,223 @@ function PileViewer({ title, cards, cardInstances, data, onClose }) {
 // ============================================================
 // ARC HAND — semi-circle fan of cards at the bottom
 // ============================================================
-function ArcHand({ hand, cardInstances, data, selectedCardId, onSelect, canPlayCard, aiPaused, onHover }) {
+function ArcHand({
+  hand,
+  cardInstances,
+  data,
+  activeCardId,
+  onFocusCard,
+  canPlayCard,
+  locked = false,
+  aiPaused,
+  onHover,
+}) {
   const n = hand.length;
-  const [hoveredIdx, setHoveredIdx] = useState(-1);
+  const containerRef = useRef(null);
+  const cardRefs = useRef(new Map());
+  const scrollFrameRef = useRef(null);
+  const CARD_W = 78;
+  const CARD_H = 108;
+  const CARD_STEP = 44;
+  const MAX_DROP = 34;
+  const MAX_ANGLE = 20;
+  const SLOT_H = CARD_H + MAX_DROP + 28;
+  const visualCenterIndex = Math.max(0, hand.indexOf(activeCardId));
 
-  // Large hands (12+) render as horizontal scroll row instead of arc
-  if (n >= 12) {
-    return (
-      <div style={{
-        borderTop: `1px solid ${C.border}`,
-        overflowX: 'auto',
-        display: 'flex',
-        gap: '5px',
-        padding: '10px 12px 6px',
-        WebkitOverflowScrolling: 'touch',
-      }}>
-        {hand.map(cid => {
-          const ci  = cardInstances[cid];
-          const def = data?.cards?.[ci?.defId];
-          return (
-            <div key={cid} style={{ flexShrink: 0 }}>
-              <HandCard
-                cardInstance={ci}
-                cardDef={def}
-                isSelected={selectedCardId === cid}
-                canPlay={canPlayCard(cid)}
-                onSelect={() => onSelect(cid)}
-                compact={true}
-                showTooltip={aiPaused}
-                onHover={onHover}
-              />
-            </div>
-          );
-        })}
-      </div>
-    );
-  }
+  const setCardRef = useCallback((cid, node) => {
+    if (node) cardRefs.current.set(cid, node);
+    else cardRefs.current.delete(cid);
+  }, []);
 
-  const CARD_W    = 72;
-  const CARD_H    = 100;
-  const MAX_ANGLE = Math.min(52, n * 8); // total spread in degrees
-  const ARC_DROP  = Math.min(28, n * 4); // edge cards drop below centre
-  const SEL_LIFT  = 24;                  // selected card lifts up
+  const syncFocusedCard = useCallback(() => {
+    const container = containerRef.current;
+    if (!container || hand.length === 0) return;
 
-  // Compress overlap so all cards fit within viewport with room for rotation
-  // rotated card top-edge can extend: CARD_H * sin(MAX_ANGLE/2) extra horizontally
-  const viewW    = typeof window !== 'undefined' ? window.innerWidth : 375;
-  const rotExtra = Math.ceil(CARD_H * Math.sin((MAX_ANGLE / 2) * Math.PI / 180));
-  const usable   = viewW - rotExtra * 2 - 16; // subtract rotation overhang + padding
-  const OVERLAP  = n > 1 ? Math.min(44, Math.max(20, (usable - CARD_W) / (n - 1))) : 44;
+    const centerX = container.scrollLeft + (container.clientWidth / 2);
+    let nextCardId = hand[0];
+    let bestDistance = Number.POSITIVE_INFINITY;
 
-  // Container tall enough for card body + arc drop + selected lift
-  const CONTAINER_H = CARD_H + ARC_DROP + SEL_LIFT + 8;
+    for (const cid of hand) {
+      const cardNode = cardRefs.current.get(cid);
+      if (!cardNode) continue;
+      const cardCenterX = cardNode.offsetLeft + (cardNode.offsetWidth / 2);
+      const distance = Math.abs(cardCenterX - centerX);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        nextCardId = cid;
+      }
+    }
+
+    if (nextCardId && nextCardId !== activeCardId) {
+      onFocusCard(nextCardId);
+    }
+  }, [activeCardId, hand, onFocusCard]);
+
+  const centerCard = useCallback((cid, behavior = 'smooth') => {
+    const container = containerRef.current;
+    const cardNode = cardRefs.current.get(cid);
+    if (!container || !cardNode) return;
+
+    const targetLeft = cardNode.offsetLeft - ((container.clientWidth - cardNode.offsetWidth) / 2);
+    const maxScrollLeft = Math.max(0, container.scrollWidth - container.clientWidth);
+
+    container.scrollTo({
+      left: Math.max(0, Math.min(targetLeft, maxScrollLeft)),
+      behavior,
+    });
+  }, []);
+
+  useEffect(() => {
+    if (n === 0) return undefined;
+    const rafId = requestAnimationFrame(() => syncFocusedCard());
+    return () => cancelAnimationFrame(rafId);
+  }, [n, syncFocusedCard]);
+
+  useEffect(() => {
+    return () => {
+      if (scrollFrameRef.current != null) {
+        cancelAnimationFrame(scrollFrameRef.current);
+      }
+    };
+  }, []);
 
   if (n === 0) {
     return (
-      <div style={{ height: 80, borderTop: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div
+        style={{
+          width: 'min(60vw, 320px)',
+          minWidth: 180,
+          height: 92,
+          display: 'flex',
+          alignItems: 'flex-end',
+          justifyContent: 'center',
+          marginLeft: 'auto',
+        }}
+      >
         <span style={{ fontFamily: MONO, fontSize: 11, color: C.textDim }}>— no cards —</span>
       </div>
     );
   }
 
-  const centerIdx = (n - 1) / 2;
-  const fanSpan   = (n - 1) * OVERLAP;
-  // Offset 18% right of center — thumb-friendly for right-handed players
-  const fanLeft   = (viewW - fanSpan - CARD_W) / 2 + viewW * 0.18;
-
   return (
-    // overflow: visible so rotated card edges are never clipped
-    <div style={{ borderTop: `1px solid ${C.border}`, position: 'relative', overflow: 'visible' }}>
-      <div style={{ position: 'relative', height: CONTAINER_H, overflow: 'visible' }}>
+    <div
+      style={{
+        position: 'relative',
+        overflow: 'visible',
+        width: 'min(60vw, 320px)',
+        maxWidth: 320,
+        minWidth: 180,
+        marginLeft: 'auto',
+        pointerEvents: locked ? 'none' : 'auto',
+        opacity: locked ? 0.82 : 1,
+      }}
+    >
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          left: '50%',
+          top: 18,
+          transform: 'translateX(-50%)',
+          width: CARD_W + 26,
+          height: CARD_H + 10,
+          borderRadius: 18,
+          border: `1px solid ${C.neonCyan}20`,
+          background: `linear-gradient(180deg, ${C.neonCyan}10 0%, transparent 72%)`,
+          boxShadow: `0 0 28px ${C.neonCyan}12`,
+          pointerEvents: 'none',
+          zIndex: 0,
+        }}
+      />
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          right: 6,
+          bottom: 8,
+          width: '82%',
+          height: CARD_H + 24,
+          borderRadius: '999px 999px 24px 24px',
+          background: `radial-gradient(circle at 72% 100%, ${C.neonCyan}12 0%, transparent 70%)`,
+          pointerEvents: 'none',
+          zIndex: 0,
+        }}
+      />
+      <div
+        ref={containerRef}
+        data-hand-scroll="true"
+        onScroll={() => {
+          if (scrollFrameRef.current != null) return;
+          scrollFrameRef.current = requestAnimationFrame(() => {
+            scrollFrameRef.current = null;
+            syncFocusedCard();
+          });
+        }}
+        style={{
+          height: SLOT_H,
+          overflowX: 'auto',
+          overflowY: 'visible',
+          display: 'flex',
+          alignItems: 'flex-start',
+          paddingTop: 14,
+          paddingBottom: 12,
+          paddingInline: `calc(50% - ${CARD_W / 2}px)`,
+          scrollSnapType: 'x mandatory',
+          scrollPaddingInline: `calc(50% - ${CARD_W / 2}px)`,
+          WebkitOverflowScrolling: 'touch',
+          overscrollBehaviorX: 'contain',
+          touchAction: 'pan-x',
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none',
+          position: 'relative',
+          zIndex: 1,
+        }}
+      >
         {hand.map((cid, idx) => {
           const ci  = cardInstances[cid];
           const def = data?.cards?.[ci?.defId];
-          const isSelected = selectedCardId === cid;
-
-          const t     = n > 1 ? (idx - centerIdx) / centerIdx : 0; // -1..+1
-          const angle = t * (MAX_ANGLE / 2);
-          const yDrop = t * t * ARC_DROP;
-          const isHovered = hoveredIdx === idx && !isSelected;
-          const yLift = isSelected ? SEL_LIFT : isHovered ? SEL_LIFT * 0.55 : 0;
-          const xPos  = fanLeft + idx * OVERLAP;
-          const yPos  = SEL_LIFT + ARC_DROP - yLift + yDrop;
-          const zIdx  = isSelected ? 100 : isHovered ? 50 : Math.round(n - Math.abs(t) * n + 1);
+          const isActive = activeCardId === cid;
+          const offset = idx - visualCenterIndex;
+          const absOffset = Math.abs(offset);
+          const angle = Math.max(-MAX_ANGLE, Math.min(MAX_ANGLE, offset * 7));
+          const yDrop = isActive ? 0 : Math.min(MAX_DROP, 8 + absOffset * absOffset * 4);
+          const scale = isActive ? 1.02 : Math.max(0.84, 0.98 - absOffset * 0.05);
+          const opacity = Math.max(0.52, 1 - absOffset * 0.12);
+          const zIdx = isActive ? 100 : Math.max(10, 90 - absOffset);
 
           return (
             <div
               key={cid}
-              onMouseEnter={() => setHoveredIdx(idx)}
-              onMouseLeave={() => setHoveredIdx(-1)}
+              ref={(node) => setCardRef(cid, node)}
+              data-hand-card={cid}
+              data-active={isActive ? 'true' : 'false'}
               style={{
-                position: 'absolute',
-                left: xPos,
-                top: yPos,
-                transformOrigin: 'bottom center',
-                transform: `rotate(${angle}deg) scale(${isHovered ? 1.05 : 1})`,
+                flex: `0 0 ${CARD_STEP}px`,
+                width: CARD_STEP,
+                height: SLOT_H,
+                display: 'flex',
+                alignItems: 'flex-start',
+                justifyContent: 'center',
+                overflow: 'visible',
+                scrollSnapAlign: 'center',
+                scrollSnapStop: 'always',
+                transformOrigin: '70% 100%',
+                transform: `translateY(${yDrop}px) rotate(${angle}deg) scale(${scale})`,
+                opacity,
                 zIndex: zIdx,
-                transition: 'top 0.15s ease, transform 0.15s ease',
+                transition: 'transform 0.14s ease-out, opacity 0.14s ease-out',
+                willChange: 'transform',
               }}
             >
               <HandCard
                 cardInstance={ci}
                 cardDef={def}
-                isSelected={isSelected}
+                isSelected={isActive}
                 canPlay={canPlayCard(cid)}
-                onSelect={() => onSelect(cid)}
+                onSelect={() => {
+                  onFocusCard(cid);
+                  if (!isActive) centerCard(cid, 'auto');
+                }}
                 compact={true}
                 showTooltip={aiPaused}
                 onHover={onHover}
@@ -1721,56 +3487,164 @@ function ArcHand({ hand, cardInstances, data, selectedCardId, onSelect, canPlayC
 // MAIN COMBAT SCREEN
 // ============================================================
 export default function CombatScreen({ state, data, onAction, aiPaused = false }) {
-  const [selectedCardId, setSelectedCardId] = useState(null);
+  const [activeCardId, setActiveCardId] = useState(null);
+  const [centerCardDismissed, setCenterCardDismissed] = useState(false);
   const [viewingPile, setViewingPile] = useState(null);
   const [targetedEnemyIndex, setTargetedEnemyIndex] = useState(0);
-  const [actingEnemies, setActingEnemies] = useState({});
+  const [animationQueue, setAnimationQueue] = useState([]);
+  const [activeAnimation, setActiveAnimation] = useState(null);
+  const [endTurnPending, setEndTurnPending] = useState(false);
   const [tooltip, setTooltip] = useState({ cardDef: null, x: 0, y: 0 });
   const [scryDiscard, setScryDiscard] = useState(new Set());
   const [floats, setFloats] = useState([]);
   const lastLogLenRef = useRef(0);
   const floatIdRef = useRef(0);
+  const playAnimationIdRef = useRef(0);
+  const prevHandRef = useRef([]);
+  const logInitRef = useRef(false);
+  const waitingForEndTurnLogsRef = useRef(false);
 
   const combat = state?.combat;
+  const globalLog = state?.log ?? EMPTY_ARRAY;
   const player = combat?.player;
-  const enemies = combat?.enemies || [];
-  const cardInstances = combat?.cardInstances || {};
-  const hand = player?.piles?.hand || [];
-  const drawPile = player?.piles?.draw || [];
-  const discardPile = player?.piles?.discard || [];
-  const exhaustPile = player?.piles?.exhaust || [];
+  const enemies = combat?.enemies ?? EMPTY_ARRAY;
+  const visibleEnemies = enemies.filter((enemy) => enemy.hp > 0);
+  const cardInstances = combat?.cardInstances || EMPTY_OBJECT;
+  const hand = player?.piles?.hand ?? EMPTY_ARRAY;
+  const drawPile = player?.piles?.draw ?? EMPTY_ARRAY;
+  const discardPile = player?.piles?.discard ?? EMPTY_ARRAY;
+  const exhaustPile = player?.piles?.exhaust ?? EMPTY_ARRAY;
+  const powerPile = player?.piles?.power ?? EMPTY_ARRAY;
   const ram = player?.ram ?? 0;
   const maxRam = player?.maxRAM ?? 0;
+  const firewallStacks = player?.statuses?.find(s => s.id === 'Firewall')?.stacks ?? 0;
+  const nonFirewallStatuses = (player?.statuses || []).filter(s => s.id !== 'Firewall');
+  const hasQueuedAnimations = Boolean(activeAnimation) || animationQueue.length > 0;
+  const interactionLocked = endTurnPending || hasQueuedAnimations;
 
-  const selectedInstance = selectedCardId ? cardInstances[selectedCardId] : null;
-  const selectedDef = selectedInstance ? data?.cards?.[selectedInstance.defId] : null;
+  const activeInstance = activeCardId ? cardInstances[activeCardId] : null;
+  const activeDef = activeInstance ? data?.cards?.[activeInstance.defId] : null;
+  const targetedEnemy = visibleEnemies[targetedEnemyIndex] ?? visibleEnemies[0] ?? null;
+  const targetedIntentCardDef = targetedEnemy ? data?.cards?.[targetedEnemy.intent?.cardDefId] : null;
+  const targetedIntentBadges = targetedEnemy ? getIntentEffectBadges(targetedEnemy, targetedIntentCardDef) : EMPTY_ARRAY;
+
+  const focusActiveCard = useCallback((cardId) => {
+    setCenterCardDismissed(false);
+    setActiveCardId(cardId);
+  }, []);
 
   // Reset target when enemies change
   useEffect(() => {
-    if (targetedEnemyIndex >= enemies.length && enemies.length > 0) {
-      setTargetedEnemyIndex(0);
+    if (visibleEnemies.length <= 0) {
+      if (targetedEnemyIndex !== 0) setTargetedEnemyIndex(0);
+      return;
     }
-  }, [enemies.length, targetedEnemyIndex]);
-
-  // Clear selection if card leaves hand
-  useEffect(() => {
-    if (selectedCardId && !hand.includes(selectedCardId)) {
-      setSelectedCardId(null);
+    if (targetedEnemyIndex >= visibleEnemies.length) {
+      setTargetedEnemyIndex(Math.max(0, visibleEnemies.length - 1));
     }
-  }, [hand, selectedCardId]);
+  }, [visibleEnemies.length, targetedEnemyIndex]);
 
-  // ── Parse combat log for floating numbers + sound cues ──
+  // Keep the centered card stable across hand changes
   useEffect(() => {
-    const log = combat?.log;
-    if (!log) return;
-    const newEntries = log.slice(lastLogLenRef.current);
-    lastLogLenRef.current = log.length;
-    if (!newEntries.length) return;
+    const prevHand = prevHandRef.current;
+
+    if (hand.length === 0) {
+      if (activeCardId !== null) setActiveCardId(null);
+      if (centerCardDismissed) setCenterCardDismissed(false);
+      prevHandRef.current = hand;
+      return;
+    }
+
+    if (!activeCardId || !hand.includes(activeCardId)) {
+      const prevIndex = activeCardId ? prevHand.indexOf(activeCardId) : 0;
+      const nextIndex = prevIndex >= 0 ? Math.min(prevIndex, hand.length - 1) : 0;
+      setCenterCardDismissed(false);
+      setActiveCardId(hand[nextIndex] ?? hand[0]);
+    }
+
+    prevHandRef.current = hand;
+  }, [activeCardId, centerCardDismissed, hand]);
+
+  // Parse global combat log for floating numbers, sound cues, and card-play animations.
+  useEffect(() => {
+    if (!combat) {
+      logInitRef.current = false;
+      lastLogLenRef.current = globalLog.length;
+      waitingForEndTurnLogsRef.current = false;
+      return;
+    }
+
+    if (!logInitRef.current) {
+      lastLogLenRef.current = globalLog.length;
+      logInitRef.current = true;
+      return;
+    }
+
+    if (globalLog.length < lastLogLenRef.current) {
+      lastLogLenRef.current = globalLog.length;
+      return;
+    }
+
+    const newEntries = globalLog.slice(lastLogLenRef.current);
+    lastLogLenRef.current = globalLog.length;
+    if (!newEntries.length) {
+      if (waitingForEndTurnLogsRef.current) {
+        waitingForEndTurnLogsRef.current = false;
+        setEndTurnPending(false);
+      }
+      return;
+    }
 
     const newFloats = [];
+    const newAnimations = [];
+    let sawEnemyCard = false;
+
     for (const entry of newEntries) {
+      if (entry.t === 'CardPlayed') {
+        newAnimations.push({
+          id: ++playAnimationIdRef.current,
+          kind: 'cardPlay',
+          actor: 'player',
+          defId: entry.data?.defId,
+          targetEnemyId: entry.data?.targetEnemyId ?? null,
+          duration: getPlayAnimationDuration('player'),
+        });
+      } else if (entry.t === 'EnemyCardPlayed') {
+        sawEnemyCard = true;
+        newAnimations.push({
+          id: ++playAnimationIdRef.current,
+          kind: 'cardPlay',
+          actor: 'enemy',
+          enemyId: entry.data?.enemyId,
+          enemyName: entry.data?.enemyName,
+          defId: entry.data?.defId,
+          intentType: entry.data?.intentType || 'Unknown',
+          duration: getPlayAnimationDuration('enemy', entry.data?.intentType),
+        });
+      } else if (entry.t === 'MutationApplied') {
+        sfx.mutation();
+        const mutationId = entry.data?.mutationId ?? null;
+        const cardInstanceId = entry.data?.cardInstanceId ?? null;
+        const cardInstance = cardInstanceId ? cardInstances[cardInstanceId] : null;
+        const defId = entry.data?.cardDefId ?? cardInstance?.defId ?? null;
+        if (mutationId && defId) {
+          newAnimations.push({
+            id: ++playAnimationIdRef.current,
+            kind: entry.data?.isNewInRun ? 'mutationPopup' : 'mutationRepeat',
+            mutationId,
+            mutationName: entry.data?.mutationName ?? data?.mutations?.[mutationId]?.name ?? mutationId,
+            cardInstanceId,
+            defId,
+            duration: entry.data?.isNewInRun ? MUTATION_DISCOVERY_MS : MUTATION_REPEAT_LINGER_MS,
+          });
+        }
+      } else if (entry.t === 'MutPatch') {
+        sfx.mutation();
+      }
+
       if (entry.t === 'DamageDealt') {
-        const { targetId, finalDamage, blocked } = entry.data || {};
+        const { targetId, finalDamage, protectionAbsorbed, firewallAbsorbed, blocked } = entry.data || {};
+        const absorbed = protectionAbsorbed ?? firewallAbsorbed ?? blocked ?? 0;
         const isPlayerTarget = targetId === 'player' || targetId === state?.run?.playerId;
         if (finalDamage > 0) {
           sfx.damage();
@@ -1782,11 +3656,11 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false }
             zone: isPlayerTarget ? 'player' : 'enemy',
           });
         }
-        if (blocked > 0) {
+        if (absorbed > 0) {
           sfx.block();
           newFloats.push({
             id: ++floatIdRef.current,
-            text: `🛡 ${blocked}`,
+            text: `□ ${absorbed}`,
             cssClass: 'float-block',
             color: '#00f0ff',
             zone: isPlayerTarget ? 'player' : 'enemy',
@@ -1794,7 +3668,6 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false }
         }
       } else if (entry.t === 'Info') {
         const msg = entry.msg || '';
-        // Healing
         const healMatch = msg.match(/healed? (\d+)/i);
         if (healMatch) {
           sfx.heal();
@@ -1807,32 +3680,56 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false }
             zone: isPlayerTarget ? 'player' : 'enemy',
           });
         }
-        // Status applied
         if (msg.includes('gained ') && msg.includes('(')) sfx.status();
-        // Block gained
-        const blockMatch = msg.match(/gained (\d+) block/i);
-        if (blockMatch) {
+        const firewallMatch = msg.match(/gained Firewall\((\d+)\)/i);
+        if (firewallMatch) {
           newFloats.push({
             id: ++floatIdRef.current,
-            text: `🛡 ${blockMatch[1]}`,
+            text: `□ ${firewallMatch[1]}`,
             cssClass: 'float-block',
             color: '#00f0ff',
             zone: msg.startsWith('enemy_') ? 'enemy' : 'player',
           });
         }
-      } else if (entry.t === 'MutationApplied' || entry.t === 'MutPatch') {
-        sfx.mutation();
       }
     }
+
+    if (newAnimations.length) {
+      setAnimationQueue((prev) => [...prev, ...newAnimations]);
+    }
     if (newFloats.length) {
-      setFloats(prev => [...prev.slice(-12), ...newFloats]);
-      // Auto-expire after animation
+      setFloats((prev) => [...prev.slice(-12), ...newFloats]);
       setTimeout(() => {
-        setFloats(prev => prev.slice(newFloats.length));
+        setFloats((prev) => prev.slice(newFloats.length));
       }, 1400);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [combat?.log?.length]);
+
+    if (waitingForEndTurnLogsRef.current) {
+      waitingForEndTurnLogsRef.current = false;
+      if (!sawEnemyCard) setEndTurnPending(false);
+    }
+  }, [cardInstances, combat, data?.mutations, globalLog, state?.run?.playerId]);
+
+  useEffect(() => {
+    if (activeAnimation || animationQueue.length === 0) return;
+    const [nextAnimation, ...rest] = animationQueue;
+    setAnimationQueue(rest);
+    setActiveAnimation(nextAnimation);
+  }, [activeAnimation, animationQueue]);
+
+  useEffect(() => {
+    if (!activeAnimation) return undefined;
+    const timeoutId = setTimeout(() => {
+      setActiveAnimation(null);
+    }, activeAnimation.duration || PLAYER_PLAY_ANIMATION_MS);
+    return () => clearTimeout(timeoutId);
+  }, [activeAnimation]);
+
+  useEffect(() => {
+    if (!activeAnimation && animationQueue.length === 0 && endTurnPending && !waitingForEndTurnLogsRef.current) {
+      setEndTurnPending(false);
+    }
+  }, [activeAnimation, animationQueue.length, endTurnPending]);
 
   const canPlayCard = (cid) => {
     const ci = cardInstances[cid];
@@ -1843,27 +3740,19 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false }
     return player?.ram >= cost;
   };
 
-  const handlePlayCard = () => {
-    if (!selectedCardId || !canPlayCard(selectedCardId)) return;
+  const handlePlayCard = (cardId = activeCardId) => {
+    if (interactionLocked || !cardId || !canPlayCard(cardId)) return;
     sfx.unlock(); sfx.cardPlay();
-    const target = enemies[targetedEnemyIndex]?.id ?? enemies[0]?.id;
-    onAction?.({ type: 'Combat_PlayCard', cardInstanceId: selectedCardId, targetEnemyId: target });
-    setSelectedCardId(null);
+    const target = targetedEnemy?.id ?? visibleEnemies[0]?.id ?? enemies.find((enemy) => enemy.hp > 0)?.id;
+    onAction?.({ type: 'Combat_PlayCard', cardInstanceId: cardId, targetEnemyId: target });
   };
 
   const handleEndTurn = () => {
+    if (interactionLocked) return;
     sfx.endTurn();
-    // Capture intents before the turn resolves — that's what enemies are about to do
-    const snapshot = {};
-    for (const enemy of enemies) {
-      if (enemy.hp > 0 && enemy.intent?.type) snapshot[enemy.id] = enemy.intent.type;
-    }
+    waitingForEndTurnLogsRef.current = true;
+    setEndTurnPending(true);
     onAction?.({ type: 'Combat_EndTurn' });
-    setSelectedCardId(null);
-    if (Object.keys(snapshot).length) {
-      setActingEnemies(snapshot);
-      setTimeout(() => setActingEnemies({}), 600);
-    }
   };
 
   // Victory / Defeat sound (runs once when combatOver flips to true)
@@ -1874,15 +3763,15 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [combat?.combatOver]);
 
-  if (!combat || combat.combatOver) {
+  if ((!combat || combat.combatOver) && !hasQueuedAnimations) {
     const victory = combat?.victory;
     const accentColor = victory ? C.neonGreen : C.neonRed;
 
     // ── Compute combat stats from structured log ───────────────────────────
-    const log = combat?.log || [];
+    const log = globalLog || [];
     let totalDmgDealt = 0;
     let totalDmgTaken = 0;
-    let totalBlocked  = 0;
+    let totalAbsorbed = 0;
     let cardsPlayedN  = 0;
     let killerName    = null;
     for (const entry of log) {
@@ -1892,7 +3781,7 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false }
           totalDmgDealt += d.finalDamage || 0;
         } else {
           totalDmgTaken += d.finalDamage || 0;
-          totalBlocked  += d.blocked     || 0;
+          totalAbsorbed += d.protectionAbsorbed ?? d.firewallAbsorbed ?? d.blocked ?? 0;
           if (!victory) {
             const attacker = (combat?.enemies || []).find(e => e.id === d.sourceId);
             if (attacker) killerName = attacker.name;
@@ -1907,8 +3796,8 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false }
     const hpMax           = combat?.player?.maxHP ?? 75;
     const enemiesDefeated = (combat?.enemies || []).filter(e => e.hp <= 0).length;
     const totalEnemies    = (combat?.enemies || []).length;
-    const blockEff        = (totalBlocked + totalDmgTaken) > 0
-      ? Math.round(100 * totalBlocked / (totalBlocked + totalDmgTaken))
+    const absorbEff       = (totalAbsorbed + totalDmgTaken) > 0
+      ? Math.round(100 * totalAbsorbed / (totalAbsorbed + totalDmgTaken))
       : 0;
 
     const StatRow = ({ label, value, valueColor }) => (
@@ -1992,8 +3881,8 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false }
             valueColor={totalDmgTaken > hpMax * 2 ? C.neonRed : C.text}
           />
           <StatRow
-            label="Damage blocked"
-            value={`${totalBlocked.toLocaleString()}  (${blockEff}% eff.)`}
+            label="Damage absorbed"
+            value={`${totalAbsorbed.toLocaleString()}  (${absorbEff}% eff.)`}
             valueColor={C.neonCyan}
           />
         </div>
@@ -2065,37 +3954,61 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false }
         </div>
       )}
 
+      <CombatPlayAnimationLayer animation={activeAnimation} data={data} enemies={enemies} cardInstances={cardInstances} />
+
       {/* ============ ZONE A: ENEMIES (top) ============ */}
       <div
         className="safe-area-top"
         style={{
           flex: '0 0 auto',
-          minHeight: '18vh',
-          maxHeight: '30vh',
+          minHeight: 'clamp(248px, 31vh, 330px)',
           display: 'flex',
-          alignItems: 'center',
+          alignItems: 'flex-start',
           justifyContent: 'center',
-          padding: '8px 8px',
-          overflowX: 'auto',
-          overflowY: 'hidden',
+          padding: '18px 10px 12px',
+          overflow: 'visible',
         }}
       >
-        <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', alignItems: 'stretch' }}>
-          {enemies.map((enemy, i) => (
-            <EnemyCard
-              key={enemy.id}
-              enemy={enemy}
-              isTargeted={i === targetedEnemyIndex}
-              onClick={() => setTargetedEnemyIndex(i)}
-              actingType={actingEnemies[enemy.id] || null}
-              data={data}
-            />
-          ))}
+        <div
+          style={{
+            width: 'min(100%, 1120px)',
+            display: 'grid',
+            gridTemplateColumns: 'minmax(0, 1fr) clamp(220px, 24vw, 268px)',
+            alignItems: 'start',
+            gap: 12,
+          }}
+        >
+          <div
+            style={{
+              minWidth: 0,
+              display: 'flex',
+              justifyContent: 'flex-end',
+              overflowX: 'auto',
+              overflowY: 'hidden',
+              padding: '0 2px 4px',
+            }}
+          >
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', alignItems: 'stretch', minWidth: 'fit-content', padding: '0 4px' }}>
+              {visibleEnemies.map((enemy, i) => (
+                <EnemyCard
+                  key={enemy.id}
+                  enemy={enemy}
+                  isTargeted={i === targetedEnemyIndex}
+                  onClick={() => {
+                    if (!interactionLocked) setTargetedEnemyIndex(i);
+                  }}
+                  actingType={activeAnimation?.actor === 'enemy' && activeAnimation.enemyId === enemy.id ? activeAnimation.intentType : null}
+                  data={data}
+                />
+              ))}
+            </div>
+          </div>
+
+          <EnemyFocusPanel enemy={targetedEnemy} intentBadges={targetedIntentBadges} />
         </div>
       </div>
 
-      {/* ============ ZONE B: CENTER CARD + EXECUTE (middle) ============ */}
-      {/* This is a non-scrolling flex zone. EXECUTE button is OUTSIDE any overflow container. */}
+      {/* ============ ZONE B: CENTER CARD (middle) ============ */}
       <div style={{
         flex: 1,
         display: 'flex',
@@ -2108,43 +4021,21 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false }
       }}>
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 0, overflow: 'auto', width: '100%' }}>
           <CenterCardDisplay
-            cardInstance={selectedInstance}
-            cardDef={selectedDef}
+            cardInstance={activeInstance}
+            cardDef={activeDef}
             data={data}
+            dismissed={centerCardDismissed}
+            onDismiss={() => setCenterCardDismissed(true)}
+            onActivate={() => handlePlayCard(activeCardId)}
+            canActivate={!interactionLocked && !!activeCardId && canPlayCard(activeCardId)}
+            activateHint={interactionLocked ? 'Resolving action' : (activeCardId && canPlayCard(activeCardId) ? 'Tap to play' : 'Not enough RAM')}
           />
         </div>
-
-        {/* EXECUTE button - outside overflow container to fix click-through bug */}
-        {selectedCardId && canPlayCard(selectedCardId) && (
-          <button
-            onClick={handlePlayCard}
-            className="animate-slide-up"
-            style={{
-              flexShrink: 0,
-              margin: '6px auto',
-              padding: '10px 36px',
-              borderRadius: '12px',
-              fontFamily: MONO,
-              fontWeight: 700,
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em',
-              transition: 'all 0.2s ease',
-              backgroundColor: getCardColor(selectedDef?.type),
-              color: '#000',
-              boxShadow: `0 0 24px ${getCardColor(selectedDef?.type)}50`,
-              fontSize: 14,
-              cursor: 'pointer',
-              zIndex: 30,
-            }}
-          >
-            {'\u25B6'} EXECUTE
-          </button>
-        )}
       </div>
 
       {/* ============ ZONE C: COMPACT PLAYER STATS ============ */}
       <div style={{
-        display: 'flex',
+        display: 'none',
         alignItems: 'center',
         gap: 8,
         padding: '5px 10px',
@@ -2152,16 +4043,8 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false }
         backgroundColor: C.bgDark,
         flexShrink: 0,
       }}>
-        {/* Turn badge */}
-        <span style={{ fontFamily: MONO, fontSize: 10, color: C.neonCyan, fontWeight: 700, letterSpacing: '0.05em', flexShrink: 0 }}>
-          T{combat.turn}
-        </span>
-        {/* HP */}
-        <div style={{ flex: 1, maxWidth: 140 }}>
-          <HealthBar current={player?.hp ?? 0} max={player?.maxHP ?? 1} height={12} showText={true} />
-        </div>
-        {/* Firewall + block */}
-        {(player?.statuses?.find(s => s.id === 'Firewall')?.stacks ?? 0) > 0 && (
+        {/* Firewall */}
+        {firewallStacks > 0 && (
           <span style={{ fontFamily: MONO, fontSize: 10, color: C.neonCyan, flexShrink: 0 }}>
             🛡 {player.statuses.find(s => s.id === 'Firewall').stacks}
           </span>
@@ -2172,7 +4055,7 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false }
           </span>
         )}
         {/* Other statuses (compact) */}
-        <StatusRow statuses={(player?.statuses || []).filter(s => s.id !== 'Firewall')} size="small" />
+        <StatusRow statuses={nonFirewallStatuses} size="small" />
       </div>
 
       {/* ============ ZONE C2: ARC HAND ============ */}
@@ -2180,125 +4063,204 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false }
         hand={hand}
         cardInstances={cardInstances}
         data={data}
-        selectedCardId={selectedCardId}
-        onSelect={(cid) => setSelectedCardId(selectedCardId === cid ? null : cid)}
-        canPlayCard={canPlayCard}
+        activeCardId={activeCardId}
+        onFocusCard={focusActiveCard}
+        canPlayCard={(cid) => !interactionLocked && canPlayCard(cid)}
+        locked={interactionLocked}
         aiPaused={aiPaused}
         onHover={(cd, x, y) => setTooltip({ cardDef: cd, x, y })}
       />
 
-      {/* ============ ZONE D: RAM BAR + ACTION BUTTONS (bottom) ============ */}
+      <div
+        style={{
+          display: 'none',
+          padding: '0 10px 6px 10px',
+          backgroundColor: C.bgDark,
+          flexShrink: 0,
+        }}
+      >
+        <HealthBar current={player?.hp ?? 0} max={player?.maxHP ?? 1} height={12} showText={true} />
+      </div>
+
+      {/* ============ ZONE D: PLAYER HUD + ACTION BUTTONS (bottom) ============ */}
       <div
         className="safe-area-bottom"
         style={{
           display: 'flex',
-          flexDirection: 'column',
-          gap: '5px',
-          padding: '6px 10px 10px 10px',
-          backgroundColor: C.bgDark,
-          borderTop: `1px solid ${C.border}`,
+          flexWrap: 'wrap',
+          alignItems: 'stretch',
+          justifyContent: 'space-between',
+          gap: '10px',
+          margin: '0 10px 14px',
+          padding: '10px 12px 12px',
+          background: 'linear-gradient(180deg, rgba(9,12,20,0.94) 0%, rgba(6,9,16,0.98) 100%)',
+          border: `1px solid ${C.borderLight}`,
+          borderRadius: 18,
+          boxShadow: '0 14px 32px rgba(0,0,0,0.34)',
         }}
-      >
-        {/* Row 1: RAM bar */}
-        <RamBar ram={ram} maxRam={maxRam} />
+        >
+          <CompactPlayerHud
+            player={player}
+            ram={ram}
+            maxRam={maxRam}
+          powerPile={powerPile}
+          cardInstances={cardInstances}
+          data={data}
+          />
 
-        {/* Row 2: Pile buttons + action buttons */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          {/* Pile count buttons */}
-          <div style={{ display: 'flex', gap: '6px' }}>
-            <button
-              onClick={() => setViewingPile('draw')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-                padding: '6px 10px',
-                borderRadius: '8px',
-                fontFamily: MONO,
-                transition: 'all 0.15s ease',
-                backgroundColor: C.bgCard,
-                border: `1px solid ${C.neonCyan}30`,
-                fontSize: 11,
-              }}
-            >
-              <span style={{ color: C.neonCyan, fontWeight: 700 }}>{drawPile.length}</span>
-              <span style={{ color: C.textDim }}>Draw</span>
-            </button>
-            <button
-              onClick={() => setViewingPile('discard')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-                padding: '6px 10px',
-                borderRadius: '8px',
-                fontFamily: MONO,
-                transition: 'all 0.15s ease',
-                backgroundColor: C.bgCard,
-                border: `1px solid ${C.neonOrange}30`,
-                fontSize: 11,
-              }}
-            >
-              <span style={{ color: C.neonOrange, fontWeight: 700 }}>{discardPile.length}</span>
-              <span style={{ color: C.textDim }}>Disc</span>
-            </button>
-            <button
-              onClick={() => setViewingPile('exhaust')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-                padding: '6px 10px',
-                borderRadius: '8px',
-                fontFamily: MONO,
-                transition: 'all 0.15s ease',
-                backgroundColor: C.bgCard,
-                border: `1px solid ${C.neonRed}30`,
-                fontSize: 11,
-              }}
-            >
-              <span style={{ color: C.neonRed, fontWeight: 700 }}>{exhaustPile.length}</span>
-              <span style={{ color: C.textDim }}>Exh</span>
-            </button>
+        <div style={{ flex: '1 1 340px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: '10px', justifyContent: 'space-between' }}>
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 8,
+              padding: '10px 12px',
+              borderRadius: 16,
+              background: 'linear-gradient(180deg, rgba(10,12,20,0.96) 0%, rgba(6,8,16,0.96) 100%)',
+              border: `1px solid ${C.borderLight}`,
+              boxShadow: '0 10px 24px rgba(0,0,0,0.24)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+              <span style={{ fontFamily: MONO, fontSize: 8, fontWeight: 700, letterSpacing: '0.12em', color: C.textDim }}>
+                DECK PILES
+              </span>
+              <span style={{ fontFamily: MONO, fontSize: 8, color: C.textSecondary }}>
+                Inspect state quickly
+              </span>
+            </div>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setViewingPile('draw')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '7px 12px',
+                  borderRadius: '10px',
+                  fontFamily: MONO,
+                  transition: 'all 0.15s ease',
+                  backgroundColor: `${C.neonCyan}10`,
+                  border: `1px solid ${C.neonCyan}32`,
+                  fontSize: 11,
+                  color: C.textPrimary,
+                  boxShadow: `0 0 14px ${C.neonCyan}10`,
+                }}
+              >
+                <span style={{ color: C.neonCyan, fontWeight: 700 }}>{drawPile.length}</span>
+                <span style={{ color: '#bfefff' }}>Draw</span>
+              </button>
+              <button
+                onClick={() => setViewingPile('discard')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '7px 12px',
+                  borderRadius: '10px',
+                  fontFamily: MONO,
+                  transition: 'all 0.15s ease',
+                  backgroundColor: `${C.neonOrange}12`,
+                  border: `1px solid ${C.neonOrange}32`,
+                  fontSize: 11,
+                  color: C.textPrimary,
+                  boxShadow: `0 0 14px ${C.neonOrange}10`,
+                }}
+              >
+                <span style={{ color: C.neonOrange, fontWeight: 700 }}>{discardPile.length}</span>
+                <span style={{ color: '#ffd8bf' }}>Discard</span>
+              </button>
+              <button
+                onClick={() => setViewingPile('exhaust')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '7px 12px',
+                  borderRadius: '10px',
+                  fontFamily: MONO,
+                  transition: 'all 0.15s ease',
+                  backgroundColor: `${C.neonRed}12`,
+                  border: `1px solid ${C.neonRed}32`,
+                  fontSize: 11,
+                  color: C.textPrimary,
+                  boxShadow: `0 0 14px ${C.neonRed}10`,
+                }}
+              >
+                <span style={{ color: C.neonRed, fontWeight: 700 }}>{exhaustPile.length}</span>
+                <span style={{ color: '#ffd0d0' }}>Exhaust</span>
+              </button>
+            </div>
           </div>
 
-          {/* Action buttons */}
-          <div style={{ display: 'flex', gap: '6px' }}>
-            <button
-              onClick={() => onAction?.({ type: 'Combat_Simulate', maxTurns: 50 })}
-              style={{
-                padding: '6px 10px',
-                borderRadius: '8px',
-                fontFamily: MONO,
-                fontWeight: 700,
-                textTransform: 'uppercase',
-                transition: 'all 0.15s ease',
-                backgroundColor: `${C.neonPurple}20`,
-                color: C.neonPurple,
-                border: `1px solid ${C.neonPurple}40`,
-                fontSize: 9,
-              }}
-            >
-              AUTO
-            </button>
-            <button
-              onClick={handleEndTurn}
-              style={{
-                padding: '6px 14px',
-                borderRadius: '8px',
-                fontFamily: MONO,
-                fontWeight: 700,
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-                transition: 'all 0.15s ease',
-                backgroundColor: C.neonCyan,
-                color: '#000',
-                boxShadow: `0 0 14px ${C.neonCyan}40`,
-                fontSize: 11,
-              }}
-            >
-              END TURN
-            </button>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '10px',
+              flexWrap: 'wrap',
+              padding: '10px 12px',
+              borderRadius: 16,
+              background: 'linear-gradient(180deg, rgba(8,12,20,0.96) 0%, rgba(5,8,14,0.98) 100%)',
+              border: `1px solid ${C.borderLight}`,
+              boxShadow: '0 10px 24px rgba(0,0,0,0.24)',
+            }}
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+              <span style={{ fontFamily: MONO, fontSize: 8, fontWeight: 700, letterSpacing: '0.12em', color: C.textDim }}>
+                COMBAT OPS
+              </span>
+              <span style={{ fontFamily: MONO, fontSize: 9, color: C.textSecondary }}>
+                Hand {hand.length} | tap centered card to play
+              </span>
+            </div>
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => onAction?.({ type: 'Combat_Simulate', maxTurns: 50 })}
+                disabled={interactionLocked}
+                style={{
+                  padding: '8px 12px',
+                  borderRadius: '10px',
+                  fontFamily: MONO,
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.08em',
+                  transition: 'all 0.15s ease',
+                  backgroundColor: `${C.neonPurple}22`,
+                  color: '#e9c9ff',
+                  border: `1px solid ${C.neonPurple}4a`,
+                  boxShadow: `0 0 14px ${C.neonPurple}16`,
+                  fontSize: 9,
+                  cursor: interactionLocked ? 'default' : 'pointer',
+                  opacity: interactionLocked ? 0.45 : 1,
+                }}
+              >
+                AUTO
+              </button>
+              <button
+                onClick={handleEndTurn}
+                disabled={interactionLocked}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: '10px',
+                  fontFamily: MONO,
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.08em',
+                  transition: 'all 0.15s ease',
+                  background: `linear-gradient(135deg, ${C.neonCyan} 0%, #84fff5 100%)`,
+                  color: '#021217',
+                  boxShadow: `0 0 18px ${C.neonCyan}42`,
+                  fontSize: 11,
+                  border: '1px solid rgba(255,255,255,0.22)',
+                  cursor: interactionLocked ? 'default' : 'pointer',
+                  opacity: interactionLocked ? 0.5 : 1,
+                }}
+              >
+                END TURN
+              </button>
+            </div>
           </div>
         </div>
       </div>

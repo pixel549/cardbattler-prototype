@@ -1,11 +1,11 @@
 id,name,isNegative,decaysEachTurn,decayAmount,tags,notes
-Firewall,Firewall,false,false,1,Buff,Block-like cyber shield (stacks persist unless spent by mechanics)
+Firewall,Firewall,false,true,1,Buff,Persistent cyber shield that carries across turns but soft-decays by 20% each turn and caps at current HP
 Weak,Weak,true,true,1,Debuff,25% less outgoing damage while active
 Vulnerable,Vulnerable,true,true,1,Debuff,50% more incoming damage while active
 Leak,Leak,true,true,1,Debuff,Enables enemy multi-hit preference; also used for combo rules
 ExposedPorts,Exposed Ports,true,true,1,Debuff,Vulnerability-equivalent placeholder used by cards
 SensorGlitch,Sensor Glitch,true,true,1,Debuff,Accuracy / targeting interference placeholder
-Corrode,Corrode,true,true,1,Debuff,Armour decay / block reduction placeholder
+Corrode,Corrode,true,true,1,Debuff,Firewall erosion plus direct integrity burn each turn
 Underclock,Underclock,true,true,1,Debuff,Reduces RAM regen / speed placeholder
 Overclock,Overclock,false,true,1,Buff,Increases damage or RAM regen placeholder (decays)
 Nanoflow,Nanoflow,false,true,1,Buff,Healing-over-time / regen placeholder (decays)
@@ -13,6 +13,6 @@ TargetSpoof,Target Spoof,true,true,1,Debuff,Targeting misdirection placeholder
 Throttled,Throttled,true,true,1,Debuff,Limits actions per turn placeholder
 TraceBeacon,Trace Beacon,true,false,1,Debuff,Mark that persists; used for tracking / escalation
 Overheat,Overheat,true,true,1,Debuff,Damage-over-time / self-harm placeholder
-CorruptedSector,Corrupted Sector,true,false,1,Debuff,Persistent corruption marker placeholder
+CorruptedSector,Corrupted Sector,true,false,1,Debuff,Prevents Firewall gain while active
 DazedPackets,Dazed Packets,true,true,1,Debuff,Draw/hand disruption placeholder
 Burn,Burn,true,true,1,Debuff,Classic burn / DOT placeholder

@@ -11,7 +11,7 @@ ThermalSink,Thermal Sink,🌡️,common,Increased core stability provides flat H
 LatencyChip,Latency Chip,⏳,common,"Turn 1: +2 Draw, but -1 RAM",,,,,,,,,,,on_combat_start,"draw +2, ram -1",common
 DebugLog,Debug Log,📜,common,Every 5th card played in a single combat costs 0 RAM,,,,,,,,,,,on_card_play,5th card free,common
 PatchNotes,Patch Notes,📝,common,"Whenever a card mutates, choose from 3 options instead of 2",,,,,,,,,,,on_card_mutate,choice +1,common
-CoolingFan,Cooling Fan,❄️,common,"Whenever you play a 'Repair' card, gain 4 Block",,,,,,,,,,,on_card_play,if repair gain 4 block,common
+CoolingFan,Cooling Fan,❄️,common,"Whenever you play a 'Repair' card, gain 4 Firewall",,,,,,,,,,,on_card_play,if repair gain 4 firewall,common
 BlackIce,Black Ice,🖤,uncommon,"Whenever an enemy inflicts a debuff on you, deal 3 damage back",,,,,,,,,,,on_damage_taken,deal 3 back,uncommon
 MutationCatalyst,Mutation Catalyst,🧬,uncommon,All cards mutate 1 turn sooner,,,,,,,-1,,,,,,uncommon
 FragmentationCache,Fragment Cache,💣,uncommon,Gain 35g whenever you remove a card from your deck,,,,,,,,,,,on_card_remove,gain 35g,uncommon
@@ -43,9 +43,9 @@ GoldScraper,Gold Scraper,🪙,rare,Receive a high initial funding for the run,,,
 TheDaemon,The Daemon,👁️,boss,Cards deal +3 damage; start combat with 3 Corrode on self,,,,,,,,,,,on_combat_start,"+3 dmg, 3 self corrode",boss
 NeuralBurnout,Neural Burnout,🔥,boss,"Max RAM is doubled, but take 2 damage every turn",,,4,,,,,,,,on_turn_start,take 2 dmg,boss
 DeadMansChip,Dead Man Chip,💀,boss,"Once per run, a lethal hit leaves you at 1 HP",,,,,,,,,,,on_damage_taken,lethal save,boss
-OverclockSuite,Overclock Suite,⚙️,boss,Mutate 2x faster; applied mutations are 1 tier weaker,,,,,,,-2,,,,on_card_mutate,mutation tier -1,boss
+OverclockSuite,Overclock Suite,⚙️,boss,Mutate 2x faster; applied mutations are 1 tier weaker,,,,,,,-1,,2,,on_card_mutate,mutation tier -1,boss
 TheSingularity,Singularity,🕳️,boss,Cannot draw at turn start; choose 1 of 3 cards to Download,,,,,,,,,,,on_turn_start,download 1 of 3,boss
 CursedCompiler,Cursed Comp,💠,boss,+2 RAM; play cards to add Junk Data (Curse) to deck,,,2,,,,,,,,on_card_play,add junk data card,boss
-FirewallPrime,Firewall Prime,🧱,boss,Immune to first 3 hits; you can no longer gain Block,,,,,,,,,,,on_combat_start,3-hit invuln,boss
+FirewallPrime,Firewall Prime,🧱,boss,Immune to first 3 hits each combat,,,,,,,,,,,on_combat_start,3-hit invuln,boss
 ThrottledProc,Throttled Proc,🚥,boss,Max RAM is capped at 3; all cards cost max 1 RAM,,,-2,,,,,,,,passive_combat,"cap ram 3, card cost max 1",boss
 EntropyEngine,Entropy Engine,🌀,boss,Taking damage draws 1 card; no longer draw at turn start,,,,,,,,,,,on_damage_taken,damage triggers draw,boss

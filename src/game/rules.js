@@ -1,7 +1,54 @@
 import { push } from "./log";
 
-function getStacks(target, id) {
-  return target.statuses?.find(s => s.id === id)?.stacks ?? 0;
+function getStatusEntry(target, id) {
+  if (!target) return null;
+  return target.statuses?.find(s => s.id === id) ?? null;
+}
+
+export function getStatusStacks(target, id) {
+  return getStatusEntry(target, id)?.stacks ?? 0;
+}
+
+export function getFirewallStacks(target) {
+  return getStatusStacks(target, "Firewall");
+}
+
+export function getFirewallCap(target) {
+  return Math.max(0, Math.floor(Number(target?.hp ?? 0)));
+}
+
+export function loseFirewall(state, target, amount, { silent = false } = {}) {
+  const toLose = Math.max(0, Math.floor(Number(amount) || 0));
+  if (toLose <= 0) return 0;
+
+  const firewallStatus = getStatusEntry(target, "Firewall");
+  if (!firewallStatus || firewallStatus.stacks <= 0) return 0;
+
+  const lost = Math.min(firewallStatus.stacks, toLose);
+  firewallStatus.stacks -= lost;
+  if (firewallStatus.stacks <= 0) {
+    target.statuses = (target.statuses || []).filter(s => s.id !== "Firewall");
+  }
+  if (!silent) {
+    push(state.log, { t: "Info", msg: `${target.id} lost ${lost} Firewall` });
+  }
+  return lost;
+}
+
+export function clearFirewall(state, target, options) {
+  return loseFirewall(state, target, getFirewallStacks(target), options);
+}
+
+export function enforceFirewallCap(state, target, { silent = false } = {}) {
+  if (!target) return 0;
+  const cap = getFirewallCap(target);
+  const current = getFirewallStacks(target);
+  if (current <= cap) return 0;
+  const trimmed = loseFirewall(state, target, current - cap, { silent: true });
+  if (trimmed > 0 && !silent) {
+    push(state.log, { t: "Info", msg: `${target.id} Firewall capped at ${cap}` });
+  }
+  return trimmed;
 }
 
 export function applyDamage(state, sourceId, target, amount) {
@@ -13,11 +60,11 @@ export function applyDamage(state, sourceId, target, amount) {
     : state.enemies.find(e => e.id === sourceId);
 
   // Weak: attacker deals 25% less damage
-  const weakStacks = source ? getStacks(source, "Weak") : 0;
+  const weakStacks = source ? getStatusStacks(source, "Weak") : 0;
   if (weakStacks > 0) amount = Math.floor(amount * 0.75);
 
   // SensorGlitch on the attacker: reduces outgoing damage (-15% per stack, max 60% reduction)
-  const sensorGlitchStacks = source ? getStacks(source, "SensorGlitch") : 0;
+  const sensorGlitchStacks = source ? getStatusStacks(source, "SensorGlitch") : 0;
   if (sensorGlitchStacks > 0) {
     const reduction = Math.min(0.6, sensorGlitchStacks * 0.15);
     amount = Math.floor(amount * (1 - reduction));
@@ -44,11 +91,11 @@ export function applyDamage(state, sourceId, target, amount) {
   }
 
   // Vulnerable: target takes 50% more damage
-  const vulnStacks = getStacks(target, "Vulnerable");
+  const vulnStacks = getStatusStacks(target, "Vulnerable");
   if (vulnStacks > 0) amount = Math.floor(amount * 1.5);
 
   // ExposedPorts: target takes 40% more damage (like Vulnerable but from Port Probe)
-  const exposedPortsStacks = getStacks(target, "ExposedPorts");
+  const exposedPortsStacks = getStatusStacks(target, "ExposedPorts");
   if (exposedPortsStacks > 0) amount = Math.floor(amount * 1.4);
 
   // TraceBeacon: target has a tracking beacon — takes +20% damage per stack
@@ -108,6 +155,7 @@ export function applyDamage(state, sourceId, target, amount) {
       const attacker = state.enemies.find(e => e.id === sourceId);
       if (attacker && attacker.hp > 0) {
         attacker.hp = Math.max(0, attacker.hp - amount);
+        enforceFirewallCap(state, attacker, { silent: true });
         push(state.log, { t: 'Info', msg: `MirrorArray: reflected ${amount} to ${attacker.id}` });
       }
       state._mirrorArrayUsed = true;
@@ -115,24 +163,19 @@ export function applyDamage(state, sourceId, target, amount) {
     }
   }
 
-  // Firewall: persistent shield that absorbs damage before block/HP
+  // Firewall: persistent shield that absorbs damage before HP
   let firewallAbsorbed = 0;
   if (amount > 0) {
-    const firewallStatus = target.statuses?.find(s => s.id === 'Firewall');
-    if (firewallStatus && firewallStatus.stacks > 0) {
-      firewallAbsorbed = Math.min(firewallStatus.stacks, amount);
-      firewallStatus.stacks -= firewallAbsorbed;
-      if (firewallStatus.stacks <= 0) {
-        target.statuses = target.statuses.filter(s => s.id !== 'Firewall');
-      }
+    firewallAbsorbed = loseFirewall(state, target, amount, { silent: true });
+    if (firewallAbsorbed > 0) {
       amount -= firewallAbsorbed;
       push(state.log, { t: 'Info', msg: `${target.id} Firewall absorbed ${firewallAbsorbed}` });
     }
   }
 
-  const blocked = Math.min(target.block, amount);
-  target.block -= blocked;
-  const dmg = Math.max(0, amount - blocked);
+  const protectionAbsorbed = firewallAbsorbed;
+  const blocked = protectionAbsorbed; // legacy telemetry field retained for compatibility
+  const dmg = Math.max(0, amount);
   target.hp = Math.max(0, target.hp - dmg);
 
   // Track whether player took damage this turn (for NC-064 Patch Scheduler)
@@ -154,6 +197,7 @@ export function applyDamage(state, sourceId, target, amount) {
     if (attacker && attacker.hp > 0) {
       const reflect = Math.min(3, attacker.hp);
       attacker.hp -= reflect;
+      enforceFirewallCap(state, attacker, { silent: true });
       push(state.log, { t: 'Info', msg: `BlackIce: reflected ${reflect} to ${attacker.id}` });
     }
   }
@@ -180,6 +224,8 @@ export function applyDamage(state, sourceId, target, amount) {
     push(state.log, { t: 'Info', msg: `SingularityChip: threshold heal +${healAmt}` });
   }
 
+  enforceFirewallCap(state, target, { silent: true });
+
   // Emit structured damage event for analytics
   push(state.log, {
     t: "DamageDealt",
@@ -191,6 +237,7 @@ export function applyDamage(state, sourceId, target, amount) {
       statusModdedAmount,
       finalDamage: dmg,
       blocked,
+      protectionAbsorbed,
       firewallAbsorbed,
       isPlayerSource: !isEnemy,
       weakened: weakStacks > 0,
@@ -205,25 +252,27 @@ export function applyDamage(state, sourceId, target, amount) {
   return dmg;
 }
 
-export function gainBlock(state, target, amount) {
-  // CorruptedSector prevents block gain
-  if (target._corruptedSector) {
-    push(state.log, { t: "Info", msg: `${target.id} block gain blocked by CorruptedSector` });
-    return;
-  }
-  target.block += amount;
-  push(state.log, { t: "Info", msg: `${target.id} gained ${amount} block` });
-}
-
 export function addStatus(state, target, id, stacks) {
   // HardenedKernel: player is immune to Vulnerable status
   if (id === 'Vulnerable' && target === state.player && (state.relicIds || []).includes('HardenedKernel')) {
     push(state.log, { t: 'Info', msg: 'HardenedKernel: Vulnerable blocked' });
     return;
   }
+  if (id === "Firewall" && target._corruptedSector) {
+    push(state.log, { t: "Info", msg: `${target.id} Firewall gain blocked by CorruptedSector` });
+    return;
+  }
   if (!target.statuses) target.statuses = [];
+  const prevStacks = id === "Firewall" ? getFirewallStacks(target) : 0;
   const existing = target.statuses.find(s => s.id === id);
   if (existing) existing.stacks += stacks;
   else target.statuses.push({ id, stacks });
+  if (id === "Firewall") {
+    const trimmed = enforceFirewallCap(state, target, { silent: true });
+    const after = getFirewallStacks(target);
+    const gained = Math.max(0, after - prevStacks);
+    push(state.log, { t: "Info", msg: `${target.id} gained Firewall(${gained})${trimmed > 0 ? ` [cap ${getFirewallCap(target)}]` : ''}` });
+    return;
+  }
   push(state.log, { t: "Info", msg: `${target.id} gained ${id}(${stacks})` });
 }

@@ -1,185 +1,311 @@
 ════════════════════════════════════════════════════
   CARDBATTLER HEADLESS SIMULATION
 ════════════════════════════════════════════════════
-  Seed      : 42
+  Seed      : 555
   Playstyle : balanced
-  Max steps : 3000
+  Max steps : 4000
 ════════════════════════════════════════════════════
 ────────────────────────────────────────────────────
   [   0] MAP — Act 1, Floor 1, HP 75/75, Gold 99g
-    →  Moving to: Combat (node dd67)
+    →  Moving to: Combat (node a44f)
 ────────────────────────────────────────────────────
   [   1] COMBAT — Act 1, Floor 2, HP 75/75, Gold 99g
-    [DBG] enemies at start: 
+    [DBG] enemies at start: E_HOLO_RUNNER_NODE(hp=30,maxHp=30), E_HOLO_SHAMAN_CREW(hp=68,maxHp=68)
     [DBG] player ram=8/8 hand=5 cards
-    ↩  End Turn  (turn 0) RAM=8/8 hand=[Zero-Day Injector(2r), Strike(1r), Emergency Reimage(0r), RAM Cache(2r), Guard(1r)]
-    ── Combat result: WIN, HP 75 → 75
+    ▶  Play: Strike (1r) RAM=8/8
+    ▶  Play: Hook Script (1r) RAM=7/8
+    ▶  Play: Blood Battery (0r) RAM=6/8
+    ▶  Play: Charge Pack (0r) RAM=8/8
+    ↩  End Turn  (turn 0) RAM=8/8 hand=[Shieldbreak Pulse(0r)]
+    ▶  Play: Zero-Day Injector (2r) RAM=8/8
+    ▶  Play: Shieldbreak Pulse (0r) RAM=6/8
+    ▶  Play: Strike (1r) RAM=6/8
+    ▶  Play: Guard (1r) RAM=5/8
+    ▶  Play: Patch (1r) RAM=4/8
+    ▶  Play: Firewall Top-Up (2r) RAM=3/8
+    ↩  End Turn  (turn 1) RAM=1/8 hand=[EMPTY]
+    ▶  Play: Blood Battery (0r) RAM=3/8
+    ▶  Play: Strike (1r) RAM=8/8
+    ▶  Play: Hook Script (1r) RAM=7/8
+    ▶  Play: Charge Pack (0r) RAM=6/8
+    ▶  Play: Firewall Top-Up (2r) RAM=8/8
+    ↩  End Turn  (turn 2) RAM=6/8 hand=[EMPTY]
+    ▶  Play: Zero-Day Injector (2r) RAM=8/8
+    ▶  Play: Strike (1r) RAM=6/8
+    ▶  Play: Guard (1r) RAM=5/8
+    ▶  Play: Patch (1r) RAM=4/8
+    ▶  Play: Shieldbreak Pulse (0r) RAM=3/8
+    ▶  Play: Firewall Top-Up (2r) RAM=3/8
+    ↩  End Turn  (turn 3) RAM=1/8 hand=[EMPTY]
+    ▶  Play: Blood Battery (0r) RAM=3/8
+    ▶  Play: Hook Script (1r) RAM=8/8
+    ▶  Play: Charge Pack (0r) RAM=7/8
+    ▶  Play: Guard (1r) RAM=8/8
+    ▶  Play: Shieldbreak Pulse (0r) RAM=7/8
+    ▶  Play: Strike (1r) RAM=7/8
+    ── Combat result: WIN, HP 75 → 64
 ────────────────────────────────────────────────────
-  [   2] REWARD — Act 1, Floor 2, HP 75/75, Gold 124g
-    ★  Picked card: Index Cache
+  [  32] REWARD — Act 1, Floor 2, HP 64/75, Gold 124g
+    ★  Picked card: Underclock Pulse
 ────────────────────────────────────────────────────
-  [   3] MAP — Act 1, Floor 2, HP 75/75, Gold 124g
-    →  Moving to: Event (node 15bf)
+  [  33] MAP — Act 1, Floor 2, HP 64/75, Gold 124g
+    →  Moving to: Combat (node 792a)
 ────────────────────────────────────────────────────
-  [   4] EVENT — Act 1, Floor 3, HP 75/75, Gold 124g
-    ?  Event choice: sell
-────────────────────────────────────────────────────
-  [   5] MAP — Act 1, Floor 3, HP 75/75, Gold 174g
-    →  Moving to: Combat (node ab33)
-────────────────────────────────────────────────────
-  [   6] COMBAT — Act 1, Floor 4, HP 75/75, Gold 174g
-    [DBG] enemies at start: 
-    [DBG] player ram=8/8 hand=5 cards
-    ↩  End Turn  (turn 0) RAM=8/8 hand=[Guard(1r), Index Cache(1r), RAM Cache(2r), Emergency Reimage(0r), Zero-Day Injector(2r)]
-    ── Combat result: WIN, HP 75 → 75
-────────────────────────────────────────────────────
-  [   7] REWARD — Act 1, Floor 4, HP 75/75, Gold 199g
-    ★  Picked card: Zero-Day Injector
-────────────────────────────────────────────────────
-  [   8] MAP — Act 1, Floor 4, HP 75/75, Gold 199g
-    →  Moving to: Event (node cc17)
-────────────────────────────────────────────────────
-  [   9] EVENT — Act 1, Floor 5, HP 75/75, Gold 199g
-    ?  Event choice: leave
-────────────────────────────────────────────────────
-  [  10] MAP — Act 1, Floor 5, HP 75/75, Gold 199g
-    →  Moving to: Combat (node e98b)
-────────────────────────────────────────────────────
-  [  11] COMBAT — Act 1, Floor 6, HP 75/75, Gold 199g
-    [DBG] enemies at start: 
-    [DBG] player ram=8/8 hand=5 cards
-    ↩  End Turn  (turn 0) RAM=8/8 hand=[Guard(1r), Zero-Day Injector(2r), Strike(1r), Zero-Day Injector(2r), Emergency Reimage(0r)]
-    ── Combat result: WIN, HP 75 → 75
-────────────────────────────────────────────────────
-  [  12] REWARD — Act 1, Floor 6, HP 75/75, Gold 224g
-    ★  Picked card: Stack Trace
-────────────────────────────────────────────────────
-  [  13] MAP — Act 1, Floor 6, HP 75/75, Gold 224g
-    →  Moving to: Elite (node e19e)
-────────────────────────────────────────────────────
-  [  14] COMBAT — Act 1, Floor 7, HP 75/75, Gold 224g
-    [DBG] enemies at start: 
-    [DBG] player ram=8/8 hand=5 cards
-    ↩  End Turn  (turn 0) RAM=8/8 hand=[Guard(1r), Zero-Day Injector(2r), RAM Cache(2r), Zero-Day Injector(2r), Index Cache(1r)]
-    ── Combat result: WIN, HP 75 → 75
-────────────────────────────────────────────────────
-  [  15] REWARD — Act 1, Floor 7, HP 75/75, Gold 274g
-    ★  Picked card: Hard Reset
-────────────────────────────────────────────────────
-  [  17] MAP — Act 1, Floor 7, HP 75/75, Gold 274g
-    →  Moving to: Rest (node e7b2)
-────────────────────────────────────────────────────
-  [  18] EVENT — Act 1, Floor 8, HP 73/75, Gold 274g
-    ♥  Resting: Heal
-────────────────────────────────────────────────────
-  [  19] MAP — Act 1, Floor 8, HP 75/75, Gold 274g
-    →  Moving to: Shop (node bd48)
-────────────────────────────────────────────────────
-  [  20] SHOP — Act 1, Floor 9, HP 73/75, Gold 274g
-    ← Left shop
-────────────────────────────────────────────────────
-  [  21] MAP — Act 1, Floor 9, HP 73/75, Gold 274g
-    →  Moving to: Event (node 1fb3)
-────────────────────────────────────────────────────
-  [  22] EVENT — Act 1, Floor 10, HP 71/75, Gold 274g
-    ?  Event choice: browse
-────────────────────────────────────────────────────
-  [  23] MAP — Act 1, Floor 10, HP 71/75, Gold 304g
-    →  Moving to: Shop (node e6ef)
-────────────────────────────────────────────────────
-  [  24] SHOP — Act 1, Floor 11, HP 69/75, Gold 304g
-    ← Left shop
-────────────────────────────────────────────────────
-  [  25] MAP — Act 1, Floor 11, HP 69/75, Gold 304g
-    →  Moving to: Combat (node 0259)
-────────────────────────────────────────────────────
-  [  26] COMBAT — Act 1, Floor 12, HP 67/75, Gold 304g
-    [DBG] enemies at start: 
-    [DBG] player ram=8/8 hand=5 cards
-    ↩  End Turn  (turn 0) RAM=8/8 hand=[Index Cache(1r), Stack Trace(2r), Zero-Day Injector(2r), Guard(1r), Emergency Reimage(0r)]
-    ── Combat result: WIN, HP 67 → 67
-────────────────────────────────────────────────────
-  [  27] REWARD — Act 1, Floor 12, HP 67/75, Gold 329g
-    ★  Picked card: System Quarantine
-────────────────────────────────────────────────────
-  [  28] MAP — Act 1, Floor 12, HP 67/75, Gold 329g
-    →  Moving to: Elite (node 083c)
-────────────────────────────────────────────────────
-  [  29] COMBAT — Act 1, Floor 13, HP 65/75, Gold 329g
-    [DBG] enemies at start: 
-    [DBG] player ram=8/8 hand=5 cards
-    ↩  End Turn  (turn 0) RAM=8/8 hand=[Emergency Reimage(0r), Hard Reset(0r), RAM Cache(2r), Stack Trace(2r), Guard(1r)]
-    ── Combat result: WIN, HP 65 → 65
-────────────────────────────────────────────────────
-  [  30] REWARD — Act 1, Floor 13, HP 65/75, Gold 379g
-    ★  Picked card: Signal Amplifier
-────────────────────────────────────────────────────
-  [  32] MAP — Act 1, Floor 13, HP 65/75, Gold 379g
-    →  Moving to: Event (node 83dc)
-────────────────────────────────────────────────────
-  [  33] EVENT — Act 1, Floor 14, HP 63/75, Gold 379g
-    ?  Event choice: decline
-────────────────────────────────────────────────────
-  [  34] MAP — Act 1, Floor 14, HP 63/75, Gold 379g
-    →  Moving to: Boss (node 5c91)
-────────────────────────────────────────────────────
-  [  35] COMBAT — Act 1, Floor 15, HP 61/75, Gold 379g
-    [DBG] enemies at start: E_OVERSEER_ROGUE_APEX(hp=236,maxHp=236)
+  [  34] COMBAT — Act 1, Floor 3, HP 64/75, Gold 124g
+    [DBG] enemies at start: E_LEAK_WRAITH(hp=61,maxHp=61)
     [DBG] player ram=8/8 hand=5 cards
     ▶  Play: Zero-Day Injector (2r) RAM=8/8
-    ▶  Play: System Quarantine (2r) RAM=6/8
-    ▶  Play: Strike (1r) RAM=4/8
-    ▶  Play: Guard (1r) RAM=3/8
-    ▶  Play: Index Cache (1r) RAM=2/8
-    ↩  End Turn  (turn 0) RAM=1/8 hand=[EMPTY]
+    ▶  Play: Strike (1r) RAM=6/8
+    ▶  Play: Hook Script (1r) RAM=5/8
+    ▶  Play: Charge Pack (0r) RAM=4/8
+    ↩  End Turn  (turn 0) RAM=6/8 hand=[Shieldbreak Pulse(0r)]
+    ▶  Play: Blood Battery (0r) RAM=8/8
+    ▶  Play: Underclock Pulse (3r) RAM=8/8
+    ▶  Play: Guard (1r) RAM=5/8
+    ▶  Play: Patch (1r) RAM=4/8
+    ▶  Play: Firewall Top-Up (2r) RAM=3/8
+    ↩  End Turn  (turn 1) RAM=1/8 hand=[EMPTY]
+    ▶  Play: Blood Battery (0r) RAM=3/8
+    ▶  Play: Strike (1r) RAM=8/8
+    ▶  Play: Hook Script (1r) RAM=7/8
+    ▶  Play: Patch (1r) RAM=6/8
+    ↩  End Turn  (turn 2) RAM=5/8 hand=[Shieldbreak Pulse(0r)]
+    ▶  Play: Zero-Day Injector (2r) RAM=7/8
+    ── Combat result: WIN, HP 64 → 59
+────────────────────────────────────────────────────
+  [  51] REWARD — Act 1, Floor 3, HP 59/75, Gold 149g
+    ★  Picked card: Cold Boot
+────────────────────────────────────────────────────
+  [  52] MAP — Act 1, Floor 3, HP 59/75, Gold 149g
+    →  Moving to: Combat (node 2b73)
+────────────────────────────────────────────────────
+  [  53] COMBAT — Act 1, Floor 4, HP 59/75, Gold 149g
+    [DBG] enemies at start: E_HOLO_POD_NODE(hp=61,maxHp=61), E_HOLO_SAPPER_CELL(hp=54,maxHp=54)
+    [DBG] player ram=8/8 hand=5 cards
+    ▶  Play: Underclock Pulse (3r) RAM=8/8
+    ▶  Play: Charge Pack (0r) RAM=5/8
+    ▶  Play: Guard (1r) RAM=7/8
+    ▶  Play: Patch (1r) RAM=6/8
+    ↩  End Turn  (turn 0) RAM=5/8 hand=[Shieldbreak Pulse(0r)]
+    ▶  Play: Zero-Day Injector (2r) RAM=7/8
+    ▶  Play: Cold Boot (0r) RAM=5/8
+    ▶  Play: Zero-Day Injector (2r) RAM=5/8
+    ▶  Play: Blood Battery (0r) RAM=3/8
+    ▶  Play: Underclock Pulse (3r) RAM=8/8
+    ▶  Play: Strike (1r) RAM=5/8
+    ▶  Play: Hook Script (1r) RAM=4/8
+    ▶  Play: Charge Pack (0r) RAM=3/8
+    ▶  Play: Firewall Top-Up (2r) RAM=5/8
+    ▶  Play: Patch (1r) RAM=3/8
+    ▶  Play: Guard (1r) RAM=2/8
+    ↩  End Turn  (turn 1) RAM=1/8 hand=[Shieldbreak Pulse(0r)]
+    ▶  Play: Cold Boot (0r) RAM=3/8
     ▶  Play: Zero-Day Injector (2r) RAM=3/8
-    ▶  Play: Signal Amplifier (1r) RAM=1/8
-    ▶  Play: Emergency Reimage (0r) RAM=0/8
-    ▶  Play: Hard Reset (0r) RAM=0/8
-    ↩  End Turn  (turn 1) RAM=0/8 hand=[RAM Cache(2r)]
-    ▶  Play: Zero-Day Injector (2r) RAM=2/8
-    ▶  Play: Emergency Reimage (0r) RAM=0/8
-    ↩  End Turn  (turn 2) RAM=0/8 hand=[System Quarantine(2r), Guard(1r), Index Cache(1r)]
-    ▶  Play: System Quarantine (2r) RAM=2/8
-    ▶  Play: Emergency Reimage (0r) RAM=0/8
-    ↩  End Turn  (turn 3) RAM=0/8 hand=[Index Cache(1r), RAM Cache(2r), Guard(1r)]
-    ▶  Play: Zero-Day Injector (2r) RAM=2/8
-    ▶  Play: Emergency Reimage (0r) RAM=0/8
-    ▶  Play: Hard Reset (0r) RAM=0/8
-    ↩  End Turn  (turn 4) RAM=0/8 hand=[Strike(1r), Guard(1r)]
-    ▶  Play: Zero-Day Injector (2r) RAM=2/8
-    ↩  End Turn  (turn 5) RAM=0/8 hand=[Stack Trace(2r), RAM Cache(2r), System Quarantine(2r), Guard(1r)]
-    ▶  Play: Zero-Day Injector (2r) RAM=2/8
-    ▶  Play: Emergency Reimage (0r) RAM=0/8
-    ↩  End Turn  (turn 6) RAM=0/8 hand=[Index Cache(1r), System Quarantine(2r), Strike(1r)]
-    ▶  Play: Zero-Day Injector (2r) RAM=2/8
-    ── Combat result: WIN, HP 61 → 21
+    ▶  Play: Hook Script (1r) RAM=1/8
+    ── Combat result: WIN, HP 59 → 57
 ────────────────────────────────────────────────────
-  [  62] REWARD — Act 1, Floor 15, HP 21/75, Gold 478g
-    ★  Picked card: Packet Leech
+  [  73] REWARD — Act 1, Floor 4, HP 57/75, Gold 174g
+    ★  Picked card: Sandbox Shot
 ────────────────────────────────────────────────────
-  [  64] MAP — Act 2, Floor 15, HP 21/75, Gold 478g
-    →  Moving to: Combat (node 4610)
+  [  74] MAP — Act 1, Floor 4, HP 57/75, Gold 174g
+    →  Moving to: Combat (node 299b)
 ────────────────────────────────────────────────────
-  [  65] COMBAT — Act 2, Floor 16, HP 19/75, Gold 478g
-    [DBG] enemies at start: E_STATIC_SCOUT_MK_II(hp=102,maxHp=102), E_VANTA_ENFORCER_SWARM(hp=76,maxHp=76)
-    [DBG] player ram=12/12 hand=5 cards
-    ▶  Play: Zero-Day Injector (2r) RAM=12/12
-    ▶  Play: Packet Leech (0r) RAM=10/12
-    ▶  Play: Hard Reset (0r) RAM=0/12
-    ↩  End Turn  (turn 0) RAM=0/12 hand=[RAM Cache(2r), Stack Trace(2r)]
-    ── Combat result: LOSS, HP 19 → 0
+  [  75] COMBAT — Act 1, Floor 5, HP 57/75, Gold 174g
+    [DBG] enemies at start: E_HOLO_SCOUT_PROXY(hp=68,maxHp=68), E_HOLO_SNIPER_SHARD(hp=59,maxHp=59)
+    [DBG] player ram=8/8 hand=5 cards
+    ▶  Play: Zero-Day Injector (2r) RAM=8/8
+    ▶  Play: Hook Script (1r) RAM=6/8
+    ▶  Play: Underclock Pulse (3r) RAM=5/8
+    ▶  Play: Charge Pack (0r) RAM=2/8
+    ↩  End Turn  (turn 0) RAM=4/8 hand=[Shieldbreak Pulse(0r)]
+    ▶  Play: Cold Boot (0r) RAM=6/8
+    ▶  Play: Zero-Day Injector (2r) RAM=6/8
+    ▶  Play: Sandbox Shot (0r) RAM=4/8
+    ▶  Play: Blood Battery (0r) RAM=4/8
+    ▶  Play: Strike (1r) RAM=8/8
+    ▶  Play: Hook Script (1r) RAM=7/8
+    ▶  Play: Underclock Pulse (3r) RAM=6/8
+    ▶  Play: Guard (1r) RAM=3/8
+    ▶  Play: Charge Pack (0r) RAM=2/8
+    ▶  Play: Patch (1r) RAM=4/8
+    ▶  Play: Firewall Top-Up (2r) RAM=3/8
+    ↩  End Turn  (turn 1) RAM=1/8 hand=[EMPTY]
+    ▶  Play: Cold Boot (0r) RAM=3/8
+    ▶  Play: Sandbox Shot (0r) RAM=3/8
+    ▶  Play: Blood Battery (0r) RAM=3/8
+    ▶  Play: Strike (1r) RAM=8/8
+    ▶  Play: Hook Script (1r) RAM=7/8
+    ▶  Play: Underclock Pulse (3r) RAM=6/8
+    ▶  Play: Charge Pack (0r) RAM=3/8
+    ▶  Play: Patch (1r) RAM=5/8
+    ▶  Play: Guard (1r) RAM=4/8
+    ▶  Play: Firewall Top-Up (2r) RAM=3/8
+    ▶  Play: Shieldbreak Pulse (0r) RAM=1/8
+    ↩  End Turn  (turn 2) RAM=1/8 hand=[Zero-Day Injector(2r)]
+    ▶  Play: Sandbox Shot (0r) RAM=3/8
+    ── Combat result: WIN, HP 57 → 46
+────────────────────────────────────────────────────
+  [ 105] REWARD — Act 1, Floor 5, HP 46/75, Gold 199g
+    ★  Picked card: Hot Swap
+────────────────────────────────────────────────────
+  [ 106] MAP — Act 1, Floor 5, HP 46/75, Gold 199g
+    →  Moving to: Rest (node bbc5)
+────────────────────────────────────────────────────
+  [ 107] EVENT — Act 1, Floor 6, HP 46/75, Gold 199g
+    ♥  Resting: Heal
+────────────────────────────────────────────────────
+  [ 108] MAP — Act 1, Floor 6, HP 69/75, Gold 199g
+    →  Moving to: Elite (node 4dd9)
+────────────────────────────────────────────────────
+  [ 109] COMBAT — Act 1, Floor 7, HP 69/75, Gold 199g
+    [DBG] enemies at start: E_VECTOR_GOON_PROXY(hp=88,maxHp=88), E_CIPHER_POD_SHARD(hp=85,maxHp=85)
+    [DBG] player ram=8/8 hand=5 cards
+    ▶  Play: Blood Battery (0r) RAM=8/8
+    ▶  Play: Charge Pack (0r) RAM=8/8
+    ▶  Play: Guard (1r) RAM=8/8
+    ▶  Play: Patch (1r) RAM=7/8
+    ↩  End Turn  (turn 0) RAM=6/8 hand=[Shieldbreak Pulse(0r)]
+    ▶  Play: Zero-Day Injector (2r) RAM=8/8
+    ▶  Play: Sandbox Shot (0r) RAM=6/8
+    ▶  Play: Hot Swap (1r) RAM=6/8
+    ▶  Play: Cold Boot (0r) RAM=5/8
+    ▶  Play: Zero-Day Injector (2r) RAM=5/8
+    ▶  Play: Sandbox Shot (0r) RAM=3/8
+    ▶  Play: Blood Battery (0r) RAM=3/8
+    ▶  Play: Strike (1r) RAM=8/8
+    ▶  Play: Hook Script (1r) RAM=7/8
+    ▶  Play: Charge Pack (0r) RAM=6/8
+    ▶  Play: Guard (1r) RAM=8/8
+    ▶  Play: Patch (1r) RAM=7/8
+    ▶  Play: Firewall Top-Up (2r) RAM=6/8
+    ↩  End Turn  (turn 1) RAM=4/8 hand=[Shieldbreak Pulse(0r)]
+    ▶  Play: Zero-Day Injector (2r) RAM=6/8
+    ── Combat result: WIN, HP 69 → 61
+────────────────────────────────────────────────────
+  [ 129] REWARD — Act 1, Floor 7, HP 61/75, Gold 249g
+    ★  Picked card: Hot Swap
+────────────────────────────────────────────────────
+  [ 131] MAP — Act 1, Floor 7, HP 61/75, Gold 249g
+    →  Moving to: Rest (node 05ff)
+────────────────────────────────────────────────────
+  [ 132] EVENT — Act 1, Floor 8, HP 59/75, Gold 249g
+    ♥  Resting: Heal
+────────────────────────────────────────────────────
+  [ 133] MAP — Act 1, Floor 8, HP 75/75, Gold 249g
+    →  Moving to: Shop (node ed18)
+────────────────────────────────────────────────────
+  [ 134] SHOP — Act 1, Floor 9, HP 73/75, Gold 249g
+    🛒  Bought: Heat Burst (50g)
+    🛒  Bought: Heat Burst (50g)
+    🛒  Bought: Heat Burst (50g)
+    🛒  Bought: Heat Burst (50g)
+    ← Left shop
+────────────────────────────────────────────────────
+  [ 139] MAP — Act 1, Floor 9, HP 73/75, Gold 49g
+    →  Moving to: Combat (node 6c33)
+────────────────────────────────────────────────────
+  [ 140] COMBAT — Act 1, Floor 10, HP 71/75, Gold 49g
+    [DBG] enemies at start: E_ION_SNIPER_RIG(hp=59,maxHp=59)
+    [DBG] player ram=8/8 hand=5 cards
+    ▶  Play: Zero-Day Injector (2r) RAM=8/8
+    ▶  Play: Hot Swap (1r) RAM=8/8
+    ▶  Play: Cold Boot (0r) RAM=7/8
+    ▶  Play: Sandbox Shot (0r) RAM=7/8
+    ── Combat result: WIN, HP 71 → 71
+────────────────────────────────────────────────────
+  [ 144] REWARD — Act 1, Floor 10, HP 71/75, Gold 74g
+    ★  Picked card: Heavy Shot
+────────────────────────────────────────────────────
+  [ 145] MAP — Act 1, Floor 10, HP 71/75, Gold 74g
+    →  Moving to: Shop (node 794e)
+────────────────────────────────────────────────────
+  [ 146] SHOP — Act 1, Floor 11, HP 69/75, Gold 74g
+    ← Left shop
+────────────────────────────────────────────────────
+  [ 147] MAP — Act 1, Floor 11, HP 69/75, Gold 74g
+    →  Moving to: Event (node f96e)
+────────────────────────────────────────────────────
+  [ 148] EVENT — Act 1, Floor 12, HP 67/75, Gold 74g
+────────────────────────────────────────────────────
+  [ 149] MAP — Act 1, Floor 12, HP 67/75, Gold 109g
+    →  Moving to: Elite (node 7e46)
+────────────────────────────────────────────────────
+  [ 150] COMBAT — Act 1, Floor 13, HP 65/75, Gold 109g
+    [DBG] enemies at start: E_CIPHER_HACKER_MK_II(hp=74,maxHp=74), E_CIRCUIT_HACKER_ARRAY(hp=74,maxHp=74)
+    [DBG] player ram=8/8 hand=5 cards
+    ▶  Play: Zero-Day Injector (2r) RAM=8/8
+    ▶  Play: Sandbox Shot (0r) RAM=8/8
+    ▶  Play: Charge Pack (0r) RAM=8/8
+    ▶  Play: Heat Burst (0r) RAM=8/8
+    ↩  End Turn  (turn 0) RAM=8/8 hand=[Shieldbreak Pulse(0r)]
+    ▶  Play: Hook Script (1r) RAM=8/8
+    ▶  Play: Heavy Shot (3r) RAM=7/8
+    ▶  Play: Strike (1r) RAM=4/8
+    ▶  Play: Heat Burst (0r) RAM=3/8
+    ↩  End Turn  (turn 1) RAM=3/8 hand=[EMPTY]
+    ▶  Play: Cold Boot (0r) RAM=5/8
+    ▶  Play: Sandbox Shot (0r) RAM=5/8
+    ▶  Play: Blood Battery (0r) RAM=5/8
+    ▶  Play: Strike (1r) RAM=8/8
+    ▶  Play: Hot Swap (1r) RAM=7/8
+    ▶  Play: Heavy Shot (3r) RAM=6/8
+    ── Combat result: WIN, HP 65 → 45
+────────────────────────────────────────────────────
+  [ 166] REWARD — Act 1, Floor 13, HP 45/75, Gold 159g
+    ★  Picked card: RAM Burst
+────────────────────────────────────────────────────
+  [ 168] MAP — Act 1, Floor 13, HP 45/75, Gold 159g
+    →  Moving to: Shop (node dea3)
+────────────────────────────────────────────────────
+  [ 169] SHOP — Act 1, Floor 14, HP 43/75, Gold 159g
+    🛒  Bought: Heal (60g)
+    ← Left shop
+────────────────────────────────────────────────────
+  [ 171] MAP — Act 1, Floor 14, HP 62/75, Gold 99g
+    →  Moving to: Boss (node d0b2)
+────────────────────────────────────────────────────
+  [ 172] COMBAT — Act 1, Floor 15, HP 60/75, Gold 99g
+    [DBG] enemies at start: E_ARCHON_NULL_GOLIATH(hp=250,maxHp=250)
+    [DBG] player ram=8/8 hand=5 cards
+    ▶  Play: Blood Battery (0r) RAM=8/8
+    ▶  Play: RAM Burst (2r) RAM=8/8
+    ▶  Play: Strike (1r) RAM=8/8
+    ▶  Play: Charge Pack (0r) RAM=7/8
+    ↩  End Turn  (turn 0) RAM=8/8 hand=[Shieldbreak Pulse(0r)]
+    ▶  Play: Hot Swap (1r) RAM=8/8
+    ▶  Play: Underclock Pulse (3r) RAM=7/8
+    ▶  Play: Guard (1r) RAM=4/8
+    ▶  Play: Sandbox Shot (0r) RAM=3/8
+    ▶  Play: Heavy Shot (3r) RAM=3/8
+    ▶  Play: Heat Burst (0r) RAM=0/8
+    ↩  End Turn  (turn 1) RAM=0/8 hand=[Hook Script(1r)]
+    ▶  Play: Zero-Day Injector (2r) RAM=2/8
+    ▶  Play: Cold Boot (0r) RAM=0/8
+    ▶  Play: Sandbox Shot (0r) RAM=0/8
+    ▶  Play: Heat Burst (0r) RAM=0/8
+    ▶  Play: Charge Pack (0r) RAM=0/8
+    ▶  Play: Hook Script (1r) RAM=2/8
+    ▶  Play: Hot Swap (1r) RAM=1/8
+    ▶  Play: Blood Battery (0r) RAM=0/8
+    ▶  Play: Underclock Pulse (3r) RAM=8/8
+    ▶  Play: Hot Swap (1r) RAM=5/8
+    ▶  Play: Zero-Day Injector (2r) RAM=4/8
+    ▶  Play: Strike (1r) RAM=2/8
+    ▶  Play: Guard (1r) RAM=1/8
+    ▶  Play: Heat Burst (0r) RAM=0/8
+    ↩  End Turn  (turn 2) RAM=0/8 hand=[Patch(1r), Firewall Top-Up(2r), Shieldbreak Pulse(0r), RAM Burst(2r), Heavy Shot(3r)]
+    ── Combat result: LOSS, HP 60 → 0
 ════════════════════════════════════════════════════
   FINAL STATE
 ════════════════════════════════════════════════════
   Mode   : GameOver
-  Act    : 2
-  Floor  : 16
+  Act    : 1
+  Floor  : 15
   HP     : 0 / 75
-  Gold   : 478g
+  Gold   : 99g
   MP     : 0
-  Steps  : 69
-  Deck   : 12 cards
-           Strike, Guard, RAM Cache, Zero-Day Injector, Emergency Reimage, Index Cache, Zero-Day Injector, Stack Trace, Hard Reset, System Quarantine, Signal Amplifier, Packet Leech
+  Steps  : 199
+  Deck   : 20 cards
+           Strike, Guard, Patch, Charge Pack, Shieldbreak Pulse, Zero-Day Injector, Hook Script, Firewall Top-Up, Blood Battery, Underclock Pulse, Cold Boot, Sandbox Shot, Hot Swap, Hot Swap, Heat Burst, Heat Burst, Heat Burst, Heat Burst, Heavy Shot, RAM Burst
   Errors : 0
 ════════════════════════════════════════════════════

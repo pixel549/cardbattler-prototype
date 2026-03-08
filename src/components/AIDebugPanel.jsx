@@ -27,6 +27,15 @@ const TYPE_COLORS = {
   Utility: '#b44aff',
 };
 
+const EXPORT_TRACK_OPTIONS = [
+  { key: 'cards', label: 'Track cards', hint: 'Reward picks, card play timelines, and sequencing diagnostics' },
+  { key: 'mutations', label: 'Track mutations', hint: 'Mutation events and trigger-check diagnostics' },
+  { key: 'hp', label: 'Track HP', hint: 'Damage totals, HP deltas, and health breakdowns' },
+  { key: 'hands', label: 'Track hands', hint: 'Opening draws and hand changes through combat' },
+  { key: 'floor', label: 'Track map/events', hint: 'Node picks, shops, rests, events, and minigames' },
+  { key: 'decks', label: 'Track decks', hint: 'Deck snapshots and full card-list payloads' },
+];
+
 // ── Custom field definitions ──────────────────────────────────────────────────
 const CUSTOM_FIELDS = [
   { key: 'playerMaxHP',      label: 'HP',         type: 'number', min: 1,    max: 9999, step: 1,   placeholder: '50'   },
@@ -101,9 +110,13 @@ const GREEN = '#00ff6b';
 export default function AIDebugPanel({
   enabled, onToggle,
   paused, onTogglePause,
+  stopAtAct = null, onStopAtActChange,
+  stopAfterCombat = false, onStopAfterCombatChange,
+  onTakeOverNow,
   speed, onSpeedChange,
-  runHistory, onExport,
+  runHistory, onExport, onExportCurrent,
   currentState,
+  handoffReason = '',
   debugSeed, onDebugSeedChange,
   seedMode, onSeedModeChange,
   randomize, onRandomizeToggle,
@@ -111,6 +124,9 @@ export default function AIDebugPanel({
   onRandomizeSensibleSeed,
   aiPlaystyle, onPlaystyleChange,
   saveDirName, onSetSaveDir,
+  exportOptions = {},
+  onSetExportOption,
+  onSetAllExportOptions,
   customConfig   = {},
   lockedFields   = new Set(),
   onSetCustomField,
@@ -118,11 +134,14 @@ export default function AIDebugPanel({
   onClearCustomConfig,
   gameData,
 }) {
+  void onSeedModeChange;
   const runCount       = runHistory.length;
   const status         = enabled ? getStatusLabel(currentState) : '—';
+  const visibleStatus = enabled ? getStatusLabel(currentState) : (handoffReason || 'Idle');
   const [presetKey,      setPresetKey]      = useState('');
   const [seedOpen,       setSeedOpen]       = useState(false);
   const [customOpen,     setCustomOpen]     = useState(false);
+  const [exportOpen,     setExportOpen]     = useState(true);
   const [cardFilter,     setCardFilter]     = useState('');
   const [showCardPicker, setShowCardPicker] = useState(false);
   const [minimized,      setMinimized]      = useState(
@@ -154,6 +173,7 @@ export default function AIDebugPanel({
     const v = customConfig[key];
     return v !== null && v !== undefined;
   }).length + ((customConfig.startingCardIds?.length ?? 0) > 0 ? 1 : 0);
+  const enabledExportCount = EXPORT_TRACK_OPTIONS.filter(({ key }) => exportOptions[key]).length;
 
   // ── Card picker helpers ──────────────────────────────────────────────────
   const allCards     = gameData?.cards ? Object.entries(gameData.cards) : [];
@@ -487,6 +507,78 @@ export default function AIDebugPanel({
           <span>{seedOpen ? '▲' : '▼'}</span>
         </button>
       </div>
+      <div style={{ borderTop: `1px solid ${BORDER}`, paddingTop: 8, marginBottom: 10 }}>
+        <div style={{ fontSize: 9, color: ORANGE, fontWeight: 700, letterSpacing: '0.08em', marginBottom: 6 }}>
+          TAKEOVER
+        </div>
+        <div style={{ display: 'flex', gap: 4, marginBottom: 6 }}>
+          <select
+            value={stopAtAct ?? ''}
+            onChange={(e) => {
+              const raw = e.target.value;
+              onStopAtActChange?.(raw === '' ? null : Number(raw));
+            }}
+            style={{
+              flex: 1,
+              backgroundColor: '#0a0a14',
+              color: stopAtAct ? ORANGE : DIM,
+              border: `1px solid ${stopAtAct ? ORANGE : BORDER}`,
+              borderRadius: 4,
+              padding: '4px 6px',
+              fontFamily: MONO,
+              fontSize: 9,
+              cursor: 'pointer',
+            }}
+          >
+            <option value="">No act stop</option>
+            <option value="1">Take over at Act 1</option>
+            <option value="2">Take over at Act 2</option>
+            <option value="3">Take over at Act 3</option>
+          </select>
+          <button
+            onClick={() => onStopAfterCombatChange?.(!stopAfterCombat)}
+            style={{
+              padding: '4px 8px',
+              borderRadius: 4,
+              border: `1px solid ${stopAfterCombat ? ORANGE : BORDER}`,
+              backgroundColor: stopAfterCombat ? `${ORANGE}18` : 'transparent',
+              color: stopAfterCombat ? ORANGE : DIM,
+              fontFamily: MONO,
+              fontSize: 9,
+              fontWeight: 700,
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {stopAfterCombat ? 'AFTER COMBAT: ARMED' : 'AFTER COMBAT'}
+          </button>
+        </div>
+        <button
+          onClick={onTakeOverNow}
+          disabled={!enabled}
+          style={{
+            width: '100%',
+            padding: '5px 0',
+            borderRadius: 5,
+            border: `1px solid ${enabled ? ORANGE : BORDER}`,
+            backgroundColor: enabled ? `${ORANGE}15` : 'transparent',
+            color: enabled ? ORANGE : '#444',
+            fontFamily: MONO,
+            fontSize: 10,
+            fontWeight: 700,
+            cursor: enabled ? 'pointer' : 'default',
+            letterSpacing: '0.05em',
+          }}
+        >
+          TAKE OVER NOW
+        </button>
+        {handoffReason && !enabled && (
+          <div style={{ marginTop: 6, fontSize: 9, color: ORANGE, lineHeight: 1.5 }}>
+            {visibleStatus}
+          </div>
+        )}
+      </div>
+
       {seedOpen && <div style={{ marginBottom: 10 }}>
 
         {/* Preset selector */}
@@ -961,7 +1053,118 @@ export default function AIDebugPanel({
         )}
       </div>
 
+      {/* ── Export contents ── */}
+      <div style={{ borderTop: `1px solid ${BORDER}`, paddingTop: 8, marginBottom: exportOpen ? 8 : 6 }}>
+        <button
+          onClick={() => setExportOpen(v => !v)}
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            width: '100%', background: 'none', border: 'none', cursor: 'pointer',
+            padding: 0, marginBottom: exportOpen ? 6 : 0,
+            fontSize: 9, fontFamily: MONO, fontWeight: 700, letterSpacing: '0.08em',
+            color: enabledExportCount === EXPORT_TRACK_OPTIONS.length ? CYAN : enabledExportCount > 0 ? YELLOW : DIM,
+          }}
+        >
+          <span>EXPORT CONTENTS · {enabledExportCount}/{EXPORT_TRACK_OPTIONS.length}</span>
+          <span>{exportOpen ? '▲' : '▼'}</span>
+        </button>
+      </div>
+      {exportOpen && (
+        <div style={{ marginBottom: 10 }}>
+          <div style={{ display: 'flex', gap: 4, marginBottom: 6 }}>
+            <button
+              onClick={() => onSetAllExportOptions?.(true)}
+              style={{
+                flex: 1,
+                padding: '3px 0',
+                borderRadius: 4,
+                border: `1px solid ${CYAN}55`,
+                backgroundColor: `${CYAN}14`,
+                color: CYAN,
+                fontFamily: MONO,
+                fontSize: 9,
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              TRACK ALL
+            </button>
+            <button
+              onClick={() => onSetAllExportOptions?.(false)}
+              style={{
+                flex: 1,
+                padding: '3px 0',
+                borderRadius: 4,
+                border: `1px solid ${BORDER}`,
+                backgroundColor: 'transparent',
+                color: DIM,
+                fontFamily: MONO,
+                fontSize: 9,
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              SUMMARY ONLY
+            </button>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {EXPORT_TRACK_OPTIONS.map(({ key, label, hint }) => (
+              <label
+                key={key}
+                title={hint}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 7,
+                  padding: '4px 6px',
+                  borderRadius: 6,
+                  border: `1px solid ${exportOptions[key] ? `${CYAN}35` : BORDER}`,
+                  backgroundColor: exportOptions[key] ? `${CYAN}10` : 'transparent',
+                  cursor: 'pointer',
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={!!exportOptions[key]}
+                  onChange={e => onSetExportOption?.(key, e.target.checked)}
+                  style={{ accentColor: CYAN, cursor: 'pointer' }}
+                />
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 9, color: exportOptions[key] ? '#e0e0e0' : DIM, fontWeight: 700 }}>
+                    {label}
+                  </div>
+                  <div style={{ fontSize: 8, color: '#555', lineHeight: 1.4 }}>
+                    {hint}
+                  </div>
+                </div>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* ── Export button ── */}
+      <button
+        onClick={onExportCurrent}
+        disabled={!currentState?.run}
+        style={{
+          width: '100%',
+          padding: '5px 0',
+          borderRadius: 5,
+          border: `1px solid ${currentState?.run ? ORANGE : BORDER}`,
+          backgroundColor: currentState?.run ? `${ORANGE}15` : 'transparent',
+          color: currentState?.run ? ORANGE : '#444',
+          fontFamily: MONO,
+          fontSize: 10,
+          fontWeight: 700,
+          cursor: currentState?.run ? 'pointer' : 'default',
+          letterSpacing: '0.05em',
+          marginBottom: 6,
+        }}
+      >
+        â¬‡ EXPORT CURRENT GAME
+      </button>
+
       <button
         onClick={onExport}
         disabled={runCount === 0}
@@ -979,7 +1182,7 @@ export default function AIDebugPanel({
           letterSpacing: '0.05em',
         }}
       >
-        ⬇ EXPORT DATA ({runCount} runs)
+        ⬇ EXPORT DATA ({runCount} runs · {enabledExportCount}/{EXPORT_TRACK_OPTIONS.length})
       </button>
     </div>
   );

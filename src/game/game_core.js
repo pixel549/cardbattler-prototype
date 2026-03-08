@@ -6,7 +6,7 @@ import { pickEncounter } from "./encounters";
 import { startCombatFromRunDeck, dispatchCombat, forceNewMutation } from "./engine";
 import { makeRelicChoices } from "./relic_rewards";
 import { getRunMods } from "./rules_mods";
-import { createBasicEventRegistry, pickRandomEventId, applyEventChoiceImmediate } from "./events";
+import { createBasicEventRegistry, applyEventChoiceImmediate } from "./events";
 import { getMinigameRewards, getMinigamePoolForAct } from "./minigames";
 import { decodeDebugSeed, decodeSensibleDebugSeed } from "./debugSeed";
 
@@ -15,7 +15,265 @@ const EVENT_REG = createBasicEventRegistry();
 function clone(x) { return structuredClone(x); }
 function uid(rng, prefix) { return `${prefix}_${rng.nextUint().toString(16)}`; }
 
-function generateMap(seed) {
+function getCardUseCounterLimit(data, ci) {
+  const def = data?.cards?.[ci?.defId];
+  let maxUse = Number(def?.defaultUseCounter ?? 12);
+  for (const mid of ci?.appliedMutations || []) {
+    maxUse += Number(data?.mutations?.[mid]?.useCounterDelta ?? 0);
+  }
+  return Math.max(1, Number.isFinite(maxUse) ? maxUse : 12);
+}
+
+function getCardFinalCountdownBase(data, ci) {
+  const def = data?.cards?.[ci?.defId];
+  const baseUse = Number(def?.defaultUseCounter ?? 12);
+  const baseFinal = Number(def?.defaultFinalMutationCountdown ?? 8);
+  return Math.max(
+    Number.isFinite(baseFinal) ? baseFinal : 8,
+    (Number.isFinite(baseUse) ? baseUse : 12) * 3,
+  );
+}
+
+function pickWeighted(rng, weightedTypes) {
+  const totalWeight = weightedTypes.reduce((sum, [, weight]) => sum + weight, 0);
+  let roll = rng.int(totalWeight);
+  for (const [type, weight] of weightedTypes) {
+    if (roll < weight) return type;
+    roll -= weight;
+  }
+  return weightedTypes[weightedTypes.length - 1]?.[0] || "Combat";
+}
+
+function countTypes(types) {
+  const counts = {};
+  for (const type of types) counts[type] = (counts[type] || 0) + 1;
+  return counts;
+}
+
+function replaceRandomType(types, rng, fromType, toType) {
+  const candidates = [];
+  for (let i = 0; i < types.length; i++) {
+    if (types[i] === fromType) candidates.push(i);
+  }
+  if (candidates.length === 0) return false;
+  types[candidates[rng.int(candidates.length)]] = toType;
+  return true;
+}
+
+function getRowTypeWeights(row) {
+  if (row === 6 || row === 12) return { Elite: 1 };
+  if (row === 7) return { Rest: 4, Shop: 2 };
+  if (row === 13) return { Rest: 2, Shop: 2, Event: 2 };
+  if (row <= 2) return { Combat: 4, Event: 1, Shop: 1 };
+  return { Combat: 4, Event: 2, Shop: 2, Rest: 1 };
+}
+
+function rebalanceRowTypes(row, types, rng, allowedTypes) {
+  const recount = () => countTypes(types);
+
+  if (row <= 2) {
+    let counts = recount();
+    while ((counts.Combat || 0) > 4) {
+      const replacement = (counts.Event || 0) <= (counts.Shop || 0) ? "Event" : "Shop";
+      if (!replaceRandomType(types, rng, "Combat", replacement)) break;
+      counts = recount();
+    }
+    counts = recount();
+    if ((counts.Event || 0) === 0) {
+      replaceRandomType(types, rng, "Combat", "Event");
+      counts = recount();
+    }
+    if ((counts.Shop || 0) === 0) {
+      replaceRandomType(types, rng, "Combat", "Shop");
+    }
+  }
+
+  if (row === 7) {
+    const counts = recount();
+    if ((counts.Rest || 0) === 0) replaceRandomType(types, rng, "Shop", "Rest");
+    if ((counts.Shop || 0) === 0) replaceRandomType(types, rng, "Rest", "Shop");
+  }
+
+  if (new Set(types).size <= 1 && allowedTypes.length > 1) {
+    const dominant = types[0];
+    const alternatives = allowedTypes.filter((type) => type !== dominant);
+    if (alternatives.length > 0) {
+      replaceRandomType(types, rng, dominant, alternatives[rng.int(alternatives.length)]);
+    }
+  }
+}
+
+function buildRowTypeTable(seed, cols) {
+  const table = {};
+  for (let row = 1; row <= 13; row++) {
+    const weights = Object.entries(getRowTypeWeights(row));
+    const rowRng = new RNG((seed ^ 0xDEADBEEF ^ ((row + 17) * 0x9E3779B1)) >>> 0);
+    const rowTypes = Array.from({ length: cols }, () => pickWeighted(rowRng, weights));
+    rebalanceRowTypes(row, rowTypes, rowRng, weights.map(([type]) => type));
+    table[row] = rowTypes;
+  }
+  return table;
+}
+
+function isStarterLowTierCard(id, card) {
+  const tags = card?.tags || [];
+  const numericId = parseInt(String(id || '').split('-')[1], 10);
+  return String(id || '').startsWith('NC-')
+    && Number.isFinite(numericId)
+    && numericId <= 60
+    && !tags.includes('EnemyCard')
+    && !tags.includes('EnemyAbility')
+    && !tags.includes('Status')
+    && !tags.includes('Junk')
+    && !tags.includes('Power')
+    && card?.type !== 'Power'
+    && (card?.costRAM ?? 99) <= 2;
+}
+
+function getStarterCardText(card) {
+  return (card?.effects || [])
+    .filter((effect) => effect?.op === 'RawText' && effect?.text)
+    .map((effect) => effect.text)
+    .join(' | ');
+}
+
+function classifyStarterCard(card) {
+  const text = getStarterCardText(card);
+  let directDamage = 0;
+  let pressure = false;
+  let sustain = false;
+  let utility = false;
+
+  for (const effect of (card?.effects || [])) {
+    if (!effect) continue;
+    switch (effect.op) {
+      case 'DealDamage':
+        directDamage += Number(effect.amount || 0);
+        pressure = true;
+        break;
+      case 'ApplyStatus':
+        if (effect.target === 'Self' && (effect.statusId === 'Firewall' || effect.statusId === 'Nanoflow')) {
+          sustain = true;
+        }
+        if ((effect.target === 'Enemy' || effect.target === 'AllEnemies') && [
+          'Corrode',
+          'Leak',
+          'ExposedPorts',
+          'Vulnerable',
+          'Weak',
+          'Underclock',
+          'SensorGlitch',
+          'Overheat',
+          'Burn',
+        ].includes(effect.statusId)) {
+          pressure = true;
+        }
+        break;
+      case 'Heal':
+      case 'GainBlock':
+        sustain = true;
+        break;
+      case 'DrawCards':
+      case 'GainRAM':
+        utility = true;
+        break;
+      default:
+        break;
+    }
+  }
+
+  if (/\bDeal\s+\d+\s+damage\b/i.test(text) || /\bApply\s+\d+\s+(Corrode|Leak|Exposed Ports|Vulnerable|Weak|Underclock|Sensor Glitch|Overheat|Burn)\b/i.test(text)) {
+    pressure = true;
+  }
+  if (/\bStrip\s+all\s+Firewall\b/i.test(text) || /\bStrip\s+\d+\s+Firewall\b/i.test(text)) {
+    pressure = true;
+  }
+  if (/\bGain\s+\d+\s+Firewall\b/i.test(text) || /\bHeal\b/i.test(text) || /\bNanoflow\b/i.test(text)) {
+    sustain = true;
+  }
+  if (/\bDraw\b/i.test(text) || /\bRestore\b.*\bRAM\b/i.test(text) || /\bGain\b.*\bRAM\b/i.test(text) || /\bScry\b/i.test(text) || /\bSearch your draw pile\b/i.test(text) || /\bshuffle\b/i.test(text)) {
+    utility = true;
+  }
+
+  if (card?.type === 'Attack') pressure = true;
+  if (card?.type === 'Defense' || card?.type === 'Support') sustain = true;
+  if (card?.type === 'Utility' || String(card?.type || '').includes('Utility')) utility = true;
+
+  return {
+    directDamage,
+    pressure,
+    sustain,
+    utility,
+    cheap: (card?.costRAM ?? 99) <= 1,
+  };
+}
+
+function buildDefaultStarterDeck(data, seed) {
+  const starterRng = new RNG((seed ^ 0x5EED5EED) >>> 0);
+  const baseCards = ['C-001', 'C-002', 'C-003', 'C-006', 'C-011'].filter((id) => data?.cards?.[id]);
+  const extras = [];
+  const seen = new Set(baseCards);
+
+  const drawUnique = (pool) => {
+    const remaining = pool.filter((id) => !seen.has(id));
+    if (remaining.length === 0) return null;
+    const picked = remaining[starterRng.int(remaining.length)];
+    seen.add(picked);
+    extras.push(picked);
+    return picked;
+  };
+
+  const fillFromPool = (pool) => {
+    while (extras.length < 4 && drawUnique(pool)) {
+      // Keep drawing unique cards until the starter is full or the pool is exhausted.
+    }
+  };
+
+  const lowTierPool = Object.entries(data?.cards || {})
+    .filter(([id, card]) => isStarterLowTierCard(id, card))
+    .map(([id]) => id);
+  const classified = new Map(lowTierPool.map((id) => [id, classifyStarterCard(data?.cards?.[id])]));
+  const pressureDamagePool = lowTierPool.filter((id) => {
+    const card = data?.cards?.[id];
+    const info = classified.get(id);
+    return info?.pressure && (info.directDamage >= 6 || card?.type === 'Attack');
+  });
+  const pressurePool = lowTierPool.filter((id) => classified.get(id)?.pressure);
+  const sustainPool = lowTierPool.filter((id) => classified.get(id)?.sustain);
+  const cheapUtilityPool = lowTierPool.filter((id) => {
+    const info = classified.get(id);
+    return info?.utility && info.cheap;
+  });
+  const utilityPool = lowTierPool.filter((id) => classified.get(id)?.utility);
+
+  drawUnique(pressureDamagePool);
+  drawUnique(pressurePool);
+  drawUnique(sustainPool);
+  drawUnique(cheapUtilityPool.length > 0 ? cheapUtilityPool : utilityPool);
+
+  if (extras.length < 4) {
+    const fallbackPool = Object.entries(data?.cards || {})
+      .filter(([id, card]) => {
+        const tags = card?.tags || [];
+        return !seen.has(id)
+          && !String(id || '').startsWith('EC-')
+          && !tags.includes('EnemyCard')
+          && !tags.includes('EnemyAbility')
+          && !tags.includes('Status')
+          && !tags.includes('Junk')
+          && !tags.includes('Power')
+          && card?.type !== 'Power'
+          && (card?.costRAM ?? 99) <= 2;
+      })
+      .map(([id]) => id);
+    fillFromPool(lowTierPool);
+    fillFromPool(fallbackPool);
+  }
+
+  return [...baseCards, ...extras];
+}
+
+export function generateMap(seed) {
   const rng = new RNG(seed ^ 0xA5A5A5A5);
   const nodes = {};
   function makeNode(type, x, y) {
@@ -40,16 +298,12 @@ function generateMap(seed) {
   const COLS   = 6;    // columns 0..5
   const PATH_N = 6;    // one path per column
 
-  // Deterministic per-(row,col) type — independent of path iteration order
+  const rowTypeTable = buildRowTypeTable(seed, COLS);
+
+  // Deterministic per-(row,col) type table, generated row-by-row.
+  // The old per-cell xorshift seed only produced a handful of opening signatures.
   function rowColType(row, col) {
-    const tr = new RNG((seed ^ 0xDEADBEEF) ^ (row * 97 + col * 31) * 0x9E3779B1);
-    if (row === 6)  return 'Elite';
-    if (row === 7)  return tr.pick(['Rest', 'Rest', 'Shop']);
-    if (row === 12) return 'Elite';
-    if (row === 13) return tr.pick(['Rest', 'Shop', 'Event']);
-    if (row <= 2)   return tr.pick(['Combat', 'Combat', 'Event', 'Shop']);
-    if (row <= 5)   return tr.pick(['Combat', 'Event', 'Shop', 'Rest', 'Combat']);
-    return               tr.pick(['Combat', 'Event', 'Shop', 'Rest', 'Combat']);
+    return rowTypeTable[row]?.[col] || "Combat";
   }
 
   // Grid cache: "row,col" → nodeId
@@ -230,7 +484,7 @@ function maybeAdvanceAct(state, data, log) {
   log({ t: "Info", msg: `Act ${prevAct} complete — entering Act ${state.run.act}` });
 }
 
-function service_RemoveCard(state, data, source = 'shop') {
+function service_RemoveCard(state, data, source = 'shop', log = null) {
   const sel = state.deckView?.selectedInstanceId;
   if (!state.deck || !sel) return false;
   delete state.deck.cardInstances[sel];
@@ -239,7 +493,7 @@ function service_RemoveCard(state, data, source = 'shop') {
   const relicIds = state.run?.relicIds || [];
   if (relicIds.includes('FragmentationCache')) {
     state.run.gold += 35;
-    log({ t: 'Info', msg: 'FragmentationCache: +35g on remove' });
+    log?.({ t: 'Info', msg: 'FragmentationCache: +35g on remove' });
   }
   if (relicIds.includes('PurgeEngine') && source === 'event') {
     // Add a random player card to deck
@@ -250,17 +504,8 @@ function service_RemoveCard(state, data, source = 'shop') {
     if (cardIds.length > 0) {
       const peRng = new RNG((state.run.seed ^ 0xC0DE) >>> 0);
       const randomId = cardIds[peRng.int(cardIds.length)];
-      const def = data.cards[randomId];
-      const newCid = `pe_${peRng.int(0xFFFF).toString(16)}`;
-      state.deck.cardInstances[newCid] = {
-        defId: randomId,
-        appliedMutations: [],
-        useCounter: def.defaultUseCounter ?? 12,
-        finalMutationCountdown: def.defaultFinalMutationCountdown ?? 8,
-        ramCostDelta: 0,
-      };
-      state.deck.master.push(newCid);
-      log({ t: 'Info', msg: `PurgeEngine: added ${randomId} to deck` });
+      addCardToRunDeck(data, state.deck, peRng, randomId);
+      log?.({ t: 'Info', msg: `PurgeEngine: added ${randomId} to deck` });
     }
   }
   return true;
@@ -270,8 +515,7 @@ function service_RepairCard(state, data) {
   if (!state.deck || !sel) return false;
   const ci = state.deck.cardInstances[sel];
   if (!ci || ci.finalMutationId) return false;
-  const def = data.cards[ci.defId];
-  const maxUse = def.defaultUseCounter ?? 12;
+  const maxUse = getCardUseCounterLimit(data, ci);
   ci.useCounter = clamp(ci.useCounter + Math.ceil(maxUse * 0.35), 0, maxUse);
   return true;
 }
@@ -280,8 +524,7 @@ function service_StabiliseCard(state, data) {
   if (!state.deck || !sel) return false;
   const ci = state.deck.cardInstances[sel];
   if (!ci || ci.finalMutationId) return false;
-  const def = data.cards[ci.defId];
-  const base = def.defaultFinalMutationCountdown ?? 8;
+  const base = getCardFinalCountdownBase(data, ci);
   ci.finalMutationCountdown = clamp(ci.finalMutationCountdown + 2, 0, base + 6);
   return true;
 }
@@ -318,8 +561,11 @@ function resolveCurrentNodeInternal(state, data, log) {
   if (!node) return state;
   if (node.cleared) return state;
 
-  node.cleared = true;
-  state.run.floor += 1;
+  const resolvedFloor = state.run.floor + 1;
+  const markNodeResolved = () => {
+    node.cleared = true;
+    state.run.floor = resolvedFloor;
+  };
   log({ t: "Info", msg: `Resolving node (${node.type})` });
 
   if (node.type === "Combat" || node.type === "Elite" || node.type === "Boss") {
@@ -332,10 +578,10 @@ function resolveCurrentNodeInternal(state, data, log) {
 
     // When a debug seed is active, pull enemies from the FULL enemy roster so
     // all 148+ enemies can appear, not just those in the encounter tables.
-    let enemyIds, encounterName;
+    let enemyIds, encounterName, encounterId = null;
     if (dbg?.enemyPoolSeed != null) {
       const allEnemyIds = Object.keys(data.enemies);
-      const poolRng = new RNG((dbg.enemyPoolSeed ^ state.run.floor) >>> 0);
+      const poolRng = new RNG((dbg.enemyPoolSeed ^ resolvedFloor) >>> 0);
       const count = dbg.enemyCount ?? 1;
       enemyIds = [];
       for (let i = 0; i < count; i++) {
@@ -343,19 +589,44 @@ function resolveCurrentNodeInternal(state, data, log) {
       }
       encounterName = `Debug pool (${enemyIds.length} enemies)`;
     } else {
-      const enc = pickEncounter(data, state.run.seed ^ state.run.floor, effectiveAct, effectiveKind);
+      let enc = null;
+      try {
+        enc = pickEncounter(data, state.run.seed ^ resolvedFloor, effectiveAct, effectiveKind, {
+          floor: resolvedFloor,
+          recentHistory: state.run.encounterHistory || [],
+        });
+      } catch (err) {
+        log({ t: "Error", msg: `Encounter selection failed: ${String(err?.message || err)}` });
+        return state;
+      }
       enemyIds = enc?.enemyIds?.length ? enc.enemyIds : null;
+      encounterId = enc?.id ?? enc?.name ?? null;
       encounterName = enc?.name ?? 'Unknown';
       if (!enemyIds) {
-        log({ t: "Error", msg: `Encounter "${encounterName}" returned no enemyIds — skipping combat node` });
+        log({ t: "Error", msg: `Encounter "${encounterName}" returned no enemyIds — keeping combat node unresolved` });
         return state;
       }
     }
 
+    if (!dbg?.enemyPoolSeed && enemyIds?.length) {
+      state.run.encounterHistory = [
+        ...(state.run.encounterHistory || []),
+        {
+          id: encounterId ?? encounterName,
+          name: encounterName,
+          signature: [...enemyIds].sort().join('|'),
+          act: effectiveAct,
+          kind: effectiveKind,
+          floor: resolvedFloor,
+        },
+      ].slice(-12);
+    }
+
+    markNodeResolved();
     state.mode = "Combat";
     state.combat = startCombatFromRunDeck({
       data,
-      seed: state.run.seed ^ state.run.floor,
+      seed: state.run.seed ^ resolvedFloor,
       act: effectiveAct,
       runDeck: state.deck,
       enemyIds,
@@ -375,13 +646,15 @@ function resolveCurrentNodeInternal(state, data, log) {
   }
 
   if (node.type === "Shop") {
+    markNodeResolved();
     state.mode = "Shop";
-    state.shop = makeShop(data, state.run.seed ^ state.run.floor, state.run.relicIds || [], state.run.act || 1);
+    state.shop = makeShop(data, state.run.seed ^ resolvedFloor, state.run.relicIds || [], state.run.act || 1);
     log({ t: "Info", msg: "Entered shop" });
     return state;
   }
 
   if (node.type === "Rest") {
+    markNodeResolved();
     state.mode = "Event";
     state.event = { eventId: "RestSite", step: 0 };
     log({ t: "Info", msg: "Entered rest site" });
@@ -389,10 +662,11 @@ function resolveCurrentNodeInternal(state, data, log) {
   }
 
   if (node.type === "Event") {
+    markNodeResolved();
     state.mode = "Event";
     const minigameIds = getMinigamePoolForAct(state.run.act);
     const allEventIds = [...EVENT_REG.pool, ...minigameIds];
-    const eventRng = new RNG((state.run.seed ^ state.run.floor ^ 0xE17E17) >>> 0);
+    const eventRng = new RNG((state.run.seed ^ resolvedFloor ^ 0xE17E17) >>> 0);
     const eid = eventRng.pick(allEventIds);
     state.event = { eventId: eid, step: 0 };
     log({ t: "Info", msg: `Entered event: ${eid}` });
@@ -451,36 +725,21 @@ export function dispatchGame(stateIn, data, action) {
         hp: startMaxHP,
         maxHP: startMaxHP,
         travelHpCost: 2,
-        relicIds: []
+        relicIds: [],
+        seenMutationIds: [],
+        encounterHistory: []
       };
 
-      // Starter deck: explicit debug list > default 5-card starter
+      // Starter deck: explicit debug list > default 9-card starter
       let starter;
       if (dbg?.startingCardIds?.length) {
         starter = dbg.startingCardIds;
       } else if (dbg?.startingCardCount != null) {
         starter = Object.keys(data.cards).slice(0, dbg.startingCardCount);
       } else {
-        // Default: C-001 (Strike) + C-002 (Guard) + 1 random Utility + 1 random Attack + 1 random Defense
-        const starterRng = new RNG((action.seed ^ 0x5EED5EED) >>> 0);
-        const pick = (type, exclude) => {
-          const pool = Object.entries(data.cards)
-            .filter(([id, c]) => c.type === type
-              && !c.tags?.includes('EnemyCard')
-              && !c.tags?.includes('Status')
-              && !exclude?.includes(id))
-            .map(([id]) => id);
-          return pool.length ? pool[starterRng.int(pool.length)] : null;
-        };
-        starter = [
-          'C-001',
-          'C-002',
-          pick('Utility'),
-          pick('Attack', ['C-001']),
-          pick('Defense', ['C-002']),
-        ].filter(Boolean);
+        starter = buildDefaultStarterDeck(data, action.seed);
       }
-      state.deck = createRunDeckFromDefs(data, action.seed, starter.length ? starter : ['C-001', 'C-002']);
+      state.deck = createRunDeckFromDefs(data, action.seed, starter.length ? starter : ['C-001', 'C-002', 'C-003', 'C-006', 'C-011']);
       state.map = generateMap(action.seed);
       state.combat = null;
       state.reward = null;
@@ -509,6 +768,9 @@ export function dispatchGame(stateIn, data, action) {
 
       const toId = action.nodeId;
       const fromId = state.map.currentNodeId;
+      const previousHp = state.run.hp;
+      const previousMp = state.run.mp;
+      const previousSelectableNext = [...state.map.selectableNext];
 
       // HARD GUARDS (fix illegal re-entry + keeps journal sane)
       if (!state.map.selectableNext.includes(toId)) {
@@ -547,7 +809,15 @@ export function dispatchGame(stateIn, data, action) {
       log({ t: "Info", msg: `Moved to ${toId} (MP=${state.run.mp})` });
 
       // FINAL GAME BEHAVIOUR: auto-resolve immediately (WITHOUT journaling a separate ResolveNode action)
-      return resolveCurrentNodeInternal(state, data, log);
+      const resolved = resolveCurrentNodeInternal(state, data, log);
+      if (resolved.mode === "Map" && !resolved.map?.nodes?.[toId]?.cleared) {
+        resolved.run.hp = previousHp;
+        resolved.run.mp = previousMp;
+        resolved.map.currentNodeId = fromId;
+        resolved.map.selectableNext = previousSelectableNext;
+        log({ t: "Error", msg: `Failed to resolve node ${toId}; movement reverted` });
+      }
+      return resolved;
     }
 
     // Debug-only: kept for harness, does not break final flow.
@@ -572,8 +842,28 @@ export function dispatchGame(stateIn, data, action) {
 
       state.combat = dispatchCombat(state.combat, data, combatAction);
 
-      // drain combat logs into global log
-      for (const e of state.combat.log) push(state.log, e);
+      // drain combat logs into global log and mark mutation discoveries per run
+      const seenMutationIds = new Set(state.run.seenMutationIds || []);
+      for (const e of state.combat.log) {
+        if (e.t === "MutationApplied") {
+          const mutationId = e.data?.mutationId
+            ?? e.msg?.replace(/^(?:Applied )?Mutation\s+/i, "")
+            ?? null;
+          const isNewInRun = mutationId ? !seenMutationIds.has(mutationId) : true;
+          if (mutationId) seenMutationIds.add(mutationId);
+          push(state.log, {
+            ...e,
+            data: {
+              ...(e.data || {}),
+              mutationId,
+              isNewInRun,
+            },
+          });
+          continue;
+        }
+        push(state.log, e);
+      }
+      state.run.seenMutationIds = [...seenMutationIds];
       state.combat.log = [];
 
       // sync run HP
@@ -702,8 +992,7 @@ export function dispatchGame(stateIn, data, action) {
         if (repairable.length > 0) {
           const wtRng = new RNG((state.run.seed ^ 0x700C) >>> 0);
           const target = repairable[wtRng.int(repairable.length)];
-          const def = data.cards[target.defId];
-          const maxUse = def?.defaultUseCounter ?? 12;
+          const maxUse = getCardUseCounterLimit(data, target);
           target.useCounter = Math.min(maxUse, target.useCounter + Math.ceil(maxUse * 0.35));
           log({ t: "Info", msg: `WornToolkit: repaired ${target.defId}` });
         }
@@ -905,7 +1194,7 @@ export function dispatchGame(stateIn, data, action) {
       if (state.mode === "Shop" && state.shop?.pendingService) {
         const serviceId = state.shop.pendingService;
         let ok = false;
-        if (serviceId === "RemoveCard") ok = service_RemoveCard(state, data, 'shop');
+        if (serviceId === "RemoveCard") ok = service_RemoveCard(state, data, 'shop', log);
         if (serviceId === "Repair") ok = service_RepairCard(state, data);
         if (serviceId === "Stabilise") ok = service_StabiliseCard(state, data);
         if (serviceId === "Accelerate") ok = service_AccelerateCard(state);
@@ -920,7 +1209,7 @@ export function dispatchGame(stateIn, data, action) {
       if (state.mode === "Event" && state.event?.pendingSelectOp) {
         const op = state.event.pendingSelectOp;
         let ok = false;
-        if (op === "RemoveSelectedCard") ok = service_RemoveCard(state, data, 'event');
+        if (op === "RemoveSelectedCard") ok = service_RemoveCard(state, data, 'event', log);
         if (op === "RepairSelectedCard") ok = service_RepairCard(state, data);
         if (op === "StabiliseSelectedCard") ok = service_StabiliseCard(state, data);
         if (op === "AccelerateSelectedCard") ok = service_AccelerateCard(state);

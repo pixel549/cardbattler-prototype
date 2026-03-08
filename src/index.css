@@ -172,6 +172,78 @@ a:focus:not(:focus-visible) {
 .enemy-act-defend { animation: enemy-act-defend 0.55s ease-out forwards; }
 .enemy-act-debuff { animation: enemy-act-debuff 0.55s ease-out forwards; }
 
+/* Overlay card-play animations */
+.play-card-overlay {
+  will-change: transform, opacity, filter;
+  transform-origin: center center;
+  backdrop-filter: blur(10px);
+}
+
+@keyframes play-card-player {
+  0%   { opacity: 0; transform: translate(-50%, -50%) translate(0, 0) scale(0.88) rotate(-12deg); filter: brightness(1) saturate(1); }
+  12%  { opacity: 1; }
+  42%  { opacity: 1; transform: translate(-50%, -50%) translate(-12vw, -8vh) scale(1.02) rotate(-5deg); filter: brightness(1.35) saturate(1.15); }
+  100% { opacity: 0; transform: translate(-50%, -50%) translate(-30vw, -34vh) scale(0.62) rotate(6deg); filter: brightness(1.7) saturate(1.25); }
+}
+
+@keyframes play-card-enemy-attack {
+  0%   { opacity: 0; transform: translate(-50%, -50%) translate(0, -2vh) scale(0.82) rotate(10deg); filter: brightness(1) saturate(1); }
+  14%  { opacity: 1; }
+  54%  { opacity: 1; transform: translate(-50%, -50%) translate(-2vw, 20vh) scale(1.06) rotate(-8deg); filter: brightness(1.55) saturate(1.2); }
+  100% { opacity: 0; transform: translate(-50%, -50%) translate(0, 38vh) scale(0.72) rotate(-14deg); filter: brightness(2.05) saturate(1.35); }
+}
+
+@keyframes play-card-enemy-defense {
+  0%   { opacity: 0; transform: translate(-50%, -50%) translate(0, 0) scale(0.82) rotate(-4deg); filter: brightness(1) saturate(1); }
+  18%  { opacity: 1; }
+  58%  { opacity: 1; transform: translate(-50%, -50%) translate(0, 6vh) scale(1.14) rotate(0deg); filter: brightness(1.65) saturate(1.25); }
+  100% { opacity: 0; transform: translate(-50%, -50%) translate(0, 1vh) scale(0.88) rotate(4deg); filter: brightness(1.2) saturate(1.05); }
+}
+
+@keyframes play-card-enemy-buff {
+  0%   { opacity: 0; transform: translate(-50%, -50%) translate(0, 0) scale(0.84) rotate(4deg); filter: brightness(1) saturate(1); }
+  18%  { opacity: 1; }
+  50%  { opacity: 1; transform: translate(-50%, -50%) translate(8vw, -7vh) scale(1.08) rotate(11deg); filter: brightness(1.55) saturate(1.2); }
+  100% { opacity: 0; transform: translate(-50%, -50%) translate(15vw, -14vh) scale(0.76) rotate(16deg); filter: brightness(1.9) saturate(1.28); }
+}
+
+@keyframes play-card-enemy-debuff {
+  0%   { opacity: 0; transform: translate(-50%, -50%) translate(0, 0) scale(0.82) rotate(8deg); filter: brightness(1) saturate(1); }
+  16%  { opacity: 1; }
+  50%  { opacity: 1; transform: translate(-50%, -50%) translate(-8vw, 15vh) scale(1.04) rotate(-9deg); filter: brightness(1.55) saturate(1.18); }
+  100% { opacity: 0; transform: translate(-50%, -50%) translate(-18vw, 30vh) scale(0.78) rotate(-18deg); filter: brightness(1.95) saturate(1.3); }
+}
+
+.play-card-player { animation: play-card-player 0.46s cubic-bezier(0.18, 0.84, 0.34, 1) forwards; }
+.play-card-enemy-attack { animation: play-card-enemy-attack 0.72s cubic-bezier(0.22, 0.8, 0.24, 1) forwards; }
+.play-card-enemy-defense { animation: play-card-enemy-defense 0.62s cubic-bezier(0.22, 0.8, 0.24, 1) forwards; }
+.play-card-enemy-buff { animation: play-card-enemy-buff 0.62s cubic-bezier(0.22, 0.8, 0.24, 1) forwards; }
+.play-card-enemy-debuff { animation: play-card-enemy-debuff 0.7s cubic-bezier(0.22, 0.8, 0.24, 1) forwards; }
+
+@keyframes mutation-discovery-popup {
+  0%   { opacity: 0; transform: translateY(12px) scale(0.88); filter: brightness(0.92) saturate(0.92); }
+  12%  { opacity: 1; }
+  56%  { opacity: 1; transform: translateY(0) scale(1); filter: brightness(1.12) saturate(1.06); }
+  100% { opacity: 0; transform: translateY(-10px) scale(0.96); filter: brightness(1.2) saturate(1.12); }
+}
+
+@keyframes mutation-repeat-linger {
+  0%   { opacity: 0; transform: scale(0.88) rotate(-4deg); filter: brightness(0.96) saturate(0.94); }
+  14%  { opacity: 1; }
+  58%  { opacity: 1; transform: scale(1.03) rotate(0deg); filter: brightness(1.14) saturate(1.08); }
+  100% { opacity: 0; transform: scale(0.92) rotate(3deg); filter: brightness(1.22) saturate(1.1); }
+}
+
+@keyframes mutation-symbol-pop {
+  0%   { opacity: 0; transform: scale(0.4) translateY(10px); }
+  70%  { opacity: 1; transform: scale(1.14) translateY(0); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.mutation-discovery-popup { animation: mutation-discovery-popup 1.75s cubic-bezier(0.2, 0.85, 0.28, 1) forwards; }
+.mutation-repeat-card { animation: mutation-repeat-linger 1.22s cubic-bezier(0.2, 0.84, 0.3, 1) forwards; }
+.mutation-symbol-pop { opacity: 0; animation: mutation-symbol-pop 0.38s cubic-bezier(0.2, 0.86, 0.34, 1.18) 0.28s forwards; }
+
 .animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
 .animate-flicker { animation: flicker 0.1s ease-in-out infinite; }
 .animate-slide-up { animation: slide-up 0.3s ease-out; }

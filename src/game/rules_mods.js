@@ -13,9 +13,13 @@ function mergeMods(base, add) {
   for (const k of [
     "maxHPDelta","startingGoldDelta","maxMPDelta","travelHpCostDelta",
     "maxRAMDelta","ramRegenDelta","drawPerTurnDelta",
-    "mutationTriggerChanceMult","finalCountdownTickDelta"
+    "finalCountdownTickDelta"
   ]) {
     if (typeof add[k] === "number") out[k] = (out[k] || 0) + add[k];
+  }
+  if (typeof add.mutationTriggerChanceMult === "number") {
+    const cur = out.mutationTriggerChanceMult ?? 1;
+    out.mutationTriggerChanceMult = cur * add.mutationTriggerChanceMult;
   }
   if (add.mutationTierWeightMult) {
     out.mutationTierWeightMult = out.mutationTierWeightMult || {};

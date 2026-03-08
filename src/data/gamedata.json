@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "builtAt": "2026-03-06T06:52:17.188Z",
+  "builtAt": "2026-03-08T13:18:20.337Z",
   "cards": {
     "C-001": {
       "id": "C-001",
@@ -170,7 +170,9 @@
       "type": "Utility",
       "costRAM": 0,
       "tags": [
-        "Core"
+        "Core",
+        "OpeningHand",
+        "RAM"
       ],
       "effects": [
         {
@@ -322,6 +324,44 @@
         "outcomeWeights": {
           "brick": 0.5,
           "rewrite": 0.5
+        },
+        "brickBehavior": "Exhaust",
+        "rewritePoolDefIds": []
+      }
+    },
+    "C-011": {
+      "id": "C-011",
+      "name": "Shieldbreak Pulse",
+      "type": "Utility",
+      "costRAM": 0,
+      "tags": [
+        "Core",
+        "Breach",
+        "OpeningHand"
+      ],
+      "effects": [
+        {
+          "op": "RawText",
+          "text": "Strip all Firewall from ALL enemies."
+        },
+        {
+          "op": "DrawCards",
+          "target": "Self",
+          "amount": 1
+        }
+      ],
+      "defaultUseCounter": 4,
+      "defaultFinalMutationCountdown": 4,
+      "mutationOdds": {
+        "triggerChance": 0,
+        "tiers": {
+          "A": 100
+        }
+      },
+      "finalMutation": {
+        "outcomeWeights": {
+          "brick": 0,
+          "rewrite": 1
         },
         "brickBehavior": "Exhaust",
         "rewritePoolDefIds": []
@@ -2371,7 +2411,7 @@
       "effects": [
         {
           "op": "RawText",
-          "text": "POWER: At the end of your turn, gain 4 Firewall."
+          "text": "POWER: At the end of your turn, gain 3 Firewall."
         }
       ],
       "defaultUseCounter": 18,
@@ -2476,7 +2516,7 @@
       "effects": [
         {
           "op": "RawText",
-          "text": "POWER: Whenever you gain Firewall, gain +2 additional Firewall."
+          "text": "POWER: The first time each turn you gain Firewall, gain +2 additional Firewall."
         }
       ],
       "defaultUseCounter": 18,
@@ -2936,7 +2976,7 @@
       "effects": [
         {
           "op": "RawText",
-          "text": "Spend all remaining RAM. Gain 5 Firewall per RAM spent."
+          "text": "Spend all remaining RAM. Gain 4 Firewall per RAM spent."
         }
       ],
       "defaultUseCounter": 24,
@@ -3940,6 +3980,76 @@
         "rewritePoolDefIds": []
       }
     },
+    "NC-103": {
+      "id": "NC-103",
+      "name": "Breach Charge",
+      "type": "Attack",
+      "costRAM": 1,
+      "tags": [
+        "Firewall",
+        "Breach"
+      ],
+      "effects": [
+        {
+          "op": "RawText",
+          "text": "Strip 10 Firewall. Deal 7 damage."
+        }
+      ],
+      "defaultUseCounter": 22,
+      "defaultFinalMutationCountdown": 22,
+      "mutationOdds": {
+        "triggerChance": 0.24,
+        "tiers": {
+          "A": 62,
+          "B": 24,
+          "C": 10,
+          "D": 4
+        }
+      },
+      "finalMutation": {
+        "outcomeWeights": {
+          "brick": 0.5,
+          "rewrite": 0.5
+        },
+        "brickBehavior": "Exhaust",
+        "rewritePoolDefIds": []
+      }
+    },
+    "NC-104": {
+      "id": "NC-104",
+      "name": "Firewall Crash",
+      "type": "Attack",
+      "costRAM": 1,
+      "tags": [
+        "Firewall",
+        "Finisher"
+      ],
+      "effects": [
+        {
+          "op": "RawText",
+          "text": "Lose all Firewall. Deal that much damage."
+        }
+      ],
+      "defaultUseCounter": 20,
+      "defaultFinalMutationCountdown": 20,
+      "mutationOdds": {
+        "triggerChance": 0.26,
+        "tiers": {
+          "A": 58,
+          "B": 24,
+          "C": 12,
+          "D": 6
+        }
+      },
+      "finalMutation": {
+        "outcomeWeights": {
+          "brick": 0.5,
+          "rewrite": 0.5
+        },
+        "brickBehavior": "Exhaust",
+        "rewritePoolDefIds": []
+      }
+    },
     "UC-001": {
       "id": "UC-001",
       "name": "Heavy Shot",
@@ -4475,6 +4585,42 @@
         "rewritePoolDefIds": []
       }
     },
+    "UC-017": {
+      "id": "UC-017",
+      "name": "Firewall Cascade",
+      "type": "Attack",
+      "costRAM": 3,
+      "tags": [
+        "Firewall",
+        "AOE",
+        "Finisher"
+      ],
+      "effects": [
+        {
+          "op": "RawText",
+          "text": "Lose all Firewall. Deal that much damage to ALL enemies."
+        }
+      ],
+      "defaultUseCounter": 16,
+      "defaultFinalMutationCountdown": 16,
+      "mutationOdds": {
+        "triggerChance": 0.3,
+        "tiers": {
+          "A": 55,
+          "B": 28,
+          "C": 12,
+          "D": 5
+        }
+      },
+      "finalMutation": {
+        "outcomeWeights": {
+          "brick": 0.5,
+          "rewrite": 0.5
+        },
+        "brickBehavior": "Exhaust",
+        "rewritePoolDefIds": []
+      }
+    },
     "R-001": {
       "id": "R-001",
       "name": "Plasma Lance",
@@ -4520,7 +4666,7 @@
       "effects": [
         {
           "op": "RawText",
-          "text": "Gain 35 Firewall."
+          "text": "Gain 28 Firewall."
         }
       ],
       "defaultUseCounter": 16,
@@ -5122,7 +5268,7 @@
       "effects": [
         {
           "op": "RawText",
-          "text": "Gain 35 Firewall."
+          "text": "Gain 28 Firewall."
         }
       ],
       "defaultUseCounter": 7,
@@ -5441,9 +5587,10 @@
       ],
       "effects": [
         {
-          "op": "GainBlock",
+          "op": "ApplyStatus",
           "target": "Self",
-          "amount": 8
+          "statusId": "Firewall",
+          "stacks": 6
         }
       ],
       "defaultUseCounter": 999,
@@ -5473,9 +5620,10 @@
       ],
       "effects": [
         {
-          "op": "GainBlock",
+          "op": "ApplyStatus",
           "target": "Self",
-          "amount": 12
+          "statusId": "Firewall",
+          "stacks": 8
         }
       ],
       "defaultUseCounter": 999,
@@ -5505,14 +5653,77 @@
       ],
       "effects": [
         {
-          "op": "GainBlock",
+          "op": "ApplyStatus",
           "target": "Self",
-          "amount": 5
+          "statusId": "Firewall",
+          "stacks": 4
         },
         {
           "op": "DealDamage",
           "target": "Enemy",
-          "amount": 5
+          "amount": 6
+        }
+      ],
+      "defaultUseCounter": 999,
+      "defaultFinalMutationCountdown": 999,
+      "mutationOdds": {
+        "triggerChance": 0,
+        "tiers": {
+          "A": 100
+        }
+      },
+      "finalMutation": {
+        "outcomeWeights": {
+          "brick": 0,
+          "rewrite": 1
+        },
+        "brickBehavior": "Exhaust",
+        "rewritePoolDefIds": []
+      }
+    },
+    "EC-D4": {
+      "id": "EC-D4",
+      "name": "Enemy Firewall Crash",
+      "type": "Defense",
+      "costRAM": 0,
+      "tags": [
+        "EnemyAbility"
+      ],
+      "effects": [
+        {
+          "op": "RawText",
+          "text": "Lose all Firewall. Deal that much damage."
+        }
+      ],
+      "defaultUseCounter": 999,
+      "defaultFinalMutationCountdown": 999,
+      "mutationOdds": {
+        "triggerChance": 0,
+        "tiers": {
+          "A": 100
+        }
+      },
+      "finalMutation": {
+        "outcomeWeights": {
+          "brick": 0,
+          "rewrite": 1
+        },
+        "brickBehavior": "Exhaust",
+        "rewritePoolDefIds": []
+      }
+    },
+    "EC-D5": {
+      "id": "EC-D5",
+      "name": "Enemy Breach Ram",
+      "type": "Defense",
+      "costRAM": 0,
+      "tags": [
+        "EnemyAbility"
+      ],
+      "effects": [
+        {
+          "op": "RawText",
+          "text": "Strip 8 Firewall. Deal 6 damage."
         }
       ],
       "defaultUseCounter": 999,
@@ -5544,7 +5755,7 @@
         {
           "op": "Heal",
           "target": "Self",
-          "amount": 10
+          "amount": 8
         }
       ],
       "defaultUseCounter": 999,
@@ -5718,7 +5929,7 @@
           "op": "ApplyStatus",
           "target": "Enemy",
           "statusId": "Corrode",
-          "stacks": 3
+          "stacks": 2
         },
         {
           "op": "ApplyStatus",
@@ -5757,13 +5968,13 @@
           "op": "ApplyStatus",
           "target": "Enemy",
           "statusId": "Corrode",
-          "stacks": 4
+          "stacks": 3
         },
         {
           "op": "ApplyStatus",
           "target": "Enemy",
           "statusId": "Leak",
-          "stacks": 2
+          "stacks": 1
         }
       ],
       "defaultUseCounter": 999,
@@ -7939,7 +8150,7 @@
     "E_HACKER_DRONE": {
       "id": "E_HACKER_DRONE",
       "name": "Hacker Drone",
-      "maxHP": 65,
+      "maxHP": 58,
       "actionsPerTurn": 1,
       "rotation": [
         "EC-A2"
@@ -7951,12 +8162,12 @@
             {
               "op": "DealDamage",
               "target": "AllEnemies",
-              "amount": 4
+              "amount": 3
             },
             {
               "op": "DealDamage",
               "target": "Player",
-              "amount": 4
+              "amount": 3
             }
           ]
         }
@@ -7973,8 +8184,10 @@
       "maxHP": 51,
       "actionsPerTurn": 1,
       "rotation": [
-        "EC-D2",
-        "EC-D3"
+        "EC-D3",
+        "EC-D5",
+        "EC-D4",
+        "EC-A2"
       ],
       "passives": [
         {
@@ -8002,7 +8215,8 @@
       "actionsPerTurn": 1,
       "rotation": [
         "EC-S1",
-        "EC-A1"
+        "EC-A1",
+        "EC-S1"
       ],
       "passives": [],
       "ai": null,
@@ -8045,7 +8259,8 @@
       "maxHP": 61,
       "actionsPerTurn": 1,
       "rotation": [
-        "EC-DB2"
+        "EC-DB1",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
@@ -8060,7 +8275,8 @@
       "maxHP": 61,
       "actionsPerTurn": 1,
       "rotation": [
-        "EC-DB2"
+        "EC-DB1",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
@@ -8122,7 +8338,8 @@
       "actionsPerTurn": 1,
       "rotation": [
         "EC-S1",
-        "EC-A1"
+        "EC-A1",
+        "EC-S1"
       ],
       "passives": [],
       "ai": null,
@@ -8137,8 +8354,10 @@
       "maxHP": 76,
       "actionsPerTurn": 1,
       "rotation": [
-        "EC-D2",
-        "EC-D3"
+        "EC-D3",
+        "EC-D5",
+        "EC-D4",
+        "EC-A2"
       ],
       "passives": [],
       "ai": null,
@@ -8185,7 +8404,8 @@
       "actionsPerTurn": 1,
       "rotation": [
         "EC-S1",
-        "EC-A1"
+        "EC-A1",
+        "EC-S1"
       ],
       "passives": [],
       "ai": null,
@@ -8200,8 +8420,10 @@
       "maxHP": 76,
       "actionsPerTurn": 1,
       "rotation": [
-        "EC-D2",
-        "EC-D3"
+        "EC-D3",
+        "EC-D5",
+        "EC-D4",
+        "EC-A2"
       ],
       "passives": [
         {
@@ -8318,7 +8540,8 @@
       "actionsPerTurn": 1,
       "rotation": [
         "EC-S1",
-        "EC-A1"
+        "EC-A1",
+        "EC-S1"
       ],
       "passives": [],
       "ai": null,
@@ -8333,7 +8556,8 @@
       "maxHP": 61,
       "actionsPerTurn": 1,
       "rotation": [
-        "EC-DB2"
+        "EC-DB1",
+        "EC-A1"
       ],
       "passives": [
         {
@@ -8422,7 +8646,8 @@
       "maxHP": 39,
       "actionsPerTurn": 1,
       "rotation": [
-        "EC-DB2"
+        "EC-DB1",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
@@ -8437,7 +8662,8 @@
       "maxHP": 81,
       "actionsPerTurn": 1,
       "rotation": [
-        "EC-DB2"
+        "EC-DB1",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
@@ -8483,8 +8709,10 @@
       "maxHP": 76,
       "actionsPerTurn": 1,
       "rotation": [
-        "EC-D2",
-        "EC-D3"
+        "EC-D3",
+        "EC-D5",
+        "EC-D4",
+        "EC-A2"
       ],
       "passives": [],
       "ai": null,
@@ -8511,11 +8739,13 @@
     "E_HOLO_SHAMAN_CREW": {
       "id": "E_HOLO_SHAMAN_CREW",
       "name": "Holo Shaman Crew",
-      "maxHP": 76,
+      "maxHP": 68,
       "actionsPerTurn": 1,
       "rotation": [
-        "EC-D2",
-        "EC-D3"
+        "EC-D3",
+        "EC-D5",
+        "EC-D4",
+        "EC-A2"
       ],
       "passives": [
         {
@@ -8592,7 +8822,8 @@
       "actionsPerTurn": 1,
       "rotation": [
         "EC-S1",
-        "EC-A1"
+        "EC-A1",
+        "EC-S1"
       ],
       "passives": [],
       "ai": null,
@@ -8608,8 +8839,9 @@
       "actionsPerTurn": 1,
       "rotation": [
         "EC-D2",
-        "EC-D2",
-        "EC-D3"
+        "EC-D5",
+        "EC-D4",
+        "EC-A3"
       ],
       "passives": [],
       "ai": null,
@@ -8621,10 +8853,11 @@
     "E_CIPHER_HACKER_MK_II": {
       "id": "E_CIPHER_HACKER_MK_II",
       "name": "Cipher Hacker Mk II",
-      "maxHP": 81,
+      "maxHP": 74,
       "actionsPerTurn": 1,
       "rotation": [
-        "EC-DB3"
+        "EC-DB2",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
@@ -8655,7 +8888,8 @@
       "maxHP": 81,
       "actionsPerTurn": 1,
       "rotation": [
-        "EC-DB2"
+        "EC-DB1",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
@@ -8700,7 +8934,8 @@
       "maxHP": 81,
       "actionsPerTurn": 1,
       "rotation": [
-        "EC-DB2"
+        "EC-DB1",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
@@ -8731,8 +8966,10 @@
       "maxHP": 51,
       "actionsPerTurn": 1,
       "rotation": [
-        "EC-D2",
-        "EC-D3"
+        "EC-D3",
+        "EC-D5",
+        "EC-D4",
+        "EC-A2"
       ],
       "passives": [],
       "ai": null,
@@ -8748,7 +8985,8 @@
       "actionsPerTurn": 1,
       "rotation": [
         "EC-S1",
-        "EC-A1"
+        "EC-A1",
+        "EC-S1"
       ],
       "passives": [],
       "ai": null,
@@ -8763,8 +9001,10 @@
       "maxHP": 51,
       "actionsPerTurn": 1,
       "rotation": [
-        "EC-D2",
-        "EC-D3"
+        "EC-D3",
+        "EC-D5",
+        "EC-D4",
+        "EC-A2"
       ],
       "passives": [],
       "ai": null,
@@ -8794,7 +9034,8 @@
       "maxHP": 81,
       "actionsPerTurn": 1,
       "rotation": [
-        "EC-DB3"
+        "EC-DB2",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
@@ -8852,7 +9093,8 @@
       "actionsPerTurn": 1,
       "rotation": [
         "EC-S1",
-        "EC-A1"
+        "EC-A1",
+        "EC-S1"
       ],
       "passives": [],
       "ai": null,
@@ -8867,8 +9109,10 @@
       "maxHP": 76,
       "actionsPerTurn": 1,
       "rotation": [
-        "EC-D2",
-        "EC-D3"
+        "EC-D3",
+        "EC-D5",
+        "EC-D4",
+        "EC-A2"
       ],
       "passives": [],
       "ai": null,
@@ -8884,7 +9128,8 @@
       "actionsPerTurn": 1,
       "rotation": [
         "EC-S1",
-        "EC-A1"
+        "EC-A1",
+        "EC-S1"
       ],
       "passives": [],
       "ai": null,
@@ -8959,7 +9204,8 @@
       "maxHP": 61,
       "actionsPerTurn": 1,
       "rotation": [
-        "EC-DB2"
+        "EC-DB1",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
@@ -8990,8 +9236,10 @@
       "maxHP": 96,
       "actionsPerTurn": 1,
       "rotation": [
-        "EC-D2",
-        "EC-D3"
+        "EC-D3",
+        "EC-D5",
+        "EC-D4",
+        "EC-A2"
       ],
       "passives": [],
       "ai": null,
@@ -9003,12 +9251,13 @@
     "E_VECTOR_GOON_PROXY": {
       "id": "E_VECTOR_GOON_PROXY",
       "name": "Vector Goon Proxy",
-      "maxHP": 96,
+      "maxHP": 88,
       "actionsPerTurn": 1,
       "rotation": [
         "EC-D2",
-        "EC-D2",
-        "EC-D3"
+        "EC-D5",
+        "EC-D4",
+        "EC-A3"
       ],
       "passives": [],
       "ai": null,
@@ -9039,7 +9288,8 @@
       "maxHP": 61,
       "actionsPerTurn": 1,
       "rotation": [
-        "EC-DB2"
+        "EC-DB1",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
@@ -9055,7 +9305,8 @@
       "actionsPerTurn": 1,
       "rotation": [
         "EC-S1",
-        "EC-A1"
+        "EC-A1",
+        "EC-S1"
       ],
       "passives": [],
       "ai": null,
@@ -9085,7 +9336,8 @@
       "maxHP": 39,
       "actionsPerTurn": 1,
       "rotation": [
-        "EC-DB2"
+        "EC-DB1",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
@@ -9205,8 +9457,10 @@
       "maxHP": 96,
       "actionsPerTurn": 1,
       "rotation": [
-        "EC-D2",
-        "EC-D3"
+        "EC-D3",
+        "EC-D5",
+        "EC-D4",
+        "EC-A2"
       ],
       "passives": [],
       "ai": null,
@@ -9221,8 +9475,10 @@
       "maxHP": 76,
       "actionsPerTurn": 1,
       "rotation": [
-        "EC-D2",
-        "EC-D3"
+        "EC-D3",
+        "EC-D5",
+        "EC-D4",
+        "EC-A2"
       ],
       "passives": [],
       "ai": null,
@@ -9234,7 +9490,7 @@
     "E_HOLO_SAPPER_CELL": {
       "id": "E_HOLO_SAPPER_CELL",
       "name": "Holo Sapper Cell",
-      "maxHP": 65,
+      "maxHP": 54,
       "actionsPerTurn": 1,
       "rotation": [
         "EC-A2"
@@ -9268,7 +9524,8 @@
       "actionsPerTurn": 1,
       "rotation": [
         "EC-S1",
-        "EC-A1"
+        "EC-A1",
+        "EC-S1"
       ],
       "passives": [],
       "ai": null,
@@ -9280,10 +9537,11 @@
     "E_CIRCUIT_HACKER_ARRAY": {
       "id": "E_CIRCUIT_HACKER_ARRAY",
       "name": "Circuit Hacker Array",
-      "maxHP": 81,
+      "maxHP": 74,
       "actionsPerTurn": 1,
       "rotation": [
-        "EC-DB2"
+        "EC-DB1",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
@@ -9314,7 +9572,8 @@
       "actionsPerTurn": 1,
       "rotation": [
         "EC-S1",
-        "EC-A1"
+        "EC-A1",
+        "EC-S1"
       ],
       "passives": [],
       "ai": null,
@@ -9330,7 +9589,8 @@
       "actionsPerTurn": 1,
       "rotation": [
         "EC-S1",
-        "EC-A1"
+        "EC-A1",
+        "EC-S1"
       ],
       "passives": [],
       "ai": null,
@@ -9373,10 +9633,11 @@
     "E_ECHO_SHAMAN_SWARM": {
       "id": "E_ECHO_SHAMAN_SWARM",
       "name": "Echo Shaman Swarm",
-      "maxHP": 121,
+      "maxHP": 108,
       "actionsPerTurn": 1,
       "rotation": [
-        "EC-DB3"
+        "EC-DB2",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
@@ -9391,8 +9652,10 @@
       "maxHP": 96,
       "actionsPerTurn": 1,
       "rotation": [
-        "EC-D2",
-        "EC-D3"
+        "EC-D3",
+        "EC-D5",
+        "EC-D4",
+        "EC-A2"
       ],
       "passives": [],
       "ai": null,
@@ -9408,7 +9671,8 @@
       "actionsPerTurn": 1,
       "rotation": [
         "EC-S1",
-        "EC-A1"
+        "EC-A1",
+        "EC-S1"
       ],
       "passives": [
         {
@@ -9433,11 +9697,13 @@
     "E_HOLO_SHAMAN_MK_I": {
       "id": "E_HOLO_SHAMAN_MK_I",
       "name": "Holo Shaman Mk I",
-      "maxHP": 76,
+      "maxHP": 60,
       "actionsPerTurn": 1,
       "rotation": [
-        "EC-D2",
-        "EC-D3"
+        "EC-D3",
+        "EC-D5",
+        "EC-D4",
+        "EC-A2"
       ],
       "passives": [],
       "ai": null,
@@ -9467,7 +9733,8 @@
       "maxHP": 39,
       "actionsPerTurn": 1,
       "rotation": [
-        "EC-DB2"
+        "EC-DB1",
+        "EC-A1"
       ],
       "passives": [
         {
@@ -9507,10 +9774,11 @@
     "E_HOLO_RAT_MK_II": {
       "id": "E_HOLO_RAT_MK_II",
       "name": "Holo Rat Mk II",
-      "maxHP": 61,
+      "maxHP": 56,
       "actionsPerTurn": 1,
       "rotation": [
-        "EC-DB2"
+        "EC-DB1",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
@@ -9522,11 +9790,13 @@
     "E_HOLO_SCOUT_PROXY": {
       "id": "E_HOLO_SCOUT_PROXY",
       "name": "Holo Scout Proxy",
-      "maxHP": 76,
+      "maxHP": 68,
       "actionsPerTurn": 1,
       "rotation": [
-        "EC-D2",
-        "EC-D3"
+        "EC-D3",
+        "EC-D5",
+        "EC-D4",
+        "EC-A2"
       ],
       "passives": [],
       "ai": null,
@@ -9541,8 +9811,10 @@
       "maxHP": 76,
       "actionsPerTurn": 1,
       "rotation": [
-        "EC-D2",
-        "EC-D3"
+        "EC-D3",
+        "EC-D5",
+        "EC-D4",
+        "EC-A2"
       ],
       "passives": [
         {
@@ -9626,7 +9898,8 @@
       "maxHP": 39,
       "actionsPerTurn": 1,
       "rotation": [
-        "EC-DB2"
+        "EC-DB1",
+        "EC-A1"
       ],
       "passives": [
         {
@@ -9683,7 +9956,8 @@
       "maxHP": 61,
       "actionsPerTurn": 1,
       "rotation": [
-        "EC-DB2"
+        "EC-DB1",
+        "EC-A1"
       ],
       "passives": [
         {
@@ -9711,7 +9985,8 @@
       "actionsPerTurn": 1,
       "rotation": [
         "EC-S1",
-        "EC-A1"
+        "EC-A1",
+        "EC-S1"
       ],
       "passives": [],
       "ai": null,
@@ -9755,7 +10030,8 @@
       "actionsPerTurn": 1,
       "rotation": [
         "EC-S1",
-        "EC-A1"
+        "EC-A1",
+        "EC-S1"
       ],
       "passives": [
         {
@@ -9803,7 +10079,8 @@
       "actionsPerTurn": 1,
       "rotation": [
         "EC-S1",
-        "EC-A1"
+        "EC-A1",
+        "EC-S1"
       ],
       "passives": [
         {
@@ -9831,7 +10108,8 @@
       "actionsPerTurn": 1,
       "rotation": [
         "EC-S1",
-        "EC-A1"
+        "EC-A1",
+        "EC-S1"
       ],
       "passives": [],
       "ai": null,
@@ -9894,7 +10172,8 @@
       "maxHP": 61,
       "actionsPerTurn": 1,
       "rotation": [
-        "EC-DB2"
+        "EC-DB1",
+        "EC-A1"
       ],
       "passives": [
         {
@@ -9925,8 +10204,10 @@
       "maxHP": 76,
       "actionsPerTurn": 1,
       "rotation": [
-        "EC-D2",
-        "EC-D3"
+        "EC-D3",
+        "EC-D5",
+        "EC-D4",
+        "EC-A2"
       ],
       "passives": [],
       "ai": null,
@@ -9938,7 +10219,7 @@
     "E_FLUX_SHAMAN_CREW": {
       "id": "E_FLUX_SHAMAN_CREW",
       "name": "Flux Shaman Crew",
-      "maxHP": 130,
+      "maxHP": 106,
       "actionsPerTurn": 1,
       "rotation": [
         "EC-A3"
@@ -9953,11 +10234,12 @@
     "E_HOLO_RUNNER_NODE": {
       "id": "E_HOLO_RUNNER_NODE",
       "name": "Holo Runner Node",
-      "maxHP": 35,
+      "maxHP": 30,
       "actionsPerTurn": 1,
       "rotation": [
         "EC-S1",
-        "EC-A1"
+        "EC-A1",
+        "EC-S1"
       ],
       "passives": [],
       "ai": null,
@@ -9987,8 +10269,10 @@
       "maxHP": 76,
       "actionsPerTurn": 1,
       "rotation": [
-        "EC-D2",
-        "EC-D3"
+        "EC-D3",
+        "EC-D5",
+        "EC-D4",
+        "EC-A2"
       ],
       "passives": [],
       "ai": null,
@@ -10049,7 +10333,8 @@
       "maxHP": 61,
       "actionsPerTurn": 1,
       "rotation": [
-        "EC-DB2"
+        "EC-DB1",
+        "EC-A1"
       ],
       "passives": [],
       "ai": null,
@@ -12549,9 +12834,9 @@
       "name": "Cooling Fan",
       "icon": "❄️",
       "rarity": "common",
-      "description": "Whenever you play a 'Repair' card, gain 4 Block",
+      "description": "Whenever you play a 'Repair' card, gain 4 Firewall",
       "hook": "on_card_play",
-      "hookEffect": "if repair gain 4 block"
+      "hookEffect": "if repair gain 4 firewall"
     },
     "BlackIce": {
       "id": "BlackIce",
@@ -12848,7 +13133,8 @@
       "rarity": "boss",
       "description": "Mutate 2x faster; applied mutations are 1 tier weaker",
       "mods": {
-        "finalCountdownTickDelta": -2
+        "finalCountdownTickDelta": -1,
+        "mutationTriggerChanceMult": 2
       },
       "hook": "on_card_mutate",
       "hookEffect": "mutation tier -1"
@@ -12879,7 +13165,7 @@
       "name": "Firewall Prime",
       "icon": "🧱",
       "rarity": "boss",
-      "description": "Immune to first 3 hits; you can no longer gain Block",
+      "description": "Immune to first 3 hits each combat",
       "hook": "on_combat_start",
       "hookEffect": "3-hit invuln"
     },
@@ -13442,12 +13728,12 @@
       "id": "Firewall",
       "name": "Firewall",
       "isNegative": false,
-      "decaysEachTurn": false,
+      "decaysEachTurn": true,
       "decayAmount": 1,
       "tags": [
         "Buff"
       ],
-      "notes": "Block-like cyber shield (stacks persist unless spent by mechanics)"
+      "notes": "Persistent cyber shield that carries across turns but soft-decays by 20% each turn and caps at current HP"
     },
     "Weak": {
       "id": "Weak",
@@ -13513,7 +13799,7 @@
       "tags": [
         "Debuff"
       ],
-      "notes": "Armour decay / block reduction placeholder"
+      "notes": "Firewall erosion plus direct integrity burn each turn"
     },
     "Underclock": {
       "id": "Underclock",
@@ -13601,7 +13887,7 @@
       "tags": [
         "Debuff"
       ],
-      "notes": "Persistent corruption marker placeholder"
+      "notes": "Prevents Firewall gain while active"
     },
     "DazedPackets": {
       "id": "DazedPackets",

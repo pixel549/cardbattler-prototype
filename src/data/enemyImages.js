@@ -1,7 +1,7 @@
 // Enemy artwork loaded via Vite static glob import.
 // Pattern resolves from project root — all images in Concept_art are bundled.
 const imageModules = import.meta.glob(
-  '/Concept_art/Cyberpunk Enemy Character Cards - Grok/*.{png,jpg,jpeg}',
+  '/Concept_art/**/*.{png,jpg,jpeg}',
   { eager: true, as: 'url' }
 );
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { loadGameData } from './data/loadData';
 import { createInitialState, dispatchGame } from './game/game_core';
 import { dispatchWithJournal } from './game/dispatch_with_journal';
@@ -8,8 +8,10 @@ import { getAIAction, AI_PLAYSTYLES } from './game/aiPlayer';
 import { decodeDebugSeed, decodeSensibleDebugSeed, randomDebugSeed } from './game/debugSeed';
 import { createBasicEventRegistry } from './game/events';
 import { MINIGAME_REGISTRY, isMinigameEvent } from './game/minigames';
+import { getRunMods } from './game/rules_mods';
 import { sfx } from './game/sounds';
 import { getEventImage } from './data/eventImages';
+import { getCardImage } from './data/cardImages';
 
 // Module-level event registry (created once)
 const EVENT_REG_UI = createBasicEventRegistry();
@@ -33,6 +35,8 @@ const C = {
   textMuted: '#555',
 };
 
+const UI_MONO = "'JetBrains Mono', 'Fira Code', 'Consolas', monospace";
+
 const NODE_COLORS = {
   Combat: C.orange,
   Elite: C.red,
@@ -52,6 +56,705 @@ const NODE_ICONS = {
   Event: '?',
   Start: '\u25CF',
 };
+
+const CARD_TYPE_COLORS = {
+  Attack: C.red,
+  Skill: C.green,
+  Power: C.purple,
+  Defense: C.cyan,
+  Support: C.green,
+  Utility: C.yellow,
+  default: C.cyan,
+};
+
+const MENU_CARD_RATIO = '13 / 18';
+const MENU_CARD_MIN_W = 156;
+const MENU_CARD_MAX_W = 188;
+
+const TELEMETRY_VERSION = 5;
+const KNOWN_ENEMY_ACTION_TYPES = new Set(['Attack', 'Defense', 'Buff', 'Debuff']);
+const AI_EXPORT_OPTIONS_DEFAULTS = {
+  cards: true,
+  mutations: true,
+  hp: true,
+  hands: true,
+  floor: true,
+  decks: true,
+};
+
+function normalizeAiExportOptions(raw = null) {
+  const out = { ...AI_EXPORT_OPTIONS_DEFAULTS };
+  for (const key of Object.keys(out)) {
+    if (typeof raw?.[key] === 'boolean') out[key] = raw[key];
+  }
+  return out;
+}
+
+function getAiExportProfileLabel(options) {
+  const enabled = Object.entries(options).filter(([, value]) => value).map(([key]) => key);
+  if (enabled.length === Object.keys(AI_EXPORT_OPTIONS_DEFAULTS).length) return 'all';
+  if (enabled.length === 0) return 'summary';
+  return 'custom';
+}
+
+function filterEncounterForExport(encounter, options) {
+  const out = { ...encounter };
+  if (!options.cards) {
+    out.cardPlayTimeline = [];
+    out.enemyPlayTimeline = [];
+    delete out.tacticalSummary;
+  }
+  if (!options.hp) {
+    delete out.hpBefore;
+    delete out.hpAfter;
+    delete out.totalDamageDealt;
+    delete out.totalDamageReceived;
+    delete out.damageBreakdown;
+  }
+  if (!options.mutations) {
+    out.mutationEvents = [];
+    out.mutationTriggerChecks = [];
+    delete out.forcedMutationTier;
+  }
+  if (!options.hands) {
+    out.handTimeline = [];
+  }
+  return out;
+}
+
+function filterRunRecordForExport(run, options) {
+  const normalized = normalizeAiExportOptions(options);
+  const filtered = {
+    ...run,
+    exportProfile: getAiExportProfileLabel(normalized),
+    exportOptions: normalized,
+    encounters: (run.encounters || []).map((encounter) => filterEncounterForExport(encounter, normalized)),
+    cardEvents: normalized.cards ? [...(run.cardEvents || [])] : [],
+    floorEvents: normalized.floor ? [...(run.floorEvents || [])] : [],
+    deckSnapshots: normalized.decks ? [...(run.deckSnapshots || [])] : [],
+    seenMutationIds: normalized.mutations ? [...(run.seenMutationIds || [])] : [],
+  };
+
+  if (!normalized.decks) {
+    filtered.startingDeck = {
+      ...filtered.startingDeck,
+      cards: [],
+      enemyCardIds: [],
+      enemyCardNames: [],
+    };
+    filtered.endingDeck = {
+      ...filtered.endingDeck,
+      cards: [],
+      enemyCardIds: [],
+      enemyCardNames: [],
+    };
+  }
+
+  if (!normalized.mutations) {
+    filtered.forcedMutationTier = null;
+  }
+
+  return filtered;
+}
+
+function getSecondaryActionButtonStyle(accent = C.cyan, overrides = {}) {
+  return {
+    width: '100%',
+    padding: '14px',
+    borderRadius: '12px',
+    fontFamily: UI_MONO,
+    fontWeight: 700,
+    fontSize: 12,
+    letterSpacing: '0.06em',
+    textTransform: 'uppercase',
+    transition: 'all 0.15s ease',
+    background: `linear-gradient(180deg, ${accent}18 0%, rgba(10,10,15,0.94) 100%)`,
+    border: `1px solid ${accent}60`,
+    boxShadow: `0 0 18px ${accent}12, inset 0 1px 0 rgba(255,255,255,0.06)`,
+    color: accent,
+    cursor: 'pointer',
+    ...overrides,
+  };
+}
+
+function buildExportDebugOverrides(runDbg) {
+  if (!runDbg) return null;
+  return {
+    playerMaxHP:       runDbg.playerMaxHP,
+    startingCardCount: runDbg.startingCardCount,
+    startingCardIds:   runDbg.startingCardIds ?? null,
+    enemyHpMult:       runDbg.enemyHpMult,
+    enemyDmgMult:      runDbg.enemyDmgMult,
+    playerMaxRAM:      runDbg.playerMaxRAM,
+    drawPerTurnDelta:  runDbg.drawPerTurnDelta,
+    actOverride:       runDbg.actOverride,
+    encounterKind:     runDbg.encounterKind,
+  };
+}
+
+function isEnemyLikeCardDef(defId, data) {
+  const def = data?.cards?.[defId];
+  const tags = def?.tags || [];
+  return String(defId || '').startsWith('EC-')
+    || tags.includes('EnemyCard')
+    || tags.includes('EnemyAbility');
+}
+
+function buildDeckAnalysis(cardIds, data) {
+  const ids = (cardIds || []).filter(Boolean);
+  const enemyCardIds = ids.filter((defId) => isEnemyLikeCardDef(defId, data));
+  return {
+    cards: ids,
+    cardCount: ids.length,
+    uniqueCardCount: new Set(ids).size,
+    enemyCardIds,
+    enemyCardCount: enemyCardIds.length,
+    enemyCardNames: enemyCardIds.map((defId) => data?.cards?.[defId]?.name || defId),
+  };
+}
+
+function buildRunRecord({
+  runIndex,
+  state,
+  data,
+  seedMode,
+  aiPlaystyle,
+  encounters,
+  deckSnapshots,
+  cardEvents,
+  floorEvents,
+  outcome,
+}) {
+  const runDbg = state.run?.debugOverrides;
+  const currentDeckIds = (state.deck?.master || [])
+    .map((instanceId) => state.deck?.cardInstances?.[instanceId]?.defId ?? null)
+    .filter(Boolean);
+  const firstSnap = deckSnapshots[0];
+  const lastSnap = deckSnapshots[deckSnapshots.length - 1];
+  const startingDeck = buildDeckAnalysis(firstSnap?.cards || currentDeckIds, data);
+  const endingDeck = buildDeckAnalysis(lastSnap?.cards || currentDeckIds, data);
+  const finalRelicIds = [...(state.run?.relicIds || [])];
+  const runRuleMods = getRunMods(data, finalRelicIds);
+  const debugSeedActive = state.run?.debugSeed != null;
+  const telemetryFlags = [];
+  if (startingDeck.enemyCardCount > 0) telemetryFlags.push('starting_deck_contains_enemy_cards');
+  if (endingDeck.enemyCardCount > 0) telemetryFlags.push('ending_deck_contains_enemy_cards');
+
+  return {
+    telemetryVersion: TELEMETRY_VERSION,
+    runIndex,
+    seed:           state.run?.seed      ?? null,
+    debugSeed:      state.run?.debugSeed ?? null,
+    debugSeedActive,
+    debugSeedMode:  debugSeedActive ? (runDbg?._mode ?? seedMode ?? 'wild') : null,
+    aiPlaystyle,
+    aiPlaystyleLabel: AI_PLAYSTYLES[aiPlaystyle]?.label ?? aiPlaystyle,
+    debugOverrides: buildExportDebugOverrides(runDbg),
+    relicIds:       finalRelicIds,
+    relicNames:     finalRelicIds.map((rid) => data?.relics?.[rid]?.name || rid),
+    runRuleMods,
+    forcedMutationTier: state.run?.forcedMutationTier ?? null,
+    seenMutationIds:    [...(state.run?.seenMutationIds || [])],
+    endTime:        new Date().toISOString(),
+    outcome,
+    finalAct:       state.run?.act   ?? 1,
+    finalFloor:     state.run?.floor ?? 0,
+    finalHp:        state.run?.hp    ?? 0,
+    maxHp:          state.run?.maxHP ?? 0,
+    finalGold:      state.run?.gold  ?? 0,
+    deckSize:       state.deck?.master?.length ?? 0,
+    startingDeck,
+    endingDeck,
+    telemetryFlags,
+    encounters:     encounters.slice(),
+    deckSnapshots:  deckSnapshots.slice(),
+    cardEvents:     cardEvents.slice(),
+    floorEvents:    floorEvents.slice(),
+  };
+}
+
+function cloneEncounterScratch(cs) {
+  if (!cs) return null;
+  if (typeof structuredClone === 'function') return structuredClone(cs);
+  return JSON.parse(JSON.stringify(cs));
+}
+
+function finalizeEncounterForExport(cs, state, finalMode, defaultResult = null) {
+  if (!cs) return null;
+  const snapshot = cloneEncounterScratch(cs);
+  ingestCombatLogEntries(snapshot, state?.log ?? [], state?.combat?.turn ?? snapshot.turns ?? 0);
+  if (snapshot.result == null) snapshot.result = defaultResult;
+  snapshot.endMode = finalMode ?? snapshot.endMode ?? null;
+  snapshot.hpAfter = state?.run?.hp ?? snapshot.hpAfter ?? 0;
+  snapshot.rawTurnCounter = snapshot.turns ?? 0;
+  snapshot.turns = snapshot._hadActivity ? (snapshot.rawTurnCounter + 1) : snapshot.rawTurnCounter;
+  snapshot.openingTurnCombat = snapshot._hadActivity && snapshot.rawTurnCounter === 0;
+  if (snapshot.damageBreakdown?.playerDealt) {
+    snapshot.damageBreakdown.playerDealt.netHpDeltaTotal = snapshot.totalDamageDealt;
+    snapshot.damageBreakdown.playerDealt.deltaVsDamageEvents = snapshot.totalDamageDealt - snapshot.damageBreakdown.playerDealt.total;
+  }
+  if (snapshot.damageBreakdown?.playerReceived) {
+    snapshot.damageBreakdown.playerReceived.netHpLossTotal = snapshot.totalDamageReceived;
+    snapshot.damageBreakdown.playerReceived.deltaVsDamageEvents = snapshot.totalDamageReceived - snapshot.damageBreakdown.playerReceived.total;
+  }
+  snapshot.inProgress = snapshot.result === 'in_progress';
+  const { _lastPlayerHp, _lastEnemyHp, _logOffset, _hadActivity, ...encounter } = snapshot;
+  return encounter;
+}
+
+function ingestCombatLogEntries(cs, log, turnHint = 0) {
+  if (!cs) return;
+
+  const entries = log || [];
+  const start = cs._logOffset ?? 0;
+  const trackedTurn = Math.max(0, turnHint || 0);
+
+  for (let li = start; li < entries.length; li++) {
+    const entry = entries[li];
+
+    if (entry.t === 'CardPlayed' && entry.data) {
+      cs.totalCardsPlayed += 1;
+      cs.totalRAMSpent += entry.data.cost || 0;
+      cs.cardPlayTimeline.push({
+        seq: cs.cardPlayTimeline.length,
+        turn: trackedTurn,
+        ...entry.data,
+      });
+      if (entry.data.tacticalFlags?.attackIntoProtection) {
+        cs.tacticalSummary.attackIntoProtection += 1;
+      }
+      if (entry.data.tacticalFlags?.attackIntoProtectionWithAffordableBreach) {
+        cs.tacticalSummary.attackIntoProtectionWithAffordableBreach += 1;
+      }
+      if (entry.data.tacticalFlags?.breachIntoUnshieldedTarget) {
+        cs.tacticalSummary.breachIntoUnshieldedTarget += 1;
+      }
+      if (entry.data.tacticalFlags?.firewallSpendWithoutFirewall) {
+        cs.tacticalSummary.firewallSpendWithoutFirewall += 1;
+      }
+      cs._hadActivity = true;
+      continue;
+    }
+
+    if (entry.t === 'EnemyCardPlayed' && entry.data) {
+      cs.enemyCardsPlayed += 1;
+      const intentType = KNOWN_ENEMY_ACTION_TYPES.has(entry.data.intentType) ? entry.data.intentType : 'Other';
+      cs.enemyActionTypes[intentType] = (cs.enemyActionTypes[intentType] || 0) + 1;
+      cs.enemyPlayTimeline.push({
+        seq: cs.enemyPlayTimeline.length,
+        turn: trackedTurn,
+        ...entry.data,
+      });
+      if (intentType === 'Defense') {
+        cs.tacticalSummary.enemyDefenseActions += 1;
+      }
+      cs.tacticalSummary.enemyProtectionGain += Number(entry.data.effectSummary?.defense || 0);
+      cs.tacticalSummary.enemyFirewallGain += Number(entry.data.effectSummary?.firewallGain || 0);
+      cs._hadActivity = true;
+      continue;
+    }
+
+    if (entry.t === 'DamageDealt' && entry.data) {
+      const d = entry.data;
+      if (d.isPlayerSource) {
+        cs.damageBreakdown.playerDealt.total += d.finalDamage;
+        cs.damageBreakdown.playerDealt.totalBlocked += d.blocked;
+        cs.damageBreakdown.playerDealt.totalFirewallAbsorbed += d.firewallAbsorbed || 0;
+        cs.damageBreakdown.playerDealt.eventCount += 1;
+        if (d.weakened) cs.damageBreakdown.playerDealt.weakenedHits++;
+        if (d.vulnerable) cs.damageBreakdown.playerDealt.vulnerableHits++;
+      } else {
+        cs.damageBreakdown.playerReceived.total += d.finalDamage;
+        cs.damageBreakdown.playerReceived.totalBlocked += d.blocked;
+        cs.damageBreakdown.playerReceived.totalFirewallAbsorbed += d.firewallAbsorbed || 0;
+        cs.damageBreakdown.playerReceived.eventCount += 1;
+        if (d.weakened) cs.damageBreakdown.playerReceived.weakenedHits++;
+        if (d.vulnerable) cs.damageBreakdown.playerReceived.vulnerableHits++;
+      }
+      cs._hadActivity = true;
+      continue;
+    }
+
+    if (entry.t === 'MutationApplied') {
+      cs.mutationEvents.push({
+        turn:           trackedTurn,
+        type:           'mutation',
+        cardInstanceId: entry.data?.cardInstanceId ?? null,
+        cardDefId:      entry.data?.cardDefId ?? null,
+        mutationName:   entry.data?.mutationName ?? null,
+        tier:           entry.data?.tier ?? null,
+        mutationId:     entry.data?.mutationId ?? entry.msg?.replace('Mutation ', '') ?? null,
+        isNewInRun:     entry.data?.isNewInRun ?? null,
+      });
+      cs._hadActivity = true;
+      continue;
+    }
+
+    if (entry.t === 'FinalMutation') {
+      const isBrick = entry.data?.outcome
+        ? entry.data.outcome === 'brick'
+        : entry.msg?.includes('BRICK');
+      cs.mutationEvents.push({
+        turn:           trackedTurn,
+        type:           'final',
+        cardInstanceId: entry.data?.cardInstanceId ?? null,
+        cardDefId:      entry.data?.cardDefId ?? null,
+        outcome:        isBrick ? 'brick' : 'rewrite',
+        newDefId:       !isBrick ? (entry.data?.newDefId ?? (entry.msg?.includes('->') ? entry.msg.split('-> ')[1]?.trim() : null)) : null,
+      });
+      cs._hadActivity = true;
+      continue;
+    }
+
+    if (entry.t === 'MutationTriggerCheck' && entry.data) {
+      cs.mutationTriggerChecks.push({
+        seq: cs.mutationTriggerChecks.length,
+        turn: entry.data.turn ?? trackedTurn,
+        ...entry.data,
+      });
+      cs._hadActivity = true;
+      continue;
+    }
+
+    if (entry.t === 'HandState' && entry.data) {
+      cs.handTimeline.push({
+        seq: cs.handTimeline.length,
+        ...entry.data,
+        turn: entry.data.turn ?? trackedTurn,
+      });
+      cs._hadActivity = true;
+      continue;
+    }
+
+    if (entry.t === 'Info' && entry.msg) {
+      if (
+        /Combat victory/i.test(entry.msg)
+        || /Player defeated/i.test(entry.msg)
+        || /Run ended: defeated/i.test(entry.msg)
+      ) {
+        cs.outcomeReason = entry.msg;
+      }
+    }
+  }
+
+  cs._logOffset = entries.length;
+}
+
+
+function getCardColor(type) {
+  return CARD_TYPE_COLORS[type] || CARD_TYPE_COLORS.default;
+}
+
+function formatMutationCounter(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return null;
+  return Math.max(0, Math.ceil(numeric));
+}
+
+function getCardUseCounterLimit(card, instance, data) {
+  let maxUse = Number(card?.defaultUseCounter ?? 12);
+  for (const mid of instance?.appliedMutations || []) {
+    maxUse += Number(data?.mutations?.[mid]?.useCounterDelta ?? 0);
+  }
+  return Math.max(1, Number.isFinite(maxUse) ? maxUse : 12);
+}
+
+function CardChoiceTile({
+  cardId,
+  card,
+  instance = null,
+  onClick,
+  disabled = false,
+  price = null,
+  selected = false,
+}) {
+  if (!card) return null;
+
+  const color = getCardColor(card.type);
+  const imgSrc = getCardImage(cardId);
+  const tags = (card.tags || []).filter((tag) => !['Core', 'EnemyCard'].includes(tag));
+  const mutations = instance?.appliedMutations || [];
+  const isBricked = instance?.finalMutationId === 'J_BRICK';
+  const isRewritten = instance?.finalMutationId === 'J_REWRITE';
+  const visibleUseCounter = formatMutationCounter(instance?.useCounter);
+  const visibleFinalCounter = formatMutationCounter(instance?.finalMutationCountdown);
+  const isDecaying = !instance?.finalMutationId
+    && instance?.finalMutationCountdown != null
+    && instance.finalMutationCountdown <= 5;
+  const effectText = describeEffects(card.effects);
+
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        width: `min(100%, ${MENU_CARD_MAX_W}px)`,
+        aspectRatio: MENU_CARD_RATIO,
+        minHeight: 0,
+        borderRadius: 16,
+        overflow: 'hidden',
+        textAlign: 'left',
+        position: 'relative',
+        justifySelf: 'center',
+        alignSelf: 'start',
+        display: 'flex',
+        flexDirection: 'column',
+        backgroundColor: C.bgCard,
+        border: `2px solid ${selected ? C.yellow : isBricked ? C.red : isDecaying ? C.orange : color}55`,
+        boxShadow: selected
+          ? `0 0 24px ${C.yellow}35, 0 14px 28px rgba(0,0,0,0.45)`
+          : `0 0 18px ${color}18, 0 10px 24px rgba(0,0,0,0.36)`,
+        cursor: disabled ? 'default' : 'pointer',
+        opacity: disabled ? 0.5 : 1,
+        transition: 'transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease',
+      }}
+    >
+      {imgSrc ? (
+        <img
+          src={imgSrc}
+          alt={card.name}
+          style={{
+            position: 'absolute',
+            inset: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            objectPosition: 'center center',
+            display: 'block',
+            transform: 'scale(1.02)',
+            filter: 'saturate(1.04) contrast(1.02) brightness(0.92)',
+          }}
+        />
+      ) : (
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background: `linear-gradient(145deg, ${color}22 0%, ${C.bgCard} 48%, ${color}0c 100%)`,
+          }}
+        />
+      )}
+
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          background: `
+            radial-gradient(circle at 24% 16%, ${color}28 0%, transparent 34%),
+            linear-gradient(180deg, rgba(8,10,16,0.08) 0%, rgba(8,10,16,0.24) 24%, rgba(8,10,16,0.78) 58%, rgba(8,10,16,0.95) 100%)
+          `,
+          pointerEvents: 'none',
+        }}
+      />
+
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          boxShadow: `inset 0 0 0 1px ${color}14`,
+          pointerEvents: 'none',
+        }}
+      />
+
+      <div
+        style={{
+          position: 'absolute',
+          top: 10,
+          left: 10,
+          width: 30,
+          height: 30,
+          borderRadius: 999,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: color,
+          color: '#000',
+          fontFamily: MONO,
+          fontWeight: 700,
+          fontSize: 14,
+          zIndex: 2,
+          boxShadow: `0 0 10px ${color}55`,
+        }}
+      >
+        {card.costRAM ?? 0}
+      </div>
+
+      {price != null && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 10,
+            right: 10,
+            padding: '4px 8px',
+            borderRadius: 999,
+            backgroundColor: `${C.yellow}18`,
+            border: `1px solid ${C.yellow}45`,
+            color: C.yellow,
+            fontFamily: MONO,
+            fontWeight: 700,
+            fontSize: 11,
+            zIndex: 2,
+          }}
+        >
+          {price}g
+        </div>
+      )}
+
+      <div
+        style={{
+          position: 'relative',
+          zIndex: 2,
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'flex-end',
+          minHeight: 0,
+          padding: '0 10px 10px',
+        }}
+      >
+        <div
+          style={{
+            padding: '12px 10px 10px',
+            borderRadius: 14,
+            background: 'linear-gradient(180deg, rgba(8,10,16,0.14) 0%, rgba(8,10,16,0.72) 14%, rgba(8,10,16,0.92) 100%)',
+            border: `1px solid ${color}22`,
+            boxShadow: '0 10px 24px rgba(0,0,0,0.24)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 8,
+            minHeight: '47%',
+          }}
+        >
+          <div>
+            <div
+              style={{
+                fontFamily: MONO,
+                fontWeight: 700,
+                color: C.text,
+                fontSize: 13,
+                lineHeight: 1.25,
+                marginBottom: 3,
+                textShadow: '0 1px 10px rgba(0,0,0,0.55)',
+              }}
+            >
+              {card.name}
+            </div>
+            <div
+              style={{
+                fontFamily: MONO,
+                color,
+                fontSize: 9,
+                textTransform: 'uppercase',
+                letterSpacing: '0.12em',
+              }}
+            >
+              {card.type}
+            </div>
+          </div>
+
+          <div
+            style={{
+              fontFamily: MONO,
+              fontSize: 10,
+              color: '#b7bcc6',
+              lineHeight: 1.45,
+              minHeight: 42,
+              display: '-webkit-box',
+              WebkitLineClamp: 3,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+              textShadow: '0 1px 8px rgba(0,0,0,0.45)',
+            }}
+          >
+            {effectText}
+          </div>
+
+          {tags.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+              {tags.slice(0, 4).map((tag) => (
+                <span
+                  key={tag}
+                  style={{
+                    padding: '2px 5px',
+                    borderRadius: 4,
+                    fontFamily: MONO,
+                    fontSize: 8,
+                    backgroundColor: `${color}14`,
+                    color,
+                    border: `1px solid ${color}28`,
+                    boxShadow: '0 1px 6px rgba(0,0,0,0.25)',
+                  }}
+                >
+                  {tag.toUpperCase()}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {(mutations.length > 0 || instance?.useCounter != null || instance?.finalMutationCountdown != null) && (
+            <div
+              style={{
+                marginTop: 'auto',
+                paddingTop: 8,
+                borderTop: `1px solid ${color}22`,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 6,
+              }}
+            >
+              {mutations.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                  {mutations.slice(0, 4).map((mid) => (
+                    <span
+                      key={mid}
+                      style={{
+                        padding: '1px 4px',
+                        borderRadius: 4,
+                        fontFamily: MONO,
+                        fontSize: 8,
+                        color,
+                        backgroundColor: `${color}10`,
+                        border: `1px solid ${color}28`,
+                      }}
+                    >
+                      {mid}
+                    </span>
+                  ))}
+                  {mutations.length > 4 && (
+                    <span style={{ fontFamily: MONO, fontSize: 8, color: C.textMuted }}>
+                      +{mutations.length - 4}
+                    </span>
+                  )}
+                </div>
+              )}
+
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 10,
+                  fontFamily: MONO,
+                  fontSize: 9,
+                  color: C.textMuted,
+                  letterSpacing: '0.04em',
+                }}
+              >
+                <span>
+                  {visibleUseCounter != null ? `NEXT ${visibleUseCounter}` : (isBricked ? 'BRICKED' : isRewritten ? 'REWRITTEN' : '')}
+                </span>
+                <span>
+                  {visibleFinalCounter != null ? `FINAL ${visibleFinalCounter}` : ''}
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </button>
+  );
+}
 
 /** Shared full-screen background wrapper */
 function ScreenShell({ children, extraStyle = {} }) {
@@ -209,11 +912,32 @@ function MapScreen({ state, data, onAction }) {
   const nodes   = state.map?.nodes || {};
   const curId   = state.map?.currentNodeId;
   const selNext = state.map?.selectableNext || [];
-  const MONO    = "'JetBrains Mono', 'Fira Code', 'Consolas', monospace";
   const nodeList = Object.values(nodes);
+  const [previewNodeId, setPreviewNodeId] = useState(selNext.length === 1 ? selNext[0] : null);
 
   // Detour edge lookup (amber dashed lines)
   const detourSet = new Set((state.map?.detourEdges || []).map(([f, t]) => `${f}-${t}`));
+
+  useEffect(() => {
+    setPreviewNodeId(selNext.length === 1 ? selNext[0] : null);
+  }, [curId, selNext.join('|')]);
+
+  const previewNodeSet = new Set();
+  const previewEdgeSet = new Set();
+  if (previewNodeId && nodes[previewNodeId]) {
+    const stack = [previewNodeId];
+    while (stack.length > 0) {
+      const nodeId = stack.pop();
+      if (!nodeId || previewNodeSet.has(nodeId) || !nodes[nodeId]) continue;
+      previewNodeSet.add(nodeId);
+      for (const nextId of nodes[nodeId].next || []) {
+        if (!nodes[nextId]) continue;
+        previewEdgeSet.add(`${nodeId}-${nextId}`);
+        if (!previewNodeSet.has(nextId)) stack.push(nextId);
+      }
+    }
+  }
+  const previewActive = previewNodeSet.size > 0;
 
   // Collect edges
   const edges = [];
@@ -251,6 +975,8 @@ function MapScreen({ state, data, onAction }) {
             const isTraversed = from.cleared;
             const isHot      = (from.id === curId) && selNext.includes(to.id);
             const isDetour   = detourSet.has(`${from.id}-${to.id}`);
+            const isPreview  = previewEdgeSet.has(`${from.id}-${to.id}`);
+            const previewColor = NODE_COLORS[to.type] || C.cyan;
 
             if (isDetour) {
               // Amber dashed detour lines — sideways or backward cross-paths
@@ -259,10 +985,11 @@ function MapScreen({ state, data, onAction }) {
                   key={`${from.id}-${to.id}`}
                   x1={mapNX(from.x)} y1={mapNY(from.y)}
                   x2={mapNX(to.x)}   y2={mapNY(to.y)}
-                  stroke={isTraversed ? '#FFAA0040' : isHot ? '#FFCC44' : '#FFAA0088'}
-                  strokeWidth={isTraversed ? 1.5 : isHot ? 2 : 1.5}
-                  strokeDasharray={isTraversed ? 'none' : '5 3'}
-                  filter={isHot ? 'url(#mglow-sm)' : undefined}
+                  stroke={isPreview ? `${previewColor}dd` : isTraversed ? '#FFAA0040' : isHot ? '#FFCC44' : '#FFAA0088'}
+                  strokeWidth={isPreview ? 2.5 : isTraversed ? 1.5 : isHot ? 2 : 1.5}
+                  strokeDasharray={isPreview || isTraversed ? 'none' : '5 3'}
+                  filter={isPreview || isHot ? 'url(#mglow-sm)' : undefined}
+                  opacity={previewActive && !isPreview ? 0.25 : 1}
                 />
               );
             }
@@ -272,10 +999,11 @@ function MapScreen({ state, data, onAction }) {
                 key={`${from.id}-${to.id}`}
                 x1={mapNX(from.x)} y1={mapNY(from.y)}
                 x2={mapNX(to.x)}   y2={mapNY(to.y)}
-                stroke={isTraversed ? `${C.cyan}70` : isHot ? `${C.cyan}cc` : `${C.cyan}28`}
-                strokeWidth={isTraversed ? 2 : isHot ? 2 : 1.5}
-                strokeDasharray={isTraversed || isHot ? 'none' : '5 4'}
-                filter={isHot ? 'url(#mglow-sm)' : undefined}
+                stroke={isPreview ? `${previewColor}cc` : isTraversed ? `${C.cyan}70` : isHot ? `${C.cyan}cc` : `${C.cyan}28`}
+                strokeWidth={isPreview ? 2.6 : isTraversed ? 2 : isHot ? 2 : 1.5}
+                strokeDasharray={isTraversed || isHot || isPreview ? 'none' : '5 4'}
+                filter={isPreview || isHot ? 'url(#mglow-sm)' : undefined}
+                opacity={previewActive && !isPreview && !isTraversed && !isHot ? 0.18 : 1}
               />
             );
           })}
@@ -287,45 +1015,59 @@ function MapScreen({ state, data, onAction }) {
             const isCur  = node.id === curId;
             const isSel  = selNext.includes(node.id);
             const isDone = node.cleared;
+            const isPreviewRoot = previewNodeId === node.id;
+            const isPreviewReachable = previewNodeSet.has(node.id);
+            const shouldFade = previewActive && !isCur && !isSel && !isDone && !isPreviewReachable;
             const col  = NODE_COLORS[node.type] || '#888';
             const ico  = NODE_ICONS[node.type]  || '?';
-            const R    = isCur ? 23 : isSel ? 21 : 17;
+            const R    = isCur ? 23 : isPreviewRoot ? 22 : isSel ? 21 : isPreviewReachable ? 18 : 17;
 
             return (
               <g key={node.id}
-                onClick={() => isSel && onAction({ type: 'SelectNextNode', nodeId: node.id })}
+                onClick={() => {
+                  if (!isSel) return;
+                  if (previewNodeId === node.id) {
+                    onAction({ type: 'SelectNextNode', nodeId: node.id });
+                    return;
+                  }
+                  setPreviewNodeId(node.id);
+                }}
                 style={{ cursor: isSel ? 'pointer' : 'default' }}
               >
                 {/* Outer glow ring */}
-                {(isCur || isSel) && (
+                {(isCur || isSel || isPreviewReachable) && (
                   <circle cx={cx} cy={cy} r={R + (isCur ? 10 : 7)}
-                    fill={`${col}${isCur ? '10' : '08'}`}
+                    fill={`${col}${isCur ? '10' : isPreviewRoot ? '16' : '08'}`}
                     stroke={`${col}${isCur ? '40' : '50'}`}
                     strokeWidth={1.5}
+                    opacity={shouldFade ? 0.2 : 1}
                   />
                 )}
                 {/* Main circle */}
                 <circle cx={cx} cy={cy} r={R}
-                  fill={isCur ? `${col}28` : isSel ? `${col}18` : isDone ? '#131320' : '#0b0b12'}
-                  stroke={isCur ? col : isSel ? `${col}90` : isDone ? `${col}35` : '#202030'}
-                  strokeWidth={isCur ? 2.5 : isSel ? 2 : 1}
-                  filter={isCur ? 'url(#mglow)' : isSel ? 'url(#mglow-sm)' : 'none'}
+                  fill={isCur ? `${col}28` : isPreviewRoot ? `${col}22` : isSel ? `${col}18` : isDone ? '#131320' : '#0b0b12'}
+                  stroke={isCur ? col : isPreviewRoot ? `${col}cc` : isSel ? `${col}90` : isDone ? `${col}35` : '#202030'}
+                  strokeWidth={isCur ? 2.5 : isPreviewRoot ? 2.3 : isSel ? 2 : isPreviewReachable ? 1.6 : 1}
+                  filter={isCur ? 'url(#mglow)' : isPreviewReachable || isSel ? 'url(#mglow-sm)' : 'none'}
+                  opacity={shouldFade ? 0.25 : 1}
                 />
                 {/* Icon */}
                 <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central"
-                  fontSize={isCur ? 15 : isSel ? 14 : isDone ? 11 : 12}
-                  fill={isDone ? `${col}40` : isCur || isSel ? col : `${col}55`}
+                  fontSize={isCur ? 15 : isPreviewRoot ? 14 : isSel ? 14 : isDone ? 11 : 12}
+                  fill={isDone ? `${col}40` : isCur || isSel || isPreviewReachable ? col : `${col}55`}
                   fontFamily="Arial, sans-serif"
+                  opacity={shouldFade ? 0.28 : 1}
                 >
                   {isDone ? '✓' : ico}
                 </text>
                 {/* Type label */}
-                {(isCur || isSel || isDone) && (
+                {(isCur || isSel || isDone || isPreviewReachable) && (
                   <text x={cx} y={cy + R + 13} textAnchor="middle"
                     fontSize={8}
-                    fill={isCur ? col : isSel ? `${col}cc` : `${col}44`}
+                    fill={isCur ? col : isPreviewRoot ? `${col}ff` : isSel ? `${col}cc` : `${col}44`}
                     fontFamily="JetBrains Mono, monospace"
                     letterSpacing="0.3"
+                    opacity={shouldFade ? 0.3 : 1}
                   >
                     {node.type.toUpperCase()}
                   </text>
@@ -338,23 +1080,39 @@ function MapScreen({ state, data, onAction }) {
         {/* Quick-tap node buttons */}
         {selNext.length > 0 && (
           <div style={{ width: '100%', maxWidth: 340, display: 'flex', flexDirection: 'column', gap: 8, padding: '0 4px', marginTop: 4 }}>
-            <div style={{ fontFamily: MONO, fontSize: 10, color: C.textMuted, letterSpacing: '0.12em', marginBottom: 2 }}>
-              MOVE TO
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 2 }}>
+              <div style={{ fontFamily: MONO, fontSize: 10, color: C.textMuted, letterSpacing: '0.12em' }}>
+                MOVE TO
+              </div>
+              <div style={{ fontFamily: MONO, fontSize: 8, color: C.textDim }}>
+                Tap once preview | tap twice confirm
+              </div>
             </div>
             {selNext.map(nodeId => {
               const node  = nodes[nodeId];
               const color = NODE_COLORS[node?.type] || '#888';
               const icon  = NODE_ICONS[node?.type]  || '·';
               const desc  = NODE_TYPE_DESCS[node?.type] || '';
+              const isPreviewed = previewNodeId === nodeId;
               return (
                 <button key={nodeId}
-                  onClick={() => onAction({ type: 'SelectNextNode', nodeId })}
+                  onMouseEnter={() => setPreviewNodeId(nodeId)}
+                  onFocus={() => setPreviewNodeId(nodeId)}
+                  onClick={() => {
+                    if (previewNodeId === nodeId) {
+                      onAction({ type: 'SelectNextNode', nodeId });
+                      return;
+                    }
+                    setPreviewNodeId(nodeId);
+                  }}
                   style={{
                     width: '100%', padding: '12px 14px', borderRadius: '12px',
                     fontFamily: MONO, textAlign: 'left', transition: 'all 0.15s',
-                    backgroundColor: `${color}0c`,
-                    border: `2px solid ${color}55`,
-                    boxShadow: `0 0 14px ${color}12`,
+                    background: isPreviewed
+                      ? `linear-gradient(135deg, ${color}1c 0%, rgba(12,16,24,0.92) 100%)`
+                      : `linear-gradient(135deg, ${color}10 0%, rgba(10,12,20,0.9) 100%)`,
+                    border: `2px solid ${isPreviewed ? `${color}aa` : `${color}55`}`,
+                    boxShadow: isPreviewed ? `0 0 22px ${color}2c` : `0 0 14px ${color}12`,
                     cursor: 'pointer',
                     display: 'flex', alignItems: 'center', gap: 12,
                   }}
@@ -369,6 +1127,22 @@ function MapScreen({ state, data, onAction }) {
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 700, color, fontSize: 14 }}>{node?.type}</div>
                     <div style={{ color: C.textMuted, fontSize: 11, marginTop: 2 }}>{desc}</div>
+                    {isPreviewed && (
+                      <div style={{
+                        display: 'inline-flex',
+                        marginTop: 6,
+                        padding: '3px 7px',
+                        borderRadius: 999,
+                        backgroundColor: `${color}20`,
+                        border: `1px solid ${color}55`,
+                        color,
+                        fontSize: 8,
+                        fontWeight: 700,
+                        letterSpacing: '0.08em',
+                      }}>
+                        CONFIRM ROUTE
+                      </div>
+                    )}
                   </div>
                   <div style={{ color: C.textMuted, fontSize: 18 }}>›</div>
                 </button>
@@ -383,11 +1157,14 @@ function MapScreen({ state, data, onAction }) {
           className="safe-area-bottom"
           style={{
             width: '100%', maxWidth: 340,
-            padding: '12px', borderRadius: '12px',
+            padding: '13px 14px', borderRadius: '14px',
             fontFamily: MONO, textAlign: 'center',
             transition: 'all 0.15s',
-            backgroundColor: C.bgCard, border: `1px solid ${C.cyan}30`,
-            color: C.cyan, fontSize: 12, cursor: 'pointer',
+            background: `linear-gradient(135deg, ${C.cyan}18 0%, rgba(9,16,24,0.96) 100%)`,
+            border: `1px solid ${C.cyan}50`,
+            color: '#b8fbff', fontSize: 12, cursor: 'pointer',
+            boxShadow: `0 0 20px ${C.cyan}12`,
+            letterSpacing: '0.05em',
             margin: '12px 4px 8px',
           }}
         >
@@ -473,83 +1250,26 @@ function RewardScreen({ state, data, onAction }) {
         )}
 
         {/* Card choices */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <div
+          style={{
+            flex: 1,
+            display: 'grid',
+            gridTemplateColumns: `repeat(auto-fit, minmax(${MENU_CARD_MIN_W}px, ${MENU_CARD_MAX_W}px))`,
+            gap: '12px',
+            alignContent: 'start',
+            justifyContent: 'center',
+          }}
+        >
           {choices.map(defId => {
             const card = data.cards?.[defId];
-            const typeColors = { Attack: C.red, Skill: C.green, Power: C.purple, Defense: C.cyan, Support: C.green, Utility: C.yellow };
-            const color = typeColors[card?.type] || C.cyan;
-            const cost = card?.costRAM || 0;
 
             return (
-              <button
+              <CardChoiceTile
                 key={defId}
+                cardId={defId}
+                card={card}
                 onClick={() => onAction({ type: 'Reward_PickCard', defId })}
-                style={{
-                  width: '100%',
-                  padding: '16px',
-                  borderRadius: '12px',
-                  textAlign: 'left',
-                  transition: 'all 0.2s ease',
-                  backgroundColor: C.bgCard,
-                  border: `2px solid ${color}40`,
-                  boxShadow: `0 0 16px ${color}10`,
-                  cursor: 'pointer',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                  {/* Cost badge */}
-                  <div
-                    style={{
-                      width: '32px',
-                      height: '32px',
-                      borderRadius: '9999px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace",
-                      fontWeight: 700,
-                      flexShrink: 0,
-                      backgroundColor: color,
-                      color: '#000',
-                      fontSize: 14,
-                    }}
-                  >
-                    {cost}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                      <span style={{ fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace", fontWeight: 700, color, fontSize: 14 }}>
-                        {card?.name || defId}
-                      </span>
-                      {/* Tag chips */}
-                      {(card?.tags || []).filter(t => ['Power','OneShot','Volatile','Exhaust'].includes(t)).map(t => (
-                        <span key={t} style={{
-                          fontSize: 9, fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace",
-                          padding: '1px 5px', borderRadius: 4, fontWeight: 700,
-                          backgroundColor: t === 'Power' ? `${C.purple}25` : `${color}15`,
-                          color: t === 'Power' ? C.purple : color,
-                          border: `1px solid ${t === 'Power' ? C.purple : color}40`,
-                        }}>{t === 'Power' ? 'PWR' : t.toUpperCase()}</span>
-                      ))}
-                    </div>
-                    <div style={{ fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace", marginTop: '2px', color: C.textDim, fontSize: 11 }}>
-                      {card?.type}
-                    </div>
-                    {card?.effects && (
-                      <div style={{ fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace", marginTop: '4px', color: C.textMuted, fontSize: 10 }}>
-                        {card.effects.map(e => {
-                          if (e.op === 'DealDamage') return `Deal ${e.amount} damage`;
-                          if (e.op === 'GainBlock') return `Gain ${e.amount} Block`;
-                          if (e.op === 'Heal') return `Heal ${e.amount}`;
-                          if (e.op === 'DrawCards') return `Draw ${e.amount}`;
-                          if (e.op === 'RawText') return e.text;
-                          return e.op;
-                        }).join(' \u00B7 ')}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </button>
+              />
             );
           })}
         </div>
@@ -558,19 +1278,10 @@ function RewardScreen({ state, data, onAction }) {
         <button
           onClick={() => onAction({ type: 'Reward_Skip' })}
           className="safe-area-bottom"
-          style={{
-            width: '100%',
-            padding: '16px',
-            borderRadius: '12px',
-            fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace",
+          style={getSecondaryActionButtonStyle(C.green, {
             marginTop: '16px',
-            transition: 'all 0.15s ease',
-            backgroundColor: C.bgCard,
-            border: `1px solid ${C.border}`,
-            color: C.textMuted,
             fontSize: 13,
-            cursor: 'pointer',
-          }}
+          })}
         >
           Skip Reward
         </button>
@@ -596,11 +1307,12 @@ function describeEffects(effects) {
   if (!effects?.length) return '';
   return effects.map(e => {
     if (e.op === 'DealDamage')  return `Deal ${e.amount} dmg`;
-    if (e.op === 'GainBlock')   return `+${e.amount} Block`;
+    if (e.op === 'GainBlock')   return `+${e.amount} Firewall`;
     if (e.op === 'Heal')        return `Heal ${e.amount} HP`;
     if (e.op === 'DrawCards')   return `Draw ${e.amount}`;
     if (e.op === 'GainRAM')     return `+${e.amount} RAM`;
     if (e.op === 'ApplyStatus') return `Apply ${e.statusId}×${e.stacks}`;
+    if (e.op === 'ApplyStatus' && e.statusId === 'Firewall' && e.target === 'Self') return `+${e.stacks} Firewall`;
     if (e.op === 'RawText')     return e.text;
     return e.op;
   }).join(' · ');
@@ -610,7 +1322,6 @@ function ShopScreen({ state, data, onAction }) {
   const offers = state.shop?.offers || [];
   const gold = state.run?.gold || 0;
   const MONO = "'JetBrains Mono', 'Fira Code', 'Consolas', monospace";
-  const typeColors = { Attack: C.red, Skill: C.green, Power: C.purple, Defense: C.cyan, Support: C.green, Utility: C.yellow };
 
   return (
     <ScreenShell>
@@ -659,72 +1370,20 @@ function ShopScreen({ state, data, onAction }) {
             <div style={{ fontFamily: MONO, fontSize: 10, color: C.textMuted, letterSpacing: '0.1em', marginBottom: '10px' }}>
               CARDS FOR SALE
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fit, minmax(${MENU_CARD_MIN_W}px, ${MENU_CARD_MAX_W}px))`, gap: '12px', justifyContent: 'center' }}>
               {offers.map((offer, i) => {
                 if (offer.kind !== 'Card') return null;
                 const card = data.cards?.[offer.defId];
                 const canAfford = gold >= offer.price;
-                const color = typeColors[card?.type] || C.cyan;
-                const fx = describeEffects(card?.effects);
                 return (
-                  <button
+                  <CardChoiceTile
                     key={i}
+                    cardId={offer.defId}
+                    card={card}
+                    price={offer.price}
                     onClick={() => canAfford && onAction({ type: 'Shop_BuyOffer', index: i })}
                     disabled={!canAfford}
-                    style={{
-                      width: '100%', padding: '14px', borderRadius: '12px',
-                      textAlign: 'left', transition: 'all 0.2s ease',
-                      opacity: !canAfford ? 0.45 : 1,
-                      backgroundColor: canAfford ? `${color}08` : C.bgCard,
-                      border: `2px solid ${canAfford ? `${color}50` : C.border}`,
-                      boxShadow: canAfford ? `0 0 16px ${color}10` : 'none',
-                      cursor: canAfford ? 'pointer' : 'default',
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                      {/* RAM cost badge */}
-                      <div style={{
-                        width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontFamily: MONO, fontWeight: 700, fontSize: 13,
-                        backgroundColor: color, color: '#000',
-                      }}>
-                        {card?.costRAM ?? '?'}
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', flexWrap: 'wrap' }}>
-                          <span style={{ fontFamily: MONO, fontWeight: 700, color: canAfford ? color : C.textMuted, fontSize: 14 }}>
-                            {card?.name || offer.defId}
-                          </span>
-                          <span style={{ fontFamily: MONO, fontSize: 10, color: C.textMuted, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                            {card?.type}
-                          </span>
-                        </div>
-                        {fx && (
-                          <div style={{ fontFamily: MONO, marginTop: 3, color: C.textDim, fontSize: 11 }}>
-                            {fx}
-                          </div>
-                        )}
-                        {card?.tags?.length > 0 && (
-                          <div style={{ fontFamily: MONO, marginTop: 3, color: C.textMuted, fontSize: 10 }}>
-                            {card.tags.filter(t => t !== 'Core' && t !== 'EnemyCard').map(t => (
-                              <span key={t} style={{ background: `${C.purple}18`, borderRadius: 4, padding: '1px 5px', marginRight: 4 }}>{t}</span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                      <div style={{
-                        padding: '4px 10px', borderRadius: '8px',
-                        fontFamily: MONO, fontWeight: 700,
-                        backgroundColor: canAfford ? `${C.yellow}18` : 'transparent',
-                        border: `1px solid ${canAfford ? `${C.yellow}50` : C.border}`,
-                        color: canAfford ? C.yellow : C.textMuted, fontSize: 13,
-                        flexShrink: 0, alignSelf: 'center',
-                      }}>
-                        {offer.price}g
-                      </div>
-                    </div>
-                  </button>
+                  />
                 );
               })}
             </div>
@@ -902,12 +1561,11 @@ function ShopScreen({ state, data, onAction }) {
         })()}
         <button
           onClick={() => onAction({ type: 'Shop_Exit' })}
-          style={{
-            flex: 1, padding: '14px', borderRadius: '12px',
-            fontFamily: MONO, transition: 'all 0.15s ease',
-            backgroundColor: C.bgCard, border: `1px solid ${C.border}`,
-            color: C.textMuted, fontSize: 13, cursor: 'pointer',
-          }}
+          style={getSecondaryActionButtonStyle(C.yellow, {
+            flex: 1,
+            fontFamily: MONO,
+            fontSize: 13,
+          })}
         >
           Leave Market
         </button>
@@ -1480,20 +2138,10 @@ function EventScreen({ state, data, onAction }) {
 
             <button
               onClick={() => onAction({ type: 'Rest_Leave' })}
-              style={{
-                width: '100%',
-                padding: '12px',
-                borderRadius: '12px',
-                fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace",
+              style={getSecondaryActionButtonStyle(C.green, {
                 textAlign: 'center',
                 marginTop: '8px',
-                transition: 'all 0.15s ease',
-                backgroundColor: C.bgCard,
-                border: `1px solid ${C.border}`,
-                color: C.textMuted,
-                fontSize: 12,
-                cursor: 'pointer',
-              }}
+              })}
             >
               Leave
             </button>
@@ -1610,19 +2258,25 @@ function EventScreen({ state, data, onAction }) {
               <button
                 key={choice.id}
                 onClick={() => onAction({ type: 'Event_Choose', choiceId: choice.id })}
-                style={{
-                  width: '100%', padding: isLeave ? '12px 16px' : '14px 16px',
-                  borderRadius: '12px', textAlign: 'left',
-                  fontFamily: MONO, fontWeight: isLeave ? 400 : 600,
-                  fontSize: isLeave ? 12 : 13,
-                  transition: 'all 0.15s ease',
-                  backgroundColor: isLeave ? 'transparent' : `${col}10`,
-                  border: `${isLeave ? 1 : 2}px solid ${isLeave ? C.border : `${col}50`}`,
-                  boxShadow: isLeave ? 'none' : `0 0 12px ${col}0a`,
-                  color: isLeave ? C.textMuted : col,
-                  cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', gap: '10px',
-                }}
+                style={isLeave
+                  ? getSecondaryActionButtonStyle(C.cyan, {
+                    padding: '12px 16px',
+                    textAlign: 'left',
+                    fontFamily: MONO,
+                  })
+                  : {
+                    width: '100%', padding: '14px 16px',
+                    borderRadius: '12px', textAlign: 'left',
+                    fontFamily: MONO, fontWeight: 600,
+                    fontSize: 13,
+                    transition: 'all 0.15s ease',
+                    backgroundColor: `${col}10`,
+                    border: `2px solid ${col}50`,
+                    boxShadow: `0 0 12px ${col}0a`,
+                    color: col,
+                    cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', gap: '10px',
+                  }}
               >
                 {!isLeave && (
                   <div style={{
@@ -1691,6 +2345,7 @@ function DeckPickerOverlay({ state, data, onAction }) {
     .filter(Boolean);
 
   const canCancel = !pendingOp; // Can only cancel if just viewing deck, not mid-op
+  const showLegacyDeckList = state.run?.debugOverrides?.showLegacyDeckList === true;
 
   return (
     <div style={{
@@ -1716,10 +2371,34 @@ function DeckPickerOverlay({ state, data, onAction }) {
       </div>
 
       {/* Card list */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-        {cards.map(({ iid, ci, def }) => {
+      <div
+        style={{
+          flex: 1,
+          overflowY: 'auto',
+          padding: '12px',
+          display: 'grid',
+          gridTemplateColumns: `repeat(auto-fit, minmax(${MENU_CARD_MIN_W}px, ${MENU_CARD_MAX_W}px))`,
+          gap: '12px',
+          alignContent: 'start',
+          justifyContent: 'center',
+        }}
+      >
+        {cards.map(({ iid, ci, def }) => (
+          <CardChoiceTile
+            key={iid}
+            cardId={ci.defId}
+            card={def}
+            instance={ci}
+            selected={dv.selectedInstanceId === iid}
+            onClick={() => onAction({ type: 'SelectDeckCard', instanceId: iid })}
+          />
+        ))}
+        {showLegacyDeckList && cards.map(({ iid, ci, def }) => {
           const color = typeColors[def.type] || C.text;
-          const useRatio = def.defaultUseCounter ? ci.useCounter / def.defaultUseCounter : null;
+          const maxUse = getCardUseCounterLimit(def, ci, data);
+          const useRatio = maxUse ? (ci.useCounter ?? maxUse) / maxUse : null;
+          const visibleUseCounter = formatMutationCounter(ci.useCounter);
+          const visibleFinalCounter = formatMutationCounter(ci.finalMutationCountdown);
           const worn = useRatio !== null && useRatio < 0.35;
           const mutated     = !!ci.finalMutationId;
           const isRewritten = ci.finalMutationId === 'J_REWRITE';
@@ -1815,12 +2494,12 @@ function DeckPickerOverlay({ state, data, onAction }) {
                     {def.type}
                     {useRatio !== null && !mutated && (
                       <span style={{ marginLeft: 8, color: worn ? C.orange : C.textDim }}>
-                        {ci.useCounter} until mut
+                        {visibleUseCounter ?? 0} until mut
                       </span>
                     )}
-                    {ci.finalMutationCountdown != null && !mutated && (
+                    {visibleFinalCounter != null && !mutated && (
                       <span style={{ marginLeft: 8, color: decaying ? C.orange : C.textDim }}>
-                        · final in {ci.finalMutationCountdown}
+                        · final in {visibleFinalCounter}
                       </span>
                     )}
                   </div>
@@ -1836,12 +2515,11 @@ function DeckPickerOverlay({ state, data, onAction }) {
       <div className="safe-area-bottom" style={{ padding: '12px', backgroundColor: C.bgBar, borderTop: `1px solid ${C.border}` }}>
         <button
           onClick={() => onAction({ type: 'CloseDeck' })}
-          style={{
-            width: '100%', padding: '12px', borderRadius: '10px',
-            fontFamily: MONO, fontSize: 13,
-            backgroundColor: C.bgCard, border: `1px solid ${C.border}`,
-            color: C.textMuted, cursor: 'pointer',
-          }}
+          style={getSecondaryActionButtonStyle(opInfo.color, {
+            borderRadius: '10px',
+            fontFamily: MONO,
+            fontSize: 13,
+          })}
         >
           {canCancel ? 'Close' : 'Cancel'}
         </button>
@@ -2223,6 +2901,17 @@ function App() {
     const v = parseInt(_up('speed'), 10);
     return (!isNaN(v) && v >= 150 && v <= 1500) ? v : 300;
   });
+  const [aiStopAtAct, setAiStopAtAct]   = useState(null);
+  const [aiStopAfterCombat, setAiStopAfterCombat] = useState(false);
+  const [aiHandoffReason, setAiHandoffReason] = useState('');
+  const [aiExportOptions, setAiExportOptions] = useState(() => {
+    try {
+      const stored = localStorage.getItem('cb_ai_export_options');
+      return normalizeAiExportOptions(stored ? JSON.parse(stored) : null);
+    } catch {
+      return { ...AI_EXPORT_OPTIONS_DEFAULTS };
+    }
+  });
   // ── Custom run config: explicit per-field overrides ─────────────────────
   // Each value is null (not set) or a concrete override.
   // lockedFields: Set of keys whose values survive AI randomise-each-run.
@@ -2251,6 +2940,11 @@ function App() {
   const runIndexRef  = useRef(0);        // increments each completed run
   const prevModeRef  = useRef(null);     // detects mode transitions for stats
   const combatStatsRef = useRef(null);   // per-combat scratch data
+  const aiEnabledRef = useRef(aiEnabled);
+  const aiPausedRef  = useRef(aiPaused);
+  const aiTimerRef   = useRef(null);
+  const stateRef     = useRef(state);
+  const dataRef      = useRef(data);
   // ── Per-run accumulator refs (all cleared on GameOver) ───────────────────
   const pendingEncountersRef  = useRef([]);   // finalised combat entries
   const pendingCardEventsRef  = useRef([]);   // reward offers + picks
@@ -2324,6 +3018,17 @@ function App() {
   });
 
   useEffect(() => {
+    localStorage.setItem('cb_ai_export_options', JSON.stringify(aiExportOptions));
+  }, [aiExportOptions]);
+
+  useEffect(() => {
+    aiEnabledRef.current = aiEnabled;
+    aiPausedRef.current = aiPaused;
+    stateRef.current = state;
+    dataRef.current = data;
+  }, [aiEnabled, aiPaused, state, data]);
+
+  useEffect(() => {
     loadGameData()
       .then(setData)
       .catch(err => setError(err.message));
@@ -2331,264 +3036,371 @@ function App() {
 
   useEffect(() => {
     if (data && !state) {
-      startNewRun();
+      const initial = createInitialState();
+      const seed = Date.now();
+      let debugSeed = null;
+      if (debugSeedInput.trim()) {
+        const parsed = parseInt(debugSeedInput.trim(), 10);
+        if (!isNaN(parsed)) debugSeed = parsed;
+      }
+      const newState = dispatchWithJournal(initial, data, {
+        type: 'NewRun',
+        seed,
+        debugSeed,
+        debugSeedMode: seedMode,
+        customOverrides: buildCustomOverrides(customConfig),
+        lockedKeys: [...lockedFields],
+      });
+      setState(newState);
     }
-  }, [data]);
+  }, [data, state, debugSeedInput, seedMode, customConfig, lockedFields]);
 
-  // ── AI effect: fires on every state change when AI is enabled ─────────────
+  const clearAiTimer = useCallback(() => {
+    if (aiTimerRef.current) {
+      clearTimeout(aiTimerRef.current);
+      aiTimerRef.current = null;
+    }
+  }, []);
+
+  const stopAiForTakeover = useCallback((reason = 'Manual takeover ready.') => {
+    clearAiTimer();
+    aiEnabledRef.current = false;
+    aiPausedRef.current = false;
+    setAiEnabled(false);
+    setAiPaused(false);
+    setAiStopAfterCombat(false);
+    setAiHandoffReason(reason);
+  }, [clearAiTimer]);
+
+  const runAiStepRef = useRef(() => {});
+
+  const scheduleAiTick = useCallback((delayMs = null) => {
+    clearAiTimer();
+    if (!aiEnabledRef.current || aiPausedRef.current || !dataRef.current || !stateRef.current) return;
+    const wait = Math.max(60, delayMs ?? aiSpeed);
+    aiTimerRef.current = setTimeout(() => {
+      aiTimerRef.current = null;
+      runAiStepRef.current();
+    }, wait);
+  }, [aiSpeed, clearAiTimer]);
+
   useEffect(() => {
-    if (!aiEnabled || aiPaused || !data || !state) return;
+    runAiStepRef.current = () => {
+      if (!aiEnabledRef.current || aiPausedRef.current) return;
 
-    const timer = setTimeout(() => {
-      const mode     = state.mode;
+      const currentState = stateRef.current;
+      const currentData = dataRef.current;
+      if (!currentState || !currentData) return;
+
+      const mode = currentState.mode;
       const prevMode = prevModeRef.current;
       prevModeRef.current = mode;
 
-      // ── Deck snapshot on floor change (run start = first floor seen) ────────
-      const curFloor = state.run?.floor ?? null;
-      if (curFloor !== null && curFloor !== lastFloorRef.current && state.deck?.master) {
-        lastFloorRef.current = curFloor;
-        deckSnapshotsRef.current.push({
-          act:   state.run.act,
-          floor: curFloor,
-          cards: state.deck.master.map(cid => state.deck.cardInstances?.[cid]?.defId ?? null),
-        });
-      }
+    const curFloor = currentState.run?.floor ?? null;
+    if (curFloor !== null && curFloor !== lastFloorRef.current && currentState.deck?.master) {
+      lastFloorRef.current = curFloor;
+      deckSnapshotsRef.current.push({
+        act: currentState.run.act,
+        floor: curFloor,
+        cards: currentState.deck.master.map(cid => currentState.deck.cardInstances?.[cid]?.defId ?? null),
+      });
+    }
 
-      // ── Combat ended: finalise encounter entry ───────────────────────────────
-      if (prevMode === 'Combat' && mode !== 'Combat' && combatStatsRef.current) {
-        const cs = combatStatsRef.current;
-        // result captured below when combatOver fires; fall back to state if missed
-        if (cs.result === null) cs.result = state.combat?.victory ? 'win' : 'loss';
-        cs.hpAfter = state.run?.hp ?? 0;
-        const { _lastPlayerHp, _lastEnemyHp, _logOffset, ...encounter } = cs; // strip scratch fields
-        pendingEncountersRef.current.push(encounter);
-        combatStatsRef.current = null;
-      }
+    if (prevMode === 'Combat' && mode !== 'Combat' && combatStatsRef.current) {
+      const cs = combatStatsRef.current;
+      const inferredResult =
+        mode === 'Reward' ? 'win' :
+        mode === 'GameOver' ? 'loss' :
+        (currentState.combat?.victory === true ? 'win' :
+          currentState.combat?.victory === false ? 'loss' :
+          cs.result);
+      const encounter = finalizeEncounterForExport(cs, currentState, mode, inferredResult ?? 'unknown');
+      pendingEncountersRef.current.push(encounter);
+      combatStatsRef.current = null;
+    }
 
-      // ── Combat entered: initialise scratch data ──────────────────────────────
-      // Guard: skip if enemies haven't loaded yet (avoids phantom enemies:[] entries)
-      if (mode === 'Combat' && prevMode !== 'Combat' && (state.combat?.enemies?.length ?? 0) > 0) {
-        const initEnemyHp = (state.combat?.enemies || []).reduce((s, e) => s + (e.hp ?? 0), 0);
-        combatStatsRef.current = {
-          act:                 state.run?.act   ?? 1,
-          floor:               state.run?.floor ?? '?',
-          enemies:             (state.combat?.enemies || []).map(e => e.enemyDefId).filter(Boolean),
-          hpBefore:            state.run?.hp    ?? 0,
-          turns:               0,
-          result:              null,
-          hpAfter:             null,
-          totalDamageDealt:    0,
-          totalDamageReceived: 0,
-          totalCardsPlayed:    0,
-          totalRAMSpent:       0,
-          mutationEvents:      [],
-          // Detailed damage breakdown (populated from DamageDealt log events)
-          damageBreakdown: {
-            playerDealt: {
-              total:          0,  // final HP damage dealt to enemies
-              totalBlocked:   0,  // blocked by enemy block
-              weakenedHits:   0,  // hits where player had Weak (reduced dmg)
-              vulnerableHits: 0,  // hits where enemy had Vulnerable (boosted dmg)
-            },
-            playerReceived: {
-              total:          0,  // final HP damage received by player
-              totalBlocked:   0,  // blocked by player's block
-              weakenedHits:   0,  // hits where enemy had Weak (reduced enemy dmg)
-              vulnerableHits: 0,  // hits where player had Vulnerable (boosted enemy dmg)
-            },
+    if (mode === 'Combat' && prevMode !== 'Combat' && (currentState.combat?.enemies?.length ?? 0) > 0) {
+      const initEnemyHp = (currentState.combat?.enemies || []).reduce((sum, enemy) => sum + (enemy.hp ?? 0), 0);
+      combatStatsRef.current = {
+        act: currentState.run?.act ?? 1,
+        floor: currentState.run?.floor ?? '?',
+        nodeType: currentState.map?.nodes?.[currentState.map?.currentNodeId]?.type ?? null,
+        enemies: (currentState.combat?.enemies || []).map(enemy => enemy.enemyDefId).filter(Boolean),
+        relicIds: [...(currentState.run?.relicIds || [])],
+        ruleMods: { ...(currentState.combat?.ruleMods || {}) },
+        forcedMutationTier: currentState.combat?.forcedMutationTier ?? null,
+        hpBefore: currentState.run?.hp ?? 0,
+        turns: 0,
+        result: null,
+        endMode: null,
+        outcomeReason: null,
+        hpAfter: null,
+        totalDamageDealt: 0,
+        totalDamageReceived: 0,
+        totalCardsPlayed: 0,
+        totalRAMSpent: 0,
+        enemyCardsPlayed: 0,
+        enemyActionTypes: { Attack: 0, Defense: 0, Buff: 0, Debuff: 0, Other: 0 },
+        mutationEvents: [],
+        mutationTriggerChecks: [],
+        handTimeline: [],
+        cardPlayTimeline: [],
+        enemyPlayTimeline: [],
+        tacticalSummary: {
+          attackIntoProtection: 0,
+          attackIntoProtectionWithAffordableBreach: 0,
+          breachIntoUnshieldedTarget: 0,
+          firewallSpendWithoutFirewall: 0,
+          enemyDefenseActions: 0,
+          enemyProtectionGain: 0,
+          enemyFirewallGain: 0,
+        },
+        damageBreakdown: {
+          playerDealt: {
+            total: 0,
+            totalBlocked: 0,
+            totalFirewallAbsorbed: 0,
+            eventCount: 0,
+            weakenedHits: 0,
+            vulnerableHits: 0,
           },
-          _lastPlayerHp:       state.run?.hp    ?? 0,
-          _lastEnemyHp:        initEnemyHp,
-          _logOffset:          (state.log ?? []).length,
-        };
+          playerReceived: {
+            total: 0,
+            totalBlocked: 0,
+            totalFirewallAbsorbed: 0,
+            eventCount: 0,
+            weakenedHits: 0,
+            vulnerableHits: 0,
+          },
+        },
+        _lastPlayerHp: currentState.run?.hp ?? 0,
+        _lastEnemyHp: initEnemyHp,
+        _logOffset: (currentState.log ?? []).length,
+        _hadActivity: false,
+      };
+    }
+
+    if (mode === 'Combat' && currentState.combat && combatStatsRef.current) {
+      const cs = combatStatsRef.current;
+      cs.turns = currentState.combat.turn ?? 0;
+      if (currentState.combat.combatOver && cs.result === null) {
+        cs.result = currentState.combat.victory ? 'win' : 'loss';
       }
 
-      // ── Combat active: track damage deltas + capture result when combatOver ──
-      if (mode === 'Combat' && state.combat && combatStatsRef.current) {
-        const cs = combatStatsRef.current;
-        cs.turns = state.combat.turn ?? 0;
+      const curPlayerHp = currentState.run?.hp ?? 0;
+      const curEnemyHp = (currentState.combat.enemies || []).reduce((sum, enemy) => sum + (enemy.hp ?? 0), 0);
+      const dmgReceived = cs._lastPlayerHp - curPlayerHp;
+      const dmgDealt = cs._lastEnemyHp - curEnemyHp;
+      if (dmgReceived > 0) cs.totalDamageReceived += dmgReceived;
+      if (dmgDealt > 0) cs.totalDamageDealt += dmgDealt;
+      if (dmgReceived > 0 || dmgDealt > 0) cs._hadActivity = true;
+      cs._lastPlayerHp = curPlayerHp;
+      cs._lastEnemyHp = curEnemyHp;
+      ingestCombatLogEntries(cs, currentState.log ?? [], currentState.combat.turn ?? 0);
+    }
 
-        // Fix: capture result here while state.combat is guaranteed non-null
-        if (state.combat.combatOver && cs.result === null)
-          cs.result = state.combat.victory ? 'win' : 'loss';
+    if (aiStopAfterCombat && prevMode === 'Combat' && mode !== 'Combat') {
+      stopAiForTakeover('Combat finished. AI handed control back to you.');
+      return;
+    }
 
-        const curPlayerHp = state.run?.hp ?? 0;
-        const curEnemyHp  = (state.combat.enemies || []).reduce((s, e) => s + (e.hp ?? 0), 0);
-        const dmgReceived = cs._lastPlayerHp - curPlayerHp;
-        const dmgDealt    = cs._lastEnemyHp  - curEnemyHp;
-        if (dmgReceived > 0) cs.totalDamageReceived += dmgReceived;
-        if (dmgDealt    > 0) cs.totalDamageDealt    += dmgDealt;
-        cs._lastPlayerHp = curPlayerHp;
-        cs._lastEnemyHp  = curEnemyHp;
+    if (aiStopAtAct !== null && (currentState.run?.act ?? 0) >= aiStopAtAct && mode !== 'Combat' && mode !== 'GameOver') {
+      stopAiForTakeover(`Reached Act ${aiStopAtAct}. AI handed control back to you.`);
+      return;
+    }
 
-        // Scan new log entries for structured events since combat started
-        const log       = state.log ?? [];
-        const logOffset = cs._logOffset ?? 0;
-        for (let li = logOffset; li < log.length; li++) {
-          const entry = log[li];
+    if (mode === 'GameOver') {
+      if (aiPausedRef.current || !aiEnabledRef.current) return;
 
-          if (entry.t === 'DamageDealt' && entry.data) {
-            const d = entry.data;
-            if (d.isPlayerSource) {
-              cs.damageBreakdown.playerDealt.total          += d.finalDamage;
-              cs.damageBreakdown.playerDealt.totalBlocked   += d.blocked;
-              if (d.weakened)    cs.damageBreakdown.playerDealt.weakenedHits++;
-              if (d.vulnerable)  cs.damageBreakdown.playerDealt.vulnerableHits++;
-            } else {
-              cs.damageBreakdown.playerReceived.total          += d.finalDamage;
-              cs.damageBreakdown.playerReceived.totalBlocked   += d.blocked;
-              if (d.weakened)    cs.damageBreakdown.playerReceived.weakenedHits++;
-              if (d.vulnerable)  cs.damageBreakdown.playerReceived.vulnerableHits++;
-            }
-          } else if (entry.t === 'MutationApplied') {
-            cs.mutationEvents.push({
-              turn:           state.combat.turn ?? 0,
-              type:           'mutation',
-              cardInstanceId: entry.data?.cardInstanceId ?? null,
-              tier:           entry.data?.tier ?? null,
-              mutationId:     entry.msg?.replace('Mutation ', '') ?? null,
-            });
-          } else if (entry.t === 'FinalMutation') {
-            const isBrick = entry.msg?.includes('BRICK');
-            cs.mutationEvents.push({
-              turn:           state.combat.turn ?? 0,
-              type:           'final',
-              cardInstanceId: entry.data?.cardInstanceId ?? null,
-              outcome:        isBrick ? 'brick' : 'rewrite',
-              newDefId:       !isBrick && entry.msg?.includes('->') ? entry.msg.split('-> ')[1]?.trim() : null,
-            });
-          }
-        }
-        cs._logOffset = log.length;
+      const idx = ++runIndexRef.current;
+      const summary = buildRunRecord({
+        runIndex: idx,
+        state: currentState,
+        data: currentData,
+        seedMode,
+        aiPlaystyle,
+        encounters: pendingEncountersRef.current,
+        deckSnapshots: deckSnapshotsRef.current,
+        cardEvents: pendingCardEventsRef.current,
+        floorEvents: pendingFloorEventsRef.current,
+        outcome: currentState.run?.victory ? 'victory' : 'defeat',
+      });
+      pendingEncountersRef.current = [];
+      pendingCardEventsRef.current = [];
+      pendingFloorEventsRef.current = [];
+      deckSnapshotsRef.current = [];
+      lastFloorRef.current = null;
+      setRunHistory(prev => [...prev, summary]);
+
+      let nextDebugSeed = null;
+      if (randomizeDebugSeed) {
+        nextDebugSeed = randomDebugSeed();
+      } else if (debugSeedInput.trim()) {
+        const parsed = parseInt(debugSeedInput.trim(), 10);
+        if (!isNaN(parsed)) nextDebugSeed = parsed;
       }
 
-      // ── GameOver: record run and start a new one ─────────────────────────────
-      if (mode === 'GameOver') {
-        const idx    = ++runIndexRef.current;
-        const runDbg = state.run?.debugOverrides;
-        const summary = {
-          runIndex:       idx,
-          seed:           state.run?.seed      ?? null,
-          debugSeed:      state.run?.debugSeed ?? null,
-          debugSeedMode:  runDbg?._mode        ?? seedMode,
-          aiPlaystyle,
-          aiPlaystyleLabel: AI_PLAYSTYLES[aiPlaystyle]?.label ?? aiPlaystyle,
-          debugOverrides: runDbg ? {
-            playerMaxHP:       runDbg.playerMaxHP,
-            startingCardCount: runDbg.startingCardCount,
-            enemyHpMult:       runDbg.enemyHpMult,
-            enemyDmgMult:      runDbg.enemyDmgMult,
-            playerMaxRAM:      runDbg.playerMaxRAM,
-            drawPerTurnDelta:  runDbg.drawPerTurnDelta,
-            actOverride:       runDbg.actOverride,
-            encounterKind:     runDbg.encounterKind,
-          } : null,
-          endTime:        new Date().toISOString(),
-          outcome:        'defeat',
-          finalAct:       state.run?.act   ?? 1,
-          finalFloor:     state.run?.floor ?? 0,
-          finalHp:        state.run?.hp    ?? 0,
-          maxHp:          state.run?.maxHP ?? 0,
-          finalGold:      state.run?.gold  ?? 0,
-          deckSize:       state.deck?.master?.length ?? 0,
-          encounters:     pendingEncountersRef.current.slice(),
-          deckSnapshots:  deckSnapshotsRef.current.slice(),
-          cardEvents:     pendingCardEventsRef.current.slice(),
-          floorEvents:    pendingFloorEventsRef.current.slice(),
-        };
-        pendingEncountersRef.current  = [];
-        pendingCardEventsRef.current  = [];
-        pendingFloorEventsRef.current = [];
-        deckSnapshotsRef.current      = [];
-        lastFloorRef.current          = null;
-        setRunHistory(prev => [...prev, summary]);
+      const initial = createInitialState();
+      const seed = Date.now();
+      const next = dispatchWithJournal(initial, currentData, {
+        type: 'NewRun',
+        seed,
+        debugSeed: nextDebugSeed,
+        debugSeedMode: seedMode,
+        customOverrides: buildCustomOverrides(customConfig),
+        lockedKeys: [...lockedFields],
+      });
+      setState(next);
+      prevModeRef.current = null;
+      scheduleAiTick(Math.min(120, aiSpeed));
+      return;
+    }
 
-        // Resolve debug seed for the next run.
-        // Custom config values are NEVER auto-cleared here — the user clears them manually.
-        // Locked fields always beat the seed; unlocked fields yield to the seed
-        // (but still apply as defaults when the seed doesn't override that field).
-        let nextDebugSeed = null;
-        if (randomizeDebugSeed) {
-          nextDebugSeed = randomDebugSeed();
-        } else if (debugSeedInput.trim()) {
-          const parsed = parseInt(debugSeedInput.trim(), 10);
-          if (!isNaN(parsed)) nextDebugSeed = parsed;
-        }
+    const action = getAIAction(currentState, currentData, aiPlaystyle);
+    if (!action) {
+      scheduleAiTick(Math.min(220, aiSpeed));
+      return;
+    }
 
-        const initial = createInitialState();
-        const seed    = Date.now();
-        const next    = dispatchWithJournal(initial, data, {
-          type: 'NewRun', seed, debugSeed: nextDebugSeed, debugSeedMode: seedMode,
-          customOverrides: buildCustomOverrides(customConfig),
-          lockedKeys: [...lockedFields],
-        });
-        setState(next);
-        prevModeRef.current = null;
-        return;
-      }
+    if (action.type === 'Reward_PickCard') {
+      pendingCardEventsRef.current.push({
+        act: currentState.run?.act,
+        floor: currentState.run?.floor,
+        offered: (currentState.reward?.cardChoices ?? []).slice(),
+        taken: action.defId,
+      });
+      pendingFloorEventsRef.current.push({
+        act: currentState.run?.act,
+        floor: currentState.run?.floor,
+        type: 'RewardCard',
+        offered: (currentState.reward?.cardChoices ?? []).slice(),
+        chosen: action.defId,
+      });
+    }
+    if (action.type === 'Reward_Skip') {
+      pendingCardEventsRef.current.push({
+        act: currentState.run?.act,
+        floor: currentState.run?.floor,
+        offered: (currentState.reward?.cardChoices ?? []).slice(),
+        taken: null,
+      });
+      pendingFloorEventsRef.current.push({
+        act: currentState.run?.act,
+        floor: currentState.run?.floor,
+        type: 'RewardCard',
+        offered: (currentState.reward?.cardChoices ?? []).slice(),
+        chosen: null,
+      });
+    }
+    if (action.type === 'Reward_PickRelic') {
+      pendingFloorEventsRef.current.push({
+        act: currentState.run?.act,
+        floor: currentState.run?.floor,
+        type: 'RewardRelic',
+        offered: (currentState.reward?.relicChoices ?? []).slice(),
+        relicId: action.relicId,
+      });
+    }
 
-      // ── AI action: intercept for stats, then dispatch ─────────────────────────
-      const action = getAIAction(state, data, aiPlaystyle);
-      if (action) {
-        // Card plays — count + sum RAM cost
-        if (action.type === 'Combat_PlayCard' && combatStatsRef.current) {
-          combatStatsRef.current.totalCardsPlayed++;
-          const cid  = action.cardInstanceId;
-          const inst = state.combat?.cardInstances?.[cid];
-          const cost = (inst?.defId && data.cards?.[inst.defId]?.costRAM) ?? 0;
-          combatStatsRef.current.totalRAMSpent += cost;
-        }
+    if (['Rest_Heal', 'Rest_Repair', 'Rest_Stabilise'].includes(action.type)) {
+      pendingFloorEventsRef.current.push({
+        act: currentState.run?.act,
+        floor: currentState.run?.floor,
+        type: 'Rest',
+        choice: action.type,
+      });
+    }
 
-        // Card acquisition (reward screen)
-        if (action.type === 'Reward_PickCard') {
-          pendingCardEventsRef.current.push({
-            act:     state.run?.act,
-            floor:   state.run?.floor,
-            offered: (state.reward?.cardChoices ?? []).slice(),
-            taken:   action.defId,
-          });
-        }
-        if (action.type === 'Reward_Skip') {
-          pendingCardEventsRef.current.push({
-            act:     state.run?.act,
-            floor:   state.run?.floor,
-            offered: (state.reward?.cardChoices ?? []).slice(),
-            taken:   null,
-          });
-        }
-
-        // Rest site choices
-        if (['Rest_Heal', 'Rest_Repair', 'Rest_Stabilise'].includes(action.type)) {
-          pendingFloorEventsRef.current.push({
-            act:    state.run?.act,
-            floor:  state.run?.floor,
-            type:   'Rest',
-            choice: action.type,
-          });
-        }
-
-        // Shop purchases
-        if (action.type === 'Shop_BuyOffer') {
-          const offer = state.shop?.offers?.[action.index];
-          if (offer) pendingFloorEventsRef.current.push({
-            act:       state.run?.act,
-            floor:     state.run?.floor,
-            type:      'Shop',
-            purchased: { kind: offer.kind, defId: offer.defId ?? offer.serviceId, price: offer.price },
-          });
-        }
-
-        setState(prev => {
-          try { return dispatchWithJournal(prev, data, action); }
-          catch (e) { console.error('[AI] action failed', action, e); return prev; }
+    if (action.type === 'Shop_BuyOffer') {
+      const offer = currentState.shop?.offers?.[action.index];
+      if (offer) {
+        pendingFloorEventsRef.current.push({
+          act: currentState.run?.act,
+          floor: currentState.run?.floor,
+          type: 'Shop',
+          purchased: {
+            kind: offer.kind,
+            defId: offer.defId ?? offer.serviceId ?? offer.relicId,
+            price: offer.price,
+          },
         });
       }
-    }, aiSpeed);
+    }
+    if (action.type === 'Event_Choose') {
+      const choiceDef = EVENT_REG_UI.events[currentState.event?.eventId]?.choices?.find(choice => choice.id === action.choiceId);
+      pendingFloorEventsRef.current.push({
+        act: currentState.run?.act,
+        floor: currentState.run?.floor,
+        type: 'Event',
+        eventId: currentState.event?.eventId ?? null,
+        choiceId: action.choiceId,
+        choiceLabel: choiceDef?.label ?? null,
+      });
+    }
+    if (action.type === 'Minigame_Complete') {
+      pendingFloorEventsRef.current.push({
+        act: currentState.run?.act,
+        floor: currentState.run?.floor,
+        type: 'Minigame',
+        eventId: action.eventId,
+        tier: action.tier,
+        title: MINIGAME_REGISTRY[action.eventId]?.title ?? null,
+        gameType: MINIGAME_REGISTRY[action.eventId]?.type ?? null,
+      });
+    }
+    if (action.type === 'SelectDeckCard') {
+      const instance = currentState.deck?.cardInstances?.[action.instanceId];
+      pendingFloorEventsRef.current.push({
+        act: currentState.run?.act,
+        floor: currentState.run?.floor,
+        type: 'DeckTarget',
+        source: currentState.shop?.pendingService ? 'Shop' : (currentState.event?.pendingSelectOp ? 'Event' : 'DeckView'),
+        operation: currentState.shop?.pendingService ?? currentState.event?.pendingSelectOp ?? null,
+        instanceId: action.instanceId,
+        defId: instance?.defId ?? null,
+      });
+    }
+    if (action.type === 'SelectNextNode') {
+      pendingFloorEventsRef.current.push({
+        act: currentState.run?.act,
+        floor: currentState.run?.floor,
+        type: 'MapChoice',
+        nodeId: action.nodeId,
+        nodeType: currentState.map?.nodes?.[action.nodeId]?.type ?? null,
+      });
+    }
 
-    return () => clearTimeout(timer);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state, aiEnabled, aiPaused, aiSpeed]);
+      setState(prev => {
+        try {
+          return dispatchWithJournal(prev, currentData, action);
+        } catch (e) {
+          console.error('[AI] action failed', action, e);
+          return prev;
+        }
+      });
+      scheduleAiTick();
+    };
+  }, [
+    aiPlaystyle,
+    aiSpeed,
+    aiStopAfterCombat,
+    aiStopAtAct,
+    customConfig,
+    debugSeedInput,
+    lockedFields,
+    randomizeDebugSeed,
+    scheduleAiTick,
+    seedMode,
+    stopAiForTakeover,
+  ]);
+
+  useEffect(() => {
+    clearAiTimer();
+    if (aiEnabled && !aiPaused && data && state) {
+      scheduleAiTick(aiSpeed);
+    }
+    return clearAiTimer;
+  }, [aiEnabled, aiPaused, aiSpeed, data, state ? 1 : 0, clearAiTimer, scheduleAiTick]);
 
   // ── Auto-export every 5 completed runs ────────────────────────────────────
   useEffect(() => {
@@ -2598,74 +3410,118 @@ function App() {
     const batch      = runHistory.slice(batchStart - 1); // last 5 runs
     const pad        = n => String(n).padStart(3, '0');
     const psLabel    = (AI_PLAYSTYLES[aiPlaystyle]?.label ?? aiPlaystyle).replace(/\s+/g, '_');
+    const exportProfile = getAiExportProfileLabel(aiExportOptions);
     const uid        = Math.random().toString(36).slice(2, 7);
-    const filename   = `ai_runs_${psLabel}_${pad(batchStart)}-${pad(batchEnd)}_${Date.now()}_${uid}.json`;
-    const jsonStr    = JSON.stringify(batch, null, 2);
+    const filename   = `ai_runs_${psLabel}_${exportProfile}_${pad(batchStart)}-${pad(batchEnd)}_${Date.now()}_${uid}.json`;
+    const exportBatch = batch.map((run) => filterRunRecordForExport(run, aiExportOptions));
+    const jsonStr    = JSON.stringify(exportBatch, null, 2);
     writeToSaveDir(filename, jsonStr).then(ok => {
       if (!ok) fallbackDownload(filename, jsonStr);
     });
-  }, [runHistory]);
+  }, [runHistory, aiPlaystyle, aiExportOptions]);
 
-  function buildInProgressSnapshot() {
+  const buildInProgressSnapshot = useCallback(() => {
     if (!state?.run) return null;
-    const runDbg = state.run?.debugOverrides;
-    return {
-      runIndex:       (runIndexRef.current + 1),
-      seed:           state.run?.seed      ?? null,
-      debugSeed:      state.run?.debugSeed ?? null,
-      debugSeedMode:  runDbg?._mode        ?? seedMode,
+    const liveEncounter = combatStatsRef.current
+      ? finalizeEncounterForExport(
+          combatStatsRef.current,
+          state,
+          state.mode,
+          state.mode === 'Combat'
+            ? 'in_progress'
+            : (state.mode === 'Reward'
+                ? 'win'
+                : (state.mode === 'GameOver' ? 'loss' : combatStatsRef.current.result)),
+        )
+      : null;
+    return buildRunRecord({
+      runIndex: runIndexRef.current + 1,
+      state,
+      data,
+      seedMode,
       aiPlaystyle,
-      aiPlaystyleLabel: AI_PLAYSTYLES[aiPlaystyle]?.label ?? aiPlaystyle,
-      debugOverrides: runDbg ? {
-        playerMaxHP:       runDbg.playerMaxHP,
-        startingCardCount: runDbg.startingCardCount,
-        enemyHpMult:       runDbg.enemyHpMult,
-        enemyDmgMult:      runDbg.enemyDmgMult,
-        playerMaxRAM:      runDbg.playerMaxRAM,
-        drawPerTurnDelta:  runDbg.drawPerTurnDelta,
-        actOverride:       runDbg.actOverride,
-        encounterKind:     runDbg.encounterKind,
-      } : null,
-      endTime:        new Date().toISOString(),
-      outcome:        'in_progress',
-      finalAct:       state.run?.act   ?? 1,
-      finalFloor:     state.run?.floor ?? 0,
-      finalHp:        state.run?.hp    ?? 0,
-      maxHp:          state.run?.maxHP ?? 0,
-      finalGold:      state.run?.gold  ?? 0,
-      deckSize:       state.deck?.master?.length ?? 0,
-      encounters:     pendingEncountersRef.current.slice(),
-      deckSnapshots:  deckSnapshotsRef.current.slice(),
-      cardEvents:     pendingCardEventsRef.current.slice(),
-      floorEvents:    pendingFloorEventsRef.current.slice(),
-    };
-  }
+      encounters: liveEncounter
+        ? [...pendingEncountersRef.current, liveEncounter]
+        : pendingEncountersRef.current,
+      deckSnapshots: deckSnapshotsRef.current,
+      cardEvents: pendingCardEventsRef.current,
+      floorEvents: pendingFloorEventsRef.current,
+      outcome: 'in_progress',
+    });
+  }, [aiPlaystyle, data, seedMode, state]);
 
-  async function exportRunData() {
-    const pad      = n => String(n).padStart(3, '0');
-    const total    = runHistory.length;
-    const psLabel  = (AI_PLAYSTYLES[aiPlaystyle]?.label ?? aiPlaystyle).replace(/\s+/g, '_');
-    const uid      = Math.random().toString(36).slice(2, 7);
-    const filename = total > 0
-      ? `ai_runs_${psLabel}_${pad(1)}-${pad(total)}_${Date.now()}_${uid}.json`
-      : `ai_runs_${psLabel}_empty_${Date.now()}_${uid}.json`;
+  const exportCurrentGameData = useCallback(async function exportCurrentGameData() {
+    const snapshot = buildInProgressSnapshot();
+    if (!snapshot) return false;
 
+    const psLabel = (AI_PLAYSTYLES[aiPlaystyle]?.label ?? aiPlaystyle).replace(/\s+/g, '_');
+    const exportProfile = getAiExportProfileLabel(aiExportOptions);
+    const uid = Math.random().toString(36).slice(2, 7);
+    const act = snapshot.finalAct ?? state?.run?.act ?? 'x';
+    const floor = snapshot.finalFloor ?? state?.run?.floor ?? 'x';
+    const modeLabel = (state?.mode ?? 'current').replace(/\s+/g, '_');
+    const filename = `ai_run_current_${psLabel}_${exportProfile}_a${act}_f${floor}_${modeLabel}_${Date.now()}_${uid}.json`;
+    const filteredSnapshot = filterRunRecordForExport(snapshot, aiExportOptions);
+    const jsonStr = JSON.stringify([filteredSnapshot], null, 2);
+    const ok = await writeToSaveDir(filename, jsonStr);
+    if (!ok) fallbackDownload(filename, jsonStr);
+    return true;
+  }, [aiExportOptions, aiPlaystyle, buildInProgressSnapshot, state]);
+
+  const exportRunData = useCallback(async function exportRunData() {
     // Include current in-progress run if one exists
     const inProgressSnap = buildInProgressSnapshot();
     const allRuns = inProgressSnap
       ? [...runHistory, inProgressSnap]
       : runHistory;
+    const pad      = n => String(n).padStart(3, '0');
+    const total    = allRuns.length;
+    const psLabel  = (AI_PLAYSTYLES[aiPlaystyle]?.label ?? aiPlaystyle).replace(/\s+/g, '_');
+    const exportProfile = getAiExportProfileLabel(aiExportOptions);
+    const uid      = Math.random().toString(36).slice(2, 7);
+    const filename = total > 0
+      ? `ai_runs_${psLabel}_${exportProfile}_${pad(1)}-${pad(total)}_${Date.now()}_${uid}.json`
+      : `ai_runs_${psLabel}_${exportProfile}_empty_${Date.now()}_${uid}.json`;
 
-    const jsonStr  = JSON.stringify(allRuns, null, 2);
+    const exportRuns = allRuns.map((run) => filterRunRecordForExport(run, aiExportOptions));
+    const jsonStr  = JSON.stringify(exportRuns, null, 2);
     const ok = await writeToSaveDir(filename, jsonStr);
     if (!ok) fallbackDownload(filename, jsonStr);
-  }
+  }, [aiExportOptions, aiPlaystyle, buildInProgressSnapshot, runHistory]);
 
   // Keep window.exportGameData fresh so close-ai-grid.ps1 can trigger it via CDP
-  useEffect(() => { window.exportGameData = exportRunData; });
+  useEffect(() => { window.exportGameData = exportRunData; }, [exportRunData]);
+  useEffect(() => { window.exportCurrentGameData = exportCurrentGameData; }, [exportCurrentGameData]);
 
-  const startNewRun = (overrideDebugSeed) => {
+  const toggleAiEnabled = useCallback(() => {
+    const next = !aiEnabledRef.current;
+    clearAiTimer();
+    aiEnabledRef.current = next;
+    aiPausedRef.current = false;
+    setAiEnabled(next);
+    setAiPaused(false);
+    if (next) {
+      setAiHandoffReason('');
+    }
+  }, [clearAiTimer]);
+
+  const toggleAiPause = useCallback(() => {
+    const next = !aiPausedRef.current;
+    clearAiTimer();
+    aiPausedRef.current = next;
+    setAiPaused(next);
+    if (!next) {
+      setAiHandoffReason('');
+    }
+  }, [clearAiTimer]);
+
+  const takeOverNow = useCallback(() => {
+    stopAiForTakeover('Manual takeover engaged.');
+  }, [stopAiForTakeover]);
+
+  function startNewRun(overrideDebugSeed) {
     if (!data) return;
+    setAiHandoffReason('');
     const initial = createInitialState();
     const seed = Date.now();
     let debugSeed = null;
@@ -2681,7 +3537,7 @@ function App() {
       lockedKeys: [...lockedFields],
     });
     setState(newState);
-  };
+  }
 
   const handleAction = (action) => {
     if (action.type === 'Dev_AddHP') {
@@ -2805,11 +3661,16 @@ function App() {
         </>
       )}
       <AIDebugPanel
-        enabled={aiEnabled}              onToggle={() => setAiEnabled(v => !v)}
-        paused={aiPaused}                onTogglePause={() => setAiPaused(v => !v)}
+        enabled={aiEnabled}              onToggle={toggleAiEnabled}
+        paused={aiPaused}                onTogglePause={toggleAiPause}
+        stopAtAct={aiStopAtAct}          onStopAtActChange={setAiStopAtAct}
+        stopAfterCombat={aiStopAfterCombat} onStopAfterCombatChange={setAiStopAfterCombat}
+        onTakeOverNow={takeOverNow}
         speed={aiSpeed}                  onSpeedChange={setAiSpeed}
         runHistory={runHistory}          onExport={exportRunData}
+        onExportCurrent={exportCurrentGameData}
         currentState={state}
+        handoffReason={aiHandoffReason}
         debugSeed={debugSeedInput}       onDebugSeedChange={setDebugSeedInput}
         seedMode={seedMode}              onSeedModeChange={setSeedMode}
         randomize={randomizeDebugSeed}   onRandomizeToggle={setRandomizeDebugSeed}
@@ -2817,6 +3678,13 @@ function App() {
         onRandomizeSensibleSeed={() => { setSeedMode('sensible'); setDebugSeedInput(String(randomDebugSeed())); }}
         aiPlaystyle={aiPlaystyle}        onPlaystyleChange={setAiPlaystyle}
         saveDirName={saveDirName}        onSetSaveDir={pickSaveDir}
+        exportOptions={aiExportOptions}
+        onSetExportOption={(key, value) => setAiExportOptions(prev => normalizeAiExportOptions({ ...prev, [key]: value }))}
+        onSetAllExportOptions={(value) => setAiExportOptions(
+          normalizeAiExportOptions(Object.fromEntries(
+            Object.keys(AI_EXPORT_OPTIONS_DEFAULTS).map((key) => [key, value]),
+          )),
+        )}
         customConfig={customConfig}      lockedFields={lockedFields}
         onSetCustomField={(key, val) => setCustomConfig(prev => ({ ...prev, [key]: val }))}
         onToggleLock={(key) => setLockedFields(prev => {

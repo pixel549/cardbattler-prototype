@@ -2049,24 +2049,98 @@ function PileCountButton({ label, count, color, onClick, compact = false }) {
   );
 }
 
-function MobileUtilityPanel({
+function CombatActionButton({ label, onClick, disabled = false, active = false, compact = false, tone = 'default' }) {
+  const toneMap = {
+    default: {
+      background: 'rgba(255,255,255,0.04)',
+      border: C.borderLight,
+      color: C.textPrimary,
+      shadow: 'none',
+    },
+    cyan: {
+      background: `${C.neonCyan}16`,
+      border: `${C.neonCyan}36`,
+      color: C.neonCyan,
+      shadow: `0 0 12px ${C.neonCyan}12`,
+    },
+    purple: {
+      background: `${C.neonPurple}20`,
+      border: `${C.neonPurple}42`,
+      color: '#e9c9ff',
+      shadow: `0 0 12px ${C.neonPurple}16`,
+    },
+    orange: {
+      background: `${C.neonOrange}18`,
+      border: `${C.neonOrange}40`,
+      color: C.neonOrange,
+      shadow: `0 0 12px ${C.neonOrange}14`,
+    },
+    primary: {
+      background: `linear-gradient(135deg, ${C.neonCyan} 0%, #84fff5 100%)`,
+      border: 'rgba(255,255,255,0.22)',
+      color: '#021217',
+      shadow: `0 0 18px ${C.neonCyan}32`,
+    },
+  };
+  const styleTone = toneMap[tone] || toneMap.default;
+
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        minWidth: 0,
+        padding: compact ? '7px 6px' : '8px 10px',
+        borderRadius: 10,
+        fontFamily: MONO,
+        fontWeight: 700,
+        textTransform: 'uppercase',
+        letterSpacing: '0.08em',
+        transition: 'all 0.15s ease',
+        background: active && tone !== 'primary'
+          ? `linear-gradient(180deg, ${styleTone.background} 0%, rgba(255,255,255,0.08) 100%)`
+          : styleTone.background,
+        color: styleTone.color,
+        border: `1px solid ${active && tone !== 'primary' ? styleTone.border : styleTone.border}`,
+        boxShadow: active ? `${styleTone.shadow}, inset 0 1px 0 rgba(255,255,255,0.08)` : styleTone.shadow,
+        fontSize: compact ? 7 : 9,
+        cursor: disabled ? 'default' : 'pointer',
+        opacity: disabled ? 0.45 : 1,
+        whiteSpace: 'nowrap',
+      }}
+    >
+      {label}
+    </button>
+  );
+}
+
+function CombatUtilityPanel({
   handCount,
   drawCount,
   discardCount,
   exhaustCount,
   interactionLocked,
   onViewPile,
+  onOpenSettings,
   onAuto,
   onEndTurn,
+  deckMenuOpen = false,
+  onToggleDeckMenu,
   layoutMode = 'phone-portrait',
 }) {
+  const compact = layoutMode !== 'desktop';
   const isPhonePortrait = layoutMode === 'phone-portrait';
+  const handleOpenPile = (pile) => {
+    onViewPile?.(pile);
+    onToggleDeckMenu?.(false);
+  };
+
   return (
     <div
       style={{
         display: 'flex',
         flexDirection: 'column',
-        gap: isPhonePortrait ? 6 : 8,
+        gap: compact ? (isPhonePortrait ? 6 : 8) : 10,
         minWidth: 0,
       }}
     >
@@ -2074,101 +2148,65 @@ function MobileUtilityPanel({
         style={{
           display: 'flex',
           flexDirection: 'column',
-          gap: isPhonePortrait ? 5 : 6,
-          padding: isPhonePortrait ? '8px 9px' : '10px',
-          borderRadius: 14,
-          background: 'linear-gradient(180deg, rgba(10,12,20,0.96) 0%, rgba(6,8,16,0.96) 100%)',
-          border: `1px solid ${C.borderLight}`,
-          boxShadow: '0 8px 22px rgba(0,0,0,0.22)',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-          <span style={{ fontFamily: MONO, fontSize: isPhonePortrait ? 7 : 8, fontWeight: 700, letterSpacing: '0.12em', color: C.textDim }}>
-            DECK
-          </span>
-          <span style={{ fontFamily: MONO, fontSize: isPhonePortrait ? 6 : 7, color: C.textSecondary }}>
-            Quick inspect
-          </span>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 6 }}>
-          <PileCountButton label="Draw" count={drawCount} color={C.neonCyan} onClick={() => onViewPile('draw')} compact={true} />
-          <PileCountButton label="Disc" count={discardCount} color={C.neonOrange} onClick={() => onViewPile('discard')} compact={true} />
-          <PileCountButton label="Exh" count={exhaustCount} color={C.neonRed} onClick={() => onViewPile('exhaust')} compact={true} />
-        </div>
-      </div>
-
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: isPhonePortrait ? 6 : 7,
-          padding: isPhonePortrait ? '8px 9px' : '10px',
-          borderRadius: 14,
+          gap: compact ? (isPhonePortrait ? 5 : 6) : 8,
+          padding: compact ? (isPhonePortrait ? '8px 9px' : '10px') : '10px 12px',
+          borderRadius: compact ? 14 : 16,
           background: 'linear-gradient(180deg, rgba(8,12,20,0.96) 0%, rgba(5,8,14,0.98) 100%)',
           border: `1px solid ${C.borderLight}`,
-          boxShadow: '0 8px 22px rgba(0,0,0,0.22)',
+          boxShadow: compact ? '0 8px 22px rgba(0,0,0,0.22)' : '0 10px 24px rgba(0,0,0,0.24)',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <span style={{ fontFamily: MONO, fontSize: 8, fontWeight: 700, letterSpacing: '0.12em', color: C.textDim }}>
-              TURN
-            </span>
-            <span style={{ fontFamily: MONO, fontSize: isPhonePortrait ? 7 : 8, color: C.textSecondary }}>
-              Hand {handCount}
-            </span>
-          </div>
-          <span style={{ fontFamily: MONO, fontSize: isPhonePortrait ? 6 : 7, color: C.textSecondary }}>
-            Center card plays
+          <span style={{ fontFamily: MONO, fontSize: compact ? (isPhonePortrait ? 7 : 8) : 8, fontWeight: 700, letterSpacing: '0.12em', color: C.textDim }}>
+            COMBAT OPS
+          </span>
+          <span style={{ fontFamily: MONO, fontSize: compact ? (isPhonePortrait ? 6 : 7) : 8, color: C.textSecondary }}>
+            Hand {handCount} | center card plays
           </span>
         </div>
-
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: compact ? 6 : 8 }}>
+          <CombatActionButton
+            label="Settings"
+            onClick={onOpenSettings}
+            tone="cyan"
+            compact={compact}
+          />
+          <CombatActionButton
+            label="Auto"
             onClick={onAuto}
             disabled={interactionLocked}
-            style={{
-              flex: '0 0 auto',
-              padding: isPhonePortrait ? '7px 9px' : '8px 10px',
-              borderRadius: 10,
-              fontFamily: MONO,
-              fontWeight: 700,
-              textTransform: 'uppercase',
-              letterSpacing: '0.08em',
-              backgroundColor: `${C.neonPurple}22`,
-              color: '#e9c9ff',
-              border: `1px solid ${C.neonPurple}4a`,
-              boxShadow: `0 0 14px ${C.neonPurple}16`,
-              fontSize: isPhonePortrait ? 7 : 8,
-              cursor: interactionLocked ? 'default' : 'pointer',
-              opacity: interactionLocked ? 0.45 : 1,
-            }}
-          >
-            Auto
-          </button>
-          <button
+            tone="purple"
+            compact={compact}
+          />
+          <CombatActionButton
+            label="Deck"
+            onClick={() => onToggleDeckMenu?.(!deckMenuOpen)}
+            active={deckMenuOpen}
+            tone="orange"
+            compact={compact}
+          />
+          <CombatActionButton
+            label="End Turn"
             onClick={onEndTurn}
             disabled={interactionLocked}
+            tone="primary"
+            compact={compact}
+          />
+        </div>
+        {deckMenuOpen && (
+          <div
             style={{
-              flex: 1,
-              padding: isPhonePortrait ? '8px 11px' : '9px 12px',
-              borderRadius: 10,
-              fontFamily: MONO,
-              fontWeight: 700,
-              textTransform: 'uppercase',
-              letterSpacing: '0.08em',
-              background: `linear-gradient(135deg, ${C.neonCyan} 0%, #84fff5 100%)`,
-              color: '#021217',
-              boxShadow: `0 0 18px ${C.neonCyan}42`,
-              fontSize: isPhonePortrait ? 8 : 9,
-              border: '1px solid rgba(255,255,255,0.22)',
-              cursor: interactionLocked ? 'default' : 'pointer',
-              opacity: interactionLocked ? 0.5 : 1,
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+              gap: compact ? 6 : 8,
+              paddingTop: compact ? 2 : 4,
             }}
           >
-            End Turn
-          </button>
-        </div>
+            <PileCountButton label="Draw" count={drawCount} color={C.neonCyan} onClick={() => handleOpenPile('draw')} compact={compact} />
+            <PileCountButton label="Disc" count={discardCount} color={C.neonOrange} onClick={() => handleOpenPile('discard')} compact={compact} />
+            <PileCountButton label="Exh" count={exhaustCount} color={C.neonRed} onClick={() => handleOpenPile('exhaust')} compact={compact} />
+          </div>
+        )}
       </div>
     </div>
   );
@@ -4106,10 +4144,11 @@ function ArcHand({
 // ============================================================
 // MAIN COMBAT SCREEN
 // ============================================================
-export default function CombatScreen({ state, data, onAction, aiPaused = false }) {
+export default function CombatScreen({ state, data, onAction, aiPaused = false, onOpenMenu }) {
   const [activeCardId, setActiveCardId] = useState(null);
   const [centerCardDismissed, setCenterCardDismissed] = useState(false);
   const [viewingPile, setViewingPile] = useState(null);
+  const [deckMenuOpen, setDeckMenuOpen] = useState(false);
   const [targetedEnemyIndex, setTargetedEnemyIndex] = useState(0);
   const [animationQueue, setAnimationQueue] = useState([]);
   const [activeAnimation, setActiveAnimation] = useState(null);
@@ -4273,6 +4312,10 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false }
 
     prevHandRef.current = hand;
   }, [activeCardId, centerCardDismissed, hand]);
+
+  useEffect(() => {
+    if (viewingPile) setDeckMenuOpen(false);
+  }, [viewingPile]);
 
   // Parse global combat log for floating numbers, sound cues, and card-play animations.
   useEffect(() => {
@@ -4580,15 +4623,21 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false }
         data={data}
         layoutMode={layoutMode}
       />
-      <MobileUtilityPanel
+      <CombatUtilityPanel
         handCount={hand.length}
         drawCount={drawPile.length}
         discardCount={discardPile.length}
         exhaustCount={exhaustPile.length}
         interactionLocked={interactionLocked}
         onViewPile={setViewingPile}
+        onOpenSettings={() => {
+          setDeckMenuOpen(false);
+          onOpenMenu?.();
+        }}
         onAuto={() => onAction?.({ type: 'Combat_Simulate', maxTurns: 50 })}
         onEndTurn={handleEndTurn}
+        deckMenuOpen={deckMenuOpen}
+        onToggleDeckMenu={setDeckMenuOpen}
         layoutMode={layoutMode}
       />
     </div>
@@ -4621,102 +4670,23 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false }
       />
 
       <div style={{ flex: '1 1 340px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: '10px', justifyContent: 'space-between' }}>
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 8,
-            padding: '10px 12px',
-            borderRadius: 16,
-            background: 'linear-gradient(180deg, rgba(10,12,20,0.96) 0%, rgba(6,8,16,0.96) 100%)',
-            border: `1px solid ${C.borderLight}`,
-            boxShadow: '0 10px 24px rgba(0,0,0,0.24)',
+        <CombatUtilityPanel
+          handCount={hand.length}
+          drawCount={drawPile.length}
+          discardCount={discardPile.length}
+          exhaustCount={exhaustPile.length}
+          interactionLocked={interactionLocked}
+          onViewPile={setViewingPile}
+          onOpenSettings={() => {
+            setDeckMenuOpen(false);
+            onOpenMenu?.();
           }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-            <span style={{ fontFamily: MONO, fontSize: 8, fontWeight: 700, letterSpacing: '0.12em', color: C.textDim }}>
-              DECK PILES
-            </span>
-            <span style={{ fontFamily: MONO, fontSize: 8, color: C.textSecondary }}>
-              Inspect state quickly
-            </span>
-          </div>
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-            <PileCountButton label="Draw" count={drawPile.length} color={C.neonCyan} onClick={() => setViewingPile('draw')} />
-            <PileCountButton label="Discard" count={discardPile.length} color={C.neonOrange} onClick={() => setViewingPile('discard')} />
-            <PileCountButton label="Exhaust" count={exhaustPile.length} color={C.neonRed} onClick={() => setViewingPile('exhaust')} />
-          </div>
-        </div>
-
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '10px',
-            flexWrap: 'wrap',
-            padding: '10px 12px',
-            borderRadius: 16,
-            background: 'linear-gradient(180deg, rgba(8,12,20,0.96) 0%, rgba(5,8,14,0.98) 100%)',
-            border: `1px solid ${C.borderLight}`,
-            boxShadow: '0 10px 24px rgba(0,0,0,0.24)',
-          }}
-        >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-            <span style={{ fontFamily: MONO, fontSize: 8, fontWeight: 700, letterSpacing: '0.12em', color: C.textDim }}>
-              COMBAT OPS
-            </span>
-            <span style={{ fontFamily: MONO, fontSize: 9, color: C.textSecondary }}>
-              Hand {hand.length} | tap centered card to play
-            </span>
-          </div>
-          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-            <button
-              onClick={() => onAction?.({ type: 'Combat_Simulate', maxTurns: 50 })}
-              disabled={interactionLocked}
-              style={{
-                padding: '8px 12px',
-                borderRadius: '10px',
-                fontFamily: MONO,
-                fontWeight: 700,
-                textTransform: 'uppercase',
-                letterSpacing: '0.08em',
-                transition: 'all 0.15s ease',
-                backgroundColor: `${C.neonPurple}22`,
-                color: '#e9c9ff',
-                border: `1px solid ${C.neonPurple}4a`,
-                boxShadow: `0 0 14px ${C.neonPurple}16`,
-                fontSize: 9,
-                cursor: interactionLocked ? 'default' : 'pointer',
-                opacity: interactionLocked ? 0.45 : 1,
-              }}
-            >
-              AUTO
-            </button>
-            <button
-              onClick={handleEndTurn}
-              disabled={interactionLocked}
-              style={{
-                padding: '8px 16px',
-                borderRadius: '10px',
-                fontFamily: MONO,
-                fontWeight: 700,
-                textTransform: 'uppercase',
-                letterSpacing: '0.08em',
-                transition: 'all 0.15s ease',
-                background: `linear-gradient(135deg, ${C.neonCyan} 0%, #84fff5 100%)`,
-                color: '#021217',
-                boxShadow: `0 0 18px ${C.neonCyan}42`,
-                fontSize: 11,
-                border: '1px solid rgba(255,255,255,0.22)',
-                cursor: interactionLocked ? 'default' : 'pointer',
-                opacity: interactionLocked ? 0.5 : 1,
-              }}
-            >
-              END TURN
-            </button>
-          </div>
-        </div>
+          onAuto={() => onAction?.({ type: 'Combat_Simulate', maxTurns: 50 })}
+          onEndTurn={handleEndTurn}
+          deckMenuOpen={deckMenuOpen}
+          onToggleDeckMenu={setDeckMenuOpen}
+          layoutMode={layoutMode}
+        />
       </div>
     </div>
   );

@@ -4262,7 +4262,7 @@ function App() {
   let content;
   switch (state.mode) {
     case 'Combat':
-      content = <CombatScreen state={state} data={data} onAction={handleAction} aiPaused={aiPaused} />;
+      content = <CombatScreen state={state} data={data} onAction={handleAction} aiPaused={aiPaused} onOpenMenu={() => setShowPauseMenu(true)} />;
       break;
     case 'Map':
       content = <MapScreen state={state} data={data} onAction={handleAction} />;
@@ -4330,7 +4330,9 @@ function App() {
   return (
     <>
       {content}
-      <PauseMenuButton open={showPauseMenu} onClick={() => setShowPauseMenu((prev) => !prev)} />
+      {state.mode !== 'Combat' && (
+        <PauseMenuButton open={showPauseMenu} onClick={() => setShowPauseMenu((prev) => !prev)} />
+      )}
       <PauseMenuOverlay
         open={showPauseMenu}
         onClose={() => setShowPauseMenu(false)}

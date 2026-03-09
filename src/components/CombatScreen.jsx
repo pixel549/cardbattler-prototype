@@ -98,6 +98,22 @@ function formatMutationCounter(value) {
   return Math.max(0, Math.ceil(numeric));
 }
 
+function isCoreCard(cardDef) {
+  return (cardDef?.tags || EMPTY_ARRAY).includes('Core');
+}
+
+function getCardLifecycleDisplay(cardDef, cardInstance) {
+  const core = isCoreCard(cardDef);
+  const nextValue = core ? 'N/A' : formatMutationCounter(cardInstance?.useCounter);
+  const finalValue = core ? 'N/A' : formatMutationCounter(cardInstance?.finalMutationCountdown);
+  const countdownValue = core ? 'N/A' : formatMutationCounter(cardInstance?.finalMutationCountdown);
+  const isDecaying = !core
+    && cardInstance?.finalMutationCountdown != null
+    && cardInstance.finalMutationCountdown <= 3
+    && !cardInstance?.finalMutationId;
+  return { core, nextValue, finalValue, countdownValue, isDecaying };
+}
+
 // ── Mutation tier/polarity colour system ──
 // Polarity derived from ID: '+' = positive, '-S' = special, else negative
 const MUT_COLORS_NEG = { A:'#999', B:'#b8a020', C:'#cc6010', D:'#dd3310', E:'#ee1818', F:'#dd0828', G:'#cc0040', H:'#bb0060', I:'#aa0080', J:'#880000' };
@@ -2332,9 +2348,7 @@ function CenterCardDisplay({
   const cost = Math.max(0, (cardDef.costRAM || 0) + (cardInstance.ramCostDelta || 0));
   const mutations = cardInstance.appliedMutations || [];
   const effectLines = formatEffectsLong(cardDef.effects);
-  const isDecaying = cardInstance.finalMutationCountdown <= 3;
-  const nextMutationIn = formatMutationCounter(cardInstance.useCounter);
-  const finalMutationIn = formatMutationCounter(cardInstance.finalMutationCountdown);
+  const { nextValue: nextMutationIn, finalValue: finalMutationIn, isDecaying } = getCardLifecycleDisplay(cardDef, cardInstance);
   const imgSrc = getCardImage(cardDef?.id);
   const visibleTags = getVisibleCardTags(cardDef.tags || EMPTY_ARRAY);
 
@@ -2726,9 +2740,7 @@ function HandCard({ cardInstance, cardDef, isSelected, onSelect, canPlay, compac
   const color = getCardColor(cardDef?.type);
   const cost = Math.max(0, (cardDef?.costRAM || 0) + (cardInstance?.ramCostDelta || 0));
   const hasMutations = cardInstance?.appliedMutations?.length > 0;
-  const countdown = cardInstance?.finalMutationCountdown;
-  const visibleCountdown = formatMutationCounter(countdown);
-  const isDecaying = countdown != null && countdown <= 3;
+  const { core: isCore, countdownValue: visibleCountdown, isDecaying } = getCardLifecycleDisplay(cardDef, cardInstance);
   const isBricked   = cardInstance?.finalMutationId === 'J_BRICK';
   const isRewritten  = cardInstance?.finalMutationId === 'J_REWRITE';
   const isMutable   = cardDef?.tags && !cardDef.tags.includes('Core') && !cardDef.tags.includes('EnemyCard');
@@ -2888,8 +2900,9 @@ function HandCard({ cardInstance, cardDef, isSelected, onSelect, canPlay, compac
             position: 'absolute',
             top: badgeOffset,
             right: badgeOffset,
-            width: badgeSize,
+            minWidth: badgeSize,
             height: badgeSize,
+            paddingInline: isCore ? (compact ? 5 : 7) : 0,
             borderRadius: '9999px',
             display: 'flex',
             alignItems: 'center',
@@ -2897,11 +2910,11 @@ function HandCard({ cardInstance, cardDef, isSelected, onSelect, canPlay, compac
             fontWeight: 700,
             fontFamily: MONO,
             zIndex: 10,
-            backgroundColor: isDecaying ? C.neonOrange : C.bgDark,
-            color: isDecaying ? '#000' : C.textDim,
-            border: isDecaying ? 'none' : `1px solid ${C.border}`,
-            boxShadow: isDecaying ? `0 0 8px ${C.neonOrange}80` : 'none',
-            fontSize: compact ? 8 : 10,
+            backgroundColor: isCore ? `${C.neonCyan}18` : (isDecaying ? C.neonOrange : C.bgDark),
+            color: isCore ? C.neonCyan : (isDecaying ? '#000' : C.textDim),
+            border: isCore ? `1px solid ${C.neonCyan}45` : (isDecaying ? 'none' : `1px solid ${C.border}`),
+            boxShadow: isCore ? `0 0 8px ${C.neonCyan}28` : (isDecaying ? `0 0 8px ${C.neonOrange}80` : 'none'),
+            fontSize: compact ? (isCore ? 7 : 8) : (isCore ? 8 : 10),
           }}
         >
           {visibleCountdown}
@@ -3747,11 +3760,9 @@ function PileViewer({ title, cards, cardInstances, data, onClose }) {
               const clr = getCardColor(def?.type);
               const cst = Math.max(0, (def?.costRAM || 0) + (ci?.ramCostDelta || 0));
               const muts      = ci?.appliedMutations?.length ?? 0;
-              const countdown = ci?.finalMutationCountdown ?? null;
-              const visibleCountdown = formatMutationCounter(countdown);
+              const { countdownValue: visibleCountdown, isDecaying, core: isCore } = getCardLifecycleDisplay(def, ci);
               const isBricked  = ci?.finalMutationId === 'J_BRICK';
               const isRewrite  = ci?.finalMutationId === 'J_REWRITE';
-              const isDecaying = countdown != null && countdown <= 3 && !ci?.finalMutationId;
               const borderColor = isBricked ? C.neonRed : isRewrite ? C.neonPurple : clr;
               return (
                 <div
@@ -3796,7 +3807,7 @@ function PileViewer({ title, cards, cardInstances, data, onClose }) {
                   </div>
 
                   {/* Mutation info row */}
-                  {(muts > 0 || countdown != null) && (
+                  {(muts > 0 || visibleCountdown != null) && (
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '3px' }}>
                       {/* Mutation count pip */}
                       {muts > 0 && (
@@ -3825,12 +3836,12 @@ function PileViewer({ title, cards, cardInstances, data, onClose }) {
                           padding: '1px 4px',
                           borderRadius: '3px',
                           fontFamily: MONO,
-                          fontSize: 7,
+                          fontSize: isCore ? 6 : 7,
                           fontWeight: 700,
-                          backgroundColor: isDecaying ? `${C.neonOrange}25` : 'transparent',
-                          color: isDecaying ? C.neonOrange : C.textDim,
-                          border: isDecaying ? `1px solid ${C.neonOrange}40` : `1px solid ${C.border}`,
-                          boxShadow: isDecaying ? `0 0 6px ${C.neonOrange}40` : 'none',
+                          backgroundColor: isCore ? `${C.neonCyan}18` : (isDecaying ? `${C.neonOrange}25` : 'transparent'),
+                          color: isCore ? C.neonCyan : (isDecaying ? C.neonOrange : C.textDim),
+                          border: isCore ? `1px solid ${C.neonCyan}38` : (isDecaying ? `1px solid ${C.neonOrange}40` : `1px solid ${C.border}`),
+                          boxShadow: isCore ? `0 0 6px ${C.neonCyan}22` : (isDecaying ? `0 0 6px ${C.neonOrange}40` : 'none'),
                           marginLeft: 'auto',
                         }}>
                           ⏱{visibleCountdown}

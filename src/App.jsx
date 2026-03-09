@@ -596,6 +596,21 @@ function formatMutationCounter(value) {
   return Math.max(0, Math.ceil(numeric));
 }
 
+function isCoreCard(card) {
+  return (card?.tags || []).includes('Core');
+}
+
+function getCardLifecycleDisplay(card, instance) {
+  const core = isCoreCard(card);
+  const nextValue = core ? 'N/A' : formatMutationCounter(instance?.useCounter);
+  const finalValue = core ? 'N/A' : formatMutationCounter(instance?.finalMutationCountdown);
+  const isDecaying = !core
+    && !instance?.finalMutationId
+    && instance?.finalMutationCountdown != null
+    && instance.finalMutationCountdown <= 5;
+  return { core, nextValue, finalValue, isDecaying };
+}
+
 function getCardUseCounterLimit(card, instance, data) {
   let maxUse = Number(card?.defaultUseCounter ?? 12);
   for (const mid of instance?.appliedMutations || []) {
@@ -621,11 +636,7 @@ function CardChoiceTile({
   const mutations = instance?.appliedMutations || [];
   const isBricked = instance?.finalMutationId === 'J_BRICK';
   const isRewritten = instance?.finalMutationId === 'J_REWRITE';
-  const visibleUseCounter = formatMutationCounter(instance?.useCounter);
-  const visibleFinalCounter = formatMutationCounter(instance?.finalMutationCountdown);
-  const isDecaying = !instance?.finalMutationId
-    && instance?.finalMutationCountdown != null
-    && instance.finalMutationCountdown <= 5;
+  const { nextValue: visibleUseCounter, finalValue: visibleFinalCounter, isDecaying } = getCardLifecycleDisplay(card, instance);
   const effectText = describeEffects(card.effects);
 
   return (
@@ -2776,16 +2787,14 @@ function DeckPickerOverlay({ state, data, onAction }) {
         {showLegacyDeckList && cards.map(({ iid, ci, def }) => {
           const color = typeColors[def.type] || C.text;
           const maxUse = getCardUseCounterLimit(def, ci, data);
-          const useRatio = maxUse ? (ci.useCounter ?? maxUse) / maxUse : null;
-          const visibleUseCounter = formatMutationCounter(ci.useCounter);
-          const visibleFinalCounter = formatMutationCounter(ci.finalMutationCountdown);
-          const worn = useRatio !== null && useRatio < 0.35;
+          const { core: isCore, nextValue: visibleUseCounter, finalValue: visibleFinalCounter, isDecaying: decaying } = getCardLifecycleDisplay(def, ci);
+          const useRatio = isCore ? null : (maxUse ? (ci.useCounter ?? maxUse) / maxUse : null);
+          const worn = !isCore && useRatio !== null && useRatio < 0.35;
           const mutated     = !!ci.finalMutationId;
           const isRewritten = ci.finalMutationId === 'J_REWRITE';
           const isBricked   = ci.finalMutationId === 'J_BRICK';
           const activeMuts  = ci.appliedMutations || [];
           const hasMutation = activeMuts.length > 0;   // fixed: was ci.mutationId
-          const decaying    = !mutated && ci.finalMutationCountdown != null && ci.finalMutationCountdown <= 5;
 
           // Tier → colour mapping for mutation chips
           const TIER_COLS = { A:'#55ff99', B:'#44ddff', C:'#ffcc44', D:'#ff8844',
@@ -2872,14 +2881,14 @@ function DeckPickerOverlay({ state, data, onAction }) {
                   {/* Counters row */}
                   <div style={{ fontFamily: MONO, fontSize: 10, color: C.textMuted, marginTop: 3 }}>
                     {def.type}
-                    {useRatio !== null && !mutated && (
+                    {!mutated && visibleUseCounter != null && (
                       <span style={{ marginLeft: 8, color: worn ? C.orange : C.textDim }}>
-                        {visibleUseCounter ?? 0} until mut
+                        {isCore ? `NEXT ${visibleUseCounter}` : `${visibleUseCounter} until mut`}
                       </span>
                     )}
-                    {visibleFinalCounter != null && !mutated && (
+                    {!mutated && visibleFinalCounter != null && (
                       <span style={{ marginLeft: 8, color: decaying ? C.orange : C.textDim }}>
-                        · final in {visibleFinalCounter}
+                        {isCore ? `· FINAL ${visibleFinalCounter}` : `· final in ${visibleFinalCounter}`}
                       </span>
                     )}
                   </div>

@@ -11,6 +11,19 @@ const base      = repoName ? `/${repoName}/` : '/';
 
 export default defineConfig({
   base,
+  build: {
+    rollupOptions: {
+      output: {
+        assetFileNames: (assetInfo) => {
+          const originalName = assetInfo.names?.[0] ?? assetInfo.name ?? '';
+          if (/\.(png|jpe?g|gif|svg|webp|avif)$/i.test(originalName)) {
+            return 'assets/[name][extname]';
+          }
+          return 'assets/[name]-[hash][extname]';
+        },
+      },
+    },
+  },
   plugins: [
     react(),
     VitePWA({

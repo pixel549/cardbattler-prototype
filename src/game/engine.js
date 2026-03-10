@@ -4284,12 +4284,39 @@ export function dispatchCombat(state, data, action) {
           for (const cid of [...state.player.piles.hand]) {
             const ci = state.cardInstances[cid];
             if (!ci) continue;
-            const playability = getCardPlayability(state, data, cid, state.enemies[0]?.id);
-            if (playability.playable) {
-              dispatchCombat(state, data, { type: "PlayCard", cardInstanceId: cid, targetEnemyId: state.enemies[0]?.id });
+            const aliveEnemies = state.enemies.filter((enemy) => enemy.hp > 0);
+            const defaultEnemyId = aliveEnemies[0]?.id ?? null;
+            const targetingProfile = getCardTargetingProfile(state, data, cid);
+            const enemyContexts = targetingProfile.canTargetEnemy
+              ? aliveEnemies
+              : (!targetingProfile.canTargetSelf ? [aliveEnemies[0]].filter(Boolean) : []);
+
+            for (const enemy of enemyContexts) {
+              const targetEnemyId = enemy?.id ?? defaultEnemyId;
+              const playability = getCardPlayability(state, data, cid, targetEnemyId, false);
+              if (!playability.playable) continue;
+              dispatchCombat(state, data, { type: "PlayCard", cardInstanceId: cid, targetEnemyId });
               played = true;
               break;
             }
+            if (played) break;
+
+            if (targetingProfile.canTargetSelf) {
+              for (const enemy of aliveEnemies) {
+                const targetEnemyId = enemy?.id ?? defaultEnemyId;
+                const playability = getCardPlayability(state, data, cid, targetEnemyId, true);
+                if (!playability.playable) continue;
+                dispatchCombat(state, data, {
+                  type: "PlayCard",
+                  cardInstanceId: cid,
+                  targetEnemyId,
+                  targetSelf: true,
+                });
+                played = true;
+                break;
+              }
+            }
+            if (played) break;
           }
         }
         if (!state.combatOver) dispatchCombat(state, data, { type: "EndTurn" });

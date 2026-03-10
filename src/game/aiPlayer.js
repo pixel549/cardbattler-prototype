@@ -1,5 +1,6 @@
 import { createBasicEventRegistry } from "./events";
 import { MINIGAME_REGISTRY, isMinigameEvent } from "./minigames";
+import { dispatchCombat, getCardPlayability, getCardTargetingProfile } from "./engine";
 
 /**
  * aiPlayer.js — Pure AI decision functions for the auto-play debug feature.
@@ -1141,6 +1142,180 @@ function resolveScryAction(scryPending, cardInstances, data, playstyle) {
   return { type: 'Combat_ScryResolve', discard: toDiscard, top };
 }
 
+function getEntityStatusMap(entity) {
+  const map = new Map();
+  for (const status of (entity?.statuses || [])) {
+    if (!status?.id) continue;
+    map.set(status.id, (map.get(status.id) || 0) + Math.max(0, status.stacks || 0));
+  }
+  return map;
+}
+
+function createBlockGainScorer(player, aliveEnemies, playstyle) {
+  const ps = AI_PLAYSTYLES[playstyle] || AI_PLAYSTYLES.balanced;
+  const incoming = (aliveEnemies || []).reduce((sum, enemy) => {
+    const intent = enemy.intent;
+    return sum + (intent?.type === 'Attack' && typeof intent.amount === 'number' ? intent.amount : 0);
+  }, 0);
+  const hpPct = (player?.hp || 0) / Math.max(1, player?.maxHP || 75);
+  const blockUrgency = hpPct < 0.35 ? 2.2 : hpPct < 0.55 ? 1.5 : 1.0;
+
+  return (blockGain) => {
+    if (blockGain <= 0) return 0;
+    const existingProtection = getProtection(player);
+    let blockBase;
+    if (incoming > 0) {
+      const usefulBlock = Math.min(blockGain, Math.max(0, incoming - existingProtection));
+      const extraBlock = Math.max(0, blockGain - usefulBlock);
+      blockBase = usefulBlock * 1.5 + extraBlock * 0.3;
+    } else {
+      blockBase = blockGain * 0.85;
+    }
+    return blockBase * ps.blockWeight * blockUrgency;
+  };
+}
+
+function scoreStatusDelta(beforeEntity, afterEntity, targetKind, context) {
+  const beforeMap = getEntityStatusMap(beforeEntity);
+  const afterMap = getEntityStatusMap(afterEntity);
+  const ids = new Set([...beforeMap.keys(), ...afterMap.keys()]);
+  let score = 0;
+
+  for (const statusId of ids) {
+    const delta = (afterMap.get(statusId) || 0) - (beforeMap.get(statusId) || 0);
+    if (!delta) continue;
+    const deltaScore = scoreStatusApplication(statusId, Math.abs(delta), targetKind, context);
+    score += delta > 0 ? deltaScore : -deltaScore;
+  }
+
+  return score;
+}
+
+function scoreCardPlayBias(def, ci, playstyle, data) {
+  const ps = AI_PLAYSTYLES[playstyle] || AI_PLAYSTYLES.balanced;
+  let score = 0;
+  const cost = Math.max(0, (def.costRAM || 0) + (ci.ramCostDelta || 0));
+  score -= cost * ps.costPenalty;
+
+  const playsUntilMutation = getPlaysUntilMutation(ci, data);
+  const playsUntilFinalMutation = getPlaysUntilFinalMutation(ci, data);
+  if (playsUntilMutation <= 1) score -= ps.useCounterPenalty;
+  if (playsUntilFinalMutation <= 2) score -= ps.finalMutCounterPenalty;
+
+  for (const mutationId of (ci.appliedMutations || [])) {
+    const sentiment = scoreMutationSentiment(mutationId, data);
+    if (sentiment > 0) score += ps.posMutBonus;
+    if (sentiment < 0) score -= ps.negMutPenalty;
+  }
+
+  return score;
+}
+
+function cloneCombatForSimulation(combat, data) {
+  let cloned = null;
+  try {
+    cloned = structuredClone(combat);
+  } catch {
+    cloned = JSON.parse(JSON.stringify(combat));
+  }
+  if (cloned && typeof cloned === 'object') cloned.dataRef = data;
+  return cloned;
+}
+
+function scoreSimulatedCombatAction(beforeCombat, afterCombat, action, playstyle, data) {
+  const ps = AI_PLAYSTYLES[playstyle] || AI_PLAYSTYLES.balanced;
+  const beforePlayer = beforeCombat?.player || {};
+  const afterPlayer = afterCombat?.player || beforePlayer;
+  const beforeAliveEnemies = (beforeCombat?.enemies || []).filter((enemy) => enemy.hp > 0);
+  const afterAliveEnemies = (afterCombat?.enemies || []).filter((enemy) => enemy.hp > 0);
+  const targetEnemy = beforeAliveEnemies.find((enemy) => enemy.id === action.targetEnemyId)
+    || beforeAliveEnemies[0]
+    || afterAliveEnemies.find((enemy) => enemy.id === action.targetEnemyId)
+    || afterAliveEnemies[0]
+    || null;
+  const scoreBlockGain = createBlockGainScorer(beforePlayer, beforeAliveEnemies, playstyle);
+  const baseContext = {
+    player: beforePlayer,
+    target: targetEnemy,
+    aliveEnemies: beforeAliveEnemies,
+    ps,
+    scoreBlockGain,
+  };
+
+  let score = 0;
+
+  if (afterCombat?.combatOver && afterCombat?.victory) {
+    score += 5000 + (beforeAliveEnemies.length * 220);
+  }
+  if ((afterPlayer.hp || 0) <= 0 && (beforePlayer.hp || 0) > 0) {
+    score -= 9000;
+  }
+
+  const playerHpDelta = (afterPlayer.hp || 0) - (beforePlayer.hp || 0);
+  if (playerHpDelta > 0) score += playerHpDelta * 8 * Math.max(0.6, ps.healWeight);
+  else if (playerHpDelta < 0) score += playerHpDelta * 12 * Math.max(0.8, ps.healWeight);
+
+  const playerProtectionDelta = getProtection(afterPlayer) - getProtection(beforePlayer);
+  if (playerProtectionDelta > 0) score += scoreBlockGain(playerProtectionDelta);
+  else if (playerProtectionDelta < 0) score += playerProtectionDelta * 1.6 * Math.max(0.7, ps.blockWeight);
+
+  const playerRamDelta = (afterPlayer.ram || 0) - (beforePlayer.ram || 0);
+  if (playerRamDelta > 0) score += playerRamDelta * 5 * ps.ramWeight;
+
+  const handDelta = ((afterPlayer.piles?.hand || []).length - (beforePlayer.piles?.hand || []).length);
+  if (handDelta > 0) score += handDelta * 5 * ps.drawWeight;
+
+  score += scoreStatusDelta(beforePlayer, afterPlayer, 'Self', baseContext);
+
+  if (afterCombat?._scryPending && !beforeCombat?._scryPending) score += 6 * ps.drawWeight;
+  if (afterCombat?._nextCardFree && !beforeCombat?._nextCardFree) score += 10 * ps.ramWeight;
+
+  const damageBonusDelta = Math.max(0, (afterCombat?._nextCardDamageBonus || 0) - (beforeCombat?._nextCardDamageBonus || 0));
+  if (damageBonusDelta > 0) score += damageBonusDelta * 1.8 * ps.damageWeight;
+
+  const delayedDelta = ((afterCombat?._delayedCardEffects || []).length - (beforeCombat?._delayedCardEffects || []).length);
+  if (delayedDelta > 0) score += delayedDelta * 8;
+
+  const beforeEnemyMap = new Map(beforeAliveEnemies.map((enemy) => [enemy.id, enemy]));
+  const afterEnemyMap = new Map(afterAliveEnemies.map((enemy) => [enemy.id, enemy]));
+  const enemyIds = new Set([...beforeEnemyMap.keys(), ...afterEnemyMap.keys()]);
+
+  for (const enemyId of enemyIds) {
+    const beforeEnemy = beforeEnemyMap.get(enemyId) || null;
+    const afterEnemy = afterEnemyMap.get(enemyId) || null;
+    const enemyContext = {
+      ...baseContext,
+      target: beforeEnemy || afterEnemy || targetEnemy,
+    };
+
+    if (beforeEnemy && !afterEnemy) {
+      score += (beforeEnemy.hp || 0) * 10 * ps.damageWeight;
+      score += getProtection(beforeEnemy) * 1.8;
+      score += 1200 + Math.max(0, getEnemyThreatScore(beforeEnemy, data, beforeAliveEnemies.length));
+      continue;
+    }
+
+    if (!beforeEnemy && afterEnemy) {
+      score -= 250 + Math.max(0, getEnemyThreatScore(afterEnemy, data, Math.max(1, afterAliveEnemies.length)));
+      continue;
+    }
+
+    if (!beforeEnemy || !afterEnemy) continue;
+
+    const enemyHpDelta = (beforeEnemy.hp || 0) - (afterEnemy.hp || 0);
+    if (enemyHpDelta > 0) score += enemyHpDelta * 10 * ps.damageWeight;
+    else if (enemyHpDelta < 0) score += enemyHpDelta * 8 * ps.damageWeight;
+
+    const enemyProtectionDelta = getProtection(beforeEnemy) - getProtection(afterEnemy);
+    if (enemyProtectionDelta > 0) score += enemyProtectionDelta * 2.1;
+    else if (enemyProtectionDelta < 0) score += enemyProtectionDelta * 1.5;
+
+    score += scoreStatusDelta(beforeEnemy, afterEnemy, 'Enemy', enemyContext);
+  }
+
+  return score;
+}
+
 function getCombatAction(combat, data, playstyle) {
   if (!combat) return null;
 
@@ -1163,22 +1338,7 @@ function getCombatAction(combat, data, playstyle) {
 
   let bestScore = -Infinity;
   let bestAction = null;
-  const handOptions = (player.piles.hand || []).map((cid) => {
-    const ci = cardInstances[cid];
-    const def = data.cards?.[ci?.defId];
-    if (!ci || !def) return null;
-    const cost = Math.max(0, (def.costRAM || 0) + (ci.ramCostDelta || 0));
-    return {
-      cid,
-      cost,
-      affordable: player.ram >= cost,
-      summary: summarizeCombatCard(def),
-    };
-  }).filter(Boolean);
-  const affordableOptions = handOptions.filter((option) => option.affordable);
-  const optionById = new Map(handOptions.map((option) => [option.cid, option]));
-  const totalEnemyFirewall = aliveEnemies.reduce((sum, enemy) => sum + getFirewall(enemy), 0);
-  const anyEnemyFirewall = totalEnemyFirewall > 0;
+  const defaultEnemyId = aliveEnemies[0]?.id ?? null;
 
   for (const cid of (player.piles.hand || [])) {
     const ci = cardInstances[cid];
@@ -1186,118 +1346,96 @@ function getCombatAction(combat, data, playstyle) {
     const def = data.cards[ci.defId];
     if (!def) continue;
 
-    const cost = Math.max(0, (def.costRAM || 0) + (ci.ramCostDelta || 0));
-    if (player.ram < cost) continue;
-    const handOption = optionById.get(cid);
-    const cardSummary = handOption?.summary || summarizeCombatCard(def);
+    const targetingProfile = getCardTargetingProfile(combat, data, cid);
+    const enemyContexts = aliveEnemies.length > 0 ? aliveEnemies : [null];
+    const candidateActions = [];
 
-    const isAoE = (def.effects || []).some(e => e.target === 'AllEnemies'
-      || (e.op === 'RawText' && /to ALL/i.test(e.text || '')));
-    // AoE cards score against first enemy (effects hit all anyway)
-    const targets = isAoE ? [aliveEnemies[0]] : aliveEnemies;
-
-    // XCost penalty: cards that spend all remaining RAM (e.g. Broadcast Surge)
-    // should be deferred until no other playable cards remain in hand.
-    // Penalize proportional to how many other positive-cost cards we'd strand.
     const isXCost = (def.tags || []).includes('XCost')
-      || (def.effects || []).some(e => e.op === 'RawText' && /spend all remaining RAM/i.test(e.text || ''));
+      || (def.effects || []).some((effect) => effect.op === 'RawText' && /spend all remaining RAM/i.test(effect.text || ''));
     let xCostPenalty = 0;
     if (isXCost) {
       for (const otherId of (player.piles.hand || [])) {
         if (otherId === cid) continue;
-        const oci = cardInstances[otherId];
-        const odef = data.cards[oci?.defId];
-        if (!odef) continue;
-        const ocost = Math.max(0, (odef.costRAM || 0) + (oci?.ramCostDelta || 0));
-        if (ocost > 0 && ocost <= player.ram) xCostPenalty += 30;
+        const otherCi = cardInstances[otherId];
+        const otherDef = data.cards[otherCi?.defId];
+        if (!otherDef) continue;
+        const otherEnemyId = defaultEnemyId;
+        const otherProfile = getCardTargetingProfile(combat, data, otherId);
+        const otherPlayableOnEnemy = (otherProfile.canTargetEnemy || (!otherProfile.canTargetEnemy && !otherProfile.canTargetSelf))
+          && getCardPlayability(combat, data, otherId, otherEnemyId, false).playable;
+        const otherPlayableOnSelf = otherProfile.canTargetSelf
+          && getCardPlayability(combat, data, otherId, otherEnemyId, true).playable;
+        if (otherPlayableOnEnemy || otherPlayableOnSelf) xCostPenalty += 30;
       }
     }
 
-    for (const enemy of targets) {
-      let score = scoreCard(def, ci, enemy, aliveEnemies, player, playstyle, data) - xCostPenalty;
-      const targetFirewall = getFirewall(enemy);
-      const targetProtection = getProtection(enemy);
-      const targetRelevantProtection = Math.max(targetFirewall, targetProtection);
-      const totalEnemyProtection = aliveEnemies.reduce((sum, foe) => sum + getProtection(foe), 0);
-      const targetThreat = getEnemyThreatScore(enemy, data, aliveEnemies.length);
-      const hpPct = enemy.maxHP > 0 ? enemy.hp / enemy.maxHP : 1;
-      const affordableAlternatives = affordableOptions.filter((option) => option.cid !== cid);
-      const hasAffordableNonBreachAlternative = affordableAlternatives.some((option) => (
-        !option.summary.firewallBreachAll
-        && option.summary.firewallBreach <= 0
-        && !option.summary.firewallSpend
-      ));
-      const hasAffordableBreachAlternative = affordableAlternatives.some((option) => (
-        option.summary.firewallBreachAll
-          ? totalEnemyFirewall > 0
-          : option.summary.firewallBreach > 0 && targetFirewall > 0
-      ));
-      const anotherEnemyHasFirewall = aliveEnemies.some((foe) => foe.id !== enemy.id && getFirewall(foe) > 0);
-      const bluntDamageCard = cardSummary.damage > 0
-        && !cardSummary.firewallSpend
-        && !cardSummary.firewallBreachAll
-        && cardSummary.firewallBreach <= 0;
-      const mostlyBreachCard = (cardSummary.firewallBreachAll || cardSummary.firewallBreach > 0)
-        && cardSummary.damage <= 0
-        && cardSummary.draw <= 0
-        && cardSummary.gainRAM <= 0
-        && cardSummary.heal <= 0
-        && !cardSummary.firewallSpend;
+    const enemyTargetContexts = targetingProfile.canTargetEnemy
+      ? enemyContexts
+      : (!targetingProfile.canTargetSelf ? [enemyContexts[0]] : []);
 
-      if (cardSummary.firewallSpend) {
-        const playerFirewall = getFirewall(player);
-        if (playerFirewall <= 0) score -= 140;
-        else if (playerFirewall < 4) score -= 24;
-        else score += Math.min(playerFirewall, enemy.hp || playerFirewall) * 2.8;
+    for (const enemy of enemyTargetContexts) {
+      const targetEnemyId = enemy?.id ?? defaultEnemyId;
+      const playability = getCardPlayability(combat, data, cid, targetEnemyId, false);
+      if (!playability.playable) continue;
+      candidateActions.push({
+        action: {
+          type: 'Combat_PlayCard',
+          cardInstanceId: cid,
+          targetEnemyId,
+        },
+        targetEnemy: enemy || aliveEnemies[0] || null,
+      });
+    }
+
+    if (targetingProfile.canTargetSelf) {
+      for (const enemy of enemyContexts) {
+        const targetEnemyId = enemy?.id ?? defaultEnemyId;
+        const playability = getCardPlayability(combat, data, cid, targetEnemyId, true);
+        if (!playability.playable) continue;
+        candidateActions.push({
+          action: {
+            type: 'Combat_PlayCard',
+            cardInstanceId: cid,
+            targetEnemyId,
+            targetSelf: true,
+          },
+          targetEnemy: enemy || aliveEnemies[0] || null,
+        });
+      }
+    }
+
+    if (candidateActions.length === 0) continue;
+
+    const playBias = scoreCardPlayBias(def, ci, playstyle, data) - xCostPenalty;
+
+    for (const candidate of candidateActions) {
+      const simulatedCombat = cloneCombatForSimulation(combat, data);
+      if (!simulatedCombat) continue;
+      const nextCombat = dispatchCombat(simulatedCombat, data, {
+        type: 'PlayCard',
+        cardInstanceId: candidate.action.cardInstanceId,
+        targetEnemyId: candidate.action.targetEnemyId,
+        targetSelf: !!candidate.action.targetSelf,
+      });
+
+      let score = playBias + scoreSimulatedCombatAction(combat, nextCombat, candidate.action, playstyle, data);
+
+      if (!candidate.action.targetSelf && candidate.targetEnemy) {
+        score += Math.max(0, getEnemyThreatScore(candidate.targetEnemy, data, aliveEnemies.length)) * 0.45;
+        if (candidate.targetEnemy.intent?.type === 'Attack') score += 6;
+        if (candidate.targetEnemy.intent?.type === 'Debuff') score += 4;
+        if (enemyIsHealer(candidate.targetEnemy, data)) score += 8;
       }
 
-      if (cardSummary.firewallBreachAll) {
-        if (totalEnemyFirewall > 0) {
-          score += totalEnemyFirewall * 3.4;
-          if (cardSummary.damage > 0) {
-            score += Math.min(totalEnemyProtection, Math.max(cardSummary.damage, totalEnemyFirewall)) * 0.8;
-          }
-        } else {
-          score -= mostlyBreachCard ? 125 : 90;
-          if (hasAffordableNonBreachAlternative) score -= 20;
-        }
-      } else if (cardSummary.firewallBreach > 0) {
-        if (targetFirewall > 0) {
-          score += Math.min(cardSummary.firewallBreach, targetFirewall) * 3.6;
-          if (cardSummary.damage > 0) {
-            score += Math.min(targetRelevantProtection, Math.max(cardSummary.damage, cardSummary.firewallBreach)) * 0.9;
-          }
-        } else {
-          score -= mostlyBreachCard ? 120 : 75;
-          if (anotherEnemyHasFirewall) score -= 60;
-          if (hasAffordableNonBreachAlternative) score -= 16;
-        }
-      }
-
-      if (bluntDamageCard && targetProtection > 0) {
-        score -= Math.min(targetProtection, Math.max(cardSummary.damage, 8)) * 4.0;
-        if (hasAffordableBreachAlternative) score -= 85;
-      }
-
-      if (!cardSummary.firewallBreachAll && cardSummary.firewallBreach > 0 && anyEnemyFirewall && targetFirewall <= 0) {
-        score -= 18;
-      }
-
-      if (!isAoE) {
-        score += targetThreat;
-        if (enemy.intent?.type === 'Attack') score += 8;
-        if (enemy.intent?.type === 'Debuff') score += 6;
-        if (enemyIsHealer(enemy, data)) score += 10;
-        if (hpPct <= 0.35) score += 12;
+      const fallbackTarget = candidate.targetEnemy || aliveEnemies[0] || null;
+      const isDualTargetCard = targetingProfile.canTargetEnemy && targetingProfile.canTargetSelf;
+      if (!isDualTargetCard && fallbackTarget) {
+        score += Math.max(-90, Math.min(180, scoreCard(def, ci, fallbackTarget, aliveEnemies, player, playstyle, data) * 0.15));
       }
 
       if (score > bestScore) {
         bestScore = score;
-        bestAction = {
-          type: 'Combat_PlayCard',
-          cardInstanceId: cid,
-          targetEnemyId: enemy.id,
-        };
+        bestAction = candidate.action;
       }
     }
   }

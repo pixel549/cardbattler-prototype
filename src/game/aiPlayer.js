@@ -878,15 +878,19 @@ function scoreDeckOperation(op, deck, data, playstyle, run = null) {
   if (op === "Repair" || op === "RepairSelectedCard") {
     const target = selectTarget("Repair");
     if (!target) return -Infinity;
-    const maxUse = getCardUseCounterLimit(target, data);
-    const missingUses = Math.max(0, maxUse - (target.useCounter ?? maxUse));
+    const mutationIds = target.appliedMutations || [];
+    const latestMutationId = mutationIds[mutationIds.length - 1] || null;
+    const latestIsNegative = !!latestMutationId && latestMutationId.includes('-') && !latestMutationId.startsWith('C-S');
     const cardValue = getDeckCardValue(target, data, playstyle, deck, run);
-    return missingUses * 1.7 + Math.max(0, cardValue * 0.15);
+    return (mutationIds.length * 4.5) + (latestIsNegative ? 6 : 0) + Math.max(0, cardValue * 0.18);
   }
 
   if (op === "Stabilise" || op === "StabiliseSelectedCard") {
     const target = selectTarget("Stabilise");
     if (!target) return -Infinity;
+    const maxUse = getCardUseCounterLimit(target, data);
+    const useRatio = maxUse > 0 ? ((target.useCounter ?? maxUse) / maxUse) : 1;
+    const useUrgency = Math.max(0, 1 - useRatio);
     const countdown = target.finalMutationCountdown ?? 8;
     const urgency = Math.max(0, 6 - countdown);
     const cardValue = getDeckCardValue(target, data, playstyle, deck, run);
@@ -895,19 +899,21 @@ function scoreDeckOperation(op, deck, data, playstyle, run = null) {
       playstyle === "defensive" ? 4.2 :
       playstyle === "mutationPusher" ? -4 :
       3.5;
-    return urgency * styleBias + Math.max(0, cardValue * 0.12);
+    return (useUrgency * 9) + (urgency * styleBias) + Math.max(0, cardValue * 0.12);
   }
 
   if (op === "Accelerate" || op === "AccelerateSelectedCard") {
     const target = selectTarget("Accelerate");
     if (!target) return -Infinity;
+    const maxUse = getCardUseCounterLimit(target, data);
+    const remainingUses = Math.max(0, target.useCounter ?? maxUse);
     const countdown = Math.max(0, target.finalMutationCountdown ?? 8);
     const styleBias =
       playstyle === "mutationPusher" ? 4.8 :
       playstyle === "preservation" ? -5 :
       playstyle === "aggressive" ? 1.8 :
       0.8;
-    return countdown * styleBias;
+    return (countdown + (remainingUses * 0.65)) * styleBias;
   }
 
   if (op === "DuplicateSelectedCard") {
@@ -1615,6 +1621,7 @@ function getShopAction(shop, run, deck, data, playstyle) {
 
   for (let i = 0; i < offers.length; i++) {
     const offer = offers[i];
+    if (offer?.sold) continue;
     if (gold < offer.price) continue;
     if (gold - offer.price < ps.shopGoldReserve) continue;
 
@@ -1691,29 +1698,52 @@ function getDeckSelectionAction(deck, data, playstyle, op, run = null) {
   }
 
   if (op === 'RepairSelectedCard' || op === 'Repair') {
-    // Pick the card most degraded relative to its max use counter
-    const scored = active.map(ci => {
-      const max = getCardUseCounterLimit(ci, data);
-      return { ci, ratio: (ci.useCounter ?? max) / max };
-    }).sort((a, b) => a.ratio - b.ratio);
+    const scored = active
+      .filter(ci => (ci.appliedMutations || []).length > 0)
+      .map(ci => {
+        const mutationIds = ci.appliedMutations || [];
+        const latestMutationId = mutationIds[mutationIds.length - 1] || null;
+        const latestIsNegative = !!latestMutationId && latestMutationId.includes('-') && !latestMutationId.startsWith('C-S');
+        return {
+          ci,
+          score: (latestIsNegative ? 100 : 0) + (mutationIds.length * 12) + getDeckCardValue(ci, data, playstyle, deck, run),
+        };
+      })
+      .sort((a, b) => b.score - a.score);
     const target = scored[0]?.ci;
     return target ? { type: 'SelectDeckCard', instanceId: target.instanceId } : null;
   }
 
   if (op === 'StabiliseSelectedCard' || op === 'Stabilise') {
-    // Pick the card closest to triggering final mutation
+    // Pick the card under the most immediate mutation pressure.
     const scored = active
-      .map(ci => ({ ci, countdown: ci.finalMutationCountdown ?? 8 }))
-      .sort((a, b) => a.countdown - b.countdown);
+      .map(ci => {
+        const maxUse = getCardUseCounterLimit(ci, data);
+        const useRatio = maxUse > 0 ? ((ci.useCounter ?? maxUse) / maxUse) : 1;
+        const countdown = ci.finalMutationCountdown ?? 8;
+        return {
+          ci,
+          score: ((1 - useRatio) * 14) + Math.max(0, 8 - countdown) * 2,
+        };
+      })
+      .sort((a, b) => b.score - a.score);
     const target = scored[0]?.ci;
     return target ? { type: 'SelectDeckCard', instanceId: target.instanceId } : null;
   }
 
   if (op === 'AccelerateSelectedCard' || op === 'Accelerate') {
-    // Mutation pusher: pick card with most remaining countdown to push toward mutation
+    // Mutation pusher: pick card with the most clock value left to shave down.
     const scored = active
-      .map(ci => ({ ci, countdown: ci.finalMutationCountdown ?? 8 }))
-      .sort((a, b) => b.countdown - a.countdown);
+      .map(ci => {
+        const maxUse = getCardUseCounterLimit(ci, data);
+        const remainingUses = Math.max(0, ci.useCounter ?? maxUse);
+        const countdown = ci.finalMutationCountdown ?? 8;
+        return {
+          ci,
+          score: countdown + (remainingUses * 0.7),
+        };
+      })
+      .sort((a, b) => b.score - a.score);
     const target = scored[0]?.ci;
     return target ? { type: 'SelectDeckCard', instanceId: target.instanceId } : null;
   }
@@ -1752,18 +1782,17 @@ function getEventAction(event, run, deck, data, playstyle) {
       }
       if (choice === 'repair' && deck) {
         const instances = Object.values(deck.cardInstances || {});
-        const hasTarget = instances.some(ci => {
-          if (ci.finalMutationId) return false;
-          const maxUse = getCardUseCounterLimit(ci, data);
-          return (ci.useCounter ?? maxUse) < maxUse * 0.55;
-        });
+        const hasTarget = instances.some(ci => !ci.finalMutationId && (ci.appliedMutations || []).length > 0);
         if (hasTarget) return { type: 'Rest_Repair' };
       }
       if (choice === 'stabilise' && deck) {
         const instances = Object.values(deck.cardInstances || {});
-        const hasTarget = instances.some(ci =>
-          !ci.finalMutationId && (ci.finalMutationCountdown ?? 8) <= 3
-        );
+        const hasTarget = instances.some(ci => {
+          if (ci.finalMutationId) return false;
+          const maxUse = getCardUseCounterLimit(ci, data);
+          const useRatio = maxUse > 0 ? ((ci.useCounter ?? maxUse) / maxUse) : 1;
+          return useRatio <= 0.65 || (ci.finalMutationCountdown ?? 8) <= 5;
+        });
         if (hasTarget) return { type: 'Rest_Stabilise' };
       }
     }

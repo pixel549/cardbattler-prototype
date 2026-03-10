@@ -782,6 +782,8 @@ function CardChoiceTile({
   onClick,
   disabled = false,
   price = null,
+  statusLabel = null,
+  statusColor = C.textMuted,
   selected = false,
 }) {
   if (!card) return null;
@@ -896,7 +898,7 @@ function CardChoiceTile({
         {card.costRAM ?? 0}
       </div>
 
-      {price != null && (
+      {(statusLabel || price != null) && (
         <div
           style={{
             position: 'absolute',
@@ -904,16 +906,16 @@ function CardChoiceTile({
             right: 10,
             padding: '4px 8px',
             borderRadius: 999,
-            backgroundColor: `${C.yellow}18`,
-            border: `1px solid ${C.yellow}45`,
-            color: C.yellow,
+            backgroundColor: statusLabel ? `${statusColor}16` : `${C.yellow}18`,
+            border: `1px solid ${statusLabel ? `${statusColor}40` : `${C.yellow}45`}`,
+            color: statusLabel ? statusColor : C.yellow,
             fontFamily: MONO,
             fontWeight: 700,
             fontSize: 11,
             zIndex: 2,
           }}
         >
-          {price}g
+          {statusLabel || `${price}g`}
         </div>
       )}
 
@@ -2270,13 +2272,15 @@ function ShopScreen({ state, data, onAction }) {
               {offers.map((offer, i) => {
                 if (offer.kind !== 'Card') return null;
                 const card = data.cards?.[offer.defId];
-                const canAfford = gold >= offer.price;
+                const soldOut = offer.sold === true;
+                const canAfford = !soldOut && gold >= offer.price;
                 return (
                   <CardChoiceTile
                     key={i}
                     cardId={offer.defId}
                     card={card}
-                    price={offer.price}
+                    price={soldOut ? null : offer.price}
+                    statusLabel={soldOut ? 'SOLD' : null}
                     onClick={() => canAfford && onAction({ type: 'Shop_BuyOffer', index: i })}
                     disabled={!canAfford}
                   />
@@ -2418,7 +2422,8 @@ function ShopScreen({ state, data, onAction }) {
                 const tier = relic?.rarity || relic?.tier || 'common';
                 const tierColors = { boss: C.red, rare: C.purple, uncommon: C.yellow };
                 const col = tierColors[tier] || C.cyan;
-                const canAfford = gold >= offer.price;
+                const soldOut = offer.sold === true;
+                const canAfford = !soldOut && gold >= offer.price;
                 return (
                   <button
                     key={i}
@@ -2452,6 +2457,11 @@ function ShopScreen({ state, data, onAction }) {
                           <span style={{ fontFamily: MONO, fontSize: 10, color: C.textMuted, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                             [{tier}]
                           </span>
+                          {soldOut && (
+                            <span style={{ fontFamily: MONO, fontSize: 10, color: C.textMuted, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                              [sold]
+                            </span>
+                          )}
                         </div>
                         <div style={{ fontFamily: MONO, marginTop: 2, color: C.textMuted, fontSize: 12, lineHeight: 1.45 }}>
                           {relic?.description || ''}
@@ -3270,10 +3280,14 @@ function EventScreen({ state, data, onAction }) {
 // ============================================================
 
 const DECK_OP_LABELS = {
+  RemoveCard:            { label: 'REMOVE A CARD',    desc: 'The chosen card will be permanently deleted.', color: '#ff4444' },
   RemoveSelectedCard:    { label: 'REMOVE A CARD',    desc: 'The chosen card will be permanently deleted.', color: '#ff4444' },
-  RepairSelectedCard:    { label: 'REPAIR A CARD',    desc: 'Restore 35% of the chosen card\'s max use counter.', color: '#00f0ff' },
-  StabiliseSelectedCard: { label: 'STABILISE A CARD', desc: 'Add 2 to the chosen card\'s final mutation countdown.', color: '#b44aff' },
-  AccelerateSelectedCard:{ label: 'ACCELERATE A CARD',desc: 'Reduce the chosen card\'s final mutation countdown by 2.', color: '#ff6b00' },
+  Repair:                { label: 'REPAIR A CARD',    desc: 'Remove the chosen card\'s latest applied mutation.', color: '#00f0ff' },
+  RepairSelectedCard:    { label: 'REPAIR A CARD',    desc: 'Remove the chosen card\'s latest applied mutation.', color: '#00f0ff' },
+  Stabilise:             { label: 'STABILISE A CARD', desc: 'Extend the chosen card\'s use and final mutation clocks by 10%.', color: '#b44aff' },
+  StabiliseSelectedCard: { label: 'STABILISE A CARD', desc: 'Extend the chosen card\'s use and final mutation clocks by 10%.', color: '#b44aff' },
+  Accelerate:            { label: 'ACCELERATE A CARD',desc: 'Reduce the chosen card\'s use and final mutation clocks by 10%.', color: '#ff6b00' },
+  AccelerateSelectedCard:{ label: 'ACCELERATE A CARD',desc: 'Reduce the chosen card\'s use and final mutation clocks by 10%.', color: '#ff6b00' },
 };
 
 function DeckPickerOverlay({ state, data, onAction }) {

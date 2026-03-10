@@ -49,6 +49,136 @@ export function normalizeDeckServiceId(rawId) {
   }
 }
 
+const REPEATABLE_SHOP_SERVICE_IDS = new Set(["Repair", "Stabilise", "Accelerate"]);
+
+function isRepeatableShopService(serviceId) {
+  return REPEATABLE_SHOP_SERVICE_IDS.has(normalizeDeckServiceId(serviceId));
+}
+
+function getCardUseCounterState(data, ci) {
+  const maxValue = getCardUseCounterLimit(data, ci);
+  const currentValue = Math.max(0, Math.min(maxValue, Number(ci?.useCounter ?? maxValue)));
+  return { currentValue, maxValue };
+}
+
+function getCardFinalCountdownState(data, ci) {
+  const baseValue = getCardFinalCountdownBase(data, ci);
+  const currentValue = Math.max(0, Math.min(999, Number(ci?.finalMutationCountdown ?? baseValue)));
+  return { currentValue, baseValue, maxValue: 999 };
+}
+
+function getTenPercentDelta(value) {
+  const currentValue = Math.max(0, Number(value ?? 0));
+  if (currentValue <= 0) return 0;
+  return Math.max(1, Math.round(currentValue * 0.1));
+}
+
+function previewMutationClockScale(data, ci, direction = "up") {
+  const useState = getCardUseCounterState(data, ci);
+  const finalState = getCardFinalCountdownState(data, ci);
+  const useDelta = getTenPercentDelta(useState.currentValue);
+  const finalDelta = getTenPercentDelta(finalState.currentValue);
+  const increase = direction === "up";
+  const nextUseCounter = increase
+    ? Math.max(0, Math.min(useState.maxValue, useState.currentValue + useDelta))
+    : Math.max(0, Math.min(useState.maxValue, useState.currentValue - useDelta));
+  const nextFinalCountdown = increase
+    ? Math.max(0, Math.min(finalState.maxValue, finalState.currentValue + finalDelta))
+    : Math.max(0, Math.min(finalState.maxValue, finalState.currentValue - finalDelta));
+
+  return {
+    currentUseCounter: useState.currentValue,
+    nextUseCounter,
+    maxUseCounter: useState.maxValue,
+    useCounterChange: nextUseCounter - useState.currentValue,
+    currentFinalCountdown: finalState.currentValue,
+    nextFinalCountdown,
+    finalCountdownChange: nextFinalCountdown - finalState.currentValue,
+    changed: nextUseCounter !== useState.currentValue || nextFinalCountdown !== finalState.currentValue,
+  };
+}
+
+function previewRepairMutationRemoval(data, ci) {
+  const mutationIds = Array.isArray(ci?.appliedMutations) ? ci.appliedMutations : [];
+  const removedMutationId = mutationIds[mutationIds.length - 1] ?? null;
+  if (!removedMutationId) {
+    return {
+      eligible: false,
+      reason: "No applied mutations to remove.",
+    };
+  }
+
+  const removedMutation = data?.mutations?.[removedMutationId] ?? null;
+  const nextAppliedMutations = mutationIds.slice(0, -1);
+  const useState = getCardUseCounterState(data, ci);
+  const finalState = getCardFinalCountdownState(data, ci);
+  const nextUseCounterMax = getCardUseCounterLimit(data, { ...ci, appliedMutations: nextAppliedMutations });
+  const nextUseCounter = Math.max(
+    0,
+    Math.min(
+      nextUseCounterMax,
+      useState.currentValue - Number(removedMutation?.useCounterDelta ?? 0),
+    ),
+  );
+  const nextFinalCountdown = Math.max(
+    0,
+    Math.min(
+      finalState.maxValue,
+      finalState.currentValue - Number(removedMutation?.finalCountdownDelta ?? 0),
+    ),
+  );
+
+  return {
+    eligible: true,
+    removedMutationId,
+    removedMutationName: removedMutation?.name ?? removedMutationId,
+    currentMutationCount: mutationIds.length,
+    nextMutationCount: nextAppliedMutations.length,
+    nextAppliedMutations,
+    currentUseCounter: useState.currentValue,
+    nextUseCounter,
+    maxUseCounter: nextUseCounterMax,
+    currentFinalCountdown: finalState.currentValue,
+    nextFinalCountdown,
+    currentRamCostDelta: Number(ci?.ramCostDelta ?? 0),
+    nextRamCostDelta: Number(ci?.ramCostDelta ?? 0) - Number(removedMutation?.ramCostDelta ?? 0),
+  };
+}
+
+function getShopOfferPrice(offer) {
+  return Math.max(0, Number(offer?.price ?? 0));
+}
+
+function markShopCardOfferSold(shop, defId) {
+  if (!shop?.offers || !defId) return;
+  for (const offer of shop.offers) {
+    if (offer?.kind === "Card" && offer?.defId === defId) offer.sold = true;
+  }
+}
+
+function getShopServiceOffer(shop, serviceId, offerIndex = null) {
+  const normalizedId = normalizeDeckServiceId(serviceId);
+  if (Number.isInteger(offerIndex)) {
+    const indexedOffer = shop?.offers?.[offerIndex];
+    if (indexedOffer?.kind === "Service" && normalizeDeckServiceId(indexedOffer.serviceId) === normalizedId) {
+      return indexedOffer;
+    }
+  }
+  return (shop?.offers || []).find(
+    (offer) => offer?.kind === "Service" && normalizeDeckServiceId(offer.serviceId) === normalizedId,
+  ) || null;
+}
+
+function advanceRepeatableShopServiceOffer(shop, serviceId, offerIndex = null, paidPrice = null) {
+  if (!isRepeatableShopService(serviceId)) return;
+  const offer = getShopServiceOffer(shop, serviceId, offerIndex);
+  if (!offer) return;
+  const currentPrice = Math.max(0, Number(paidPrice ?? offer.price ?? offer.basePrice ?? 0));
+  offer.basePrice = Math.max(0, Number(offer.basePrice ?? currentPrice));
+  offer.timesPurchased = Math.max(0, Number(offer.timesPurchased ?? 0)) + 1;
+  offer.price = Math.max(0, Math.ceil(currentPrice * 2));
+}
+
 function getServiceCardPreview(serviceId, data, ci) {
   const normalizedId = normalizeDeckServiceId(serviceId);
   if (!ci) {
@@ -72,59 +202,40 @@ function getServiceCardPreview(serviceId, data, ci) {
   }
 
   if (normalizedId === "Repair") {
-    const maxUse = getCardUseCounterLimit(data, ci);
-    const currentValue = Math.max(0, Math.min(maxUse, Number(ci.useCounter ?? maxUse)));
-    const nextValue = Math.max(0, Math.min(maxUse, currentValue + Math.ceil(maxUse * 0.35)));
-    const delta = nextValue - currentValue;
+    const preview = previewRepairMutationRemoval(data, ci);
     return {
       serviceId: normalizedId,
-      eligible: delta > 0,
-      currentValue,
-      nextValue,
-      delta,
-      maxValue: maxUse,
-      summary: delta > 0
-        ? `Restore ${delta} use (${currentValue} -> ${nextValue}/${maxUse}).`
-        : "Already at full use counter.",
-      reason: delta > 0 ? null : "Already at full use counter.",
+      ...preview,
+      summary: preview.eligible
+        ? `Remove latest mutation (${preview.removedMutationName}). Use ${preview.currentUseCounter} -> ${preview.nextUseCounter}/${preview.maxUseCounter}; final ${preview.currentFinalCountdown} -> ${preview.nextFinalCountdown}.`
+        : "No applied mutations to remove.",
+      reason: preview.eligible ? null : preview.reason,
     };
   }
 
   if (normalizedId === "Stabilise") {
-    const baseValue = getCardFinalCountdownBase(data, ci);
-    const maxValue = baseValue + 6;
-    const currentValue = Math.max(0, Math.min(maxValue, Number(ci.finalMutationCountdown ?? baseValue)));
-    const nextValue = Math.max(0, Math.min(maxValue, currentValue + 2));
-    const delta = nextValue - currentValue;
+    const preview = previewMutationClockScale(data, ci, "up");
     return {
       serviceId: normalizedId,
-      eligible: delta > 0,
-      currentValue,
-      nextValue,
-      delta,
-      maxValue,
-      summary: delta > 0
-        ? `Add ${delta} to final countdown (${currentValue} -> ${nextValue}).`
-        : "Already at the maximum stabilised countdown.",
-      reason: delta > 0 ? null : "Already at the maximum stabilised countdown.",
+      ...preview,
+      eligible: preview.changed,
+      summary: preview.changed
+        ? `Extend mutation clocks by 10%. Use ${preview.currentUseCounter} -> ${preview.nextUseCounter}/${preview.maxUseCounter}; final ${preview.currentFinalCountdown} -> ${preview.nextFinalCountdown}.`
+        : "Mutation clocks are already at their ceiling.",
+      reason: preview.changed ? null : "Mutation clocks are already at their ceiling.",
     };
   }
 
   if (normalizedId === "Accelerate") {
-    const baseValue = getCardFinalCountdownBase(data, ci);
-    const currentValue = Math.max(0, Math.min(999, Number(ci.finalMutationCountdown ?? baseValue)));
-    const nextValue = Math.max(0, Math.min(999, currentValue - 2));
-    const delta = currentValue - nextValue;
+    const preview = previewMutationClockScale(data, ci, "down");
     return {
       serviceId: normalizedId,
-      eligible: delta > 0,
-      currentValue,
-      nextValue,
-      delta,
-      summary: delta > 0
-        ? `Reduce final countdown by ${delta} (${currentValue} -> ${nextValue}).`
-        : "Already at the minimum final countdown.",
-      reason: delta > 0 ? null : "Already at the minimum final countdown.",
+      ...preview,
+      eligible: preview.changed,
+      summary: preview.changed
+        ? `Reduce mutation clocks by 10%. Use ${preview.currentUseCounter} -> ${preview.nextUseCounter}/${preview.maxUseCounter}; final ${preview.currentFinalCountdown} -> ${preview.nextFinalCountdown}.`
+        : "Mutation clocks are already at zero.",
+      reason: preview.changed ? null : "Mutation clocks are already at zero.",
     };
   }
 
@@ -201,19 +312,22 @@ export function getServiceOfferPreview(serviceId, state, data) {
 
   const eligibleCount = targetCards.filter((entry) => entry.eligible).length;
   const countLabel = `${eligibleCount} eligible card${eligibleCount === 1 ? "" : "s"}`;
+  const repeatableDetail = isRepeatableShopService(normalizedId)
+    ? " Gold is charged when you apply the service. Cost doubles after each use in this shop."
+    : " Gold is charged when you apply the service.";
   const genericDetail = targetCards.length > 0
-    ? `${countLabel}. Gold is charged when you apply the service.`
+    ? `${countLabel}.${repeatableDetail}`
     : "No cards are available to target.";
 
   let summary = "Choose a card.";
   if (normalizedId === "RemoveCard") {
     summary = "Choose 1 card and permanently delete it from your deck.";
   } else if (normalizedId === "Repair") {
-    summary = "Choose 1 non-final card. Restore 35% of its max use counter.";
+    summary = "Choose 1 mutated non-final card. Remove its latest applied mutation.";
   } else if (normalizedId === "Stabilise") {
-    summary = "Choose 1 non-final card. Add 2 to its final mutation countdown.";
+    summary = "Choose 1 non-final card. Extend its use and final mutation clocks by 10%.";
   } else if (normalizedId === "Accelerate") {
-    summary = "Choose 1 non-final card. Reduce its final mutation countdown by 2.";
+    summary = "Choose 1 non-final card. Reduce its use and final mutation clocks by 10%.";
   }
 
   return {
@@ -640,13 +754,13 @@ function makeShop(data, seed, relicIds = [], act = 1) {
   }
 
   const offers = [
-    { kind: "Card", defId: rng.pick(ids), price: p(50) },
-    { kind: "Card", defId: rng.pick(ids), price: p(50) },
-    { kind: "Service", serviceId: "RemoveCard", price: p(75), requiresCard: true },
-    { kind: "Service", serviceId: "Repair", price: p(60), requiresCard: true },
-    { kind: "Service", serviceId: "Stabilise", price: p(60), requiresCard: true },
-    { kind: "Service", serviceId: "Accelerate", price: p(40), requiresCard: true },
-    { kind: "Service", serviceId: "Heal", price: p(60), requiresCard: false },
+    { kind: "Card", defId: rng.pick(ids), price: p(50), sold: false },
+    { kind: "Card", defId: rng.pick(ids), price: p(50), sold: false },
+    { kind: "Service", serviceId: "RemoveCard", price: p(75), basePrice: p(75), requiresCard: true },
+    { kind: "Service", serviceId: "Repair", price: p(60), basePrice: p(60), requiresCard: true, timesPurchased: 0 },
+    { kind: "Service", serviceId: "Stabilise", price: p(60), basePrice: p(60), requiresCard: true, timesPurchased: 0 },
+    { kind: "Service", serviceId: "Accelerate", price: p(40), basePrice: p(40), requiresCard: true, timesPurchased: 0 },
+    { kind: "Service", serviceId: "Heal", price: p(60), basePrice: p(60), requiresCard: false },
   ];
   if (relicOffer) offers.push(relicOffer);
   return { offers };
@@ -711,7 +825,10 @@ function service_RepairCard(state, data) {
   if (!preview.eligible) return false;
   const ci = state.deck.cardInstances[sel];
   if (!ci) return false;
-  ci.useCounter = preview.nextValue;
+  ci.appliedMutations = [...(preview.nextAppliedMutations || [])];
+  ci.ramCostDelta = Number(preview.nextRamCostDelta ?? ci.ramCostDelta ?? 0);
+  ci.useCounter = preview.nextUseCounter;
+  ci.finalMutationCountdown = preview.nextFinalCountdown;
   return true;
 }
 function service_StabiliseCard(state, data) {
@@ -721,7 +838,8 @@ function service_StabiliseCard(state, data) {
   if (!preview.eligible) return false;
   const ci = state.deck.cardInstances[sel];
   if (!ci) return false;
-  ci.finalMutationCountdown = preview.nextValue;
+  ci.useCounter = preview.nextUseCounter;
+  ci.finalMutationCountdown = preview.nextFinalCountdown;
   return true;
 }
 function service_AccelerateCard(state, data) {
@@ -731,7 +849,8 @@ function service_AccelerateCard(state, data) {
   if (!preview.eligible) return false;
   const ci = state.deck.cardInstances[sel];
   if (!ci) return false;
-  ci.finalMutationCountdown = preview.nextValue;
+  ci.useCounter = preview.nextUseCounter;
+  ci.finalMutationCountdown = preview.nextFinalCountdown;
   return true;
 }
 function service_DuplicateCard(state, rng) {
@@ -1205,19 +1324,22 @@ export function dispatchGame(stateIn, data, action) {
       if (state.mode !== "Shop" || !state.shop || !state.run || !state.deck) return state;
       const offer = state.shop.offers[action.index];
       if (!offer) return state;
-      if (state.run.gold < offer.price) { log({ t: "Info", msg: "Not enough gold" }); return state; }
+      if (offer.sold) { log({ t: "Info", msg: "Offer sold out" }); return state; }
+      const offerPrice = getShopOfferPrice(offer);
+      if (state.run.gold < offerPrice) { log({ t: "Info", msg: "Not enough gold" }); return state; }
 
       if (offer.kind === "Card") {
-        state.run.gold -= offer.price;
+        state.run.gold -= offerPrice;
         const rng = new RNG((state.run.seed ^ state.run.floor ^ 0xC0FFEE) >>> 0);
         addCardToRunDeck(data, state.deck, rng, offer.defId);
+        markShopCardOfferSold(state.shop, offer.defId);
         log({ t: "Info", msg: `Bought card: ${offer.defId}` });
         return state;
       }
 
       if (offer.kind === "Relic") {
         if (state.run.relicIds.includes(offer.relicId)) return state; // already owned
-        state.run.gold -= offer.price;
+        state.run.gold -= offerPrice;
         state.run.relicIds.push(offer.relicId);
         // Apply run-level stat mods (same logic as Reward_PickRelic)
         const boughtRelic = data.relics?.[offer.relicId];
@@ -1236,6 +1358,7 @@ export function dispatchGame(stateIn, data, action) {
         if (bm.travelHpCostDelta) {
           state.run.travelHpCost = Math.max(0, (state.run.travelHpCost || 2) + bm.travelHpCostDelta);
         }
+        offer.sold = true;
         log({ t: "Info", msg: `Bought relic: ${offer.relicId}` });
         return state;
       }
@@ -1247,8 +1370,8 @@ export function dispatchGame(stateIn, data, action) {
           log({ t: "Info", msg: "Service unavailable: Heal" });
           return state;
         }
-        state.run.gold -= offer.price;
         if (!service_HealPlayer(state)) return state;
+        state.run.gold -= offerPrice;
         log({ t: "Info", msg: `Bought service: Heal (+${healPreview.amount} HP)` });
         return state;
       }
@@ -1261,7 +1384,8 @@ export function dispatchGame(stateIn, data, action) {
       }
       state.deckView = { selectedInstanceId: null, returnMode: "Shop" };
       state.shop.pendingService = offer.serviceId;
-      state.shop.pendingPrice = offer.price;
+      state.shop.pendingPrice = offerPrice;
+      state.shop.pendingOfferIndex = action.index;
       log({ t: "Info", msg: `Select a card for service: ${offer.serviceId}` });
       return state;
     }
@@ -1393,6 +1517,7 @@ export function dispatchGame(stateIn, data, action) {
       if (state.mode === "Shop" && state.shop?.pendingService) {
         delete state.shop.pendingService;
         delete state.shop.pendingPrice;
+        delete state.shop.pendingOfferIndex;
         log({ t: "Info", msg: "Cancelled shop service selection" });
       }
       state.deckView = null;
@@ -1409,6 +1534,7 @@ export function dispatchGame(stateIn, data, action) {
       if (state.mode === "Shop" && state.shop?.pendingService) {
         const serviceId = state.shop.pendingService;
         const servicePrice = Math.max(0, Number(state.shop.pendingPrice ?? 0));
+        const serviceOfferIndex = Number.isInteger(state.shop.pendingOfferIndex) ? state.shop.pendingOfferIndex : null;
         if ((state.run?.gold ?? 0) < servicePrice) {
           log({ t: "Info", msg: `Not enough gold for service: ${serviceId}` });
           return state;
@@ -1420,9 +1546,11 @@ export function dispatchGame(stateIn, data, action) {
         if (serviceId === "Accelerate") ok = service_AccelerateCard(state, data);
         if (!ok) { log({ t: "Info", msg: `Service failed: ${serviceId}` }); return state; }
         state.run.gold -= servicePrice;
+        advanceRepeatableShopServiceOffer(state.shop, serviceId, serviceOfferIndex, servicePrice);
         log({ t: "Info", msg: `Applied service: ${serviceId}` });
         delete state.shop.pendingService;
         delete state.shop.pendingPrice;
+        delete state.shop.pendingOfferIndex;
         state.deckView = null;
       }
 

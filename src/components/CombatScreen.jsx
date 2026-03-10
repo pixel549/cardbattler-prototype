@@ -1231,7 +1231,7 @@ function EnemyCard({ enemy, isTargeted, onClick, actingType, data, compact = fal
         style={{
           position: 'relative',
           flexShrink: 0,
-          width: compact ? 'clamp(82px, 24vw, 104px)' : 'clamp(122px, 19vw, 164px)',
+          width: compact ? 'clamp(74px, 21vw, 92px)' : 'clamp(122px, 19vw, 164px)',
           aspectRatio: '13 / 18',
           padding: 0,
           border: `2px solid ${isTargeted ? C.neonCyan : 'transparent'}`,
@@ -1386,8 +1386,8 @@ function EnemyCard({ enemy, isTargeted, onClick, actingType, data, compact = fal
           ? `0 0 24px ${C.neonCyan}40, inset 0 0 20px ${C.neonCyan}06`
           : `0 2px 12px rgba(0,0,0,0.5)`,
         padding: compact ? '8px 10px' : '10px 14px',
-        minWidth: compact ? 92 : 140,
-        maxWidth: compact ? 116 : 180,
+        minWidth: compact ? 82 : 140,
+        maxWidth: compact ? 102 : 180,
         display: 'flex',
         flexDirection: 'column',
         gap: '6px',
@@ -1682,6 +1682,244 @@ function EnemySummaryStrip({ enemy, intentBadges = EMPTY_ARRAY, onToggleDetails,
         >
           {detailsOpen ? 'Hide' : 'Info'}
         </button>
+      </div>
+    </div>
+  );
+}
+
+function EnemyDetailDialog({
+  enemy,
+  data,
+  intentBadges = EMPTY_ARRAY,
+  intentCardDef = null,
+  onClose,
+  dialogRef,
+  closeButtonRef,
+}) {
+  if (!enemy) return null;
+
+  const imgSrc = getEnemyImage(enemy.enemyDefId);
+  const firewallStacks = enemy?.statuses?.find((status) => status.id === 'Firewall')?.stacks ?? 0;
+  const nonFirewallStatuses = (enemy?.statuses || []).filter((status) => status.id !== 'Firewall');
+  const intentColor = getIntentColor(enemy.intent?.type);
+  const intentLines = intentCardDef?.effects?.length
+    ? formatEffectsLong(intentCardDef.effects)
+    : intentBadges.map((badge) => badge.description).filter(Boolean);
+
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 320,
+        background: 'rgba(2,6,12,0.94)',
+        backdropFilter: 'blur(10px)',
+      }}
+      onClick={onClose}
+    >
+      <div
+        ref={dialogRef}
+        onClick={(event) => event.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label={enemy?.name ? `${enemy.name} dossier` : 'Enemy dossier'}
+        tabIndex={-1}
+        style={{
+          height: '100%',
+          overflowY: 'auto',
+          padding: 'max(env(safe-area-inset-top, 0px), 10px) 12px max(env(safe-area-inset-bottom, 0px), 16px)',
+        }}
+      >
+        <div style={{ width: 'min(100%, 520px)', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
+              <span style={{ fontFamily: MONO, fontSize: 9, fontWeight: 700, letterSpacing: '0.16em', color: C.textDim }}>
+                ENEMY DOSSIER
+              </span>
+              <span style={{ fontFamily: MONO, fontSize: 18, fontWeight: 700, color: C.textPrimary, lineHeight: 1.1 }}>
+                {enemy.name ?? 'Unknown Target'}
+              </span>
+              <span style={{ fontFamily: MONO, fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', color: intentColor, textTransform: 'uppercase' }}>
+                {enemy.intent?.type || 'Intent'}{intentCardDef?.name ? ` · ${intentCardDef.name}` : ''}
+              </span>
+            </div>
+            <button
+              ref={closeButtonRef}
+              onClick={onClose}
+              aria-label="Close enemy dossier"
+              style={{
+                padding: '8px 12px',
+                borderRadius: 999,
+                border: `1px solid ${C.borderLight}`,
+                background: 'rgba(8,12,20,0.88)',
+                color: C.textSecondary,
+                fontFamily: MONO,
+                fontSize: 10,
+                fontWeight: 700,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+              }}
+            >
+              Close
+            </button>
+          </div>
+
+          <div
+            style={{
+              position: 'relative',
+              minHeight: 'min(42vh, 320px)',
+              borderRadius: 22,
+              overflow: 'hidden',
+              background: imgSrc
+                ? C.bgCard
+                : `linear-gradient(145deg, ${intentColor}16 0%, rgba(10,12,20,0.98) 58%, rgba(10,12,20,1) 100%)`,
+              border: `1px solid ${intentColor}34`,
+              boxShadow: `0 18px 36px rgba(0,0,0,0.34), 0 0 26px ${intentColor}18`,
+            }}
+          >
+            {imgSrc && (
+              <img
+                src={imgSrc}
+                alt={enemy.name ?? 'Enemy'}
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  objectPosition: 'center center',
+                  display: 'block',
+                  filter: 'saturate(1.04) contrast(1.04) brightness(0.88)',
+                }}
+              />
+            )}
+
+            <div
+              style={{
+                position: 'absolute',
+                inset: 0,
+                background: `
+                  radial-gradient(circle at 22% 18%, ${intentColor}28 0%, transparent 32%),
+                  linear-gradient(180deg, rgba(8,10,16,0.1) 0%, rgba(8,10,16,0.18) 28%, rgba(8,10,16,0.5) 62%, rgba(8,10,16,0.94) 100%)
+                `,
+              }}
+            />
+
+            <div style={{ position: 'absolute', left: 12, right: 12, bottom: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                <div style={{ padding: '4px 8px', borderRadius: 999, background: `${getHealthColor(enemy.hp, enemy.maxHP)}16`, border: `1px solid ${getHealthColor(enemy.hp, enemy.maxHP)}34`, color: getHealthColor(enemy.hp, enemy.maxHP), fontFamily: MONO, fontSize: 9, fontWeight: 700 }}>
+                  HP {enemy.hp}/{enemy.maxHP}
+                </div>
+                <div style={{ padding: '4px 8px', borderRadius: 999, background: firewallStacks > 0 ? `${C.neonCyan}16` : 'rgba(255,255,255,0.06)', border: `1px solid ${firewallStacks > 0 ? `${C.neonCyan}34` : C.borderLight}`, color: firewallStacks > 0 ? C.neonCyan : C.textSecondary, fontFamily: MONO, fontSize: 9, fontWeight: 700 }}>
+                  FW {firewallStacks}
+                </div>
+                <div style={{ padding: '4px 8px', borderRadius: 999, background: `${intentColor}18`, border: `1px solid ${intentColor}34`, color: intentColor, fontFamily: MONO, fontSize: 9, fontWeight: 700, textTransform: 'uppercase' }}>
+                  {enemy.intent?.type || 'Intent'}
+                </div>
+              </div>
+              <HealthBar current={enemy.hp} max={enemy.maxHP} height={14} showText={false} glow={false} />
+              <FirewallBar current={firewallStacks} max={Math.max(1, enemy.maxHP || 1)} height={10} showText={false} glow={false} />
+            </div>
+          </div>
+
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 8,
+              padding: '12px 14px',
+              borderRadius: 18,
+              background: 'linear-gradient(180deg, rgba(8,12,20,0.97) 0%, rgba(5,8,14,0.95) 100%)',
+              border: `1px solid ${C.borderLight}`,
+              boxShadow: '0 10px 26px rgba(0,0,0,0.24)',
+            }}
+          >
+            <div style={{ fontFamily: MONO, fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', color: C.textDim }}>
+              UPCOMING ACTION
+            </div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {intentBadges.length > 0 ? intentBadges.map((badge, index) => (
+                <IntentEffectBadge key={`${enemy.id}-dialog-badge-${index}`} badge={badge} />
+              )) : (
+                <div style={{ fontFamily: MONO, fontSize: 11, color: C.textSecondary }}>
+                  No intent details available.
+                </div>
+              )}
+            </div>
+            {intentLines.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {intentLines.map((line, index) => (
+                  <div key={`${enemy.id}-dialog-line-${index}`} style={{ fontFamily: MONO, fontSize: 12, color: '#c7cfda', lineHeight: 1.5 }}>
+                    {renderKeywordText(line, `enemy-intel-line-${index}`)}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 8,
+              padding: '12px 14px',
+              borderRadius: 18,
+              background: 'linear-gradient(180deg, rgba(8,12,20,0.97) 0%, rgba(5,8,14,0.95) 100%)',
+              border: `1px solid ${C.borderLight}`,
+              boxShadow: '0 10px 26px rgba(0,0,0,0.24)',
+            }}
+          >
+            <div style={{ fontFamily: MONO, fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', color: C.textDim }}>
+              ACTIVE EFFECTS
+            </div>
+            {nonFirewallStatuses.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {nonFirewallStatuses.map((status, index) => (
+                    <StatusBadge key={`${status.id}-dialog-chip-${index}`} status={status} size="small" />
+                  ))}
+                </div>
+                {nonFirewallStatuses.map((status, index) => {
+                  const meta = getStatusMeta(status.id);
+                  return (
+                    <div
+                      key={`${status.id}-dialog-row-${index}`}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 10,
+                        padding: '8px 10px',
+                        borderRadius: 12,
+                        background: 'rgba(8,12,20,0.72)',
+                        border: `1px solid ${C.borderLight}`,
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                        <span style={{ color: meta.color, fontSize: 16, lineHeight: 1 }}>{meta.icon}</span>
+                        <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                          <span style={{ fontFamily: MONO, fontSize: 11, fontWeight: 700, color: C.textPrimary }}>
+                            {humanizeStatusId(status.id)}
+                          </span>
+                          <span style={{ fontFamily: MONO, fontSize: 9, color: C.textSecondary }}>
+                            {meta.short}
+                          </span>
+                        </div>
+                      </div>
+                      <div style={{ fontFamily: MONO, fontSize: 12, fontWeight: 700, color: meta.color }}>
+                        x{status.stacks ?? 0}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div style={{ fontFamily: MONO, fontSize: 11, color: C.textSecondary }}>
+                No active modifiers on this enemy right now.
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -2318,6 +2556,52 @@ function CombatActionButton({ label, onClick, disabled = false, active = false, 
     >
       {label}
     </button>
+  );
+}
+
+function PortraitCombatRail({ interactionLocked, onEndTurn, deckMenuOpen = false, onToggleDeckMenu }) {
+  return (
+    <div
+      style={{
+        minWidth: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 8,
+        padding: '7px',
+        borderRadius: 14,
+        background: 'linear-gradient(180deg, rgba(8,12,20,0.97) 0%, rgba(5,8,14,0.96) 100%)',
+        border: `1px solid ${C.neonCyan}28`,
+        boxShadow: `0 8px 22px rgba(0,0,0,0.26), 0 0 18px ${C.neonCyan}10`,
+      }}
+    >
+      <CombatActionButton
+        label="End Turn"
+        onClick={onEndTurn}
+        disabled={interactionLocked}
+        tone="primary"
+        compact={true}
+        style={{
+          width: '100%',
+          minHeight: 68,
+          padding: '10px 6px',
+          fontSize: 10,
+          lineHeight: 1.1,
+        }}
+      />
+      <CombatActionButton
+        label="Deck"
+        onClick={() => onToggleDeckMenu?.(!deckMenuOpen)}
+        active={deckMenuOpen}
+        tone="orange"
+        compact={true}
+        style={{
+          width: '100%',
+          minHeight: 44,
+          padding: '8px 6px',
+          fontSize: 10,
+        }}
+      />
+    </div>
   );
 }
 
@@ -4558,7 +4842,7 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
   const targetedIntentCardDef = targetedEnemy ? data?.cards?.[targetedEnemy.intent?.cardDefId] : null;
   const targetedIntentBadges = targetedEnemy ? getIntentEffectBadges(targetedEnemy, targetedIntentCardDef) : EMPTY_ARRAY;
 
-  useDialogAccessibility(isPhonePortrait && enemyInfoOpen && !!targetedEnemy, {
+  useDialogAccessibility(isPhoneLayout && enemyInfoOpen && !!targetedEnemy, {
     containerRef: enemyDialogRef,
     initialFocusRef: enemyDialogCloseRef,
     onClose: () => setEnemyInfoOpen(false),
@@ -4908,8 +5192,8 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
             isTargeted={i === targetedEnemyIndex}
             onClick={() => {
               if (interactionLocked) return;
-              if (isPhonePortrait && i === targetedEnemyIndex) {
-                setEnemyInfoOpen((prev) => !prev);
+              if (isPhoneLayout && i === targetedEnemyIndex) {
+                setEnemyInfoOpen(true);
                 return;
               }
               setTargetedEnemyIndex(i);
@@ -4930,15 +5214,6 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
       enemy={targetedEnemy}
       intentBadges={targetedIntentBadges}
       compact={isPhoneLayout}
-    />
-  );
-
-  const portraitEnemySummary = (
-    <EnemySummaryStrip
-      enemy={targetedEnemy}
-      intentBadges={targetedIntentBadges}
-      detailsOpen={enemyInfoOpen}
-      onToggleDetails={() => setEnemyInfoOpen((prev) => !prev)}
     />
   );
 
@@ -4980,24 +5255,64 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
         width: '100%',
       }}
     >
-      <MobilePlayerHud
-        player={player}
-        ram={ram}
-        maxRam={maxRam}
-        drawCount={drawPile.length}
-        discardCount={discardPile.length}
-        exhaustCount={exhaustPile.length}
-        powerPile={powerPile}
-        cardInstances={cardInstances}
-        data={data}
-        layoutMode={layoutMode}
-        interactionLocked={interactionLocked}
-        onEndTurn={isPhonePortrait ? handleEndTurn : undefined}
-        deckMenuOpen={isPhonePortrait ? deckMenuOpen : false}
-        onToggleDeckMenu={isPhonePortrait ? setDeckMenuOpen : undefined}
-        onViewPile={isPhonePortrait ? setViewingPile : undefined}
-        deckMenuRef={portraitDeckMenuRef}
-      />
+      {isPhonePortrait ? (
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'minmax(0, 3fr) minmax(92px, 1fr)',
+            gap: 8,
+            alignItems: 'stretch',
+          }}
+        >
+          <MobilePlayerHud
+            player={player}
+            ram={ram}
+            maxRam={maxRam}
+            drawCount={drawPile.length}
+            discardCount={discardPile.length}
+            exhaustCount={exhaustPile.length}
+            powerPile={powerPile}
+            cardInstances={cardInstances}
+            data={data}
+            layoutMode={layoutMode}
+            interactionLocked={interactionLocked}
+          />
+          <PortraitCombatRail
+            interactionLocked={interactionLocked}
+            onEndTurn={handleEndTurn}
+            deckMenuOpen={deckMenuOpen}
+            onToggleDeckMenu={setDeckMenuOpen}
+          />
+        </div>
+      ) : (
+        <MobilePlayerHud
+          player={player}
+          ram={ram}
+          maxRam={maxRam}
+          drawCount={drawPile.length}
+          discardCount={discardPile.length}
+          exhaustCount={exhaustPile.length}
+          powerPile={powerPile}
+          cardInstances={cardInstances}
+          data={data}
+          layoutMode={layoutMode}
+          interactionLocked={interactionLocked}
+        />
+      )}
+      {isPhonePortrait && deckMenuOpen && (
+        <div
+          ref={portraitDeckMenuRef}
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+            gap: 6,
+          }}
+        >
+          <PileCountButton label="Draw" count={drawPile.length} color={C.neonCyan} onClick={() => setViewingPile('draw')} compact={true} />
+          <PileCountButton label="Discard" count={discardPile.length} color={C.neonOrange} onClick={() => setViewingPile('discard')} compact={true} />
+          <PileCountButton label="Exhaust" count={exhaustPile.length} color={C.neonRed} onClick={() => setViewingPile('exhaust')} compact={true} />
+        </div>
+      )}
       <CombatUtilityPanel
         handCount={hand.length}
         drawCount={drawPile.length}
@@ -5370,9 +5685,17 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
               justifyContent: 'center',
             }}
           >
-            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div
+              style={{
+                width: '100%',
+                display: 'grid',
+                gridTemplateColumns: 'minmax(0, 1fr) minmax(106px, 30vw)',
+                gap: 8,
+                alignItems: 'start',
+              }}
+            >
               {enemyCardsStrip}
-              {portraitEnemySummary}
+              {enemyFocusPanel}
             </div>
           </div>
 
@@ -5451,63 +5774,16 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
         </>
       )}
 
-      {isPhonePortrait && enemyInfoOpen && targetedEnemy && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 320,
-            display: 'flex',
-            alignItems: 'flex-start',
-            justifyContent: 'center',
-            padding: 'max(env(safe-area-inset-top, 0px), 10px) 8px 8px',
-            background: 'rgba(2,6,12,0.34)',
-            backdropFilter: 'blur(6px)',
-          }}
-          onClick={() => setEnemyInfoOpen(false)}
-        >
-          <div
-            ref={enemyDialogRef}
-            onClick={(event) => event.stopPropagation()}
-            role="dialog"
-            aria-modal="true"
-            aria-label={targetedEnemy?.name ? `${targetedEnemy.name} details` : 'Enemy details'}
-            tabIndex={-1}
-            style={{
-              width: 'min(100%, 360px)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 6,
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <button
-                ref={enemyDialogCloseRef}
-                onClick={() => setEnemyInfoOpen(false)}
-                aria-label="Close enemy details"
-                style={{
-                  padding: '8px 12px',
-                  borderRadius: 999,
-                  border: `1px solid ${C.borderLight}`,
-                  background: 'rgba(8,12,20,0.88)',
-                  color: C.textSecondary,
-                  fontFamily: MONO,
-                  fontSize: 10,
-                  fontWeight: 700,
-                  letterSpacing: '0.08em',
-                  textTransform: 'uppercase',
-                }}
-              >
-                Close
-              </button>
-            </div>
-            <EnemyFocusPanel
-              enemy={targetedEnemy}
-              intentBadges={targetedIntentBadges}
-              compact={false}
-            />
-          </div>
-        </div>
+      {isPhoneLayout && enemyInfoOpen && targetedEnemy && (
+        <EnemyDetailDialog
+          enemy={targetedEnemy}
+          data={data}
+          intentBadges={targetedIntentBadges}
+          intentCardDef={targetedIntentCardDef}
+          onClose={() => setEnemyInfoOpen(false)}
+          dialogRef={enemyDialogRef}
+          closeButtonRef={enemyDialogCloseRef}
+        />
       )}
 
       {/* Pile viewer modal */}

@@ -645,9 +645,10 @@ function CardChoiceTile({
       onClick={onClick}
       disabled={disabled}
       style={{
-        width: `min(100%, ${MENU_CARD_MAX_W}px)`,
+        width: '100%',
+        maxWidth: `${MENU_CARD_MAX_W}px`,
         aspectRatio: MENU_CARD_RATIO,
-        minHeight: 0,
+        minHeight: 216,
         borderRadius: 16,
         overflow: 'hidden',
         textAlign: 'left',
@@ -656,6 +657,10 @@ function CardChoiceTile({
         alignSelf: 'start',
         display: 'flex',
         flexDirection: 'column',
+        boxSizing: 'border-box',
+        padding: 0,
+        appearance: 'none',
+        WebkitAppearance: 'none',
         backgroundColor: C.bgCard,
         border: `2px solid ${selected ? C.yellow : isBricked ? C.red : isDecaying ? C.orange : color}55`,
         boxShadow: selected
@@ -3024,12 +3029,22 @@ function DeckPickerOverlay({ state, data, onAction }) {
   const closeButtonRef = useRef(null);
   const handleClose = useCallback(() => onAction({ type: 'CloseDeck' }), [onAction]);
   const pendingOp = state.event?.pendingSelectOp || state.shop?.pendingService;
+  const [viewportWidth, setViewportWidth] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 1280));
 
   useDialogAccessibility(Boolean(dv), {
     containerRef: dialogRef,
     initialFocusRef: closeButtonRef,
     onClose: handleClose,
   });
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+
+    const syncViewport = () => setViewportWidth(window.innerWidth);
+    syncViewport();
+    window.addEventListener('resize', syncViewport);
+    return () => window.removeEventListener('resize', syncViewport);
+  }, []);
 
   if (!dv) return null;
 
@@ -3054,6 +3069,8 @@ function DeckPickerOverlay({ state, data, onAction }) {
   const canCancel = !pendingOp;
   const closeLabel = canCancel ? 'Close deck' : 'Cancel selection';
   const showLegacyDeckList = state.run?.debugOverrides?.showLegacyDeckList === true;
+  const deckColumnCount = viewportWidth >= 960 ? 3 : 2;
+  const deckGridWidth = deckColumnCount === 3 ? 624 : 412;
 
   return (
     <div
@@ -3118,10 +3135,13 @@ function DeckPickerOverlay({ state, data, onAction }) {
           overflowY: 'auto',
           padding: '12px',
           display: 'grid',
-          gridTemplateColumns: `repeat(auto-fit, minmax(${MENU_CARD_MIN_W}px, ${MENU_CARD_MAX_W}px))`,
+          gridTemplateColumns: `repeat(${deckColumnCount}, minmax(0, 1fr))`,
+          width: '100%',
+          maxWidth: `${deckGridWidth}px`,
+          margin: '0 auto',
           gap: '12px',
           alignContent: 'start',
-          justifyContent: 'center',
+          justifyItems: 'center',
         }}
       >
         {cards.map(({ iid, ci, def }) => (

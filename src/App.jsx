@@ -85,6 +85,7 @@ const AI_EXPORT_OPTIONS_DEFAULTS = {
 const AI_STALL_EXPORT_MS = 15000;
 const AI_STALL_RECOVER_MS = 28000;
 const NODE_AUTOSAVE_KEY = 'cb_node_autosave_v1';
+const FORCE_NEW_RUN_KEY = 'cb_force_new_run_v1';
 const AI_WATCHDOG_IDLE = {
   active: false,
   stagnantMs: 0,
@@ -143,6 +144,31 @@ function readNodeAutosave() {
 
 function clearNodeAutosave() {
   localStorage.removeItem(NODE_AUTOSAVE_KEY);
+}
+
+function queueForcedNewRun(payload) {
+  if (typeof window === 'undefined') return;
+  try {
+    window.sessionStorage.setItem(FORCE_NEW_RUN_KEY, JSON.stringify({
+      requestedAt: Date.now(),
+      ...payload,
+    }));
+  } catch (error) {
+    console.error('Failed to queue forced new run', error);
+  }
+}
+
+function consumeForcedNewRun() {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.sessionStorage.getItem(FORCE_NEW_RUN_KEY);
+    if (!raw) return null;
+    window.sessionStorage.removeItem(FORCE_NEW_RUN_KEY);
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? parsed : null;
+  } catch {
+    return null;
+  }
 }
 
 function getFirewallStacksFromEntity(entity) {
@@ -383,6 +409,10 @@ function buildRunRecord({
   const runRuleMods = getRunMods(data, finalRelicIds);
   const debugSeedActive = state.run?.debugSeed != null;
   const telemetryFlags = [];
+  const recentLog = (state.log || []).slice(-20).map((entry) => ({
+    t: entry?.t ?? 'Info',
+    msg: entry?.msg ?? '',
+  }));
   if (startingDeck.enemyCardCount > 0) telemetryFlags.push('starting_deck_contains_enemy_cards');
   if (endingDeck.enemyCardCount > 0) telemetryFlags.push('ending_deck_contains_enemy_cards');
 
@@ -412,6 +442,7 @@ function buildRunRecord({
     startingDeck,
     endingDeck,
     telemetryFlags,
+    recentLog,
     encounters:     encounters.slice(),
     deckSnapshots:  deckSnapshots.slice(),
     cardEvents:     cardEvents.slice(),
@@ -1052,6 +1083,9 @@ function PauseMenuOverlay({
   onClose,
   soundMuted,
   onToggleMute,
+  onReloadApp,
+  onAbandonRun,
+  hasActiveRun = false,
   state,
   showLog,
   onDevAction,
@@ -1180,6 +1214,42 @@ function PauseMenuOverlay({
                 }}
               >
                 {showLog ? 'Hide log overlay' : 'Show log overlay'}
+              </button>
+              {hasActiveRun && (
+                <button
+                  onClick={onAbandonRun}
+                  style={{
+                    padding: '8px 10px',
+                    borderRadius: 10,
+                    border: `1px solid ${C.red}55`,
+                    background: `${C.red}14`,
+                    color: C.red,
+                    fontFamily: UI_MONO,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Abandon run
+                </button>
+              )}
+              <button
+                onClick={onReloadApp}
+                style={{
+                  padding: '8px 10px',
+                  borderRadius: 10,
+                  border: `1px solid ${C.border}`,
+                  background: 'rgba(255,255,255,0.03)',
+                  color: C.text,
+                  fontFamily: UI_MONO,
+                  fontSize: 11,
+                  fontWeight: 700,
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                }}
+              >
+                Reload app
               </button>
             </HelpCard>
 
@@ -3781,6 +3851,75 @@ function App() {
   const deckSnapshotsRef      = useRef([]);   // deck state at each floor change
   const lastFloorRef          = useRef(null); // previous floor for change detection
 
+  function resolveRequestedDebugSeed(overrideDebugSeed = undefined, fallbackValue = debugSeedInput) {
+    if (overrideDebugSeed !== undefined) return overrideDebugSeed;
+    const parsed = parseInt(String(fallbackValue ?? '').trim(), 10);
+    return Number.isNaN(parsed) ? null : parsed;
+  }
+
+  function createRunStateFromSettings({
+    overrideDebugSeed = undefined,
+    sourceSeedMode = seedMode,
+    sourceCustomConfig = customConfig,
+    sourceLockedFields = lockedFields,
+  } = {}) {
+    if (!data) return null;
+    const initial = createInitialState();
+    return dispatchWithJournal(initial, data, {
+      type: 'NewRun',
+      seed: Date.now(),
+      debugSeed: resolveRequestedDebugSeed(overrideDebugSeed),
+      debugSeedMode: sourceSeedMode,
+      customOverrides: buildCustomOverrides(sourceCustomConfig),
+      lockedKeys: [...sourceLockedFields],
+    });
+  }
+
+  function resetRunTransientState() {
+    clearAiTimer();
+    combatStatsRef.current = null;
+    pendingEncountersRef.current = [];
+    pendingCardEventsRef.current = [];
+    pendingFloorEventsRef.current = [];
+    deckSnapshotsRef.current = [];
+    lastFloorRef.current = null;
+    prevModeRef.current = null;
+    autosaveTokenRef.current = null;
+    backGuardPrimedRef.current = false;
+    setShowPauseMenu(false);
+    setShowLog(false);
+  }
+
+  function reloadApp() {
+    setShowPauseMenu(false);
+    window.location.reload();
+  }
+
+  function hardReloadIntoFreshRun(overrideDebugSeed = undefined) {
+    const debugSeed = resolveRequestedDebugSeed(overrideDebugSeed);
+    queueForcedNewRun({
+      overrideDebugSeed: debugSeed,
+      seedMode,
+      customConfig,
+      lockedFields: [...lockedFields],
+    });
+    clearNodeAutosave();
+    resetRunTransientState();
+    setAiHandoffReason('');
+    try {
+      window.location.reload();
+    } catch {
+      startNewRunRef.current?.(debugSeed);
+    }
+  }
+
+  function abandonRun() {
+    if (!stateRef.current?.run) return;
+    const confirmed = window.confirm('Abandon this run and start a fresh one?');
+    if (!confirmed) return;
+    hardReloadIntoFreshRun();
+  }
+
   // ── Save directory (File System Access API, persisted via IndexedDB) ─────
   const saveDirHandle = useRef(null);
   const [saveDirName, setSaveDirName] = useState(null);
@@ -3882,6 +4021,31 @@ function App() {
 
   useEffect(() => {
     if (data && !state) {
+      const forcedRun = consumeForcedNewRun();
+      if (forcedRun) {
+        const nextSeedMode = forcedRun.seedMode === 'sensible' ? 'sensible' : 'wild';
+        const nextCustomConfig = {
+          ...CUSTOM_CONFIG_DEFAULTS,
+          ...(forcedRun.customConfig && typeof forcedRun.customConfig === 'object' ? forcedRun.customConfig : {}),
+        };
+        const nextLockedFields = new Set(Array.isArray(forcedRun.lockedFields) ? forcedRun.lockedFields : []);
+        const forcedDebugSeed = forcedRun.overrideDebugSeed ?? null;
+        clearNodeAutosave();
+        autosaveTokenRef.current = null;
+        setSeedMode(nextSeedMode);
+        setCustomConfig(nextCustomConfig);
+        setLockedFields(nextLockedFields);
+        setDebugSeedInput(forcedDebugSeed == null ? '' : String(forcedDebugSeed));
+        const newState = createRunStateFromSettings({
+          overrideDebugSeed: forcedDebugSeed,
+          sourceSeedMode: nextSeedMode,
+          sourceCustomConfig: nextCustomConfig,
+          sourceLockedFields: nextLockedFields,
+        });
+        setState(newState);
+        return;
+      }
+
       const autosave = readNodeAutosave();
       if (autosave?.state) {
         autosaveTokenRef.current = autosave.token || buildNodeAutosaveToken(autosave.state);
@@ -3892,21 +4056,7 @@ function App() {
 
       clearNodeAutosave();
       autosaveTokenRef.current = null;
-      const initial = createInitialState();
-      const seed = Date.now();
-      let debugSeed = null;
-      if (debugSeedInput.trim()) {
-        const parsed = parseInt(debugSeedInput.trim(), 10);
-        if (!isNaN(parsed)) debugSeed = parsed;
-      }
-      const newState = dispatchWithJournal(initial, data, {
-        type: 'NewRun',
-        seed,
-        debugSeed,
-        debugSeedMode: seedMode,
-        customOverrides: buildCustomOverrides(customConfig),
-        lockedKeys: [...lockedFields],
-      });
+      const newState = createRunStateFromSettings();
       setState(newState);
     }
   }, [data, state, debugSeedInput, seedMode, customConfig, lockedFields]);
@@ -4452,6 +4602,9 @@ function App() {
                 : (state.mode === 'GameOver' ? 'loss' : combatStatsRef.current.result)),
         )
       : null;
+    const snapshotOutcome = state.mode === 'GameOver'
+      ? (state.run?.victory ? 'victory' : 'defeat')
+      : 'in_progress';
     return buildRunRecord({
       runIndex: runIndexRef.current + 1,
       state,
@@ -4464,7 +4617,7 @@ function App() {
       deckSnapshots: deckSnapshotsRef.current,
       cardEvents: pendingCardEventsRef.current,
       floorEvents: pendingFloorEventsRef.current,
-      outcome: 'in_progress',
+      outcome: snapshotOutcome,
     });
   }, [aiPlaystyle, data, seedMode, state]);
 
@@ -4557,24 +4710,13 @@ function App() {
   }, []);
 
   function startNewRun(overrideDebugSeed) {
-    if (!data) return;
+    const newState = createRunStateFromSettings({ overrideDebugSeed });
+    if (!newState) return;
     setAiHandoffReason('');
+    setAiPaused(false);
+    aiPausedRef.current = false;
     clearNodeAutosave();
-    autosaveTokenRef.current = null;
-    const initial = createInitialState();
-    const seed = Date.now();
-    let debugSeed = null;
-    if (overrideDebugSeed !== undefined) {
-      debugSeed = overrideDebugSeed;
-    } else if (debugSeedInput.trim()) {
-      const parsed = parseInt(debugSeedInput.trim(), 10);
-      if (!isNaN(parsed)) debugSeed = parsed;
-    }
-    const newState = dispatchWithJournal(initial, data, {
-      type: 'NewRun', seed, debugSeed, debugSeedMode: seedMode,
-      customOverrides: buildCustomOverrides(customConfig),
-      lockedKeys: [...lockedFields],
-    });
+    resetRunTransientState();
     resetAiStallTracker(getAiStateSignature(newState));
     setState(newState);
   }
@@ -4676,7 +4818,7 @@ function App() {
       content = <EventScreen state={state} data={data} onAction={handleAction} />;
       break;
     case 'GameOver':
-      content = <GameOverScreen state={state} onNewRun={startNewRun} />;
+      content = <GameOverScreen state={state} onNewRun={hardReloadIntoFreshRun} />;
       break;
     default:
       content = (
@@ -4737,6 +4879,9 @@ function App() {
         onClose={closePauseMenu}
         soundMuted={soundMuted}
         onToggleMute={toggleMute}
+        onReloadApp={reloadApp}
+        onAbandonRun={abandonRun}
+        hasActiveRun={Boolean(state?.run) && state?.mode !== 'GameOver'}
         state={state}
         showLog={showLog}
         onDevAction={handleAction}

@@ -2016,7 +2016,24 @@ function CompactPlayerHud({ player, ram = 0, maxRam = 0, powerPile = [], cardIns
   );
 }
 
-function MobilePlayerHud({ player, ram = 0, maxRam = 0, powerPile = [], cardInstances = {}, data, layoutMode = 'phone-portrait' }) {
+function MobilePlayerHud({
+  player,
+  ram = 0,
+  maxRam = 0,
+  drawCount = 0,
+  discardCount = 0,
+  exhaustCount = 0,
+  powerPile = [],
+  cardInstances = {},
+  data,
+  layoutMode = 'phone-portrait',
+  interactionLocked = false,
+  onEndTurn,
+  deckMenuOpen = false,
+  onToggleDeckMenu,
+  onViewPile,
+  deckMenuRef,
+}) {
   const hp = player?.hp ?? 0;
   const maxHp = player?.maxHP ?? 1;
   const firewallStacks = player?.statuses?.find((s) => s.id === 'Firewall')?.stacks ?? 0;
@@ -2028,6 +2045,38 @@ function MobilePlayerHud({ player, ram = 0, maxRam = 0, powerPile = [], cardInst
       return ci ? data?.cards?.[ci.defId] : null;
     })
     .filter(Boolean);
+  const renderMetric = (label, value, color, bar) => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+        <span style={{ fontFamily: MONO, fontSize: isPhonePortrait ? 10 : 11, fontWeight: 700, color }}>{label}</span>
+        <span style={{ fontFamily: MONO, fontSize: isPhonePortrait ? 11 : 12, color: C.textPrimary }}>{value}</span>
+      </div>
+      {bar}
+    </div>
+  );
+  const handleOpenPile = (pile) => {
+    onViewPile?.(pile);
+    onToggleDeckMenu?.(false);
+  };
+  const hasPortraitActionRail = isPhonePortrait && (onEndTurn || onToggleDeckMenu);
+  const firewallMetric = renderMetric(
+    'FW',
+    `${firewallStacks}/${maxHp}`,
+    C.neonCyan,
+    <FirewallBar current={firewallStacks} max={maxHp} height={isPhonePortrait ? 8 : 10} showText={false} />,
+  );
+  const hpMetric = renderMetric(
+    'HP',
+    `${hp}/${maxHp}`,
+    C.neonGreen,
+    <HealthBar current={hp} max={maxHp} height={isPhonePortrait ? 8 : 10} showText={false} />,
+  );
+  const ramMetric = renderMetric(
+    'RAM',
+    `${ram}/${maxRam}`,
+    C.neonCyan,
+    <RamBar ram={ram} maxRam={maxRam} compact={true} showLabel={false} />,
+  );
 
   return (
     <div
@@ -2062,27 +2111,74 @@ function MobilePlayerHud({ player, ram = 0, maxRam = 0, powerPile = [], cardInst
             FW / HP / RAM
           </span>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-            <span style={{ fontFamily: MONO, fontSize: isPhonePortrait ? 10 : 11, fontWeight: 700, color: C.neonCyan }}>FW</span>
-            <span style={{ fontFamily: MONO, fontSize: isPhonePortrait ? 11 : 12, color: C.textPrimary }}>{firewallStacks}/{maxHp}</span>
-          </div>
-          <FirewallBar current={firewallStacks} max={maxHp} height={isPhonePortrait ? 8 : 10} showText={false} />
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-            <span style={{ fontFamily: MONO, fontSize: isPhonePortrait ? 10 : 11, fontWeight: 700, color: C.neonGreen }}>HP</span>
-            <span style={{ fontFamily: MONO, fontSize: isPhonePortrait ? 11 : 12, color: C.textPrimary }}>{hp}/{maxHp}</span>
-          </div>
-          <HealthBar current={hp} max={maxHp} height={isPhonePortrait ? 8 : 10} showText={false} />
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-            <span style={{ fontFamily: MONO, fontSize: isPhonePortrait ? 10 : 11, fontWeight: 700, color: C.neonCyan }}>RAM</span>
-            <span style={{ fontFamily: MONO, fontSize: isPhonePortrait ? 11 : 12, color: C.textPrimary }}>{ram}/{maxRam}</span>
-          </div>
-          <RamBar ram={ram} maxRam={maxRam} compact={true} showLabel={false} />
-        </div>
+        {hasPortraitActionRail ? (
+          <>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'minmax(0, 3fr) minmax(88px, 1fr)',
+                gap: 8,
+                alignItems: 'stretch',
+              }}
+            >
+              <div style={{ display: 'grid', gap: 6, minWidth: 0 }}>
+                {firewallMetric}
+                {hpMetric}
+              </div>
+              <div style={{ display: 'grid', gridTemplateRows: 'minmax(0, 1fr) auto', gap: 6, minWidth: 0 }}>
+                <CombatActionButton
+                  label="End Turn"
+                  onClick={onEndTurn}
+                  disabled={interactionLocked}
+                  tone="primary"
+                  compact={true}
+                  style={{
+                    width: '100%',
+                    minHeight: 56,
+                    padding: '8px 6px',
+                    fontSize: 10,
+                    lineHeight: 1.1,
+                  }}
+                />
+                <CombatActionButton
+                  label="Deck"
+                  onClick={() => onToggleDeckMenu?.(!deckMenuOpen)}
+                  active={deckMenuOpen}
+                  tone="orange"
+                  compact={true}
+                  style={{
+                    width: '100%',
+                    minHeight: 40,
+                    padding: '7px 6px',
+                    fontSize: 10,
+                  }}
+                />
+              </div>
+            </div>
+            {ramMetric}
+            {deckMenuOpen && (
+              <div
+                ref={deckMenuRef}
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+                  gap: 6,
+                  paddingTop: 2,
+                }}
+              >
+                <PileCountButton label="Draw" count={drawCount} color={C.neonCyan} onClick={() => handleOpenPile('draw')} compact={true} />
+                <PileCountButton label="Discard" count={discardCount} color={C.neonOrange} onClick={() => handleOpenPile('discard')} compact={true} />
+                <PileCountButton label="Exhaust" count={exhaustCount} color={C.neonRed} onClick={() => handleOpenPile('exhaust')} compact={true} />
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            {firewallMetric}
+            {hpMetric}
+            {ramMetric}
+          </>
+        )}
       </div>
 
       {(nonFirewallStatuses.length > 0 || activePowers.length > 0) && (
@@ -2156,7 +2252,7 @@ function PileCountButton({ label, count, color, onClick, compact = false }) {
   );
 }
 
-function CombatActionButton({ label, onClick, disabled = false, active = false, compact = false, tone = 'default' }) {
+function CombatActionButton({ label, onClick, disabled = false, active = false, compact = false, tone = 'default', style = EMPTY_OBJECT }) {
   const toneMap = {
     default: {
       background: 'rgba(255,255,255,0.04)',
@@ -2196,6 +2292,9 @@ function CombatActionButton({ label, onClick, disabled = false, active = false, 
       onClick={onClick}
       disabled={disabled}
       style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
         minWidth: 0,
         padding: compact ? '11px 10px' : '12px 14px',
         borderRadius: 10,
@@ -2214,6 +2313,7 @@ function CombatActionButton({ label, onClick, disabled = false, active = false, 
         cursor: disabled ? 'default' : 'pointer',
         opacity: disabled ? 0.45 : 1,
         whiteSpace: 'nowrap',
+        ...style,
       }}
     >
       {label}
@@ -2234,14 +2334,53 @@ function CombatUtilityPanel({
   deckMenuOpen = false,
   onToggleDeckMenu,
   layoutMode = 'phone-portrait',
+  showDeckAction = true,
+  showEndTurnAction = true,
+  showDeckMenu = true,
 }) {
   const compact = layoutMode !== 'desktop';
   const isPhonePortrait = layoutMode === 'phone-portrait';
-  const actionColumns = isPhonePortrait ? 'repeat(2, minmax(0, 1fr))' : 'repeat(4, minmax(0, 1fr))';
   const handleOpenPile = (pile) => {
     onViewPile?.(pile);
     onToggleDeckMenu?.(false);
   };
+  const actionButtons = [
+    {
+      key: 'settings',
+      label: 'Settings',
+      onClick: onOpenSettings,
+      tone: 'cyan',
+      disabled: false,
+      active: false,
+    },
+    {
+      key: 'auto',
+      label: 'Auto',
+      onClick: onAuto,
+      tone: 'purple',
+      disabled: interactionLocked,
+      active: false,
+    },
+    showDeckAction ? {
+      key: 'deck',
+      label: 'Deck',
+      onClick: () => onToggleDeckMenu?.(!deckMenuOpen),
+      tone: 'orange',
+      disabled: false,
+      active: deckMenuOpen,
+    } : null,
+    showEndTurnAction ? {
+      key: 'end-turn',
+      label: 'End Turn',
+      onClick: onEndTurn,
+      tone: 'primary',
+      disabled: interactionLocked,
+      active: false,
+    } : null,
+  ].filter(Boolean);
+  const actionColumns = compact
+    ? (isPhonePortrait ? `repeat(${Math.min(2, actionButtons.length)}, minmax(0, 1fr))` : `repeat(${actionButtons.length}, minmax(0, 1fr))`)
+    : `repeat(${actionButtons.length}, minmax(0, 1fr))`;
 
   return (
     <div
@@ -2275,35 +2414,19 @@ function CombatUtilityPanel({
           </div>
         )}
         <div style={{ display: 'grid', gridTemplateColumns: actionColumns, gap: compact ? 8 : 8 }}>
-          <CombatActionButton
-            label="Settings"
-            onClick={onOpenSettings}
-            tone="cyan"
-            compact={compact}
-          />
-          <CombatActionButton
-            label="Auto"
-            onClick={onAuto}
-            disabled={interactionLocked}
-            tone="purple"
-            compact={compact}
-          />
-          <CombatActionButton
-            label="Deck"
-            onClick={() => onToggleDeckMenu?.(!deckMenuOpen)}
-            active={deckMenuOpen}
-            tone="orange"
-            compact={compact}
-          />
-          <CombatActionButton
-            label="End Turn"
-            onClick={onEndTurn}
-            disabled={interactionLocked}
-            tone="primary"
-            compact={compact}
-          />
+          {actionButtons.map((button) => (
+            <CombatActionButton
+              key={button.key}
+              label={button.label}
+              onClick={button.onClick}
+              disabled={button.disabled}
+              active={button.active}
+              tone={button.tone}
+              compact={compact}
+            />
+          ))}
         </div>
-        {deckMenuOpen && (
+        {showDeckMenu && deckMenuOpen && (
           <div
             style={{
               display: 'grid',
@@ -4307,6 +4430,9 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
   const enemyDialogCloseRef = useRef(null);
   const scryDialogRef = useRef(null);
   const scryConfirmRef = useRef(null);
+  const screenRef = useRef(null);
+  const portraitDeckMenuRef = useRef(null);
+  const portraitPileAnchorRef = useRef(null);
   const [viewport, setViewport] = useState(() => ({
     width: typeof window !== 'undefined' ? window.innerWidth : 1280,
     height: typeof window !== 'undefined'
@@ -4398,6 +4524,29 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
     initialFocusRef: scryConfirmRef,
   });
 
+  const scrollPortraitAnchorIntoView = useCallback((targetRef, block = 'end') => {
+    if (!isPhonePortrait) return;
+    const behavior = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+      ? 'auto'
+      : 'smooth';
+    const runScroll = () => {
+      const target = targetRef?.current;
+      if (target?.scrollIntoView) {
+        target.scrollIntoView({ behavior, block, inline: 'nearest' });
+        return;
+      }
+      const container = screenRef.current;
+      if (container) {
+        container.scrollTo({ top: container.scrollHeight, behavior });
+      }
+    };
+    if (typeof window === 'undefined') {
+      runScroll();
+      return;
+    }
+    window.requestAnimationFrame(runScroll);
+  }, [isPhonePortrait]);
+
   const focusActiveCard = useCallback((cardId) => {
     setCenterCardDismissed(false);
     setActiveCardId(cardId);
@@ -4465,6 +4614,16 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
   useEffect(() => {
     if (viewingPile) setDeckMenuOpen(false);
   }, [viewingPile]);
+
+  useEffect(() => {
+    if (!deckMenuOpen) return;
+    scrollPortraitAnchorIntoView(portraitDeckMenuRef);
+  }, [deckMenuOpen, scrollPortraitAnchorIntoView]);
+
+  useEffect(() => {
+    if (!viewingPile) return;
+    scrollPortraitAnchorIntoView(portraitPileAnchorRef);
+  }, [viewingPile, scrollPortraitAnchorIntoView]);
 
   // Parse global combat log for floating numbers, sound cues, and card-play animations.
   useEffect(() => {
@@ -4780,10 +4939,19 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
         player={player}
         ram={ram}
         maxRam={maxRam}
+        drawCount={drawPile.length}
+        discardCount={discardPile.length}
+        exhaustCount={exhaustPile.length}
         powerPile={powerPile}
         cardInstances={cardInstances}
         data={data}
         layoutMode={layoutMode}
+        interactionLocked={interactionLocked}
+        onEndTurn={isPhonePortrait ? handleEndTurn : undefined}
+        deckMenuOpen={isPhonePortrait ? deckMenuOpen : false}
+        onToggleDeckMenu={isPhonePortrait ? setDeckMenuOpen : undefined}
+        onViewPile={isPhonePortrait ? setViewingPile : undefined}
+        deckMenuRef={portraitDeckMenuRef}
       />
       <CombatUtilityPanel
         handCount={hand.length}
@@ -4801,6 +4969,9 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
         deckMenuOpen={deckMenuOpen}
         onToggleDeckMenu={setDeckMenuOpen}
         layoutMode={layoutMode}
+        showDeckAction={!isPhonePortrait}
+        showEndTurnAction={!isPhonePortrait}
+        showDeckMenu={!isPhonePortrait}
       />
     </div>
   );
@@ -5010,6 +5181,7 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
 
   return (
     <div
+      ref={screenRef}
       style={{
         minHeight: '100vh',
         height: '100dvh',
@@ -5178,6 +5350,7 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
 
           <div className="safe-area-bottom" style={{ flex: '0 0 auto', padding: '0 8px 8px' }}>
             {mobileBottomPanels}
+            <div ref={portraitPileAnchorRef} style={{ height: 1 }} />
           </div>
         </>
       )}

@@ -2565,6 +2565,35 @@ function CenterCardDisplay({
   const { nextValue: nextMutationIn, finalValue: finalMutationIn, isDecaying } = getCardLifecycleDisplay(cardDef, cardInstance);
   const imgSrc = getCardImage(cardDef?.id);
   const visibleTags = getVisibleCardTags(cardDef.tags || EMPTY_ARRAY);
+  const isPlayable = canActivate;
+  const shellBorder = isPlayable ? `${color}70` : '#4b5468';
+  const shellShadow = isPlayable
+    ? `0 0 28px ${color}24, 0 8px 24px rgba(0,0,0,0.55)`
+    : '0 0 16px rgba(120,132,160,0.12), 0 8px 24px rgba(0,0,0,0.58)';
+  const desktopShellShadow = isPlayable
+    ? `0 0 40px ${color}28, 0 8px 32px rgba(0,0,0,0.7)`
+    : '0 0 20px rgba(120,132,160,0.14), 0 8px 32px rgba(0,0,0,0.72)';
+  const shellArtFilter = isPlayable
+    ? 'saturate(1.04) contrast(1.02) brightness(0.9)'
+    : 'grayscale(0.2) saturate(0.42) contrast(0.96) brightness(0.68)';
+  const shellFallbackBackground = isPlayable
+    ? `linear-gradient(145deg, ${color}22 0%, ${C.bgCard} 48%, ${color}0c 100%)`
+    : 'linear-gradient(145deg, rgba(96,108,132,0.24) 0%, rgba(18,18,26,1) 48%, rgba(82,92,112,0.12) 100%)';
+  const shellOverlayBackground = isPlayable
+    ? `
+      radial-gradient(circle at 24% 16%, ${color}28 0%, transparent 34%),
+      linear-gradient(180deg, rgba(8,10,16,0.08) 0%, rgba(8,10,16,0.24) 24%, rgba(8,10,16,0.78) 58%, rgba(8,10,16,0.95) 100%)
+    `
+    : `
+      radial-gradient(circle at 24% 16%, rgba(130,144,172,0.12) 0%, transparent 34%),
+      linear-gradient(180deg, rgba(8,10,16,0.22) 0%, rgba(8,10,16,0.38) 24%, rgba(8,10,16,0.82) 58%, rgba(8,10,16,0.96) 100%)
+    `;
+  const shellInfoBackground = isPlayable
+    ? 'linear-gradient(180deg, rgba(8,10,16,0.18) 0%, rgba(8,10,16,0.74) 12%, rgba(8,10,16,0.92) 100%)'
+    : 'linear-gradient(180deg, rgba(8,10,16,0.28) 0%, rgba(8,10,16,0.8) 12%, rgba(8,10,16,0.94) 100%)';
+  const shellInfoBorder = isPlayable ? `${color}22` : '#465063';
+  const shellDivider = isPlayable ? `${color}20` : '#40495a';
+  const shellTypeColor = isPlayable ? color : '#9aa4ba';
 
   const leftMutations = mutations.filter((_, i) => i % 2 === 0);
   const rightMutations = mutations.filter((_, i) => i % 2 === 1);
@@ -2629,8 +2658,8 @@ function CenterCardDisplay({
             flexDirection: 'column',
             justifyContent: 'flex-end',
             backgroundColor: C.bgCard,
-            border: `2px solid ${color}70`,
-            boxShadow: `0 0 28px ${color}24, 0 8px 24px rgba(0,0,0,0.55)`,
+            border: `2px solid ${shellBorder}`,
+            boxShadow: shellShadow,
             overflow: 'hidden',
             cursor: canActivate ? 'pointer' : 'default',
             flexShrink: 0,
@@ -2649,7 +2678,7 @@ function CenterCardDisplay({
                 objectPosition: 'center center',
                 display: 'block',
                 transform: 'scale(1.02)',
-                filter: 'saturate(1.04) contrast(1.02) brightness(0.9)',
+                filter: shellArtFilter,
               }}
             />
           ) : (
@@ -2657,7 +2686,7 @@ function CenterCardDisplay({
               style={{
                 position: 'absolute',
                 inset: 0,
-                background: `linear-gradient(145deg, ${color}22 0%, ${C.bgCard} 48%, ${color}0c 100%)`,
+                background: shellFallbackBackground,
               }}
             />
           )}
@@ -2666,13 +2695,21 @@ function CenterCardDisplay({
             style={{
               position: 'absolute',
               inset: 0,
-              background: `
-                radial-gradient(circle at 24% 16%, ${color}28 0%, transparent 34%),
-                linear-gradient(180deg, rgba(8,10,16,0.08) 0%, rgba(8,10,16,0.24) 24%, rgba(8,10,16,0.78) 58%, rgba(8,10,16,0.95) 100%)
-              `,
+              background: shellOverlayBackground,
               pointerEvents: 'none',
             }}
           />
+
+          {!isPlayable && (
+            <div
+              style={{
+                position: 'absolute',
+                inset: 0,
+                background: 'rgba(10,12,18,0.28)',
+                pointerEvents: 'none',
+              }}
+            />
+          )}
 
           <div
             style={{
@@ -2690,7 +2727,7 @@ function CenterCardDisplay({
               zIndex: 10,
               backgroundColor: color,
               color: '#000',
-              boxShadow: `0 0 10px ${color}80`,
+              boxShadow: isPlayable ? `0 0 10px ${color}80` : '0 0 10px rgba(154,164,186,0.32)',
               fontSize: 12,
             }}
           >
@@ -2704,8 +2741,8 @@ function CenterCardDisplay({
               margin: 'auto 8px 8px',
               padding: '10px 9px 8px',
               borderRadius: 12,
-              background: 'linear-gradient(180deg, rgba(8,10,16,0.18) 0%, rgba(8,10,16,0.74) 12%, rgba(8,10,16,0.92) 100%)',
-              border: `1px solid ${color}22`,
+              background: shellInfoBackground,
+              border: `1px solid ${shellInfoBorder}`,
               boxShadow: '0 8px 20px rgba(0,0,0,0.24)',
               backdropFilter: 'blur(4px)',
               display: 'flex',
@@ -2717,7 +2754,7 @@ function CenterCardDisplay({
             <div style={{ fontFamily: MONO, fontWeight: 700, color: C.textPrimary, fontSize: 12, textShadow: '0 1px 10px rgba(0,0,0,0.55)' }}>
               {cardDef.name}
             </div>
-            <div style={{ fontFamily: MONO, textTransform: 'uppercase', color, fontSize: 8, letterSpacing: '0.1em' }}>
+            <div style={{ fontFamily: MONO, textTransform: 'uppercase', color: shellTypeColor, fontSize: 8, letterSpacing: '0.1em' }}>
               {cardDef.type}
             </div>
 
@@ -2735,7 +2772,7 @@ function CenterCardDisplay({
               </div>
             )}
 
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto', paddingTop: '6px', borderTop: `1px solid ${color}20` }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto', paddingTop: '6px', borderTop: `1px solid ${shellDivider}` }}>
               <div style={{ fontFamily: MONO, color: C.textDim, fontSize: 8 }}>
                 NEXT: <span style={{ color: C.textPrimary, fontWeight: 700 }}>{nextMutationIn ?? '-'}</span>
               </div>
@@ -2822,8 +2859,8 @@ function CenterCardDisplay({
             flexDirection: 'column',
             justifyContent: 'flex-end',
             backgroundColor: C.bgCard,
-            border: `2px solid ${color}70`,
-            boxShadow: `0 0 40px ${color}28, 0 8px 32px rgba(0,0,0,0.7)`,
+            border: `2px solid ${shellBorder}`,
+            boxShadow: desktopShellShadow,
             overflow: 'hidden',
             cursor: canActivate ? 'pointer' : 'default',
             flexShrink: 0,
@@ -2842,7 +2879,7 @@ function CenterCardDisplay({
                 objectPosition: 'center center',
                 display: 'block',
                 transform: 'scale(1.02)',
-                filter: 'saturate(1.04) contrast(1.02) brightness(0.9)',
+                filter: shellArtFilter,
               }}
             />
           ) : (
@@ -2850,7 +2887,7 @@ function CenterCardDisplay({
               style={{
                 position: 'absolute',
                 inset: 0,
-                background: `linear-gradient(145deg, ${color}22 0%, ${C.bgCard} 48%, ${color}0c 100%)`,
+                background: shellFallbackBackground,
               }}
             />
           )}
@@ -2859,13 +2896,21 @@ function CenterCardDisplay({
             style={{
               position: 'absolute',
               inset: 0,
-              background: `
-                radial-gradient(circle at 24% 16%, ${color}28 0%, transparent 34%),
-                linear-gradient(180deg, rgba(8,10,16,0.08) 0%, rgba(8,10,16,0.24) 24%, rgba(8,10,16,0.78) 58%, rgba(8,10,16,0.95) 100%)
-              `,
+              background: shellOverlayBackground,
               pointerEvents: 'none',
             }}
           />
+
+          {!isPlayable && (
+            <div
+              style={{
+                position: 'absolute',
+                inset: 0,
+                background: 'rgba(10,12,18,0.28)',
+                pointerEvents: 'none',
+              }}
+            />
+          )}
 
           <div
             style={{
@@ -2883,7 +2928,7 @@ function CenterCardDisplay({
               zIndex: 10,
               backgroundColor: color,
               color: '#000',
-              boxShadow: `0 0 10px ${color}80`,
+              boxShadow: isPlayable ? `0 0 10px ${color}80` : '0 0 10px rgba(154,164,186,0.32)',
               fontSize: 14,
             }}
           >
@@ -2897,8 +2942,8 @@ function CenterCardDisplay({
               margin: 'auto 10px 10px',
               padding: '12px 10px 10px',
               borderRadius: 14,
-              background: 'linear-gradient(180deg, rgba(8,10,16,0.14) 0%, rgba(8,10,16,0.72) 14%, rgba(8,10,16,0.92) 100%)',
-              border: `1px solid ${color}22`,
+              background: shellInfoBackground,
+              border: `1px solid ${shellInfoBorder}`,
               boxShadow: '0 10px 24px rgba(0,0,0,0.24)',
               backdropFilter: 'blur(4px)',
               display: 'flex',
@@ -2910,7 +2955,7 @@ function CenterCardDisplay({
             <div style={{ fontFamily: MONO, fontWeight: 700, marginBottom: '2px', color: C.textPrimary, fontSize: 14, textShadow: '0 1px 10px rgba(0,0,0,0.55)' }}>
               {cardDef.name}
             </div>
-            <div style={{ fontFamily: MONO, textTransform: 'uppercase', color, fontSize: 9, letterSpacing: '0.1em' }}>
+            <div style={{ fontFamily: MONO, textTransform: 'uppercase', color: shellTypeColor, fontSize: 9, letterSpacing: '0.1em' }}>
               {cardDef.type}
             </div>
 
@@ -2928,7 +2973,7 @@ function CenterCardDisplay({
               </div>
             )}
 
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto', paddingTop: '6px', borderTop: `1px solid ${color}20` }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto', paddingTop: '6px', borderTop: `1px solid ${shellDivider}` }}>
               <div style={{ fontFamily: MONO, color: C.textDim, fontSize: 9 }}>
                 NEXT: <span style={{ color: C.textPrimary, fontWeight: 700 }}>{nextMutationIn ?? '-'}</span>
               </div>

@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { getEnemyImage } from '../data/enemyImages';
 import { getCardImage } from '../data/cardImages';
 import { sfx } from '../game/sounds';
+import { getCardPlayability } from '../game/engine';
 import useDialogAccessibility from '../hooks/useDialogAccessibility';
 
 /**
@@ -5259,12 +5260,8 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
   }, [activeAnimation, animationQueue.length, endTurnPending]);
 
   const canPlayCard = (cid) => {
-    const ci = cardInstances[cid];
-    if (!ci) return false;
-    const def = data?.cards?.[ci.defId];
-    if (!def) return false;
-    const cost = Math.max(0, (def.costRAM || 0) + (ci.ramCostDelta || 0));
-    return player?.ram >= cost;
+    if (!cid || !state?.combat || !data) return false;
+    return getCardPlayability(state.combat, data, cid, targetedEnemy?.id ?? visibleEnemies[0]?.id ?? enemies.find((enemy) => enemy.hp > 0)?.id).playable;
   };
 
   const handlePlayCard = (cardId = activeCardId) => {

@@ -1,6 +1,6 @@
 import { RNG } from "./rng";
 import { push } from "./log";
-import { applyDamage, addStatus, getFirewallStacks, loseFirewall, clearFirewall, enforceFirewallCap } from "./rules";
+import { applyDamage, addStatus, getFirewallStacks, getStatusStacks, loseFirewall, clearFirewall, enforceFirewallCap } from "./rules";
 
 function getCardLogData(state, cid) {
   if (!cid) return null;
@@ -78,7 +78,7 @@ function pushHandState(state, reason, extra = {}) {
   });
 }
 
-function getCardCurrentCost(state, data, cardInstanceId) {
+export function getCardCurrentCost(state, data, cardInstanceId) {
   const ci = state.cardInstances?.[cardInstanceId];
   const def = ci?.defId ? data?.cards?.[ci.defId] : null;
   if (!ci || !def) return 0;
@@ -88,6 +88,97 @@ function getCardCurrentCost(state, data, cardInstanceId) {
     cost = Math.max(0, cost + state._relicOverclockCostMod);
   }
   return cost;
+}
+
+function getCardRuntime(ci) {
+  if (!ci) return null;
+  if (!ci._runtime || typeof ci._runtime !== "object") {
+    ci._runtime = {
+      playsThisCombat: 0,
+      turnsInHand: 0,
+      lockedSlotIndex: null,
+      delayedEffects: [],
+      skipNextPlay: false,
+      lockedTurnsRemaining: 0,
+      mutationBlocksRemaining: null,
+      nextMutationFreeCharges: 0,
+      absorbedMutationsRemaining: null,
+      randomizeEffectThisCombat: false,
+      retainedFirewall: false,
+      lastPlayTurn: null,
+      pendingTargetOverride: null,
+    };
+  }
+  return ci._runtime;
+}
+
+function getAliveEnemies(state) {
+  return (state.enemies || []).filter((enemy) => enemy.hp > 0);
+}
+
+function getTargetEnemy(state, targetEnemyId = null) {
+  if (targetEnemyId) {
+    const direct = state.enemies?.find((enemy) => enemy.id === targetEnemyId && enemy.hp > 0);
+    if (direct) return direct;
+  }
+  if (state._targetOverride) {
+    const override = state.enemies?.find((enemy) => enemy.id === state._targetOverride && enemy.hp > 0);
+    if (override) return override;
+  }
+  return getAliveEnemies(state)[0] || null;
+}
+
+function getEntityHpPercent(entity) {
+  const max = Math.max(1, Number(entity?.maxHP ?? entity?.hp ?? 1));
+  const hp = Math.max(0, Number(entity?.hp ?? 0));
+  return (hp / max) * 100;
+}
+
+function isPositiveStatusId(state, statusId) {
+  if (statusId === "Firewall") return true;
+  return !state.dataRef?.statuses?.[statusId]?.isNegative;
+}
+
+function getHandIndex(state, cardInstanceId) {
+  return state.player?.piles?.hand?.indexOf(cardInstanceId) ?? -1;
+}
+
+function recordCardDrawnToHand(state, cardInstanceId) {
+  const ci = state.cardInstances?.[cardInstanceId];
+  const runtime = getCardRuntime(ci);
+  if (!runtime) return;
+  runtime.turnsInHand = 0;
+  runtime.lockedSlotIndex = getHandIndex(state, cardInstanceId);
+  if (runtime.lockedTurnsRemaining > 0) {
+    runtime.lockedTurnsRemaining = Math.max(0, runtime.lockedTurnsRemaining - 1);
+  }
+}
+
+function cloneCardInstance(state, cardInstanceId, { intoHand = false, carryMutations = true } = {}) {
+  const ci = state.cardInstances?.[cardInstanceId];
+  if (!ci) return null;
+  const copyCid = `${cardInstanceId}_cp${Math.floor(Math.random() * 100000)}`;
+  const runtime = getCardRuntime(ci);
+  state.cardInstances[copyCid] = {
+    ...JSON.parse(JSON.stringify(ci)),
+    _runtime: runtime
+      ? {
+        ...runtime,
+        playsThisCombat: 0,
+        turnsInHand: 0,
+        lockedSlotIndex: null,
+        delayedEffects: [],
+        skipNextPlay: false,
+        lastPlayTurn: null,
+      }
+      : undefined,
+    appliedMutations: carryMutations ? [...(ci.appliedMutations || [])] : [],
+  };
+  if (intoHand) {
+    state.player.piles.hand.push(copyCid);
+    recordCardDrawnToHand(state, copyCid);
+  }
+  return copyCid;
 }
 
 function createCombatRng(state) {
@@ -153,6 +244,55 @@ function getFinalMutationCountdownStep(state, passiveMods = null) {
   return Math.max(0.25, step);
 }
 
+function getMutationAggregate(data, mutationIds = []) {
+  return (Array.isArray(mutationIds) ? mutationIds : []).reduce((acc, mutationId) => {
+    const mutation = data?.mutations?.[mutationId];
+    acc.ramCostDelta += Number(mutation?.ramCostDelta ?? 0);
+    acc.useCounterDelta += Number(mutation?.useCounterDelta ?? 0);
+    acc.finalCountdownDelta += Number(mutation?.finalCountdownDelta ?? 0);
+    return acc;
+  }, {
+    ramCostDelta: 0,
+    useCounterDelta: 0,
+    finalCountdownDelta: 0,
+  });
+}
+
+function syncCardMutationState(state, data, cardInstanceId, nextAppliedMutations) {
+  const ci = state.cardInstances?.[cardInstanceId];
+  const def = ci?.defId ? data?.cards?.[ci.defId] : null;
+  if (!ci || !def) return false;
+
+  const previousMutations = Array.isArray(ci.appliedMutations) ? ci.appliedMutations : [];
+  const nextMutations = Array.isArray(nextAppliedMutations) ? [...nextAppliedMutations] : [];
+  const previousAggregate = getMutationAggregate(data, previousMutations);
+  const nextAggregate = getMutationAggregate(data, nextMutations);
+
+  const baseUseCounter = Number(def.defaultUseCounter ?? 12);
+  const safeBaseUseCounter = Number.isFinite(baseUseCounter) ? baseUseCounter : 12;
+  const baseFinalCountdown = Number(def.defaultFinalMutationCountdown ?? 8);
+  const safeBaseFinalCountdown = Number.isFinite(baseFinalCountdown)
+    ? baseFinalCountdown
+    : Math.max(8, safeBaseUseCounter * 3);
+  const nextUseCounterMax = Math.max(1, safeBaseUseCounter + nextAggregate.useCounterDelta);
+  const currentUseCounter = Number(ci.useCounter ?? nextUseCounterMax);
+  const currentFinalCountdown = Number(
+    ci.finalMutationCountdown ?? Math.max(safeBaseFinalCountdown, safeBaseUseCounter * 3),
+  );
+
+  ci.appliedMutations = nextMutations;
+  ci.ramCostDelta = Number(ci.ramCostDelta ?? 0) + (nextAggregate.ramCostDelta - previousAggregate.ramCostDelta);
+  ci.useCounter = Math.max(
+    0,
+    Math.min(nextUseCounterMax, currentUseCounter + (nextAggregate.useCounterDelta - previousAggregate.useCounterDelta)),
+  );
+  ci.finalMutationCountdown = Math.max(
+    0,
+    Math.min(999, currentFinalCountdown + (nextAggregate.finalCountdownDelta - previousAggregate.finalCountdownDelta)),
+  );
+  return true;
+}
+
 function resetMutationCycle(state, data, cardInstanceId) {
   const ci = state.cardInstances?.[cardInstanceId];
   if (!ci) return;
@@ -213,13 +353,17 @@ function reshuffleIfNeeded(state, rng) {
 export function drawCards(state, rng, n, source = "draw") {
   const isFirstDraw = !state._firstDrawDoneThisTurn && state.turn > 0;
   const requested = Math.max(0, n || 0);
+  const handMod = (state._handSizeDeltaThisTurn || 0);
+  const drawCap = Math.max(0, 10 + handMod);
   const drawn = [];
   let reshuffled = false;
   for (let i = 0; i < requested; i++) {
+    if ((state.player.piles.hand?.length || 0) >= drawCap) break;
     reshuffled = reshuffleIfNeeded(state, rng) || reshuffled;
     if (state.player.piles.draw.length === 0) break;
     const top = state.player.piles.draw.shift();
     state.player.piles.hand.push(top);
+    recordCardDrawnToHand(state, top);
     drawn.push(top);
   }
   if (requested > 0) {
@@ -888,7 +1032,8 @@ function resolveTargets(state, sourceId, targetHint) {
     // - if player is acting, "Enemy" means an enemy (prefer the targeted enemy)
     // - if an enemy is acting, "Enemy" means the player
     const t = sourceIsPlayer
-      ? (state._targetOverride
+      ? (state._selfTargetOverride ? state.player : null)
+        || (state._targetOverride
           ? state.enemies.find(e => e.id === state._targetOverride && e.hp > 0)
           : null)
         || state.enemies.find(e => e.hp > 0)
@@ -925,15 +1070,33 @@ function checkPhaseChange(state, rng, enemy, wasHp) {
 }
 
 export function applyEffectOp(state, sourceId, op, rng) {
-  const targets = resolveTargets(state, sourceId, op.target || "Enemy");
+  const effectiveOp = buildEffectiveEffectOp(state, op, rng);
+  const targets = resolveTargets(state, sourceId, effectiveOp.target || "Enemy");
   if (!targets.length) return;
+  const cardMods = state._cardMutMods || null;
+  const playCtx = state._currentPlayContext || null;
+  const isPlayerSource = sourceId === "player" || sourceId === state.player.id;
+  const effectRoll = playCtx?.effectRoll
+    ?? (cardMods?.deterministicEffect
+      ? getDeterministicEffectMultiplier(state, playCtx?.cardInstanceId, cardMods)
+      : (cardMods?.randomizeEffect || cardMods?.randomizeEffectMax !== 1 || cardMods?.randomizeEffectMin !== 1)
+        ? ((cardMods.randomizeEffectMin || 1) + (((cardMods.randomizeEffectMax || 1) - (cardMods.randomizeEffectMin || 1)) * (rng ? rng.next() : 0.5)))
+        : 1);
+  if (playCtx && playCtx.effectRoll == null) playCtx.effectRoll = effectRoll;
+  const effectMult = (cardMods?.effectMult ?? 1) * effectRoll;
+  const damageMult = (cardMods?.damageMult ?? 1) * effectRoll;
+  const effectFlatMod = Number(cardMods?.effectFlatMod || 0);
 
-  switch (op.op) {
+  switch (effectiveOp.op) {
     case "DealDamage": {
-      const isPlayerSource = sourceId === state.player.id;
       for (const target of targets) {
         const wasHp = target.hp;
-        const dmgMult = (state._cardMutMods?.effectMult ?? 1) * (state._cardMutMods?.damageMult ?? 1);
+        let amount = Math.max(0, (effectiveOp.amount || 0) + effectFlatMod);
+        if (isPlayerSource && playCtx && !playCtx.usedNextCardDamageBonus && state._nextCardDamageBonus) {
+          amount += state._nextCardDamageBonus;
+          playCtx.usedNextCardDamageBonus = true;
+          delete state._nextCardDamageBonus;
+        }
 
         // POWER: NC-066 Killchain Protocol — first damage this turn deals +6 bonus
         if (isPlayerSource && !state._firstDamageThisTurn) {
@@ -941,7 +1104,46 @@ export function applyEffectOp(state, sourceId, op, rng) {
           runPowerTriggers(state, state.dataRef, rng, 'FirstDamage', { target });
         }
 
-        applyDamage(state, sourceId, target, Math.floor((op.amount || 0) * dmgMult));
+        if (isPlayerSource && cardMods?.ignoreResistance && target !== state.player) {
+          loseFirewall(state, target, Math.max(1, Math.floor(amount / 2)), { silent: true });
+        }
+        const dealt = applyDamage(state, sourceId, target, Math.floor(amount * damageMult));
+        if (playCtx) {
+          playCtx.totalDamageDealt = (playCtx.totalDamageDealt || 0) + dealt;
+          playCtx.dealtDamage = true;
+        }
+        if (isPlayerSource && cardMods?.damageToFirewall && dealt > 0) {
+          grantFirewall(state, state.player, Math.max(1, Math.floor(dealt / 2)), rng);
+        }
+        if (isPlayerSource && cardMods?.aoeHalfDamage) {
+          const others = getAliveEnemies(state).filter((enemy) => enemy.id !== target.id);
+          for (const other of others) {
+            const splash = Math.max(1, Math.floor(dealt / 2));
+            applyDamage(state, sourceId, other, splash);
+          }
+        }
+        if (isPlayerSource && cardMods?.splitDamageAoe) {
+          const others = getAliveEnemies(state).filter((enemy) => enemy.id !== target.id);
+          for (const other of others) {
+            const splash = Math.max(1, Math.floor(dealt / 2));
+            applyDamage(state, sourceId, other, splash);
+          }
+        }
+        if (isPlayerSource && playCtx?.grantEnemyEffect) {
+          const enemy = getTargetEnemy(state, playCtx.targetEnemyId);
+          if (enemy && enemy.hp > 0) {
+            grantFirewall(state, enemy, Math.max(1, Math.floor(dealt * 0.5 * playCtx.grantEnemyEffect)), rng);
+          }
+        }
+        if (isPlayerSource && cardMods?.lowDamageToHeal && dealt > 0 && dealt <= 3) {
+          state.player.hp = Math.min(state.player.maxHP, state.player.hp + dealt);
+        }
+        if (isPlayerSource && cardMods?.spilloverConvert && target.hp <= 0 && wasHp < amount) {
+          const overkill = Math.max(0, amount - wasHp);
+          if (overkill > 0) {
+            grantFirewall(state, state.player, overkill, rng);
+          }
+        }
 
         // Phase change + Enemy death passives
         if (target.id && String(target.id).startsWith("enemy_")) {
@@ -958,20 +1160,52 @@ export function applyEffectOp(state, sourceId, op, rng) {
     case "GainBlock": {
       // Legacy alias: old content may still emit GainBlock, but combat is
       // Firewall-only now.
-      const firewallMult = state._cardMutMods?.effectMult ?? 1;
-      for (const target of targets) grantFirewall(state, target, Math.floor((op.amount || 0) * firewallMult), rng);
+      const firewallMult = effectMult;
+      for (const target of targets) {
+        const gained = grantFirewall(state, target, Math.floor(Math.max(0, (effectiveOp.amount || 0) + effectFlatMod) * firewallMult), rng);
+        if (playCtx && gained > 0) playCtx.gainedDefense = true;
+        if (isPlayerSource && playCtx?.grantEnemyEffect) {
+          const enemy = getTargetEnemy(state, playCtx.targetEnemyId);
+          if (enemy && enemy.hp > 0 && target === state.player) {
+            grantFirewall(state, enemy, Math.max(1, Math.floor(gained * playCtx.grantEnemyEffect)), rng);
+          }
+        }
+      }
       return;
     }
     case "ApplyStatus":
       for (const target of targets) {
-        if (op.statusId === 'Firewall') {
-          grantFirewall(state, target, op.stacks || 1, rng);
+        let stacks = Math.max(1, Math.floor(((effectiveOp.stacks || 1) + effectFlatMod) * effectMult));
+        if (cardMods?.enemyExploitResist && target !== state.player && isNegativeStatus(state, effectiveOp.statusId)) {
+          stacks = Math.max(1, stacks - 1);
+        }
+        if (effectiveOp.statusId === 'Firewall') {
+          grantFirewall(state, target, stacks, rng);
         } else {
-          addStatus(state, target, op.statusId, op.stacks || 1);
+          addStatus(state, target, effectiveOp.statusId, stacks);
+        }
+        if (playCtx) {
+          playCtx.appliedStatus = true;
+          if (isNegativeStatus(state, effectiveOp.statusId)) playCtx.appliedNegativeStatus = true;
+        }
+        if (isPlayerSource && cardMods?.statusCrosswire) {
+          const mirrorTarget = target === state.player ? getTargetEnemy(state, playCtx?.targetEnemyId) : state.player;
+          if (mirrorTarget) addStatus(state, mirrorTarget, effectiveOp.statusId, Math.max(1, Math.floor(stacks / 2)));
+        }
+        if (isPlayerSource && cardMods?.statusReflect > 0) {
+          const reflectTarget = target === state.player ? getTargetEnemy(state, playCtx?.targetEnemyId) : state.player;
+          if (reflectTarget) addStatus(state, reflectTarget, effectiveOp.statusId, Math.max(1, Math.floor(stacks * cardMods.statusReflect)));
+        }
+        if (isPlayerSource && cardMods?.negBounce > 0 && isNegativeStatus(state, effectiveOp.statusId) && target !== state.player) {
+          addStatus(state, state.player, effectiveOp.statusId, Math.max(1, Math.floor(stacks * cardMods.negBounce)));
+        }
+        if (isPlayerSource && (cardMods?.shareBuffsWithEnemy || cardMods?.resourceGainTarget === "Enemy") && isPositiveStatusId(state, effectiveOp.statusId) && target === state.player) {
+          const enemy = getTargetEnemy(state, playCtx?.targetEnemyId);
+          if (enemy) addStatus(state, enemy, effectiveOp.statusId, Math.max(1, Math.floor(stacks / 2)));
         }
 
         // First debuff each combat hook (enemies only)
-        if (target.id && String(target.id).startsWith("enemy_") && isNegativeStatus(state, op.statusId)) {
+        if (target.id && String(target.id).startsWith("enemy_") && isNegativeStatus(state, effectiveOp.statusId)) {
           if (!target.combatFlags) target.combatFlags = {};
           if (!target.combatFlags.firstDebuffSeen) {
             target.combatFlags.firstDebuffSeen = true;
@@ -1083,7 +1317,7 @@ export function applyEffectOp(state, sourceId, op, rng) {
       return;
     }
     case "Heal": {
-      const amt = op.amount || 0;
+      const amt = Math.max(0, Math.floor(((effectiveOp.amount || 0) + effectFlatMod) * effectMult));
       for (const target of targets) {
         // POWER: NC-071 System Watchdog — cancel first enemy heal
         if (target.id && String(target.id).startsWith("enemy_") && sourceId !== state.player.id) {
@@ -1093,6 +1327,11 @@ export function applyEffectOp(state, sourceId, op, rng) {
         }
         const before = target.hp;
         target.hp = Math.min(target.maxHP || target.hp + amt, target.hp + amt);
+        if (playCtx && target === state.player && target.hp > before) playCtx.healed = true;
+        if (isPlayerSource && playCtx?.grantEnemyEffect && target === state.player) {
+          const enemy = getTargetEnemy(state, playCtx.targetEnemyId);
+          if (enemy) enemy.hp = Math.min(enemy.maxHP || enemy.hp + amt, enemy.hp + Math.max(1, Math.floor(amt * playCtx.grantEnemyEffect)));
+        }
         push(state.log, { t: "Info", msg: `${target.id} healed ${target.hp - before}` });
       }
       return;
@@ -1101,16 +1340,23 @@ export function applyEffectOp(state, sourceId, op, rng) {
       const self = (sourceId === "player" || sourceId === state.player.id)
         ? state.player : null;
       if (!self) return;
-      self.ram = Math.min(self.maxRAM, self.ram + (op.amount || 0));
-      push(state.log, { t: "Info", msg: `Gained ${op.amount} RAM` });
+      const amount = Math.max(0, Math.floor(((effectiveOp.amount || 0) + effectFlatMod) * effectMult));
+      self.ram = Math.min(self.maxRAM + (cardMods?.ramBufferMod || 0), self.ram + amount);
+      if (playCtx && amount > 0) playCtx.gainedResource = true;
+      if (isPlayerSource && (cardMods?.resourceGainTarget === "Enemy" || playCtx?.grantEnemyEffect)) {
+        const enemy = getTargetEnemy(state, playCtx?.targetEnemyId);
+        if (enemy) grantFirewall(state, enemy, Math.max(1, amount), rng);
+      }
+      push(state.log, { t: "Info", msg: `Gained ${amount} RAM` });
       return;
     }
     case "LoseRAM": {
       const self = (sourceId === "player" || sourceId === state.player.id)
         ? state.player : null;
       if (!self) return;
-      self.ram = Math.max(0, self.ram - (op.amount || 0));
-      push(state.log, { t: "Info", msg: `Lost ${op.amount} RAM` });
+      const amount = Math.max(0, Math.floor(((effectiveOp.amount || 0) + effectFlatMod) * effectMult));
+      self.ram = Math.max(0, self.ram - amount);
+      push(state.log, { t: "Info", msg: `Lost ${amount} RAM` });
       return;
     }
     case "RawText": {
@@ -1329,6 +1575,21 @@ function rollTier(rng, norm) {
   return norm[norm.length - 1][0];
 }
 
+function shiftTier(tier, amount = 0) {
+  const tierOrder = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
+  const idx = tierOrder.indexOf(String(tier || 'A').toUpperCase());
+  if (idx < 0) return tier;
+  const nextIdx = Math.max(0, Math.min(tierOrder.length - 1, idx + amount));
+  return tierOrder[nextIdx];
+}
+
+function applyTierBias(tier, bias = null) {
+  const normalized = String(bias || '').toLowerCase();
+  if (normalized === 'low' || normalized === 'lower') return shiftTier(tier, 1);
+  if (normalized === 'high' || normalized === 'higher') return shiftTier(tier, -1);
+  return tier;
+}
+
 export function forceNewMutation(state, data, seed, cardInstanceId, tier) {
   const rng = new RNG((seed ^ 0xDEADBEEF) >>> 0);
   const ci = state.cardInstances[cardInstanceId];
@@ -1348,10 +1609,7 @@ export function forceNewMutation(state, data, seed, cardInstanceId, tier) {
   }
   const pickId = candidates[rng.int(candidates.length)];
   const mut = data.mutations[pickId];
-  ci.appliedMutations.push(pickId);
-  if (mut.ramCostDelta) ci.ramCostDelta += mut.ramCostDelta;
-  if (mut.useCounterDelta) ci.useCounter += mut.useCounterDelta;
-  if (mut.finalCountdownDelta) ci.finalMutationCountdown += mut.finalCountdownDelta;
+  syncCardMutationState(state, data, cardInstanceId, [...(ci.appliedMutations || []), pickId]);
 
   push(state.log, {
     t: "MutationApplied",
@@ -1452,6 +1710,7 @@ function applyMutation(state, data, rng, cardInstanceId, tier) {
   if (!ci) {
     return { applied: false, reason: "missing_card_or_mutation", tier, mutationId: null };
   }
+  const mutationMods = computePassiveMods(state, data, cardInstanceId);
   const availablePool = pool.filter((mid) => {
     const mut = data.mutations[mid];
     if (!mut) return false;
@@ -1488,14 +1747,22 @@ function applyMutation(state, data, rng, cardInstanceId, tier) {
     return { applied: false, reason: "missing_card_or_mutation", tier, mutationId: mid ?? null };
   }
 
-  ci.appliedMutations.push(mid);
-  if (mut.ramCostDelta) ci.ramCostDelta += mut.ramCostDelta;
-  if (mut.useCounterDelta) {
-    const nextCycleLength = getMutationCycleLength(state, data, cardInstanceId);
-    const nextUsesRemaining = (ci.useCounter ?? nextCycleLength) + mut.useCounterDelta;
-    ci.useCounter = Math.max(0, Math.min(nextCycleLength, nextUsesRemaining));
+  if (mutationMods.invertMutationPolarity) {
+    const desiredMarker = mid.includes('-') ? '+' : (mid.includes('+') ? '-' : null);
+    if (desiredMarker) {
+      const inverted = availablePool.find((candidateId) => candidateId.includes(desiredMarker));
+      if (inverted) {
+        mid = inverted;
+      }
+    }
   }
-  if (mut.finalCountdownDelta) ci.finalMutationCountdown += mut.finalCountdownDelta;
+
+  const chosenMutation = data.mutations[mid];
+  if (!chosenMutation) {
+    return { applied: false, reason: "missing_card_or_mutation", tier, mutationId: mid ?? null };
+  }
+
+  syncCardMutationState(state, data, cardInstanceId, [...(ci.appliedMutations || []), mid]);
 
   push(state.log, {
     t: "MutationApplied",
@@ -1504,7 +1771,7 @@ function applyMutation(state, data, rng, cardInstanceId, tier) {
       cardInstanceId,
       tier,
       mutationId: mid,
-      mutationName: mut.name,
+      mutationName: chosenMutation.name,
       cardDefId: ci.defId,
     },
   });
@@ -1515,8 +1782,8 @@ function applyMutation(state, data, rng, cardInstanceId, tier) {
     applied: true,
     tier,
     mutationId: mid,
-    mutationName: mut.name,
-    stackable: !!mut.stackable,
+    mutationName: chosenMutation.name,
+    stackable: !!chosenMutation.stackable,
   };
 }
 
@@ -1530,6 +1797,15 @@ function maybeTriggerMutation(state, data, rng, cardInstanceId) {
     };
   }
   const def = data.cards[ci.defId];
+  const mutationMods = computePassiveMods(state, data, cardInstanceId);
+  const runtime = getCardRuntime(ci);
+  if (runtime) {
+    if (runtime.mutationBlocksRemaining == null) runtime.mutationBlocksRemaining = mutationMods.mutationBlock;
+    if ((mutationMods.nextMutationFree || 0) > 0 && runtime.nextMutationFreeCharges < mutationMods.nextMutationFree) {
+      runtime.nextMutationFreeCharges = mutationMods.nextMutationFree;
+    }
+    if (runtime.absorbedMutationsRemaining == null) runtime.absorbedMutationsRemaining = mutationMods.absorbMutation;
+  }
 
   // Core cards never decay or mutate (per design brief)
   if (def.tags?.includes("Core")) {
@@ -1574,6 +1850,54 @@ function maybeTriggerMutation(state, data, rng, cardInstanceId) {
     return baseTelemetry;
   }
 
+  if ((runtime?.nextMutationFreeCharges || 0) > 0) {
+    runtime.nextMutationFreeCharges -= 1;
+    const freeTelemetry = {
+      ...baseTelemetry,
+      outcome: "next_mutation_free",
+      triggered: false,
+    };
+    push(state.log, { t: "MutationTriggerCheck", data: freeTelemetry });
+    resetMutationCycle(state, data, cardInstanceId);
+    return freeTelemetry;
+  }
+
+  if ((runtime?.mutationBlocksRemaining || 0) > 0) {
+    runtime.mutationBlocksRemaining -= 1;
+    const blockedTelemetry = {
+      ...baseTelemetry,
+      outcome: "mutation_blocked",
+      triggered: false,
+    };
+    push(state.log, { t: "MutationTriggerCheck", data: blockedTelemetry });
+    resetMutationCycle(state, data, cardInstanceId);
+    return blockedTelemetry;
+  }
+
+  if ((runtime?.absorbedMutationsRemaining || 0) > 0) {
+    runtime.absorbedMutationsRemaining -= 1;
+    push(state.log, { t: "Info", msg: `${ci.defId} absorbed an incoming mutation` });
+    const absorbedTelemetry = {
+      ...baseTelemetry,
+      outcome: "mutation_absorbed",
+      triggered: false,
+    };
+    push(state.log, { t: "MutationTriggerCheck", data: absorbedTelemetry });
+    resetMutationCycle(state, data, cardInstanceId);
+    return absorbedTelemetry;
+  }
+
+  if ((mutationMods.mutationResist || 0) > 0 && rng && rng.next() < mutationMods.mutationResist) {
+    const resistedTelemetry = {
+      ...baseTelemetry,
+      outcome: "mutation_resisted",
+      triggered: false,
+    };
+    push(state.log, { t: "MutationTriggerCheck", data: resistedTelemetry });
+    resetMutationCycle(state, data, cardInstanceId);
+    return resistedTelemetry;
+  }
+
   let tierOdds = { ...(odds?.tiers ?? { A: 1 }) };
   if (mods.mutationTierWeightMult) {
     for (const [t, m] of Object.entries(mods.mutationTierWeightMult)) {
@@ -1583,7 +1907,11 @@ function maybeTriggerMutation(state, data, rng, cardInstanceId) {
 
   const forced = state.forcedMutationTier;
   const rolledTier = forced || rollTier(rng, normalizeTierOdds(tierOdds));
-  let tier = rolledTier;
+  let tier = applyTierBias(rolledTier, mutationMods.mutationTierBias);
+  if (state._nextMutationTierShift) {
+    tier = shiftTier(tier, -Math.abs(state._nextMutationTierShift));
+    state._nextMutationTierShift = 0;
+  }
   if (forced) state.forcedMutationTier = null;
 
   // OverclockSuite: applied mutations are 1 tier weaker (A→B, B→C, etc.)
@@ -1596,6 +1924,18 @@ function maybeTriggerMutation(state, data, rng, cardInstanceId) {
   const mutationResult = applyMutation(state, data, rng, cardInstanceId, tier);
   if (mutationResult?.applied) {
     runPatchTrigger(state, data, rng, cardInstanceId, 'onMutate');
+    if (mutationMods.purgeMutation > 0) {
+      let toRemove = mutationMods.purgeMutation;
+      const nextMutations = (ci.appliedMutations || []).filter((mid) => {
+        if (toRemove <= 0) return true;
+        if (mid.includes('-') && !mid.startsWith('C-S')) {
+          toRemove -= 1;
+          return false;
+        }
+        return true;
+      });
+      syncCardMutationState(state, data, cardInstanceId, nextMutations);
+    }
   }
   const triggerTelemetry = {
     ...baseTelemetry,
@@ -1645,6 +1985,7 @@ function parsePatch(patchStr) {
  * Check whether a named condition passes.
  */
 function checkCondition(state, condition, cardInstanceId, ctx) {
+  if (ctx?.alwaysMeetCondition) return true;
   if (!condition) return true;
   const player = state.player;
   switch (condition) {
@@ -1664,26 +2005,116 @@ function checkCondition(state, condition, cardInstanceId, ctx) {
  * Returns an object with cumulative multipliers / flags.
  */
 function computePassiveMods(state, data, cardInstanceId) {
-  const ci = state.cardInstances[cardInstanceId];
+  const ci = state?.cardInstances?.[cardInstanceId];
   const mods = {
     effectMult: 1,
     damageMult: 1,
+    effectFlatMod: 0,
     disabled: false,
     mutationChanceMult: 1,
     mutationRateMult: 1,
     countdownMult: 1,
+    drawMod: 0,
+    firstOnly: false,
+    notFirst: false,
+    mustPlayFirst: false,
+    alwaysFirst: false,
+    cannotFollowPrevious: false,
+    requireEnemyStatus: false,
+    requireHpAbovePct: null,
+    disabledBelowHpPct: null,
+    conditionalPenalty: 0,
+    conditionalDraw: 0,
+    playWindowTurns: null,
+    lockedSlot: false,
+    costHalf: false,
+    handStrainThreshold: null,
+    firstPlayExtraCost: 0,
+    overclockCostMod: 0,
+    sacrificeDiscount: 0,
+    spilloverCost: 0,
+    randomizeCost: null,
+    randomizeEffect: false,
+    randomizeEffectMin: 1,
+    randomizeEffectMax: 1,
+    randomizeEffectType: false,
+    cascadeMisfire: false,
+    invertTargets: false,
+    invertEffects: false,
+    invertBeneficial: false,
+    hiddenInvert: false,
+    adaptiveType: false,
+    ignoreResistance: false,
+    invertMutationPolarity: false,
+    kernelCondition: false,
+    lowDamageToHeal: false,
+    negBounce: 0,
+    sequenceAnchor: false,
+    spilloverConvert: null,
+    suppressNonCombat: false,
+    loseType: false,
+    aoeHalf: false,
+    aoeHalfDamage: false,
+    splitDamageAoe: false,
+    comboEffectBoost: 1,
+    highHpBonus: 1,
+    earlyTurnBonus: 1,
+    precisionRamBonus: 0,
+    deferredPlay: false,
+    delayTurns: 0,
+    unstableTimingChance: 0,
+    clearFirewallOnTurnStart: false,
+    chokePenalty: null,
+    damageIncomingReduce: 0,
+    damageToFirewall: false,
+    damageSink: 0,
+    enemyArmorOnPlay: 0,
+    enemyExploitResist: false,
+    shareBuffsWithEnemy: false,
+    resourceGainTarget: null,
+    statusReflect: 0,
+    statusCrosswire: false,
+    selfDamageToEnemyFirewall: false,
+    forkCount: 1,
+    splitCardRatio: 0,
+    topdeckEcho: false,
+    terminalLoop: false,
+    spliceRandom: false,
+    nextMutationFree: 0,
+    mutationResist: 0,
+    mutationBlock: 0,
+    mutationTierBias: null,
+    absorbMutation: 0,
+    purgeMutation: 0,
+    corrodeMutate: null,
+    alwaysMeetCondition: false,
+    skipEveryOther: false,
+    lockedTurns: 0,
+    retainFirewall: false,
+    allNegativePassives: false,
+    deterministicEffect: false,
+    noEffect: false,
+    maxHandMod: 0,
+    ramBufferMod: 0,
+    selfDamageResist: 0,
   };
   if (!ci) return mods;
   for (const mid of ci.appliedMutations) {
-    const mut = data.mutations[mid];
+      const mut = data?.mutations?.[mid];
     if (!mut?.patch) continue;
     for (const e of parsePatch(mut.patch)) {
       if (e.trigger !== 'passive') continue;
       switch (e.op) {
         case 'EffectMult':    mods.effectMult    *= parseFloat(e.args[0]) || 1; break;
         case 'DamageMult':    mods.damageMult    *= parseFloat(e.args[0]) || 1; break;
+        case 'EffectFlatMod': mods.effectFlatMod += parseFloat(e.args[0]) || 0; break;
         case 'Disabled':
-        case 'NoEffect':      mods.disabled = true; break;
+          mods.disabled = true;
+          break;
+        case 'NoEffect':
+          mods.disabled = true;
+          mods.noEffect = true;
+          break;
         case 'MutationChanceMult': {
           const mult = parseFloat(e.args[0]) || 1;
           mods.mutationChanceMult *= mult;
@@ -1691,20 +2122,275 @@ function computePassiveMods(state, data, cardInstanceId) {
           break;
         }
         case 'CountdownMult': mods.countdownMult *= parseFloat(e.args[0]) || 1; break;
-        // All other passives are handled at engine-hook points or are future work
+        case 'DrawMod': mods.drawMod += parseInt(e.args[0], 10) || 0; break;
+        case 'NotFirst': mods.notFirst = true; break;
+        case 'MustPlayFirst': mods.mustPlayFirst = true; mods.firstOnly = true; break;
+        case 'AlwaysFirst': mods.alwaysFirst = true; mods.firstOnly = true; break;
+        case 'CannotFollowPrevious': mods.cannotFollowPrevious = true; break;
+        case 'RequireEnemyStatus': mods.requireEnemyStatus = true; break;
+        case 'RequireHPAbove': mods.requireHpAbovePct = parseFloat(e.args[0]) || 0; break;
+        case 'DisabledBelowHP': mods.disabledBelowHpPct = parseFloat(e.args[0]) || 0; break;
+        case 'ConditionalPenalty': mods.conditionalPenalty += parseInt(e.args[0], 10) || 0; break;
+        case 'ConditionalDraw': mods.conditionalDraw += parseInt(e.args[0], 10) || 0; break;
+        case 'PlayWindowTurns': mods.playWindowTurns = Math.max(mods.playWindowTurns || 0, parseInt(e.args[0], 10) || 1); break;
+        case 'LockedSlot': mods.lockedSlot = true; break;
+        case 'LockedTurns': mods.lockedTurns = Math.max(mods.lockedTurns || 0, parseInt(e.args[0], 10) || 1); break;
+        case 'CostHalf': mods.costHalf = true; break;
+        case 'HandStrainCost': mods.handStrainThreshold = parseInt(e.args[0], 10) || 4; break;
+        case 'FirstPlayExtraCost': mods.firstPlayExtraCost += parseInt(e.args[0], 10) || 0; break;
+        case 'OverclockCostMod': mods.overclockCostMod += parseInt(e.args[0], 10) || 0; break;
+        case 'SacrificeDiscount': mods.sacrificeDiscount += parseInt(e.args[0], 10) || 0; break;
+        case 'SpilloverCost': mods.spilloverCost += parseInt(e.args[0], 10) || 0; break;
+        case 'RandomizeCost': mods.randomizeCost = e.args; break;
+        case 'RandomizeEffect':
+          mods.randomizeEffect = true;
+          break;
+        case 'RandomizeEffectMult':
+          mods.randomizeEffectMin = Math.min(mods.randomizeEffectMin, parseFloat(e.args[0]) || 1);
+          mods.randomizeEffectMax = Math.max(mods.randomizeEffectMax, parseFloat(e.args[1]) || 1);
+          break;
+        case 'RandomizeEffectType': mods.randomizeEffectType = true; break;
+        case 'DeterministicEffect': mods.deterministicEffect = true; break;
+        case 'CascadeMisfire': mods.cascadeMisfire = true; break;
+        case 'InvertTargets': mods.invertTargets = true; break;
+        case 'InvertEffects': mods.invertEffects = true; break;
+        case 'InvertBeneficial': mods.invertBeneficial = true; break;
+        case 'HiddenInvert': mods.hiddenInvert = true; break;
+        case 'AdaptiveType': mods.adaptiveType = true; break;
+        case 'IgnoreResistance': mods.ignoreResistance = true; break;
+        case 'InvertMutationPolarity': mods.invertMutationPolarity = true; break;
+        case 'KernelCondition': mods.kernelCondition = true; break;
+        case 'LowDamageToHeal': mods.lowDamageToHeal = true; break;
+        case 'NegBounce': mods.negBounce = Math.max(mods.negBounce, parseFloat(e.args[0]) || 0); break;
+        case 'SequenceAnchor': mods.sequenceAnchor = true; break;
+        case 'SpilloverConvert': mods.spilloverConvert = e.args[0] || 'Bonus'; break;
+        case 'SuppressNonCombat': mods.suppressNonCombat = true; break;
+        case 'LoseType': mods.loseType = true; break;
+        case 'AOEHalf': mods.aoeHalf = true; break;
+        case 'AOEHalfDamage': mods.aoeHalfDamage = true; break;
+        case 'SplitDamageAOE': mods.splitDamageAoe = true; break;
+        case 'ComboEffectBoost': mods.comboEffectBoost *= parseFloat(e.args[0]) || 1; break;
+        case 'HighHPBonus': mods.highHpBonus *= parseFloat(e.args[0]) || 1; break;
+        case 'EarlyTurnBonus': mods.earlyTurnBonus *= parseFloat(e.args[0]) || 1; break;
+        case 'PrecisionRAMBonus': mods.precisionRamBonus += parseInt(e.args[0], 10) || 0; break;
+        case 'DeferredPlay': mods.deferredPlay = true; mods.delayTurns = Math.max(mods.delayTurns, 1); break;
+        case 'DelayEffect': mods.delayTurns = Math.max(mods.delayTurns, parseInt(e.args[0], 10) || 1); break;
+        case 'UnstableTiming': mods.unstableTimingChance = Math.max(mods.unstableTimingChance, parseFloat(e.args[0]) || 0); break;
+        case 'ClearFirewallOnTurnStart': mods.clearFirewallOnTurnStart = true; break;
+        case 'ChokePenalty':
+          mods.chokePenalty = {
+            damage: parseInt(e.args[0], 10) || 0,
+            turns: parseInt(e.args[1], 10) || 1,
+          };
+          break;
+        case 'DamageIncomingReduce': mods.damageIncomingReduce += parseInt(e.args[0], 10) || 0; break;
+        case 'DamageToFirewall': mods.damageToFirewall = true; break;
+        case 'DamageSink': mods.damageSink += parseInt(e.args[0], 10) || 0; break;
+        case 'EnemyArmorOnPlay': mods.enemyArmorOnPlay += parseInt(e.args[0], 10) || 0; break;
+        case 'EnemyExploitResist': mods.enemyExploitResist = true; break;
+        case 'ShareBuffsWithEnemy': mods.shareBuffsWithEnemy = true; break;
+        case 'ResourceGain': mods.resourceGainTarget = e.args[0] || null; break;
+        case 'StatusReflect': mods.statusReflect = Math.max(mods.statusReflect, parseFloat(e.args[0]) || 0); break;
+        case 'StatusCrosswire': mods.statusCrosswire = true; break;
+        case 'SelfDamageToEnemyFirewall': mods.selfDamageToEnemyFirewall = true; break;
+        case 'ForkEffect': mods.forkCount = Math.max(mods.forkCount, parseInt(e.args[0], 10) || 1); break;
+        case 'SplitCard': mods.splitCardRatio = Math.max(mods.splitCardRatio, parseFloat(e.args[0]) || 0); break;
+        case 'TopdeckEcho': mods.topdeckEcho = true; break;
+        case 'TerminalLoop': mods.terminalLoop = true; break;
+        case 'SpliceRandom': mods.spliceRandom = true; break;
+        case 'NextMutationFree': mods.nextMutationFree += 1; break;
+        case 'MutationResist': mods.mutationResist += parseFloat(e.args[0]) || 0; break;
+        case 'MutationBlock': mods.mutationBlock += parseInt(e.args[0], 10) || 0; break;
+        case 'MutationTierBias': mods.mutationTierBias = e.args[0] || mods.mutationTierBias; break;
+        case 'AbsorbMutation': mods.absorbMutation += parseInt(e.args[0], 10) || 0; break;
+        case 'PurgeMutation': mods.purgeMutation += parseInt(e.args[0], 10) || 0; break;
+        case 'CorrodeMutate': mods.corrodeMutate = e.args[0] || mods.corrodeMutate; break;
+        case 'AlwaysMeetCondition': mods.alwaysMeetCondition = true; break;
+        case 'SkipEveryOther': mods.skipEveryOther = true; break;
+        case 'RetainFirewall': mods.retainFirewall = true; break;
+        case 'AllNegativePassives': mods.allNegativePassives = true; break;
+        case 'MaxHandMod': mods.maxHandMod += parseInt(e.args[0], 10) || 0; break;
+        case 'RAMBufferMod': mods.ramBufferMod += parseInt(e.args[0], 10) || 0; break;
+        case 'SelfDamageResist': mods.selfDamageResist += parseFloat(e.args[0]) || 0; break;
+        default:
+          break;
       }
     }
   }
+  if (mods.allNegativePassives) {
+    mods.notFirst = true;
+    mods.cannotFollowPrevious = true;
+    mods.randomizeEffect = true;
+    mods.invertTargets = true;
+    mods.conditionalPenalty += 2;
+    mods.effectMult *= 0.8;
+    mods.damageMult *= 0.8;
+  }
+  if (mods.cascadeMisfire) {
+    mods.randomizeEffect = true;
+    mods.conditionalPenalty += 1;
+    mods.effectMult *= 0.9;
+  }
+  if (mods.sequenceAnchor) {
+    mods.comboEffectBoost *= 1.15;
+  }
   return mods;
+}
+
+function getCurrentPlayCount(state) {
+  return Number(state._cardsPlayedThisTurn || 0);
+}
+
+function getCardConditionState(state, targetEnemy) {
+  const enemy = targetEnemy || getTargetEnemy(state);
+  return {
+    targetHasStatus: !!(enemy?.statuses || []).some((status) => status.stacks > 0),
+    targetHasNegativeStatus: !!(enemy?.statuses || []).some((status) => state.dataRef?.statuses?.[status.id]?.isNegative),
+    playerAboveHalf: getEntityHpPercent(state.player) > 50,
+  };
+}
+
+function getRandomizedCost(state, cardInstanceId, baseCost, randomizeCostArgs) {
+  if (!Array.isArray(randomizeCostArgs) || randomizeCostArgs.length === 0) return baseCost;
+  const rollSeed = (state.turn || 0) + String(cardInstanceId).length + (state.player?.piles?.hand?.length || 0);
+  const first = String(randomizeCostArgs[0] || "").trim();
+  const second = String(randomizeCostArgs[1] || "").trim();
+  if (/x$/i.test(second)) {
+    const mult = parseFloat(second) || 1;
+    return Math.max(0, Math.floor(baseCost * mult));
+  }
+  const min = Number.isFinite(parseFloat(first)) ? parseFloat(first) : baseCost - 1;
+  const max = Number.isFinite(parseFloat(second)) ? parseFloat(second) : baseCost + 1;
+  const safeMin = Math.min(min, max);
+  const safeMax = Math.max(min, max);
+  const span = Math.max(0, Math.floor(safeMax - safeMin));
+  return Math.max(0, Math.floor(safeMin + (span === 0 ? 0 : (rollSeed % (span + 1)))));
+}
+
+function getAdjustedCardCost(state, data, cardInstanceId, mods = null) {
+  const ci = state.cardInstances?.[cardInstanceId];
+  if (!ci) return 0;
+  const runtime = getCardRuntime(ci);
+  const passiveMods = mods || computePassiveMods(state, data, cardInstanceId);
+  let cost = getCardCurrentCost(state, data, cardInstanceId);
+  if (passiveMods.costHalf) cost = Math.ceil(cost / 2);
+  if (passiveMods.firstPlayExtraCost > 0 && (runtime?.playsThisCombat || 0) === 0) {
+    cost += passiveMods.firstPlayExtraCost;
+  }
+  if (passiveMods.handStrainThreshold && (state.player?.piles?.hand?.length || 0) >= passiveMods.handStrainThreshold) {
+    cost += 1;
+  }
+  if (passiveMods.overclockCostMod > 0 && getStatusStacks(state.player, "Overclock") > 0) {
+    cost = Math.max(0, cost - passiveMods.overclockCostMod);
+  }
+  if (passiveMods.sacrificeDiscount > 0 && state.player?.hp < state.player?.maxHP) {
+    cost = Math.max(0, cost - passiveMods.sacrificeDiscount);
+  }
+  if (passiveMods.spilloverCost > 0) {
+    cost += passiveMods.spilloverCost;
+  }
+  if (passiveMods.randomizeCost) {
+    cost = getRandomizedCost(state, cardInstanceId, cost, passiveMods.randomizeCost);
+  }
+  return Math.max(0, cost);
+}
+
+export function getCardPlayability(state, data, cardInstanceId, targetEnemyId = null) {
+  const ci = state.cardInstances?.[cardInstanceId];
+  const def = ci?.defId ? data?.cards?.[ci.defId] : null;
+  if (!ci || !def || !state?.player) {
+    return { playable: false, reason: "missing_card", cost: 0, mods: computePassiveMods(state || {}, data || {}, cardInstanceId) };
+  }
+  const mods = computePassiveMods(state, data, cardInstanceId);
+  const runtime = getCardRuntime(ci);
+  const targetEnemy = getTargetEnemy(state, targetEnemyId);
+  const conditionState = getCardConditionState(state, targetEnemy);
+  const cost = getAdjustedCardCost(state, data, cardInstanceId, mods);
+  const hpPct = getEntityHpPercent(state.player);
+  const playCount = getCurrentPlayCount(state);
+  const handIndex = getHandIndex(state, cardInstanceId);
+
+  let reason = null;
+  if (mods.disabled || mods.noEffect) reason = "disabled";
+  else if (mods.disabledBelowHpPct != null && hpPct < mods.disabledBelowHpPct) reason = "hp_lock";
+  else if (mods.requireHpAbovePct != null && hpPct <= mods.requireHpAbovePct && !mods.alwaysMeetCondition) reason = "hp_requirement";
+  else if (mods.requireEnemyStatus && !conditionState.targetHasNegativeStatus && !mods.alwaysMeetCondition) reason = "enemy_status_requirement";
+  else if (mods.kernelCondition && getFirewallStacks(state.player) <= 0 && !mods.alwaysMeetCondition) reason = "kernel_condition";
+  else if ((mods.firstOnly || mods.alwaysFirst || mods.mustPlayFirst) && playCount > 0) reason = "must_be_first";
+  else if (mods.notFirst && playCount === 0) reason = "cannot_be_first";
+  else if (mods.cannotFollowPrevious && playCount > 0) reason = "cannot_follow";
+  else if (mods.playWindowTurns != null && (runtime?.turnsInHand || 0) >= mods.playWindowTurns) reason = "play_window";
+  else if (mods.lockedSlot && runtime?.lockedSlotIndex != null && handIndex !== runtime.lockedSlotIndex) reason = "locked_slot";
+  else if (mods.skipEveryOther && runtime?.skipNextPlay) reason = "skip_every_other";
+  else if ((runtime?.lockedTurnsRemaining || 0) > 0) reason = "locked_turns";
+  else if ((state.player?.ram || 0) < cost) reason = "ram";
+
+  return {
+    playable: !reason,
+    reason,
+    cost,
+    mods,
+    targetEnemy,
+    conditionState,
+  };
+}
+
+function queueDelayedCardEffects(state, cardInstanceId, effects, targetEnemyId, turns = 1) {
+  if (!Array.isArray(state._delayedCardEffects)) state._delayedCardEffects = [];
+  state._delayedCardEffects.push({
+    cardInstanceId,
+    turnsRemaining: Math.max(1, turns),
+    targetEnemyId: targetEnemyId || null,
+    effects: JSON.parse(JSON.stringify(effects || [])),
+  });
+  push(state.log, {
+    t: "MutPatch",
+    msg: `Queued delayed effect (${Math.max(1, turns)} turn)`,
+    data: { cardInstanceId, op: "DelayEffect" },
+  });
+}
+
+function resolveDelayedCardEffects(state, data, rng) {
+  const queue = Array.isArray(state._delayedCardEffects) ? state._delayedCardEffects : [];
+  if (queue.length === 0) return;
+  const remaining = [];
+  for (const item of queue) {
+    const nextTurns = Math.max(0, Number(item.turnsRemaining || 0) - 1);
+    if (nextTurns > 0) {
+      remaining.push({ ...item, turnsRemaining: nextTurns });
+      continue;
+    }
+    const prevTarget = state._targetOverride;
+    if (item.targetEnemyId) state._targetOverride = item.targetEnemyId;
+    for (const op of item.effects || []) {
+      applyEffectOp(state, "player", op, rng);
+    }
+    if (prevTarget) state._targetOverride = prevTarget;
+    else delete state._targetOverride;
+    push(state.log, {
+      t: "Info",
+      msg: `Delayed mutation effect resolved for ${item.cardInstanceId}`,
+    });
+  }
+  state._delayedCardEffects = remaining;
+}
+
+function chooseWrongTarget(state, targetEnemyId, rng) {
+  const alive = getAliveEnemies(state);
+  if (alive.length <= 1) return state.player?.id || null;
+  const candidates = alive.filter((enemy) => enemy.id !== targetEnemyId);
+  if (candidates.length === 0) return alive[0]?.id || null;
+  return rng ? candidates[rng.int(candidates.length)]?.id : candidates[0]?.id;
 }
 
 /**
  * Execute a single patch op.
  */
-function execPatchOp(state, data, rng, cardInstanceId, op, args) {
+function execPatchOp(state, data, rng, cardInstanceId, op, args, ctx = null) {
   const ci   = state.cardInstances[cardInstanceId];
   const p    = state.player;
   const log  = (msg) => push(state.log, { t: 'MutPatch', msg, data: { cardInstanceId, op } });
+  const runtime = getCardRuntime(ci);
 
   switch (op) {
     // ---- damage / healing ----
@@ -1721,7 +2407,14 @@ function execPatchOp(state, data, rng, cardInstanceId, op, args) {
       } else {
         amt = parseInt(args[0]) || 0;
       }
+      if (state._cardMutMods?.selfDamageResist) {
+        amt = Math.max(0, Math.floor(amt * Math.max(0, 1 - state._cardMutMods.selfDamageResist)));
+      }
       if (amt > 0) { p.hp = Math.max(0, p.hp - amt); enforceFirewallCap(state, p, { silent: true }); log(`DealSelfDamage ${amt}`); }
+      if (amt > 0 && state._cardMutMods?.selfDamageToEnemyFirewall) {
+        const enemy = getTargetEnemy(state, state._currentPlayContext?.targetEnemyId);
+        if (enemy) grantFirewall(state, enemy, amt, rng);
+      }
       break;
     }
     case 'DealDamage':
@@ -1852,30 +2545,68 @@ function execPatchOp(state, data, rng, cardInstanceId, op, args) {
       log('NextCardFree');
       break;
     }
+    case 'NextCardDamageBonus': {
+      const amt = parseInt(args[0], 10) || 0;
+      if (amt > 0) {
+        state._nextCardDamageBonus = (state._nextCardDamageBonus || 0) + amt;
+        log(`NextCardDamageBonus ${amt}`);
+      }
+      break;
+    }
+    case 'EffectBoostOnce': {
+      const mult = parseFloat(args[0]) || 1;
+      state._effectBoostOnce = Math.max(1, mult);
+      log(`EffectBoostOnce ${mult}`);
+      break;
+    }
     // ---- mutations on self ----
     case 'RemoveLastMutation': {
-      if (ci) { ci.appliedMutations.pop(); log('RemoveLastMutation'); }
+      if (ci?.appliedMutations?.length) {
+        syncCardMutationState(state, data, cardInstanceId, ci.appliedMutations.slice(0, -1));
+        log('RemoveLastMutation');
+      }
       break;
     }
     case 'RemoveMutation': {
       const n = parseInt(args[0]) || 1;
-      if (ci) { ci.appliedMutations.splice(-n, n); log(`RemoveMutation ${n}`); }
+      if (ci) {
+        const keepCount = Math.max(0, (ci.appliedMutations?.length || 0) - Math.max(1, n));
+        syncCardMutationState(state, data, cardInstanceId, (ci.appliedMutations || []).slice(0, keepCount));
+        log(`RemoveMutation ${n}`);
+      }
       break;
     }
     case 'PurgeNegMutation': {
       let n = parseInt(args[0]) || 1;
       if (ci) {
-        ci.appliedMutations = ci.appliedMutations.filter(mid => {
+        const nextMutations = (ci.appliedMutations || []).filter(mid => {
           if (n <= 0) return true;
           if (mid.includes('-') && !mid.startsWith('C-S')) { n--; return false; }
           return true;
         });
+        syncCardMutationState(state, data, cardInstanceId, nextMutations);
         log(`PurgeNegMutation ${args[0]}`);
       }
       break;
     }
+    case 'RemoveNegMutation': {
+      if (!ci) break;
+      const nextMutations = [...(ci.appliedMutations || [])];
+      const negIdx = [...nextMutations].map((mid, idx) => ({ mid, idx }))
+        .reverse()
+        .find(({ mid }) => mid.includes('-') && !mid.startsWith('C-S'))?.idx ?? -1;
+      if (negIdx >= 0) {
+        nextMutations.splice(negIdx, 1);
+        syncCardMutationState(state, data, cardInstanceId, nextMutations);
+        log('RemoveNegMutation');
+      }
+      break;
+    }
     case 'ClearMutations': {
-      if (ci) { ci.appliedMutations = []; log('ClearMutations'); }
+      if (ci) {
+        syncCardMutationState(state, data, cardInstanceId, []);
+        log('ClearMutations');
+      }
       break;
     }
     case 'AccelerateCountdown': {
@@ -1893,9 +2624,14 @@ function execPatchOp(state, data, rng, cardInstanceId, op, args) {
       const negIdx = ci.appliedMutations.findIndex(mid => mid.includes('-') && !mid.startsWith('C-S'));
       if (negIdx >= 0) {
         const posPool = Object.values(data.mutations || {})
-          .filter(m => m.id.includes('+'))
+          .filter((m) => m.id.includes('+') && (m.stackable || !ci.appliedMutations.includes(m.id) || ci.appliedMutations[negIdx] === m.id))
           .map(m => m.id);
-        if (posPool.length && rng) { ci.appliedMutations[negIdx] = posPool[rng.int(posPool.length)]; log('SwapNegToPosMutation'); }
+        if (posPool.length && rng) {
+          const nextMutations = [...ci.appliedMutations];
+          nextMutations[negIdx] = posPool[rng.int(posPool.length)];
+          syncCardMutationState(state, data, cardInstanceId, nextMutations);
+          log('SwapNegToPosMutation');
+        }
       }
       break;
     }
@@ -1910,14 +2646,79 @@ function execPatchOp(state, data, rng, cardInstanceId, op, args) {
       log(`SpreadMutation ${n}`);
       break;
     }
+    case 'AddCopyToHand': {
+      const copyCid = cloneCardInstance(state, cardInstanceId, { intoHand: true, carryMutations: true });
+      if (copyCid) log(`AddCopyToHand ${copyCid}`);
+      break;
+    }
+    case 'AffectAdjacentCard': {
+      const hand = [...(state.player?.piles?.hand || [])];
+      const idx = hand.indexOf(cardInstanceId);
+      if (idx >= 0) {
+        const candidates = [hand[idx - 1], hand[idx + 1]].filter(Boolean);
+        const targetCid = candidates.length > 0
+          ? (rng ? candidates[rng.int(candidates.length)] : candidates[0])
+          : null;
+        if (targetCid) {
+          applyMutation(state, data, rng, targetCid, 'A');
+          log(`AffectAdjacentCard ${targetCid}`);
+        }
+      }
+      break;
+    }
     case 'CopyMutationTo': {
       if (!ci || !ci.appliedMutations.length) break;
       const lastMid = ci.appliedMutations[ci.appliedMutations.length - 1];
       const others = Object.keys(state.cardInstances).filter(cid => cid !== cardInstanceId);
       if (others.length && rng) {
         const tci = state.cardInstances[others[rng.int(others.length)]];
-        if (tci) { tci.appliedMutations.push(lastMid); log(`CopyMutationTo ${lastMid}`); }
+        const targetAlreadyHasMutation = tci?.appliedMutations?.includes(lastMid);
+        const copiedMutation = data.mutations?.[lastMid];
+        if (tci && (copiedMutation?.stackable || !targetAlreadyHasMutation)) {
+          syncCardMutationState(state, data, tci.instanceId, [...(tci.appliedMutations || []), lastMid]);
+          log(`CopyMutationTo ${lastMid}`);
+        }
       }
+      break;
+    }
+    case 'PurgeMutation': {
+      if (!ci) break;
+      const mode = String(args[0] || '').toLowerCase();
+      const nextMutations = (ci.appliedMutations || []).filter((mid) => {
+        if (mode === 'positive') return mid.includes('-') || mid.startsWith('C-S');
+        if (mode === 'negative') return mid.includes('+') || (!mid.includes('-') && !mid.includes('+'));
+        return false;
+      });
+      syncCardMutationState(state, data, cardInstanceId, nextMutations);
+      log(`PurgeMutation ${args[0]}`);
+      break;
+    }
+    case 'RandomizeEffect': {
+      if (ctx?.phase === 'post') break;
+      if (runtime) runtime.randomizeEffectThisCombat = true;
+      log('RandomizeEffect');
+      break;
+    }
+    case 'SplitDamageSelf': {
+      const ratio = parseFloat(args[0]) || 0.5;
+      const total = Math.max(0, Math.floor((state._currentPlayContext?.totalDamageDealt || 0) * ratio));
+      if (total > 0) {
+        p.hp = Math.max(0, p.hp - total);
+        enforceFirewallCap(state, p, { silent: true });
+        log(`SplitDamageSelf ${total}`);
+      }
+      break;
+    }
+    case 'SwapTarget': {
+      if (ctx?.phase === 'post') break;
+      const wrongTarget = chooseWrongTarget(state, state._currentPlayContext?.targetEnemyId || state._targetOverride, rng);
+      if (wrongTarget === state.player?.id) {
+        state._targetOverride = null;
+        state._selfTargetOverride = true;
+      } else if (wrongTarget) {
+        state._targetOverride = wrongTarget;
+      }
+      log(`SwapTarget ${wrongTarget || 'self'}`);
       break;
     }
     // ---- run-level (deferred until combat end) ----
@@ -1938,6 +2739,12 @@ function execPatchOp(state, data, rng, cardInstanceId, op, args) {
       log(`GainGold ${amt}`);
       break;
     }
+    case 'LoseGold': {
+      const amt = parseInt(args[0], 10) || 0;
+      state._pendingGoldGain = (state._pendingGoldGain || 0) - amt;
+      log(`LoseGold ${amt}`);
+      break;
+    }
     case 'DecompileRandom': {
       const others = Object.keys(state.cardInstances).filter(cid => cid !== cardInstanceId);
       if (others.length && rng) {
@@ -1954,6 +2761,21 @@ function execPatchOp(state, data, rng, cardInstanceId, op, args) {
     case 'RewriteAs': {
       const newDefId = args[0];
       if (ci && data.cards?.[newDefId]) { ci.defId = newDefId; log(`RewriteAs ${newDefId}`); }
+      break;
+    }
+    case 'GrantEnemyEffect': {
+      if (ctx?.phase === 'post') break;
+      const factor = parseFloat(args[0]) || 1;
+      if (state._currentPlayContext) {
+        state._currentPlayContext.grantEnemyEffect = factor;
+      }
+      log(`GrantEnemyEffect ${factor}`);
+      break;
+    }
+    case 'UpgradeMutationTier': {
+      const shift = parseInt(args[0], 10) || 1;
+      state._nextMutationTierShift = (state._nextMutationTierShift || 0) + shift;
+      log(`UpgradeMutationTier ${shift}`);
       break;
     }
     // ---- fizzle (handled pre-effects in PlayCard; this is a post-check no-op) ----
@@ -2055,6 +2877,63 @@ function runPatchTrigger(state, data, rng, cardInstanceId, trigger, ctx) {
       execPatchOp(state, data, rng, cardInstanceId, e.op, e.args, ctx);
     }
   }
+}
+
+function transformEffectTarget(targetHint, mods = null) {
+  if (!mods?.invertTargets) return targetHint;
+  switch (targetHint) {
+    case "Enemy": return "Self";
+    case "AllEnemies": return "Self";
+    case "Self": return "Enemy";
+    case "Player": return "Enemy";
+    default: return targetHint;
+  }
+}
+
+function getDeterministicEffectMultiplier(state, cardInstanceId, mods) {
+  const seed = (state.turn || 0) + String(cardInstanceId || "").length + (state.player?.ram || 0);
+  if (!mods?.randomizeEffect && mods?.randomizeEffectMin === 1 && mods?.randomizeEffectMax === 1) return 1;
+  const min = Number(mods?.randomizeEffectMin ?? 1);
+  const max = Number(mods?.randomizeEffectMax ?? 1);
+  if (max <= min) return min;
+  const roll = (seed % 1000) / 1000;
+  return min + ((max - min) * roll);
+}
+
+function buildEffectiveEffectOp(state, op, rng) {
+  const mods = state._cardMutMods;
+  if (!mods) return op;
+  const effective = { ...op };
+  effective.target = transformEffectTarget(op.target || "Enemy", mods);
+  if (mods.invertEffects || mods.hiddenInvert || mods.invertBeneficial) {
+    if (effective.op === "DealDamage") {
+      effective.op = "Heal";
+      effective.target = effective.target === "Self" ? "Self" : "Enemy";
+    } else if (effective.op === "Heal") {
+      effective.op = "DealDamage";
+      effective.target = effective.target === "Enemy" ? "Enemy" : "Self";
+    } else if (effective.op === "GainBlock") {
+      effective.op = "BreachFirewall";
+    } else if (effective.op === "GainRAM") {
+      effective.op = "LoseRAM";
+    }
+  }
+  if (mods.randomizeEffectType) {
+    if (effective.op === "DealDamage") {
+      effective.op = "ApplyStatus";
+      effective.statusId = "Weak";
+      effective.stacks = Math.max(1, effective.amount || 1);
+      effective.target = "Enemy";
+    } else if (effective.op === "GainBlock") {
+      effective.op = "DrawCards";
+      effective.amount = Math.max(1, Math.floor((effective.amount || 1) / 2));
+      effective.target = "Self";
+    }
+  }
+  if (mods.adaptiveType && effective.op === "DealDamage" && getFirewallStacks(getTargetEnemy(state)) > 0) {
+    effective.target = "AllEnemies";
+  }
+  return effective;
 }
 
 function summarizeCardEffectsForTelemetry(state, data, def, actor) {
@@ -2621,6 +3500,10 @@ export function startCombatFromRunDeck(params) {
   push(state.log, { t: "Info", msg: `Combat started (seed=${seed})` });
   runRelicHooks(state, data, 'on_combat_start', { rng });
   runEnemyPassives(state, "CombatStart", rng, null, { turn: 0 });
+  for (const cid of Object.keys(state.cardInstances || {})) {
+    getCardRuntime(state.cardInstances[cid]);
+    runPatchTrigger(state, data, rng, cid, 'onCombatStart', { alwaysMeetCondition: true });
+  }
   promoteOpeningHandCards(state, openingHand);
   drawCards(state, rng, openingHand, "combat_opening_draw");
   runRelicHooks(state, data, 'on_combat_start', { postDraw: true, rng });
@@ -2628,6 +3511,21 @@ export function startCombatFromRunDeck(params) {
   pushHandState(state, "combat_start_ready", { source: "combat_start" });
   state.rngState = rng.seed >>> 0;
   return state;
+}
+
+function getHandPassiveTotals(state, data) {
+  const totals = {
+    maxHandMod: 0,
+    clearFirewallOnTurnStart: false,
+    retainFirewall: false,
+  };
+  for (const cid of state.player?.piles?.hand || []) {
+    const mods = computePassiveMods(state, data, cid);
+    totals.maxHandMod += mods.maxHandMod || 0;
+    totals.clearFirewallOnTurnStart = totals.clearFirewallOnTurnStart || !!mods.clearFirewallOnTurnStart;
+    totals.retainFirewall = totals.retainFirewall || !!mods.retainFirewall;
+  }
+  return totals;
 }
 
 // ---------- dispatcher ----------
@@ -2641,6 +3539,16 @@ export function dispatchCombat(state, data, action) {
       state.turn += 1;
       state.player.ram = Math.min(state.player.maxRAM, state.player.ram + state.player.ramRegen);
       state._firstDrawDoneThisTurn = false;
+      state._cardsPlayedThisTurn = 0;
+      delete state._lastPlayedCardInstanceId;
+      delete state._lastPlayedCardDefId;
+
+      for (const cid of state.player?.piles?.hand || []) {
+        const runtime = getCardRuntime(state.cardInstances?.[cid]);
+        if (runtime) runtime.turnsInHand = (runtime.turnsInHand || 0) + 1;
+      }
+
+      resolveDelayedCardEffects(state, data, rng);
 
       // Consume queued bonus RAM from X-cost cards (e.g. NC-079 "Next turn, gain N RAM per RAM spent")
       if (state._nextTurnBonusRAM) {
@@ -2655,6 +3563,8 @@ export function dispatchCombat(state, data, action) {
         push(state.log, { t: 'Info', msg: `EntropyEngine: +${state._entropyEngineDrawPending} draw from damage` });
         delete state._entropyEngineDrawPending;
       }
+      const handPassiveTotals = getHandPassiveTotals(state, data);
+      state._handSizeDeltaThisTurn = handPassiveTotals.maxHandMod || 0;
       drawCards(state, rng, 5 + (state.ruleMods?.drawPerTurnDelta || 0), "turn_start_draw");
       // Reset transient per-turn combat flags before recomputing them via processStatusEffects
       const _clearFlags = (ent) => {
@@ -2680,11 +3590,24 @@ export function dispatchCombat(state, data, action) {
       // Clear mutation-patch per-turn flags
       delete state._lockedCards;
       state._pendingEndTurnSelfDamage = 0;
+      state._mutationTurnDamageReduce = 0;
+      state._mutationTurnDamageSink = 0;
+
+      if (handPassiveTotals.clearFirewallOnTurnStart) {
+        clearFirewall(state, state.player, { silent: true });
+      }
 
       // Apply per-turn status effects (Corrode, Nanoflow, Overheat, Underclock…) before decaying stacks
       processStatusEffects(state, state.player);
       for (const e of state.enemies) processStatusEffects(state, e);
-      tickStatuses(state.player, state.dataRef);
+      if (!handPassiveTotals.retainFirewall) {
+        tickStatuses(state.player, state.dataRef);
+      } else {
+        const nonFirewall = (state.player.statuses || []).filter((status) => status.id !== 'Firewall');
+        const firewall = (state.player.statuses || []).filter((status) => status.id === 'Firewall');
+        tickStatuses({ ...state.player, statuses: nonFirewall }, state.dataRef);
+        state.player.statuses = [...nonFirewall.filter((status) => status.stacks > 0), ...firewall];
+      }
       for (const e of state.enemies) tickStatuses(e, state.dataRef);
 
       // Win / defeat check after DoT — Burn/Leak can kill before the player acts
@@ -2760,12 +3683,18 @@ export function dispatchCombat(state, data, action) {
         firewallSpendWithoutFirewall: playedSummary.firewallSpend && getFirewallStacks(state.player) <= 0,
       };
 
-      // Compute RAM cost, accounting for NextCardFree flag
+      const playability = getCardPlayability(state, data, cid, resolvedTargetEnemy?.id ?? action.targetEnemyId ?? null);
+      const mutPassives = playability.mods;
+
+      // Compute RAM cost, accounting for mutation-rewritten cost rules
       const ramBefore = state.player.ram;
-      let cost = getCardCurrentCost(state, data, cid);
+      let cost = playability.cost;
       if (state._nextCardFree) state._nextCardFree = false;
       if (state._relicOverclockCostMod != null) delete state._relicOverclockCostMod;
-      if (state.player.ram < cost) { push(state.log, { t: "Info", msg: "Not enough RAM" }); return state; }
+      if (!playability.playable) {
+        push(state.log, { t: "Info", msg: `Card not playable (${playability.reason || 'blocked'})` });
+        return state;
+      }
 
       state.player.ram -= cost;
 
@@ -2832,8 +3761,6 @@ export function dispatchCombat(state, data, action) {
         push(state.log, { t: 'Info', msg: 'VoidPointer: Exhaust card plays twice' });
       }
 
-      // Passive mutation modifiers for this play
-      const mutPassives = computePassiveMods(state, data, cid);
       // MemoryLeak doubles the effectMult for this card
       if (state._memoryLeakThisCard) {
         mutPassives.effectMult = (mutPassives.effectMult || 1) * 2;
@@ -2849,10 +3776,41 @@ export function dispatchCombat(state, data, action) {
         mutPassives.effectMult = (mutPassives.effectMult || 1) * 2;
         mutPassives.damageMult = (mutPassives.damageMult || 1) * 2;
       }
+      if (mutPassives.comboEffectBoost > 1 && (state._cardsPlayedThisTurn || 0) > 0) {
+        mutPassives.effectMult *= mutPassives.comboEffectBoost;
+        mutPassives.damageMult *= mutPassives.comboEffectBoost;
+      }
+      if (mutPassives.highHpBonus > 1 && getEntityHpPercent(state.player) > 50) {
+        mutPassives.effectMult *= mutPassives.highHpBonus;
+        mutPassives.damageMult *= mutPassives.highHpBonus;
+      }
+      if (mutPassives.earlyTurnBonus > 1 && state.turn <= 2) {
+        mutPassives.effectMult *= mutPassives.earlyTurnBonus;
+        mutPassives.damageMult *= mutPassives.earlyTurnBonus;
+      }
+      if (mutPassives.precisionRamBonus > 0 && state.player.ram === 0) {
+        mutPassives.effectFlatMod += mutPassives.precisionRamBonus;
+      }
+      if (getCardRuntime(ci)?.randomizeEffectThisCombat) {
+        mutPassives.randomizeEffect = true;
+      }
       state._cardMutMods = mutPassives;
+      state._currentPlayContext = {
+        cardInstanceId: cid,
+        targetEnemyId: resolvedTargetEnemy?.id ?? action.targetEnemyId ?? null,
+        totalDamageDealt: 0,
+        dealtDamage: false,
+        appliedStatus: false,
+        appliedNegativeStatus: false,
+        gainedDefense: false,
+        healed: false,
+        gainedResource: false,
+        conditionState: playability.conditionState,
+      };
 
       // Set target override so effects hit the selected enemy
       if (resolvedTargetEnemy?.id) state._targetOverride = resolvedTargetEnemy.id;
+      delete state._selfTargetOverride;
 
       // Pre-effects fizzle check (A-07 Latency Spike, B-05 Signal Loss)
       // Fizzle must resolve BEFORE effects so the card's effects are skipped on proc
@@ -2862,27 +3820,74 @@ export function dispatchCombat(state, data, action) {
         const fmut = data.mutations?.[mid];
         if (!fmut?.patch) continue;
         for (const fe of parsePatch(fmut.patch)) {
-          if (fe.trigger !== 'onPlay' || fe.op !== 'Fizzle') continue;
+          if (fe.trigger !== 'onPlay') continue;
           if (fe.chance !== null && rng && rng.next() > fe.chance) continue;
-          fizzled = true;
-          push(state.log, { t: 'MutPatch', msg: `${def.name} fizzled!`, data: { cardInstanceId: cid, op: 'Fizzle' } });
-          break;
+          if (fe.op === 'Fizzle') {
+            fizzled = true;
+            push(state.log, { t: 'MutPatch', msg: `${def.name} fizzled!`, data: { cardInstanceId: cid, op: 'Fizzle' } });
+            break;
+          }
+          if (fe.op === 'SwapTarget') {
+            execPatchOp(state, data, rng, cid, fe.op, fe.args, { phase: 'pre', targetEnemyId: resolvedTargetEnemy?.id ?? null });
+          }
+          if (fe.op === 'EffectBoostOnce') {
+            mutPassives.effectMult *= parseFloat(fe.args[0]) || 1;
+            mutPassives.damageMult *= parseFloat(fe.args[0]) || 1;
+          }
+          if (fe.op === 'GrantEnemyEffect') {
+            state._currentPlayContext.grantEnemyEffect = parseFloat(fe.args[0]) || 1;
+          }
+          if (fe.op === 'RandomizeEffect') {
+            mutPassives.randomizeEffect = true;
+          }
         }
       }
 
       // play effects (skipped if card is disabled by mutation or fizzled)
       if (!mutPassives.disabled && !fizzled) {
-        for (const op of def.effects) {
-          applyEffectOp(state, "player", op, rng);
+        const effectList = [...(def.effects || [])];
+        if (mutPassives.spliceRandom) {
+          const allCards = Object.values(data.cards || {}).filter((card) => Array.isArray(card.effects) && card.effects.length > 0);
+          const spliceCard = allCards.length > 0 ? (rng ? allCards[rng.int(allCards.length)] : allCards[0]) : null;
+          if (spliceCard?.effects?.[0]) effectList.push(spliceCard.effects[0]);
+        }
+        if (mutPassives.deferredPlay || mutPassives.delayTurns > 0 || (mutPassives.unstableTimingChance > 0 && rng && rng.next() < mutPassives.unstableTimingChance)) {
+          queueDelayedCardEffects(state, cid, effectList, resolvedTargetEnemy?.id ?? action.targetEnemyId ?? null, Math.max(1, mutPassives.delayTurns || 1));
+        } else {
+          const forkCount = Math.max(1, mutPassives.forkCount || 1);
+          for (let forkIndex = 0; forkIndex < forkCount; forkIndex++) {
+            for (const op of effectList) {
+              applyEffectOp(state, "player", op, rng);
+            }
+          }
         }
       }
 
       delete state._targetOverride;
+      delete state._selfTargetOverride;
       delete state._cardMutMods;
       delete state._currentlyPlayingCard;
 
       // onPlay mutation patches
-      runPatchTrigger(state, data, rng, cid, 'onPlay');
+      runPatchTrigger(state, data, rng, cid, 'onPlay', { alwaysMeetCondition: mutPassives.alwaysMeetCondition, phase: 'post' });
+
+      if (mutPassives.enemyArmorOnPlay > 0) {
+        const enemy = getTargetEnemy(state, resolvedTargetEnemy?.id ?? action.targetEnemyId ?? null);
+        if (enemy) grantFirewall(state, enemy, mutPassives.enemyArmorOnPlay, rng);
+      }
+      if (mutPassives.conditionalDraw > 0 && (mutPassives.alwaysMeetCondition || state._currentPlayContext?.appliedNegativeStatus || state._currentPlayContext?.dealtDamage)) {
+        drawCards(state, rng, mutPassives.conditionalDraw, "conditional_mutation_draw");
+      }
+      if (mutPassives.conditionalPenalty > 0 && !mutPassives.alwaysMeetCondition && !state._currentPlayContext?.dealtDamage && !state._currentPlayContext?.appliedNegativeStatus) {
+        state.player.hp = Math.max(0, state.player.hp - mutPassives.conditionalPenalty);
+        enforceFirewallCap(state, state.player, { silent: true });
+      }
+      if (mutPassives.damageIncomingReduce > 0) {
+        state._mutationTurnDamageReduce = (state._mutationTurnDamageReduce || 0) + mutPassives.damageIncomingReduce;
+      }
+      if (mutPassives.damageSink > 0) {
+        state._mutationTurnDamageSink = (state._mutationTurnDamageSink || 0) + mutPassives.damageSink;
+      }
 
       // Relic on_card_play hooks
       runRelicHooks(state, data, 'on_card_play', { cid, rng, def, cost });
@@ -2935,6 +3940,15 @@ export function dispatchCombat(state, data, action) {
       delete state._qpDoubleThisCard;
       delete state._qpExhaustThisCard;
       delete state._voidPointerDoubleThisCard;
+      const runtime = getCardRuntime(ci);
+      if (runtime) {
+        runtime.playsThisCombat = (runtime.playsThisCombat || 0) + 1;
+        runtime.lastPlayTurn = state.turn;
+        if (mutPassives.skipEveryOther) runtime.skipNextPlay = !runtime.skipNextPlay;
+      }
+      state._cardsPlayedThisTurn = (state._cardsPlayedThisTurn || 0) + 1;
+      state._lastPlayedCardInstanceId = cid;
+      state._lastPlayedCardDefId = ci.defId;
       state.player.piles.hand = state.player.piles.hand.filter(x => x !== cid);
       let movedTo = "discard";
       if (def.tags?.includes("Power") || def.type === "Power") {
@@ -2948,6 +3962,24 @@ export function dispatchCombat(state, data, action) {
         movedTo = "exhaust";
       } else {
         state.player.piles.discard.push(cid);
+      }
+      if (mutPassives.topdeckEcho) {
+        state.player.piles.discard = state.player.piles.discard.filter((x) => x !== cid);
+        state.player.piles.draw.unshift(cid);
+        movedTo = "draw";
+      } else if (mutPassives.terminalLoop) {
+        state.player.piles.discard = state.player.piles.discard.filter((x) => x !== cid);
+        state.player.piles.hand.push(cid);
+        recordCardDrawnToHand(state, cid);
+        movedTo = "hand";
+      } else if (mutPassives.splitCardRatio > 0) {
+        const splitCid = cloneCardInstance(state, cid, { intoHand: false, carryMutations: true });
+        if (splitCid) {
+          const splitInstance = state.cardInstances[splitCid];
+          splitInstance.useCounter = Math.max(1, Math.floor((splitInstance.useCounter || ci.useCounter || 1) * mutPassives.splitCardRatio));
+          splitInstance.finalMutationCountdown = Math.max(1, Math.floor((splitInstance.finalMutationCountdown || ci.finalMutationCountdown || 1) * mutPassives.splitCardRatio));
+          state.player.piles.discard.push(splitCid);
+        }
       }
       pushHandState(state, "play_card_resolved", {
         source: "play_card",
@@ -2964,6 +3996,8 @@ export function dispatchCombat(state, data, action) {
       if (def.tags?.includes('OneShot') || def.tags?.includes('Volatile')) {
         runPowerTriggers(state, data, rng, 'PlayOneShotOrVolatile', {});
       }
+
+      delete state._currentPlayContext;
 
       // win check
       const alive = state.enemies.some(e => e.hp > 0);
@@ -3001,6 +4035,16 @@ export function dispatchCombat(state, data, action) {
 
       // Compute TraceBeacon hand-penalty BEFORE discarding (card was in hand this turn)
       state._traceBeaconHandBonus = getTraceBeaconHandBonus(state, data);
+
+      for (const cid of state.player.piles.hand || []) {
+        const mods = computePassiveMods(state, data, cid);
+        const runtime = getCardRuntime(state.cardInstances?.[cid]);
+        if (mods.chokePenalty && runtime && (runtime.turnsInHand || 0) >= Math.max(0, mods.chokePenalty.turns - 1)) {
+          state.player.hp = Math.max(0, state.player.hp - mods.chokePenalty.damage);
+          enforceFirewallCap(state, state.player, { silent: true });
+          push(state.log, { t: "Info", msg: `Choke penalty: ${mods.chokePenalty.damage} HP from ${cid}` });
+        }
+      }
 
       // NC-068 Memory Compression: keep one chosen card (exclude from discard)
       discardHand(state, state._keepOneCard);
@@ -3067,9 +4111,9 @@ export function dispatchCombat(state, data, action) {
           }
           for (const cid of [...state.player.piles.hand]) {
             const ci = state.cardInstances[cid];
-            const def = data.cards[ci.defId];
-            const cost = Math.max(0, (def.costRAM || 0) + (ci.ramCostDelta || 0));
-            if (state.player.ram >= cost) {
+            if (!ci) continue;
+            const playability = getCardPlayability(state, data, cid, state.enemies[0]?.id);
+            if (playability.playable) {
               dispatchCombat(state, data, { type: "PlayCard", cardInstanceId: cid, targetEnemyId: state.enemies[0]?.id });
               played = true;
               break;

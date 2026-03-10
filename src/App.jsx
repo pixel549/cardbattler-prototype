@@ -2,7 +2,6 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { loadGameData } from './data/loadData';
 import {
   createInitialState,
-  dispatchGame,
   getServiceOfferPreview,
   getServiceTargetPreview,
 } from './game/game_core';
@@ -18,6 +17,13 @@ import { sfx } from './game/sounds';
 import { getEventImage } from './data/eventImages';
 import { getCardImage } from './data/cardImages';
 import useDialogAccessibility from './hooks/useDialogAccessibility';
+import {
+  TUTORIAL_COMPLETED_STORAGE_KEY,
+  createTutorialRunState,
+  getTutorialStep,
+  canUseTutorialAction,
+  advanceTutorialState,
+} from './game/tutorial';
 
 // Module-level event registry (created once)
 const EVENT_REG_UI = createBasicEventRegistry();
@@ -90,6 +96,8 @@ const AI_EXPORT_OPTIONS_DEFAULTS = {
 const AI_STALL_EXPORT_MS = 15000;
 const AI_STALL_RECOVER_MS = 28000;
 const NODE_AUTOSAVE_KEY = 'cb_node_autosave_v1';
+const DEBUG_SAVE_SLOTS_KEY = 'cb_debug_save_slots_v1';
+const DEBUG_SAVE_SLOT_IDS = ['slot_1', 'slot_2', 'slot_3'];
 const FORCE_NEW_RUN_KEY = 'cb_force_new_run_v1';
 const AI_WATCHDOG_IDLE = {
   active: false,
@@ -149,6 +157,51 @@ function readNodeAutosave() {
 
 function clearNodeAutosave() {
   localStorage.removeItem(NODE_AUTOSAVE_KEY);
+}
+
+function describeDebugSaveState(state) {
+  if (!state?.run) return 'Empty slot';
+  const parts = [
+    `Act ${state.run.act ?? '?'}`,
+    `Floor ${state.run.floor ?? '?'}`,
+    state.mode ?? 'Unknown',
+  ];
+  if (state.mode === 'Combat') {
+    const hp = state.combat?.player?.hp ?? state.run.hp ?? 0;
+    const maxHP = state.combat?.player?.maxHP ?? state.run.maxHP ?? 0;
+    const enemies = (state.combat?.enemies || []).filter((enemy) => enemy.hp > 0);
+    parts.push(`HP ${hp}/${maxHP}`);
+    if (enemies.length > 0) parts.push(enemies.map((enemy) => enemy.name).join(', '));
+  } else {
+    parts.push(`HP ${state.run.hp ?? 0}/${state.run.maxHP ?? 0}`);
+    parts.push(`${state.run.gold ?? 0}g`);
+  }
+  return parts.join(' • ');
+}
+
+function buildDebugSavePayload(slotId, state) {
+  return {
+    version: 1,
+    slotId,
+    savedAt: Date.now(),
+    label: describeDebugSaveState(state),
+    state: buildNodeAutosaveState(state),
+  };
+}
+
+function readDebugSaveSlots() {
+  try {
+    const raw = localStorage.getItem(DEBUG_SAVE_SLOTS_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeDebugSaveSlots(slots) {
+  localStorage.setItem(DEBUG_SAVE_SLOTS_KEY, JSON.stringify(slots));
 }
 
 function queueForcedNewRun(payload) {
@@ -1211,6 +1264,10 @@ function PauseMenuOverlay({
   onToggleMute,
   onReloadApp,
   onAbandonRun,
+  onSaveDebugSlot,
+  onLoadDebugSlot,
+  onDeleteDebugSlot,
+  debugSaveSlots = {},
   hasActiveRun = false,
   state,
   showLog,
@@ -1229,6 +1286,91 @@ function PauseMenuOverlay({
   });
 
   if (!open) return null;
+
+  const renderSaveSlotButton = (slotId, label) => {
+    const slot = debugSaveSlots?.[slotId] || null;
+    return (
+      <div
+        key={slotId}
+        style={{
+          borderRadius: 10,
+          border: `1px solid ${C.border}`,
+          background: 'rgba(255,255,255,0.025)',
+          padding: '10px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 8,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+          <div style={{ fontFamily: UI_MONO, fontSize: 11, letterSpacing: '0.12em', color: C.cyan }}>
+            {label}
+          </div>
+          <div style={{ fontFamily: UI_MONO, fontSize: 10, color: C.textMuted }}>
+            {slot ? new Date(slot.savedAt).toLocaleString() : 'Empty'}
+          </div>
+        </div>
+        <div style={{ fontFamily: UI_MONO, fontSize: 11, lineHeight: 1.5, color: slot ? C.text : C.textMuted }}>
+          {slot?.label || 'No save stored yet.'}
+        </div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {hasActiveRun && (
+            <button
+              onClick={() => onSaveDebugSlot?.(slotId)}
+              style={{
+                padding: '8px 10px',
+                borderRadius: 10,
+                border: `1px solid ${C.cyan}44`,
+                background: `${C.cyan}12`,
+                color: C.cyan,
+                fontFamily: UI_MONO,
+                fontSize: 11,
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              Save
+            </button>
+          )}
+          <button
+            onClick={() => onLoadDebugSlot?.(slotId)}
+            disabled={!slot}
+            style={{
+              padding: '8px 10px',
+              borderRadius: 10,
+              border: `1px solid ${slot ? C.yellow + '44' : C.border}`,
+              background: slot ? `${C.yellow}12` : 'rgba(255,255,255,0.02)',
+              color: slot ? C.yellow : C.textMuted,
+              fontFamily: UI_MONO,
+              fontSize: 11,
+              fontWeight: 700,
+              cursor: slot ? 'pointer' : 'not-allowed',
+            }}
+          >
+            Load
+          </button>
+          {slot && (
+            <button
+              onClick={() => onDeleteDebugSlot?.(slotId)}
+              style={{
+                padding: '8px 10px',
+                borderRadius: 10,
+                border: `1px solid ${C.red}44`,
+                background: `${C.red}12`,
+                color: C.red,
+                fontFamily: UI_MONO,
+                fontSize: 11,
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              Clear
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div
@@ -1270,10 +1412,12 @@ function PauseMenuOverlay({
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             <div id="pause-menu-title" style={{ fontFamily: UI_MONO, fontSize: 13, fontWeight: 700, letterSpacing: '0.16em', color: C.cyan }}>
-              PAUSE MENU
+              {hasActiveRun ? 'PAUSE MENU' : 'SETTINGS'}
             </div>
             <div id="pause-menu-desc" style={{ fontFamily: UI_MONO, fontSize: 12, color: C.textDim }}>
-              {state?.mode === 'Combat' ? 'Combat tools, AI controls, and quick help.' : 'Run controls, debug tools, and quick help.'}
+              {hasActiveRun
+                ? (state?.mode === 'Combat' ? 'Combat tools, AI controls, and quick help.' : 'Run controls, debug tools, and quick help.')
+                : 'App settings, debug tools, and quick help.'}
             </div>
           </div>
           <button
@@ -1377,6 +1521,12 @@ function PauseMenuOverlay({
               >
                 Reload app
               </button>
+            </HelpCard>
+
+            <HelpCard title="SAVE SLOTS">
+              <div style={{ display: 'grid', gap: 10 }}>
+                {DEBUG_SAVE_SLOT_IDS.map((slotId, index) => renderSaveSlotButton(slotId, `Slot ${index + 1}`))}
+              </div>
             </HelpCard>
 
             <HelpCard title="AI AUTO-PLAY">
@@ -3744,6 +3894,340 @@ function LoadingScreen() {
   );
 }
 
+function MainMenuScreen({
+  canContinue = false,
+  onContinue,
+  onFirstTime,
+  onNewGame,
+  onSettings,
+  debugSaveSlots = {},
+  onLoadDebugSave,
+  tutorialCompleted = false,
+}) {
+  const menuActionStyle = (accent, solid = false) => ({
+    width: '100%',
+    padding: '18px 18px',
+    borderRadius: 18,
+    border: `1px solid ${accent}${solid ? '00' : '55'}`,
+    background: solid
+      ? `linear-gradient(135deg, ${accent} 0%, ${accent}cc 100%)`
+      : `linear-gradient(180deg, ${accent}14 0%, rgba(9, 11, 18, 0.96) 100%)`,
+    color: solid ? '#041015' : accent,
+    fontFamily: UI_MONO,
+    fontWeight: 700,
+    fontSize: 14,
+    letterSpacing: '0.08em',
+    textTransform: 'uppercase',
+    boxShadow: solid
+      ? `0 16px 32px ${accent}24`
+      : `0 12px 28px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.05)`,
+    cursor: 'pointer',
+    textAlign: 'left',
+  });
+
+  return (
+    <ScreenShell extraStyle={{ alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+      <div style={{ width: 'min(560px, 100%)', display: 'flex', flexDirection: 'column', gap: 18 }}>
+        <div
+          style={{
+            padding: '22px 22px 18px',
+            borderRadius: 24,
+            background: 'linear-gradient(180deg, rgba(9,14,22,0.96) 0%, rgba(6,8,14,0.98) 100%)',
+            border: `1px solid ${C.cyan}28`,
+            boxShadow: `0 24px 54px rgba(0,0,0,0.38), inset 0 0 0 1px rgba(255,255,255,0.02)`,
+          }}
+        >
+          <div style={{ fontFamily: UI_MONO, fontSize: 12, letterSpacing: '0.22em', color: C.textDim, marginBottom: 10 }}>
+            CARD BATTLER
+          </div>
+          <div style={{ fontFamily: UI_MONO, fontWeight: 700, fontSize: 28, color: C.text, marginBottom: 10 }}>
+            Boot Sequence
+          </div>
+          <div style={{ fontFamily: UI_MONO, fontSize: 13, lineHeight: 1.7, color: C.textDim }}>
+            Start a fresh run, jump into the guided first-time encounter, or open settings before you begin.
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gap: 14 }}>
+          {canContinue && (
+            <button onClick={onContinue} style={menuActionStyle(C.green)}>
+              Continue Run
+            </button>
+          )}
+          <button onClick={onFirstTime} style={menuActionStyle(C.cyan, !tutorialCompleted)}>
+            {tutorialCompleted ? 'First Time Playing (Replay)' : 'First Time Playing'}
+          </button>
+          <button onClick={onNewGame} style={menuActionStyle(C.yellow)}>
+            New Game
+          </button>
+          <button onClick={onSettings} style={menuActionStyle(C.purple)}>
+            Settings
+          </button>
+        </div>
+
+        {DEBUG_SAVE_SLOT_IDS.some((slotId) => debugSaveSlots?.[slotId]) && (
+          <div
+            style={{
+              padding: '16px 18px',
+              borderRadius: 18,
+              border: `1px solid ${C.border}`,
+              background: 'rgba(255,255,255,0.025)',
+              display: 'grid',
+              gap: 10,
+            }}
+          >
+            <div style={{ fontFamily: UI_MONO, fontSize: 11, letterSpacing: '0.16em', color: C.yellow }}>
+              DEBUG SAVES
+            </div>
+            {DEBUG_SAVE_SLOT_IDS.map((slotId, index) => {
+              const slot = debugSaveSlots?.[slotId];
+              if (!slot) return null;
+              return (
+                <button
+                  key={slotId}
+                  onClick={() => onLoadDebugSave?.(slotId)}
+                  style={{
+                    ...menuActionStyle(C.orange),
+                    padding: '14px 16px',
+                    fontSize: 12,
+                  }}
+                >
+                  Slot {index + 1}: {slot.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        <div
+          style={{
+            padding: '16px 18px',
+            borderRadius: 18,
+            border: `1px solid ${C.border}`,
+            background: 'rgba(255,255,255,0.025)',
+            color: C.textDim,
+            fontFamily: UI_MONO,
+            fontSize: 12,
+            lineHeight: 1.6,
+          }}
+        >
+          The tutorial covers Firewall, HP, RAM, enemy intents, status effects, mutations, enemy turns, and the basic combat rhythm.
+        </div>
+      </div>
+    </ScreenShell>
+  );
+}
+
+function TutorialOverlay({ step, nudge = '', onAdvance, onExit }) {
+  if (!step) return null;
+
+  return (
+    <div
+      className="safe-area-bottom"
+      style={{
+        position: 'fixed',
+        left: 12,
+        right: 12,
+        bottom: 0,
+        zIndex: 90,
+        display: 'flex',
+        justifyContent: 'center',
+        pointerEvents: 'none',
+      }}
+    >
+      <div
+        style={{
+          width: 'min(560px, 100%)',
+          pointerEvents: 'auto',
+          borderRadius: 20,
+          border: `1px solid ${C.cyan}38`,
+          background: 'linear-gradient(180deg, rgba(6,10,18,0.96) 0%, rgba(5,7,12,0.99) 100%)',
+          boxShadow: '0 18px 44px rgba(0,0,0,0.42)',
+          padding: '14px 16px 16px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 12,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <div style={{ fontFamily: UI_MONO, fontSize: 12, letterSpacing: '0.16em', color: C.cyan }}>
+            TUTORIAL
+          </div>
+          <button
+            onClick={onExit}
+            style={{
+              padding: '8px 10px',
+              borderRadius: 10,
+              border: `1px solid ${C.border}`,
+              background: 'rgba(255,255,255,0.03)',
+              color: C.textDim,
+              fontFamily: UI_MONO,
+              fontSize: 11,
+              cursor: 'pointer',
+            }}
+          >
+            Leave tutorial
+          </button>
+        </div>
+
+        <div style={{ fontFamily: UI_MONO, fontSize: 18, fontWeight: 700, color: C.text }}>
+          {step.title}
+        </div>
+        <div style={{ fontFamily: UI_MONO, fontSize: 12, lineHeight: 1.65, color: C.textDim }}>
+          {step.body}
+        </div>
+
+        {!!step.concepts?.length && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {step.concepts.map((concept) => (
+              <span
+                key={concept}
+                style={{
+                  padding: '6px 9px',
+                  borderRadius: 999,
+                  border: `1px solid ${C.cyan}26`,
+                  background: `${C.cyan}10`,
+                  color: C.cyan,
+                  fontFamily: UI_MONO,
+                  fontSize: 10,
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                }}
+              >
+                {concept}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {nudge && (
+          <div style={{ fontFamily: UI_MONO, fontSize: 11, color: C.orange, lineHeight: 1.5 }}>
+            {nudge}
+          </div>
+        )}
+
+        {step.acknowledgeOnly && (
+          <button
+            onClick={onAdvance}
+            style={{
+              alignSelf: 'flex-start',
+              padding: '10px 14px',
+              borderRadius: 12,
+              border: 'none',
+              background: C.cyan,
+              color: '#031014',
+              fontFamily: UI_MONO,
+              fontWeight: 700,
+              fontSize: 12,
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              cursor: 'pointer',
+            }}
+          >
+            {step.ctaLabel || 'Continue'}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function TutorialCompleteScreen({ state, onNewGame, onReturnToMenu }) {
+  const outcome = state?.run?.tutorial?.outcome ?? 'complete';
+  const victory = outcome === 'victory';
+  const accent = victory ? C.green : C.cyan;
+  const title = victory ? 'Tutorial Complete' : 'Tutorial Reviewed';
+  const body = victory
+    ? 'You cleared the training encounter and saw the main combat systems in sequence.'
+    : 'You reached the end of the guided lesson. The important systems have been introduced, even if the proxy fight got messy.';
+
+  return (
+    <ScreenShell extraStyle={{ alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+      <div
+        style={{
+          width: 'min(560px, 100%)',
+          padding: 24,
+          borderRadius: 24,
+          border: `1px solid ${accent}36`,
+          background: 'linear-gradient(180deg, rgba(8,12,20,0.97) 0%, rgba(5,7,12,0.99) 100%)',
+          boxShadow: `0 24px 54px rgba(0,0,0,0.42), inset 0 0 0 1px rgba(255,255,255,0.02)`,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 16,
+        }}
+      >
+        <div style={{ fontFamily: UI_MONO, fontSize: 12, letterSpacing: '0.18em', color: accent }}>
+          TRAINING NODE
+        </div>
+        <div style={{ fontFamily: UI_MONO, fontWeight: 700, fontSize: 28, color: C.text }}>
+          {title}
+        </div>
+        <div style={{ fontFamily: UI_MONO, fontSize: 13, lineHeight: 1.7, color: C.textDim }}>
+          {body}
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {['Firewall', 'HP', 'RAM', 'Enemy Intents', 'Status Effects', 'Mutations', 'Enemy Turns'].map((label) => (
+            <span
+              key={label}
+              style={{
+                padding: '7px 10px',
+                borderRadius: 999,
+                border: `1px solid ${accent}30`,
+                background: `${accent}10`,
+                color: accent,
+                fontFamily: UI_MONO,
+                fontSize: 10,
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+              }}
+            >
+              {label}
+            </span>
+          ))}
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 12 }}>
+          <button
+            onClick={onNewGame}
+            style={{
+              padding: '14px 16px',
+              borderRadius: 14,
+              border: 'none',
+              background: C.cyan,
+              color: '#031014',
+              fontFamily: UI_MONO,
+              fontWeight: 700,
+              fontSize: 13,
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              cursor: 'pointer',
+            }}
+          >
+            Start Real Run
+          </button>
+          <button
+            onClick={onReturnToMenu}
+            style={{
+              padding: '14px 16px',
+              borderRadius: 14,
+              border: `1px solid ${C.border}`,
+              background: 'rgba(255,255,255,0.03)',
+              color: C.text,
+              fontFamily: UI_MONO,
+              fontWeight: 700,
+              fontSize: 13,
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              cursor: 'pointer',
+            }}
+          >
+            Return To Menu
+          </button>
+        </div>
+      </div>
+    </ScreenShell>
+  );
+}
+
 // ============================================================
 // DEV TOOLS OVERLAY
 // ============================================================
@@ -3962,6 +4446,13 @@ function App() {
   const [error, setError] = useState(null);
   const [showLog, setShowLog] = useState(false);
   const [showPauseMenu, setShowPauseMenu] = useState(false);
+  const [menuAutosave, setMenuAutosave] = useState(null);
+  const [debugSaveSlots, setDebugSaveSlots] = useState(() => readDebugSaveSlots());
+  const [tutorialNudge, setTutorialNudge] = useState('');
+  const [tutorialCompleted, setTutorialCompleted] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.localStorage.getItem(TUTORIAL_COMPLETED_STORAGE_KEY) === 'true';
+  });
 
   // ── Sound mute toggle (persisted to localStorage) ────────────────────────
   const [soundMuted, setSoundMuted] = useState(() => {
@@ -3980,7 +4471,7 @@ function App() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined;
-    const hasActiveRun = Boolean(state?.run) && state?.mode !== 'GameOver';
+    const hasActiveRun = Boolean(state?.run) && !['GameOver', 'TutorialComplete'].includes(state?.mode);
     if (!hasActiveRun) {
       backGuardPrimedRef.current = false;
       return undefined;
@@ -4085,6 +4576,7 @@ function App() {
   const startNewRunRef = useRef(() => {});
   const autosaveTokenRef = useRef(null);
   const backGuardPrimedRef = useRef(false);
+  const tutorialNudgeTimerRef = useRef(null);
   const aiStallRef = useRef({
     signature: null,
     lastChangedAt: 0,
@@ -4122,6 +4614,16 @@ function App() {
     });
   }
 
+  function showTutorialHint(message) {
+    if (!message) return;
+    setTutorialNudge(message);
+    if (tutorialNudgeTimerRef.current) clearTimeout(tutorialNudgeTimerRef.current);
+    tutorialNudgeTimerRef.current = setTimeout(() => {
+      tutorialNudgeTimerRef.current = null;
+      setTutorialNudge('');
+    }, 2400);
+  }
+
   function resetRunTransientState() {
     clearAiTimer();
     combatStatsRef.current = null;
@@ -4135,6 +4637,90 @@ function App() {
     backGuardPrimedRef.current = false;
     setShowPauseMenu(false);
     setShowLog(false);
+  }
+
+  function adoptState(newState, {
+    handoffReason = '',
+    pauseAi = false,
+    clearAutosave = true,
+    autosaveToken = null,
+  } = {}) {
+    if (!newState) return;
+    resetRunTransientState();
+    if (clearAutosave) clearNodeAutosave();
+    autosaveTokenRef.current = autosaveToken;
+    aiPausedRef.current = pauseAi;
+    setAiPaused(pauseAi);
+    setAiHandoffReason(handoffReason);
+    setAiWatchdog(AI_WATCHDOG_IDLE);
+    setTutorialNudge('');
+    resetAiStallTracker(getAiStateSignature(newState));
+    setState(newState);
+  }
+
+  function resumeAutosavedRun() {
+    if (!menuAutosave?.state) return;
+    const token = menuAutosave.token || buildNodeAutosaveToken(menuAutosave.state);
+    setMenuAutosave(null);
+    adoptState(menuAutosave.state, {
+      handoffReason: 'Resumed from node autosave.',
+      pauseAi: false,
+      clearAutosave: false,
+      autosaveToken: token,
+    });
+  }
+
+  function startTutorialRun() {
+    if (!data) return;
+    setMenuAutosave(null);
+    adoptState(createTutorialRunState(data), {
+      handoffReason: 'Tutorial active',
+      pauseAi: true,
+      clearAutosave: true,
+    });
+  }
+
+  function returnToMainMenu() {
+    clearNodeAutosave();
+    setMenuAutosave(null);
+    adoptState(createInitialState(), {
+      handoffReason: '',
+      pauseAi: true,
+      clearAutosave: false,
+      autosaveToken: null,
+    });
+  }
+
+  function saveDebugSlot(slotId) {
+    const liveState = stateRef.current;
+    if (!liveState?.run) return;
+    const nextSlots = {
+      ...readDebugSaveSlots(),
+      [slotId]: buildDebugSavePayload(slotId, liveState),
+    };
+    writeDebugSaveSlots(nextSlots);
+    setDebugSaveSlots(nextSlots);
+  }
+
+  function loadDebugSlot(slotId) {
+    const slots = readDebugSaveSlots();
+    const slot = slots?.[slotId];
+    if (!slot?.state) return;
+    setShowPauseMenu(false);
+    setMenuAutosave(null);
+    adoptState(slot.state, {
+      handoffReason: `Loaded debug save: ${slot.label}`,
+      pauseAi: true,
+      clearAutosave: true,
+      autosaveToken: null,
+    });
+  }
+
+  function clearDebugSlot(slotId) {
+    const slots = { ...readDebugSaveSlots() };
+    delete slots[slotId];
+    writeDebugSaveSlots(slots);
+    setDebugSaveSlots(slots);
   }
 
   function reloadApp() {
@@ -4245,7 +4831,7 @@ function App() {
 
   useEffect(() => {
     if (!state?.run) return;
-    if (state.mode === 'GameOver') {
+    if (state.mode === 'GameOver' || state.mode === 'TutorialComplete') {
       clearNodeAutosave();
       autosaveTokenRef.current = null;
       return;
@@ -4289,6 +4875,10 @@ function App() {
           sourceCustomConfig: nextCustomConfig,
           sourceLockedFields: nextLockedFields,
         });
+        setMenuAutosave(null);
+        aiPausedRef.current = false;
+        setAiPaused(false);
+        setAiHandoffReason('');
         setState(newState);
         return;
       }
@@ -4296,15 +4886,16 @@ function App() {
       const autosave = readNodeAutosave();
       if (autosave?.state) {
         autosaveTokenRef.current = autosave.token || buildNodeAutosaveToken(autosave.state);
-        setAiHandoffReason('Resumed from node autosave.');
-        setState(autosave.state);
-        return;
+        setMenuAutosave(autosave);
+      } else {
+        clearNodeAutosave();
+        autosaveTokenRef.current = null;
+        setMenuAutosave(null);
       }
-
-      clearNodeAutosave();
-      autosaveTokenRef.current = null;
-      const newState = createRunStateFromSettings();
-      setState(newState);
+      aiPausedRef.current = true;
+      setAiPaused(true);
+      setAiHandoffReason('');
+      setState(createInitialState());
     }
   }, [data, state, debugSeedInput, seedMode, customConfig, lockedFields]);
 
@@ -4312,6 +4903,33 @@ function App() {
     if (aiTimerRef.current) {
       clearTimeout(aiTimerRef.current);
       aiTimerRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    const shouldForcePause = state?.mode === 'MainMenu'
+      || state?.mode === 'TutorialComplete'
+      || Boolean(state?.run?.tutorial?.active);
+    if (!shouldForcePause || !aiEnabled || aiPaused) return;
+    clearAiTimer();
+    aiPausedRef.current = true;
+    setAiPaused(true);
+    setAiHandoffReason(state?.run?.tutorial?.active ? 'Tutorial active' : 'Paused from menu');
+    setAiWatchdog(AI_WATCHDOG_IDLE);
+  }, [state?.mode, state?.run?.tutorial?.active, aiEnabled, aiPaused, clearAiTimer]);
+
+  useEffect(() => {
+    if (state?.mode !== 'TutorialComplete') return;
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(TUTORIAL_COMPLETED_STORAGE_KEY, 'true');
+    }
+    setTutorialCompleted(true);
+  }, [state?.mode]);
+
+  useEffect(() => () => {
+    if (tutorialNudgeTimerRef.current) {
+      clearTimeout(tutorialNudgeTimerRef.current);
+      tutorialNudgeTimerRef.current = null;
     }
   }, []);
 
@@ -4974,13 +5592,12 @@ function App() {
   function startNewRun(overrideDebugSeed) {
     const newState = createRunStateFromSettings({ overrideDebugSeed });
     if (!newState) return;
-    setAiHandoffReason('');
-    setAiPaused(false);
-    aiPausedRef.current = false;
-    clearNodeAutosave();
-    resetRunTransientState();
-    resetAiStallTracker(getAiStateSignature(newState));
-    setState(newState);
+    setMenuAutosave(null);
+    adoptState(newState, {
+      handoffReason: '',
+      pauseAi: false,
+      clearAutosave: true,
+    });
   }
   useEffect(() => { startNewRunRef.current = startNewRun; }, [startNewRun]);
 
@@ -5016,9 +5633,16 @@ function App() {
       });
       return;
     }
+    const tutorialGate = canUseTutorialAction(stateRef.current, action);
+    if (!tutorialGate.allowed) {
+      showTutorialHint(tutorialGate.message);
+      return;
+    }
     setState(prev => {
       try {
-        return dispatchWithJournal(prev, data, action);
+        const next = dispatchWithJournal(prev, data, action);
+        advanceTutorialState(next, action);
+        return next;
       } catch (err) {
         console.error('Action failed:', action, err);
         return prev;
@@ -5064,6 +5688,20 @@ function App() {
 
   let content;
   switch (state.mode) {
+    case 'MainMenu':
+      content = (
+        <MainMenuScreen
+          canContinue={Boolean(menuAutosave?.state)}
+          onContinue={resumeAutosavedRun}
+          onFirstTime={startTutorialRun}
+          onNewGame={() => startNewRun()}
+          onSettings={openPauseMenu}
+          debugSaveSlots={debugSaveSlots}
+          onLoadDebugSave={loadDebugSlot}
+          tutorialCompleted={tutorialCompleted}
+        />
+      );
+      break;
     case 'Combat':
       content = <CombatScreen state={state} data={data} onAction={handleAction} aiPaused={aiPaused} onOpenMenu={openPauseMenu} />;
       break;
@@ -5081,6 +5719,9 @@ function App() {
       break;
     case 'GameOver':
       content = <GameOverScreen state={state} onNewRun={hardReloadIntoFreshRun} />;
+      break;
+    case 'TutorialComplete':
+      content = <TutorialCompleteScreen state={state} onNewGame={() => startNewRun()} onReturnToMenu={returnToMainMenu} />;
       break;
     default:
       content = (
@@ -5130,10 +5771,14 @@ function App() {
     />
   );
 
+  const tutorialStep = getTutorialStep(state);
+  const hasActiveRun = Boolean(state?.run) && !['GameOver', 'TutorialComplete'].includes(state?.mode);
+  const showFloatingMenuButton = !['Combat', 'MainMenu', 'TutorialComplete'].includes(state.mode);
+
   return (
     <>
       {content}
-      {state.mode !== 'Combat' && (
+      {showFloatingMenuButton && (
         <PauseMenuButton open={showPauseMenu} onClick={() => (showPauseMenu ? closePauseMenu() : openPauseMenu())} />
       )}
       <PauseMenuOverlay
@@ -5143,18 +5788,45 @@ function App() {
         onToggleMute={toggleMute}
         onReloadApp={reloadApp}
         onAbandonRun={abandonRun}
-        hasActiveRun={Boolean(state?.run) && state?.mode !== 'GameOver'}
+        onSaveDebugSlot={saveDebugSlot}
+        onLoadDebugSlot={loadDebugSlot}
+        onDeleteDebugSlot={clearDebugSlot}
+        debugSaveSlots={debugSaveSlots}
+        hasActiveRun={hasActiveRun}
         state={state}
         showLog={showLog}
         onDevAction={handleAction}
         onToggleLog={() => setShowLog(prev => !prev)}
         aiPanel={aiPanel}
       />
+      {state.mode === 'Combat' && tutorialStep && (
+        <TutorialOverlay
+          step={tutorialStep}
+          nudge={tutorialNudge}
+          onAdvance={() => {
+            setTutorialNudge('');
+            setState(prev => {
+              if (!prev?.run?.tutorial?.active) return prev;
+              return {
+                ...prev,
+                run: {
+                  ...prev.run,
+                  tutorial: {
+                    ...prev.run.tutorial,
+                    stepIndex: Math.min((prev.run.tutorial.stepIndex ?? 0) + 1, 1),
+                  },
+                },
+              };
+            });
+          }}
+          onExit={returnToMainMenu}
+        />
+      )}
       {/* Deck picker overlay — appears on top of any screen when card selection is needed */}
       {state?.deckView && (
         <DeckPickerOverlay state={state} data={data} onAction={handleAction} />
       )}
-      {state.run && showLog && <LogOverlay log={state.log} />}
+      {state.run && showLog && !['MainMenu', 'TutorialComplete'].includes(state.mode) && <LogOverlay log={state.log} />}
     </>
   );
 }

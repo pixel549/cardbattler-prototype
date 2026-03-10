@@ -135,6 +135,17 @@ export function applyDamage(state, sourceId, target, amount) {
   // --- relic damage intake modifiers (enemy → player only) ---
   if (isEnemy && target === state.player) {
     const relics2 = state.relicIds || [];
+    if (state._mutationTurnDamageReduce && amount > 0) {
+      const reduction = Math.min(amount, Math.max(0, state._mutationTurnDamageReduce));
+      amount -= reduction;
+      push(state.log, { t: 'Info', msg: `Mutation dampening: reduced ${reduction} incoming damage` });
+    }
+    if (state._mutationTurnDamageSink && amount > 0) {
+      const sunk = Math.min(amount, Math.max(0, state._mutationTurnDamageSink));
+      amount -= sunk;
+      state._mutationTurnDamageSink = Math.max(0, state._mutationTurnDamageSink - sunk);
+      push(state.log, { t: 'Info', msg: `Mutation sink: absorbed ${sunk} incoming damage` });
+    }
     // GlassCannon: player takes 50% more damage
     if (relics2.includes('GlassCannon')) amount = Math.floor(amount * 1.5);
     // ScrapPlating: reduce FIRST hit per combat by 4

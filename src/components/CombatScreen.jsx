@@ -1495,22 +1495,93 @@ function FirewallBar({ current, max, height = 12, showText = true, glow = true }
   );
 }
 
-function EnemyFocusPanel({ enemy, intentBadges = EMPTY_ARRAY, compact = false }) {
+function EnemyFocusPanel({ enemy, intentBadges = EMPTY_ARRAY, compact = false, onOpenMenu = null }) {
   if (!enemy) return null;
 
   const firewallStacks = enemy?.statuses?.find((status) => status.id === 'Firewall')?.stacks ?? 0;
   const intentColor = getIntentColor(enemy.intent?.type);
+  const hpColor = getHealthColor(enemy.hp, enemy.maxHP);
+
+  if (compact) {
+    return (
+      <div
+        style={{
+          width: '100%',
+          minWidth: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 6,
+          padding: '8px 9px 9px',
+          borderRadius: 16,
+          background: 'linear-gradient(180deg, rgba(8,12,20,0.97) 0%, rgba(5,8,14,0.95) 100%)',
+          border: `1px solid ${C.neonCyan}24`,
+          boxShadow: `0 0 24px ${C.neonCyan}0a, 0 10px 24px rgba(0,0,0,0.24)`,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
+            <span style={{ fontFamily: MONO, fontSize: 7, fontWeight: 700, letterSpacing: '0.14em', color: C.textDim }}>
+              TARGET
+            </span>
+            <span style={{ fontFamily: MONO, fontSize: 10, fontWeight: 700, color: C.textPrimary, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {enemy.name ?? 'Unknown Target'}
+            </span>
+          </div>
+          {onOpenMenu && (
+            <button
+              onClick={onOpenMenu}
+              aria-label="Open combat menu"
+              style={{
+                padding: '5px 8px',
+                borderRadius: 999,
+                border: `1px solid ${C.borderLight}`,
+                background: 'rgba(10,14,22,0.86)',
+                color: C.textSecondary,
+                fontFamily: MONO,
+                fontSize: 7,
+                fontWeight: 700,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                flexShrink: 0,
+              }}
+            >
+              Menu
+            </button>
+          )}
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 6 }}>
+          <div style={{ borderRadius: 999, padding: '5px 8px', background: `${hpColor}12`, border: `1px solid ${hpColor}30`, color: hpColor, fontFamily: MONO, fontSize: 9, fontWeight: 700, textAlign: 'center' }}>
+            {enemy.hp}/{enemy.maxHP}
+          </div>
+          <div style={{ borderRadius: 999, padding: '5px 8px', background: firewallStacks > 0 ? `${C.neonCyan}12` : 'rgba(255,255,255,0.03)', border: `1px solid ${firewallStacks > 0 ? `${C.neonCyan}30` : C.borderLight}`, color: firewallStacks > 0 ? C.neonCyan : C.textDim, fontFamily: MONO, fontSize: 9, fontWeight: 700, textAlign: 'center' }}>
+            FW {firewallStacks}
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap', minHeight: 24 }}>
+          {intentBadges.length > 0 ? intentBadges.map((badge, index) => (
+            <IntentEffectBadge key={`${enemy.id}-focus-${index}`} badge={badge} />
+          )) : (
+            <span style={{ fontFamily: MONO, fontSize: 7, fontWeight: 700, letterSpacing: '0.12em', color: intentColor, textTransform: 'uppercase' }}>
+              {enemy.intent?.type || 'Intent'}
+            </span>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
       style={{
-        width: compact ? '100%' : 'clamp(208px, 22vw, 248px)',
+        width: 'clamp(208px, 22vw, 248px)',
         minWidth: 0,
         display: 'flex',
         flexDirection: 'column',
-        gap: compact ? 6 : 8,
-        padding: compact ? '8px' : '10px',
-        borderRadius: compact ? 14 : 16,
+        gap: 8,
+        padding: '10px',
+        borderRadius: 16,
         background: 'linear-gradient(180deg, rgba(8,12,20,0.97) 0%, rgba(5,8,14,0.95) 100%)',
         border: `1px solid ${C.neonCyan}30`,
         boxShadow: `0 0 28px ${C.neonCyan}10, 0 12px 28px rgba(0,0,0,0.28)`,
@@ -1518,25 +1589,25 @@ function EnemyFocusPanel({ enemy, intentBadges = EMPTY_ARRAY, compact = false })
     >
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
-          <span style={{ fontFamily: MONO, fontSize: compact ? 7 : 8, fontWeight: 700, letterSpacing: '0.14em', color: C.textDim }}>
-            {compact ? 'TARGET' : 'ENEMY ANALYSIS'}
+          <span style={{ fontFamily: MONO, fontSize: 8, fontWeight: 700, letterSpacing: '0.14em', color: C.textDim }}>
+            ENEMY ANALYSIS
           </span>
-          <span style={{ fontFamily: MONO, fontSize: compact ? 10 : 11, fontWeight: 700, color: C.textPrimary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <span style={{ fontFamily: MONO, fontSize: 11, fontWeight: 700, color: C.textPrimary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {enemy.name ?? 'Unknown Target'}
           </span>
-          <span style={{ fontFamily: MONO, fontSize: compact ? 7 : 8, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: intentColor }}>
+          <span style={{ fontFamily: MONO, fontSize: 8, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: intentColor }}>
             {enemy.intent?.type || 'Intent'}
           </span>
         </div>
         <div
           style={{
-            padding: compact ? '3px 7px' : '4px 8px',
+            padding: '4px 8px',
             borderRadius: 999,
             background: `${intentColor}18`,
             border: `1px solid ${intentColor}38`,
             color: intentColor,
             fontFamily: MONO,
-            fontSize: compact ? 7 : 8,
+            fontSize: 8,
             fontWeight: 700,
             letterSpacing: '0.12em',
             textTransform: 'uppercase',
@@ -1547,14 +1618,14 @@ function EnemyFocusPanel({ enemy, intentBadges = EMPTY_ARRAY, compact = false })
         </div>
         </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: compact ? 5 : 6 }}>
-        <div style={{ borderRadius: 12, padding: compact ? '5px 7px' : '6px 8px', background: `${getHealthColor(enemy.hp, enemy.maxHP)}12`, border: `1px solid ${getHealthColor(enemy.hp, enemy.maxHP)}34` }}>
-          <div style={{ fontFamily: MONO, fontSize: compact ? 7 : 8, fontWeight: 700, letterSpacing: '0.1em', color: getHealthColor(enemy.hp, enemy.maxHP), marginBottom: 3 }}>HP</div>
-          <div style={{ fontFamily: MONO, fontSize: compact ? 10 : 11, fontWeight: 700, color: C.textPrimary }}>{enemy.hp}/{enemy.maxHP}</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 6 }}>
+        <div style={{ borderRadius: 12, padding: '6px 8px', background: `${getHealthColor(enemy.hp, enemy.maxHP)}12`, border: `1px solid ${getHealthColor(enemy.hp, enemy.maxHP)}34` }}>
+          <div style={{ fontFamily: MONO, fontSize: 8, fontWeight: 700, letterSpacing: '0.1em', color: getHealthColor(enemy.hp, enemy.maxHP), marginBottom: 3 }}>HP</div>
+          <div style={{ fontFamily: MONO, fontSize: 11, fontWeight: 700, color: C.textPrimary }}>{enemy.hp}/{enemy.maxHP}</div>
         </div>
-        <div style={{ borderRadius: 12, padding: compact ? '5px 7px' : '6px 8px', background: firewallStacks > 0 ? `${C.neonCyan}12` : 'rgba(255,255,255,0.03)', border: `1px solid ${firewallStacks > 0 ? `${C.neonCyan}34` : C.borderLight}` }}>
-          <div style={{ fontFamily: MONO, fontSize: compact ? 7 : 8, fontWeight: 700, letterSpacing: '0.1em', color: firewallStacks > 0 ? C.neonCyan : C.textDim, marginBottom: 3 }}>FW</div>
-          <div style={{ fontFamily: MONO, fontSize: compact ? 10 : 11, fontWeight: 700, color: C.textPrimary }}>{firewallStacks}</div>
+        <div style={{ borderRadius: 12, padding: '6px 8px', background: firewallStacks > 0 ? `${C.neonCyan}12` : 'rgba(255,255,255,0.03)', border: `1px solid ${firewallStacks > 0 ? `${C.neonCyan}34` : C.borderLight}` }}>
+          <div style={{ fontFamily: MONO, fontSize: 8, fontWeight: 700, letterSpacing: '0.1em', color: firewallStacks > 0 ? C.neonCyan : C.textDim, marginBottom: 3 }}>FW</div>
+          <div style={{ fontFamily: MONO, fontSize: 11, fontWeight: 700, color: C.textPrimary }}>{firewallStacks}</div>
         </div>
       </div>
 
@@ -1563,13 +1634,13 @@ function EnemyFocusPanel({ enemy, intentBadges = EMPTY_ARRAY, compact = false })
           display: 'flex',
           flexDirection: 'column',
           gap: 5,
-          padding: compact ? '7px 8px' : '8px 9px',
+          padding: '8px 9px',
           borderRadius: 12,
           background: 'rgba(3,7,14,0.72)',
           border: `1px solid ${C.borderLight}`,
         }}
       >
-        <div style={{ fontFamily: MONO, fontSize: compact ? 7 : 8, fontWeight: 700, letterSpacing: '0.12em', color: C.textDim }}>
+        <div style={{ fontFamily: MONO, fontSize: 8, fontWeight: 700, letterSpacing: '0.12em', color: C.textDim }}>
           NEXT ACTION
         </div>
         <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
@@ -2566,8 +2637,8 @@ function PortraitCombatRail({ interactionLocked, onEndTurn, deckMenuOpen = false
         minWidth: 0,
         display: 'flex',
         flexDirection: 'column',
-        gap: 8,
-        padding: '7px',
+        gap: 6,
+        padding: '6px',
         borderRadius: 14,
         background: 'linear-gradient(180deg, rgba(8,12,20,0.97) 0%, rgba(5,8,14,0.96) 100%)',
         border: `1px solid ${C.neonCyan}28`,
@@ -2582,9 +2653,9 @@ function PortraitCombatRail({ interactionLocked, onEndTurn, deckMenuOpen = false
         compact={true}
         style={{
           width: '100%',
-          minHeight: 68,
-          padding: '10px 6px',
-          fontSize: 10,
+          minHeight: 88,
+          padding: '10px 7px',
+          fontSize: 11,
           lineHeight: 1.1,
         }}
       />
@@ -2596,8 +2667,8 @@ function PortraitCombatRail({ interactionLocked, onEndTurn, deckMenuOpen = false
         compact={true}
         style={{
           width: '100%',
-          minHeight: 44,
-          padding: '8px 6px',
+          minHeight: 42,
+          padding: '7px 6px',
           fontSize: 10,
         }}
       />
@@ -2800,7 +2871,6 @@ function CenterCardDisplay({
   data,
   dismissed = false,
   onDismiss,
-  onOpenMenu,
   onActivate,
   canActivate = false,
   activateHint = 'Tap to play',
@@ -2886,7 +2956,7 @@ function CenterCardDisplay({
   if (isMobileLayout) {
     const isPhonePortrait = layoutMode === 'phone-portrait';
     const mobileCardWidth = isPhonePortrait
-      ? 'min(38vw, 148px)'
+      ? 'min(41vw, 156px)'
       : 'clamp(122px, 18vw, 156px)';
     const utilityRailWidth = isPhonePortrait ? 62 : 0;
     const utilityButtonBaseStyle = {
@@ -3058,9 +3128,9 @@ function CenterCardDisplay({
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          gap: 8,
-          padding: isPhonePortrait ? '0 0 2px' : '4px 0',
-          marginTop: isPhonePortrait ? -8 : 0,
+          gap: 6,
+          padding: isPhonePortrait ? '0' : '4px 0',
+          marginTop: isPhonePortrait ? -22 : 0,
         }}
       >
         {isPhonePortrait ? (
@@ -3069,48 +3139,34 @@ function CenterCardDisplay({
               width: '100%',
               display: 'grid',
               gridTemplateColumns: `${utilityRailWidth}px auto ${utilityRailWidth}px`,
-              columnGap: 8,
+              columnGap: 10,
               justifyContent: 'center',
               alignItems: 'start',
             }}
           >
+            <div style={{ width: utilityRailWidth }} />
+            {mobileCard}
             <div
               style={{
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 8,
                 alignItems: 'stretch',
-                paddingTop: 16,
+                paddingTop: 34,
               }}
             >
-              {onOpenMenu && (
-                <button
-                  onClick={onOpenMenu}
-                  aria-label="Open combat menu"
-                  style={{
-                    ...utilityButtonBaseStyle,
-                    width: utilityRailWidth,
-                    height: 52,
-                    fontSize: 9,
-                  }}
-                >
-                  Menu
-                </button>
-              )}
               <button
                 onClick={onDismiss}
                 aria-label="Hide active card details"
                 style={{
                   ...utilityButtonBaseStyle,
                   width: utilityRailWidth,
-                  height: 62,
+                  height: 58,
                 }}
               >
                 Hide
               </button>
             </div>
-            {mobileCard}
-            <div style={{ width: utilityRailWidth }} />
           </div>
         ) : (
           <>
@@ -5277,6 +5333,10 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
       enemy={targetedEnemy}
       intentBadges={targetedIntentBadges}
       compact={isPhoneLayout}
+      onOpenMenu={isPhonePortrait ? () => {
+        setDeckMenuOpen(false);
+        onOpenMenu?.();
+      } : null}
     />
   );
 
@@ -5287,10 +5347,6 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
       data={data}
       dismissed={centerCardDismissed}
       onDismiss={() => setCenterCardDismissed(true)}
-      onOpenMenu={() => {
-        setDeckMenuOpen(false);
-        onOpenMenu?.();
-      }}
       onActivate={() => handlePlayCard(activeCardId)}
       canActivate={!interactionLocked && !!activeCardId && canPlayCard(activeCardId)}
       activateHint={interactionLocked ? 'Resolving action' : (activeCardId && canPlayCard(activeCardId) ? 'Tap to play' : 'Not enough RAM')}
@@ -5326,7 +5382,7 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'minmax(0, 3fr) minmax(92px, 1fr)',
+            gridTemplateColumns: 'minmax(0, 3fr) minmax(96px, 1fr)',
             gap: 8,
             alignItems: 'stretch',
           }}
@@ -5749,7 +5805,7 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
             className="safe-area-top"
             style={{
               flex: '0 0 auto',
-              padding: '10px 8px 6px',
+              padding: '8px 8px 4px',
               display: 'flex',
               justifyContent: 'center',
             }}
@@ -5758,8 +5814,8 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
               style={{
                 width: '100%',
                 display: 'grid',
-                gridTemplateColumns: 'minmax(0, 1fr) minmax(106px, 30vw)',
-                gap: 8,
+                gridTemplateColumns: 'minmax(0, 1fr) minmax(118px, 34vw)',
+                gap: 6,
                 alignItems: 'start',
               }}
             >
@@ -5771,7 +5827,7 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
           <div
             style={{
               flex: '0 0 auto',
-              padding: '0 8px 6px',
+              padding: '0 8px 0',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -5781,11 +5837,11 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
             {centeredCardPanel}
           </div>
 
-          <div className="safe-area-bottom" style={{ flex: '0 0 auto', padding: '0 8px 2px' }}>
+          <div className="safe-area-bottom" style={{ flex: '0 0 auto', padding: '0 8px 0' }}>
             {handFan}
           </div>
 
-          <div className="safe-area-bottom" style={{ flex: '0 0 auto', padding: '0 8px 8px' }}>
+          <div className="safe-area-bottom" style={{ flex: '0 0 auto', padding: '0 8px 6px' }}>
             {mobileBottomPanels}
             <div ref={portraitPileAnchorRef} style={{ height: 1 }} />
           </div>

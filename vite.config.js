@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
@@ -8,6 +10,93 @@ import { VitePWA } from 'vite-plugin-pwa';
 // Locally, base stays '/' so dev server works without any changes.
 const repoName = process.env.GITHUB_REPOSITORY?.split('/')[1];
 const base      = repoName ? `/${repoName}/` : '/';
+const playtestDir = path.resolve(process.cwd(), 'playtest_sessions');
+
+function sanitiseSessionId(sessionId) {
+  return String(sessionId || 'session')
+    .replace(/[^a-z0-9._-]+/gi, '_')
+    .slice(0, 80);
+}
+
+function buildPlaytestHandler() {
+  return (req, res, next) => {
+    if (req.method !== 'POST' || req.url !== '/__playtest/upload') {
+      next();
+      return;
+    }
+
+    const chunks = [];
+    req.on('data', (chunk) => chunks.push(chunk));
+    req.on('end', () => {
+      try {
+        const raw = Buffer.concat(chunks).toString('utf8') || '{}';
+        const payload = JSON.parse(raw);
+        const sessionId = sanitiseSessionId(payload.sessionId);
+        const outputPath = path.join(playtestDir, `${sessionId}.json`);
+        const now = new Date().toISOString();
+
+        fs.mkdirSync(playtestDir, { recursive: true });
+
+        let existing = {};
+        if (fs.existsSync(outputPath)) {
+          try {
+            existing = JSON.parse(fs.readFileSync(outputPath, 'utf8'));
+          } catch {
+            existing = {};
+          }
+        }
+
+        const nextPayload = {
+          sessionId,
+          screen: payload.screen ?? existing.screen ?? 'unknown',
+          startedAt: existing.startedAt ?? payload.startedAt ?? now,
+          updatedAt: now,
+          meta: {
+            ...(existing.meta || {}),
+            ...(payload.meta || {}),
+          },
+          uploads: [
+            ...(existing.uploads || []),
+            {
+              receivedAt: now,
+              reason: payload.reason ?? 'unspecified',
+              eventCount: Array.isArray(payload.events) ? payload.events.length : 0,
+            },
+          ],
+          events: [
+            ...(existing.events || []),
+            ...(Array.isArray(payload.events) ? payload.events : []),
+          ],
+        };
+
+        fs.writeFileSync(outputPath, JSON.stringify(nextPayload, null, 2), 'utf8');
+        res.statusCode = 200;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({ ok: true, file: outputPath, events: nextPayload.events.length }));
+      } catch (error) {
+        res.statusCode = 400;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({
+          ok: false,
+          error: error instanceof Error ? error.message : 'Unable to save playtest payload',
+        }));
+      }
+    });
+  };
+}
+
+function playtestCapturePlugin() {
+  const handler = buildPlaytestHandler();
+  return {
+    name: 'cardbattler-playtest-capture',
+    configureServer(server) {
+      server.middlewares.use(handler);
+    },
+    configurePreviewServer(server) {
+      server.middlewares.use(handler);
+    },
+  };
+}
 
 export default defineConfig({
   base,
@@ -26,6 +115,7 @@ export default defineConfig({
   },
   plugins: [
     react(),
+    playtestCapturePlugin(),
     VitePWA({
       registerType: 'autoUpdate',
 

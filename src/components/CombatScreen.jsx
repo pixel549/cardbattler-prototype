@@ -4,6 +4,7 @@ import { getCardImage } from '../data/cardImages';
 import { sfx } from '../game/sounds';
 import { getCardPlayability, getCardTargetingProfile } from '../game/engine';
 import useDialogAccessibility from '../hooks/useDialogAccessibility';
+import usePlaytestRecorder from '../hooks/usePlaytestRecorder';
 
 /**
  * CombatScreen - Cyberpunk deckbuilder combat UI
@@ -5157,6 +5158,15 @@ function ArcHand({
 // MAIN COMBAT SCREEN
 // ============================================================
 export default function CombatScreen({ state, data, onAction, aiPaused = false, onOpenMenu }) {
+  const {
+    enabled: playtestEnabled,
+    sessionId: playtestSessionId,
+    pendingCount: playtestPendingCount,
+    lastSyncAt: playtestLastSyncAt,
+    lastError: playtestLastError,
+    record: recordPlaytest,
+    flush: flushPlaytest,
+  } = usePlaytestRecorder({ screen: 'combat' });
   const [activeCardId, setActiveCardId] = useState(null);
   const [centerCardDismissed, setCenterCardDismissed] = useState(false);
   const [viewingPile, setViewingPile] = useState(null);
@@ -5192,6 +5202,11 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
   const portraitDeckMenuRef = useRef(null);
   const portraitPileAnchorRef = useRef(null);
   const tapTargetRef = useRef({ kind: null, id: null, timestamp: 0 });
+  const playtestReadyRef = useRef(null);
+  const playtestActiveCardRef = useRef(null);
+  const playtestInfoRef = useRef(null);
+  const playtestPileRef = useRef(null);
+  const latestCombatSnapshotRef = useRef(null);
   const [viewport, setViewport] = useState(() => ({
     width: typeof window !== 'undefined' ? window.innerWidth : 1280,
     height: typeof window !== 'undefined'
@@ -5290,6 +5305,81 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
     && activeTargetingProfile.canTargetEnemy
     && visibleEnemies.some((enemy) => getCardPlayability(state.combat, data, activeCardId, enemy.id, false).playable),
   );
+  const buildCombatSnapshot = useCallback(() => ({
+    layoutMode,
+    viewport,
+    activeCard: activeCardId
+      ? {
+          id: activeCardId,
+          name: activeDef?.name ?? activeCardId,
+        }
+      : null,
+    selectedTargetMode,
+    armedTarget,
+    deckMenuOpen,
+    viewingPile,
+    enemyInfoOpen,
+    canCastActiveOnSelf,
+    canCastActiveOnEnemy: canCastActiveOnAnyEnemy,
+    player: {
+      hp: player?.hp ?? 0,
+      maxHP: player?.maxHP ?? 0,
+      firewall: player?.statuses?.find((status) => status.id === 'Firewall')?.stacks ?? 0,
+      ram,
+      maxRam,
+    },
+    target: targetedEnemy
+      ? {
+          id: targetedEnemy.id,
+          name: targetedEnemy.name ?? 'Unknown Target',
+          hp: targetedEnemy.hp,
+          maxHP: targetedEnemy.maxHP,
+        }
+      : null,
+    hand: hand.slice(0, 8).map((cardId) => {
+      const instance = cardInstances[cardId];
+      const def = instance ? data?.cards?.[instance.defId] : null;
+      return {
+        id: cardId,
+        name: def?.name ?? cardId,
+      };
+    }),
+    enemies: visibleEnemies.map((enemy) => ({
+      id: enemy.id,
+      name: enemy.name ?? 'Unknown Target',
+      hp: enemy.hp,
+      maxHP: enemy.maxHP,
+      firewall: enemy?.statuses?.find((status) => status.id === 'Firewall')?.stacks ?? 0,
+      intent: enemy.intent?.type ?? null,
+    })),
+    recentLog: globalLog.slice(-6).map((entry) => ({
+      t: entry.t,
+      msg: entry.msg,
+    })),
+  }), [
+    activeCardId,
+    activeDef?.name,
+    armedTarget,
+    canCastActiveOnAnyEnemy,
+    canCastActiveOnSelf,
+    cardInstances,
+    data,
+    deckMenuOpen,
+    enemyInfoOpen,
+    globalLog,
+    hand,
+    layoutMode,
+    maxRam,
+    player,
+    ram,
+    selectedTargetMode,
+    targetedEnemy,
+    viewingPile,
+    viewport,
+    visibleEnemies,
+  ]);
+  latestCombatSnapshotRef.current = buildCombatSnapshot();
+  const playtestReadySignature = `${state?.mode || 'unknown'}|${state?.run?.floor ?? state?.run?.floorIndex ?? 'na'}|${visibleEnemies.map((enemy) => enemy.id).join(',')}`;
 
   useDialogAccessibility(enemyInfoOpen && !!targetedEnemy, {
     containerRef: enemyDialogRef,
@@ -5301,6 +5391,66 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
     containerRef: scryDialogRef,
     initialFocusRef: scryConfirmRef,
   });
+
+  useEffect(() => {
+    if (!playtestEnabled || !combat) return;
+    if (playtestReadyRef.current === playtestReadySignature) return;
+    playtestReadyRef.current = playtestReadySignature;
+    recordPlaytest('combat_screen_ready', {
+      snapshot: latestCombatSnapshotRef.current,
+    });
+  }, [combat, playtestEnabled, playtestReadySignature, recordPlaytest]);
+
+  useEffect(() => {
+    if (!playtestEnabled || !activeCardId) {
+      playtestActiveCardRef.current = activeCardId ?? null;
+      return;
+    }
+    if (playtestActiveCardRef.current === activeCardId) return;
+    playtestActiveCardRef.current = activeCardId;
+    recordPlaytest('active_card_selected', {
+      cardId: activeCardId,
+      cardName: activeDef?.name ?? activeCardId,
+      snapshot: latestCombatSnapshotRef.current,
+    });
+  }, [activeCardId, activeDef?.name, playtestEnabled, recordPlaytest]);
+
+  useEffect(() => {
+    if (!playtestEnabled || !enemyInfoOpen || !targetedEnemy) {
+      playtestInfoRef.current = null;
+      return;
+    }
+    const signature = `${targetedEnemy.id}:${activeCardId ?? 'none'}`;
+    if (playtestInfoRef.current === signature) return;
+    playtestInfoRef.current = signature;
+    recordPlaytest('enemy_info_opened', {
+      enemyId: targetedEnemy.id,
+      enemyName: targetedEnemy.name ?? 'Unknown Target',
+      snapshot: latestCombatSnapshotRef.current,
+    });
+  }, [activeCardId, enemyInfoOpen, playtestEnabled, recordPlaytest, targetedEnemy]);
+
+  useEffect(() => {
+    if (!playtestEnabled || !viewingPile) {
+      playtestPileRef.current = null;
+      return;
+    }
+    if (playtestPileRef.current === viewingPile) return;
+    playtestPileRef.current = viewingPile;
+    recordPlaytest('pile_view_opened', {
+      pile: viewingPile,
+      snapshot: latestCombatSnapshotRef.current,
+    });
+  }, [playtestEnabled, recordPlaytest, viewingPile]);
+
+  useEffect(() => {
+    if (!playtestEnabled || !combat?.combatOver) return;
+    recordPlaytest('combat_finished', {
+      victory: Boolean(combat?.victory),
+      snapshot: latestCombatSnapshotRef.current,
+    });
+    void flushPlaytest('combat_finished');
+  }, [combat?.combatOver, combat?.victory, playtestEnabled, recordPlaytest, flushPlaytest]);
 
   const scrollPortraitAnchorIntoView = useCallback((targetRef, block = 'end') => {
     if (!isPhonePortrait) return;
@@ -5375,6 +5525,17 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
   const playCardToTarget = useCallback((cardId = activeCardId, targetMode = 'enemy', enemyId = defaultEnemyTargetId) => {
     const playability = getPlayabilityForTarget(cardId, targetMode, enemyId);
     if (interactionLocked || !cardId || !playability.playable) return false;
+    recordPlaytest('card_play_dispatched', {
+      cardId,
+      cardName: (() => {
+        const instance = cardInstances[cardId];
+        const def = instance ? data?.cards?.[instance.defId] : null;
+        return def?.name ?? cardId;
+      })(),
+      targetMode,
+      targetEnemyId: enemyId ?? null,
+      snapshot: buildCombatSnapshot(),
+    });
     sfx.unlock();
     sfx.cardPlay();
     onAction?.({
@@ -5386,7 +5547,7 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
     clearTapTarget();
     setSelectedTargetMode(targetMode === 'self' ? 'self' : 'enemy');
     return true;
-  }, [activeCardId, clearTapTarget, defaultEnemyTargetId, getPlayabilityForTarget, interactionLocked, onAction]);
+  }, [activeCardId, buildCombatSnapshot, cardInstances, clearTapTarget, data, defaultEnemyTargetId, getPlayabilityForTarget, interactionLocked, onAction, recordPlaytest]);
 
   const focusActiveCard = useCallback((cardId) => {
     clearTapTarget();
@@ -5412,27 +5573,47 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
 
     if (sameTarget) {
       if (canUseOnEnemy && withinDoubleTap) {
+        recordPlaytest('enemy_double_tap_cast', {
+          enemyId: enemy.id,
+          enemyName: enemy.name ?? 'Unknown Target',
+          snapshot: buildCombatSnapshot(),
+        });
         playCardToTarget(activeCardId, 'enemy', enemy.id);
         return;
       }
       if (!canUseOnEnemy || !withinDoubleTap) {
         primeTapTarget('enemy', enemy.id, false, now);
+        recordPlaytest('enemy_slow_second_tap', {
+          enemyId: enemy.id,
+          enemyName: enemy.name ?? 'Unknown Target',
+          playable: canUseOnEnemy,
+          openedInfo: true,
+          snapshot: buildCombatSnapshot(),
+        });
         setEnemyInfoOpen(true);
         clearArmedTarget();
         return;
       }
     }
 
+    recordPlaytest(canUseOnEnemy ? 'enemy_target_armed' : 'enemy_target_tapped', {
+      enemyId: enemy.id,
+      enemyName: enemy.name ?? 'Unknown Target',
+      playable: canUseOnEnemy,
+      snapshot: buildCombatSnapshot(),
+    });
     primeTapTarget('enemy', enemy.id, canUseOnEnemy, now);
   }, [
     activeCardId,
     activeTargetingProfile.canTargetEnemy,
+    buildCombatSnapshot,
     clearArmedTarget,
     enemyInfoOpen,
     getPlayabilityForTarget,
     interactionLocked,
     playCardToTarget,
     primeTapTarget,
+    recordPlaytest,
   ]);
 
   const handlePlayerTargetTap = useCallback(() => {
@@ -5446,19 +5627,28 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
     setSelectedTargetMode('self');
 
     if (sameTarget && canUseOnSelf && withinDoubleTap) {
+      recordPlaytest('self_double_tap_cast', {
+        snapshot: buildCombatSnapshot(),
+      });
       playCardToTarget(activeCardId, 'self', defaultEnemyTargetId);
       return;
     }
 
+    recordPlaytest(canUseOnSelf ? 'self_target_armed' : 'self_target_tapped', {
+      playable: canUseOnSelf,
+      snapshot: buildCombatSnapshot(),
+    });
     primeTapTarget('self', PLAYER_TARGET_ID, canUseOnSelf, now);
   }, [
     activeCardId,
     activeTargetingProfile.canTargetSelf,
+    buildCombatSnapshot,
     defaultEnemyTargetId,
     getPlayabilityForTarget,
     interactionLocked,
     playCardToTarget,
     primeTapTarget,
+    recordPlaytest,
   ]);
 
   useEffect(() => {
@@ -5801,6 +5991,9 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
 
   const handleEndTurn = () => {
     if (interactionLocked) return;
+    recordPlaytest('end_turn_pressed', {
+      snapshot: buildCombatSnapshot(),
+    });
     sfx.endTurn();
     waitingForEndTurnLogsRef.current = true;
     setEndTurnPending(true);
@@ -6463,6 +6656,59 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
           data={data}
           onClose={() => setViewingPile(null)}
         />
+      )}
+
+      {playtestEnabled && (
+        <div
+          style={{
+            position: 'fixed',
+            left: 10,
+            bottom: isPhoneLayout ? 10 : 14,
+            zIndex: 260,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '7px 9px',
+            borderRadius: 12,
+            background: 'rgba(4,8,14,0.92)',
+            border: `1px solid ${playtestLastError ? C.neonOrange : C.neonCyan}44`,
+            boxShadow: `0 10px 22px rgba(0,0,0,0.28), 0 0 16px ${playtestLastError ? C.neonOrange : C.neonCyan}10`,
+          }}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+            <span style={{ fontFamily: MONO, fontSize: 7, fontWeight: 700, letterSpacing: '0.12em', color: C.neonCyan }}>
+              PHONE PLAYTEST
+            </span>
+            <span style={{ fontFamily: MONO, fontSize: 8, color: C.textPrimary, whiteSpace: 'nowrap' }}>
+              {playtestSessionId ? `#${playtestSessionId.slice(-6)}` : 'starting'} • {playtestPendingCount} queued
+            </span>
+            <span style={{ fontFamily: MONO, fontSize: 7, color: playtestLastError ? C.neonOrange : C.textDim }}>
+              {playtestLastError
+                ? `Upload pending: ${playtestLastError}`
+                : playtestLastSyncAt
+                  ? `Synced ${new Date(playtestLastSyncAt).toLocaleTimeString()}`
+                  : 'Auto-syncs back to this PC'}
+            </span>
+          </div>
+          <button
+            onClick={() => { void flushPlaytest('manual_overlay'); }}
+            style={{
+              padding: '7px 8px',
+              borderRadius: 10,
+              border: `1px solid ${C.neonCyan}44`,
+              background: `${C.neonCyan}14`,
+              color: C.neonCyan,
+              fontFamily: MONO,
+              fontSize: 8,
+              fontWeight: 700,
+              letterSpacing: '0.08em',
+              cursor: 'pointer',
+              flexShrink: 0,
+            }}
+          >
+            Sync
+          </button>
+        </div>
       )}
 
       {/* Paused overlay banner */}

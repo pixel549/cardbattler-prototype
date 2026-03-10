@@ -18,6 +18,11 @@ import { getEventImage } from './data/eventImages';
 import { getCardImage } from './data/cardImages';
 import useDialogAccessibility from './hooks/useDialogAccessibility';
 import {
+  buildPlaytestUrl,
+  readPlaytestModeEnabled,
+  writePlaytestModeEnabled,
+} from './playtest/config';
+import {
   TUTORIAL_COMPLETED_STORAGE_KEY,
   createTutorialRunState,
   getTutorialStep,
@@ -1274,6 +1279,8 @@ function PauseMenuOverlay({
   onDevAction,
   onToggleLog,
   aiPanel,
+  playtestMode = false,
+  onTogglePlaytestMode,
 }) {
   const dialogRef = useRef(null);
   const closeButtonRef = useRef(null);
@@ -1521,6 +1528,26 @@ function PauseMenuOverlay({
               >
                 Reload app
               </button>
+              <button
+                onClick={onTogglePlaytestMode}
+                style={{
+                  padding: '8px 10px',
+                  borderRadius: 10,
+                  border: `1px solid ${playtestMode ? C.cyan + '55' : C.border}`,
+                  background: playtestMode ? `${C.cyan}14` : 'rgba(255,255,255,0.03)',
+                  color: playtestMode ? C.cyan : C.text,
+                  fontFamily: UI_MONO,
+                  fontSize: 11,
+                  fontWeight: 700,
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                }}
+              >
+                {playtestMode ? 'Phone playtest on - tap to disable' : 'Enable phone playtest mode'}
+              </button>
+              <div style={{ fontFamily: UI_MONO, fontSize: 10, lineHeight: 1.5, color: C.textMuted }}>
+                Playtest mode captures real phone sessions from the LAN dev or preview server and stores them in `playtest_sessions/`.
+              </div>
             </HelpCard>
 
             <HelpCard title="SAVE SLOTS">
@@ -4448,6 +4475,7 @@ function App() {
   const [showPauseMenu, setShowPauseMenu] = useState(false);
   const [menuAutosave, setMenuAutosave] = useState(null);
   const [debugSaveSlots, setDebugSaveSlots] = useState(() => readDebugSaveSlots());
+  const [playtestMode, setPlaytestMode] = useState(() => readPlaytestModeEnabled());
   const [tutorialNudge, setTutorialNudge] = useState('');
   const [tutorialCompleted, setTutorialCompleted] = useState(() => {
     if (typeof window === 'undefined') return false;
@@ -4727,6 +4755,15 @@ function App() {
     setShowPauseMenu(false);
     window.location.reload();
   }
+
+  const togglePlaytestMode = useCallback(() => {
+    const next = !playtestMode;
+    writePlaytestModeEnabled(next);
+    setPlaytestMode(next);
+    if (typeof window !== 'undefined') {
+      window.location.href = buildPlaytestUrl(window.location.href, next);
+    }
+  }, [playtestMode]);
 
   function hardReloadIntoFreshRun(overrideDebugSeed = undefined) {
     const debugSeed = resolveRequestedDebugSeed(overrideDebugSeed);
@@ -5798,6 +5835,8 @@ function App() {
         onDevAction={handleAction}
         onToggleLog={() => setShowLog(prev => !prev)}
         aiPanel={aiPanel}
+        playtestMode={playtestMode}
+        onTogglePlaytestMode={togglePlaytestMode}
       />
       {state.mode === 'Combat' && tutorialStep && (
         <TutorialOverlay

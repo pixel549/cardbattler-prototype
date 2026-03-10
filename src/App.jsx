@@ -1,6 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { loadGameData } from './data/loadData';
-import { createInitialState, dispatchGame } from './game/game_core';
+import {
+  createInitialState,
+  dispatchGame,
+  getServiceOfferPreview,
+  getServiceTargetPreview,
+} from './game/game_core';
 import { dispatchWithJournal } from './game/dispatch_with_journal';
 import CombatScreen from './components/CombatScreen';
 import AIDebugPanel from './components/AIDebugPanel';
@@ -2186,12 +2191,12 @@ function RewardScreen({ state, data, onAction }) {
 // ============================================================
 
 const SHOP_SERVICE_INFO = {
-  RemoveCard: { icon: '🗑️', desc: 'Permanently remove a card from your deck', color: C.red },
-  Remove:     { icon: '🗑️', desc: 'Permanently remove a card from your deck', color: C.red },
-  Repair:     { icon: '🔧', desc: 'Restore a card\'s use counter', color: C.cyan },
-  Stabilise:  { icon: '◆',  desc: 'Reset a card\'s mutation countdown', color: C.purple },
-  Accelerate: { icon: '⚡', desc: 'Speed up a card\'s mutation trigger', color: C.orange },
-  Heal:       { icon: '💊', desc: 'Restore 40 HP', color: C.green },
+  RemoveCard: { icon: '🗑️', label: 'Remove Card', color: C.red },
+  Remove:     { icon: '🗑️', label: 'Remove Card', color: C.red },
+  Repair:     { icon: '🔧', label: 'Repair', color: C.cyan },
+  Stabilise:  { icon: '◆',  label: 'Stabilise', color: C.purple },
+  Accelerate: { icon: '⚡', label: 'Accelerate', color: C.orange },
+  Heal:       { icon: '💊', label: 'Heal', color: C.green },
 };
 
 function describeEffects(effects) {
@@ -2291,22 +2296,27 @@ function ShopScreen({ state, data, onAction }) {
               {offers.map((offer, i) => {
                 if (offer.kind !== 'Service') return null;
                 const canAfford = gold >= offer.price;
-                const svc = SHOP_SERVICE_INFO[offer.serviceId] || { icon: '⚙', desc: offer.serviceId, color: C.cyan };
+                const svc = SHOP_SERVICE_INFO[offer.serviceId] || { icon: '⚙', label: offer.serviceId, color: C.cyan };
+                const preview = getServiceOfferPreview(offer.serviceId, state, data);
+                const canUse = preview.available !== false;
+                const canBuy = canAfford && canUse;
+                const metaTone = !canAfford ? C.textMuted : (canUse ? svc.color : C.orange);
                 return (
                   <button
                     key={i}
-                    onClick={() => canAfford && onAction({ type: 'Shop_BuyOffer', index: i })}
-                    disabled={!canAfford}
+                    onClick={() => canBuy && onAction({ type: 'Shop_BuyOffer', index: i })}
+                    disabled={!canBuy}
+                    title={!canAfford ? `Costs ${offer.price}g` : (preview.detail || preview.summary || '')}
                     style={{
                       width: '100%', padding: '14px', borderRadius: '12px',
                       textAlign: 'left', transition: 'all 0.2s ease',
-                      opacity: !canAfford ? 0.45 : 1,
-                      backgroundColor: canAfford ? `${svc.color}08` : C.bgCard,
-                      border: `2px solid ${canAfford ? `${svc.color}40` : C.border}`,
-                      cursor: canAfford ? 'pointer' : 'default',
+                      opacity: !canAfford ? 0.45 : (canUse ? 1 : 0.72),
+                      backgroundColor: canBuy ? `${svc.color}08` : C.bgCard,
+                      border: `2px solid ${canBuy ? `${svc.color}40` : (canUse ? C.border : `${C.orange}35`)}`,
+                      cursor: canBuy ? 'pointer' : 'default',
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
                       <div style={{
                         width: 38, height: 38, borderRadius: '10px', flexShrink: 0,
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -2317,11 +2327,65 @@ function ShopScreen({ state, data, onAction }) {
                         {svc.icon}
                       </div>
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontFamily: MONO, fontWeight: 700, color: canAfford ? svc.color : C.textMuted, fontSize: 14 }}>
-                          {offer.serviceId}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                          <div style={{ fontFamily: MONO, fontWeight: 700, color: canAfford ? svc.color : C.textMuted, fontSize: 14 }}>
+                            {svc.label}
+                          </div>
+                          <div
+                            style={{
+                              padding: '2px 8px',
+                              borderRadius: 999,
+                              fontFamily: MONO,
+                              fontSize: 10,
+                              fontWeight: 700,
+                              letterSpacing: '0.08em',
+                              border: `1px solid ${metaTone}40`,
+                              color: metaTone,
+                              backgroundColor: `${metaTone}12`,
+                            }}
+                          >
+                            {preview.targeted ? 'CHOOSE 1 CARD' : 'INSTANT'}
+                          </div>
+                          {preview.targeted && (
+                            <div
+                              style={{
+                                padding: '2px 8px',
+                                borderRadius: 999,
+                                fontFamily: MONO,
+                                fontSize: 10,
+                                fontWeight: 700,
+                                letterSpacing: '0.08em',
+                                border: `1px solid ${(canUse ? svc.color : C.orange)}35`,
+                                color: canUse ? svc.color : C.orange,
+                                backgroundColor: `${canUse ? svc.color : C.orange}10`,
+                              }}
+                            >
+                              {preview.eligibleCount} ELIGIBLE
+                            </div>
+                          )}
+                          {!canUse && (
+                            <div
+                              style={{
+                                padding: '2px 8px',
+                                borderRadius: 999,
+                                fontFamily: MONO,
+                                fontSize: 10,
+                                fontWeight: 700,
+                                letterSpacing: '0.08em',
+                                border: `1px solid ${C.orange}35`,
+                                color: C.orange,
+                                backgroundColor: `${C.orange}10`,
+                              }}
+                            >
+                              UNAVAILABLE
+                            </div>
+                          )}
                         </div>
                         <div style={{ fontFamily: MONO, marginTop: 2, color: C.textMuted, fontSize: 12, lineHeight: 1.45 }}>
-                          {svc.desc}
+                          {preview.summary}
+                        </div>
+                        <div style={{ fontFamily: MONO, marginTop: 6, color: metaTone, fontSize: 10, lineHeight: 1.45, letterSpacing: '0.04em' }}>
+                          {preview.detail}
                         </div>
                       </div>
                       <div style={{
@@ -3207,9 +3271,9 @@ function EventScreen({ state, data, onAction }) {
 
 const DECK_OP_LABELS = {
   RemoveSelectedCard:    { label: 'REMOVE A CARD',    desc: 'The chosen card will be permanently deleted.', color: '#ff4444' },
-  RepairSelectedCard:    { label: 'REPAIR A CARD',    desc: 'Restore the chosen card\'s use counter.', color: '#00f0ff' },
-  StabiliseSelectedCard: { label: 'STABILISE A CARD', desc: 'Reset the chosen card\'s mutation countdown.', color: '#b44aff' },
-  AccelerateSelectedCard:{ label: 'ACCELERATE A CARD',desc: 'Speed up the chosen card\'s mutation trigger.', color: '#ff6b00' },
+  RepairSelectedCard:    { label: 'REPAIR A CARD',    desc: 'Restore 35% of the chosen card\'s max use counter.', color: '#00f0ff' },
+  StabiliseSelectedCard: { label: 'STABILISE A CARD', desc: 'Add 2 to the chosen card\'s final mutation countdown.', color: '#b44aff' },
+  AccelerateSelectedCard:{ label: 'ACCELERATE A CARD',desc: 'Reduce the chosen card\'s final mutation countdown by 2.', color: '#ff6b00' },
 };
 
 function DeckPickerOverlay({ state, data, onAction }) {
@@ -3254,6 +3318,15 @@ function DeckPickerOverlay({ state, data, onAction }) {
       return { iid, ci, def };
     })
     .filter(Boolean);
+  const cardsWithSelectionState = cards.map(({ iid, ci, def }) => ({
+    iid,
+    ci,
+    def,
+    selectionInfo: pendingOp ? getServiceTargetPreview(pendingOp, state, data, iid) : { eligible: true, summary: null, reason: null },
+  }));
+  const eligibleCardCount = pendingOp
+    ? cardsWithSelectionState.filter(({ selectionInfo }) => selectionInfo.eligible).length
+    : cardsWithSelectionState.length;
 
   const canCancel = !pendingOp;
   const closeLabel = canCancel ? 'Close deck' : 'Cancel selection';
@@ -3294,6 +3367,7 @@ function DeckPickerOverlay({ state, data, onAction }) {
           </div>
           <div style={{ fontFamily: MONO, fontSize: 11, color: C.textDim, marginTop: 6 }}>
             {cards.length} card{cards.length !== 1 ? 's' : ''} in deck
+            {pendingOp ? ` • ${eligibleCardCount} eligible` : ''}
           </div>
         </div>
         <button
@@ -3333,15 +3407,30 @@ function DeckPickerOverlay({ state, data, onAction }) {
           justifyItems: 'center',
         }}
       >
-        {cards.map(({ iid, ci, def }) => (
-          <CardChoiceTile
-            key={iid}
-            cardId={ci.defId}
-            card={def}
-            instance={ci}
-            selected={dv.selectedInstanceId === iid}
-            onClick={() => onAction({ type: 'SelectDeckCard', instanceId: iid })}
-          />
+        {cardsWithSelectionState.map(({ iid, ci, def, selectionInfo }) => (
+          <div key={iid} style={{ width: '100%', maxWidth: `${MENU_CARD_MAX_W}px`, display: 'flex', flexDirection: 'column', gap: 6, alignSelf: 'start' }}>
+            <CardChoiceTile
+              cardId={ci.defId}
+              card={def}
+              instance={ci}
+              selected={dv.selectedInstanceId === iid}
+              onClick={() => selectionInfo.eligible && onAction({ type: 'SelectDeckCard', instanceId: iid })}
+              disabled={pendingOp ? !selectionInfo.eligible : false}
+            />
+            {pendingOp && (
+              <div
+                style={{
+                  minHeight: 34,
+                  fontFamily: MONO,
+                  fontSize: 10,
+                  lineHeight: 1.45,
+                  color: selectionInfo.eligible ? opInfo.color : C.textDim,
+                }}
+              >
+                {selectionInfo.eligible ? selectionInfo.summary : selectionInfo.reason}
+              </div>
+            )}
+          </div>
         ))}
         {showLegacyDeckList && cards.map(({ iid, ci, def }) => {
           const color = typeColors[def.type] || C.text;
@@ -4586,7 +4675,7 @@ function App() {
 
     if (action.type === 'Shop_BuyOffer') {
       const offer = currentState.shop?.offers?.[action.index];
-      if (offer) {
+      if (offer && (offer.kind !== 'Service' || offer.serviceId === 'Heal')) {
         pendingFloorEventsRef.current.push({
           act: currentState.run?.act,
           floor: currentState.run?.floor,
@@ -4623,15 +4712,30 @@ function App() {
     }
     if (action.type === 'SelectDeckCard') {
       const instance = currentState.deck?.cardInstances?.[action.instanceId];
-      pendingFloorEventsRef.current.push({
-        act: currentState.run?.act,
-        floor: currentState.run?.floor,
-        type: 'DeckTarget',
-        source: currentState.shop?.pendingService ? 'Shop' : (currentState.event?.pendingSelectOp ? 'Event' : 'DeckView'),
-        operation: currentState.shop?.pendingService ?? currentState.event?.pendingSelectOp ?? null,
-        instanceId: action.instanceId,
-        defId: instance?.defId ?? null,
-      });
+      if (currentState.shop?.pendingService) {
+        pendingFloorEventsRef.current.push({
+          act: currentState.run?.act,
+          floor: currentState.run?.floor,
+          type: 'Shop',
+          purchased: {
+            kind: 'Service',
+            defId: currentState.shop.pendingService,
+            price: currentState.shop.pendingPrice ?? null,
+            targetInstanceId: action.instanceId,
+            targetDefId: instance?.defId ?? null,
+          },
+        });
+      } else {
+        pendingFloorEventsRef.current.push({
+          act: currentState.run?.act,
+          floor: currentState.run?.floor,
+          type: 'DeckTarget',
+          source: currentState.event?.pendingSelectOp ? 'Event' : 'DeckView',
+          operation: currentState.event?.pendingSelectOp ?? null,
+          instanceId: action.instanceId,
+          defId: instance?.defId ?? null,
+        });
+      }
     }
     if (action.type === 'SelectNextNode') {
       pendingFloorEventsRef.current.push({

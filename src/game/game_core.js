@@ -15,7 +15,7 @@ const EVENT_REG = createBasicEventRegistry();
 function clone(x) { return structuredClone(x); }
 function uid(rng, prefix) { return `${prefix}_${rng.nextUint().toString(16)}`; }
 
-function getCardUseCounterLimit(data, ci) {
+export function getCardUseCounterLimit(data, ci) {
   const def = data?.cards?.[ci?.defId];
   let maxUse = Number(def?.defaultUseCounter ?? 12);
   for (const mid of ci?.appliedMutations || []) {
@@ -24,7 +24,7 @@ function getCardUseCounterLimit(data, ci) {
   return Math.max(1, Number.isFinite(maxUse) ? maxUse : 12);
 }
 
-function getCardFinalCountdownBase(data, ci) {
+export function getCardFinalCountdownBase(data, ci) {
   const def = data?.cards?.[ci?.defId];
   const baseUse = Number(def?.defaultUseCounter ?? 12);
   const baseFinal = Number(def?.defaultFinalMutationCountdown ?? 8);
@@ -32,6 +32,200 @@ function getCardFinalCountdownBase(data, ci) {
     Number.isFinite(baseFinal) ? baseFinal : 8,
     (Number.isFinite(baseUse) ? baseUse : 12) * 3,
   );
+}
+
+export function normalizeDeckServiceId(rawId) {
+  switch (rawId) {
+    case "RemoveSelectedCard":
+      return "RemoveCard";
+    case "RepairSelectedCard":
+      return "Repair";
+    case "StabiliseSelectedCard":
+      return "Stabilise";
+    case "AccelerateSelectedCard":
+      return "Accelerate";
+    default:
+      return rawId ?? null;
+  }
+}
+
+function getServiceCardPreview(serviceId, data, ci) {
+  const normalizedId = normalizeDeckServiceId(serviceId);
+  if (!ci) {
+    return { serviceId: normalizedId, eligible: false, reason: "Card missing." };
+  }
+  if (ci.finalMutationId && normalizedId !== "RemoveCard") {
+    return {
+      serviceId: normalizedId,
+      eligible: false,
+      reason: "Final mutation cards cannot use this service.",
+    };
+  }
+
+  if (normalizedId === "RemoveCard") {
+    return {
+      serviceId: normalizedId,
+      eligible: true,
+      summary: "Remove this card from your deck permanently.",
+      reason: null,
+    };
+  }
+
+  if (normalizedId === "Repair") {
+    const maxUse = getCardUseCounterLimit(data, ci);
+    const currentValue = Math.max(0, Math.min(maxUse, Number(ci.useCounter ?? maxUse)));
+    const nextValue = Math.max(0, Math.min(maxUse, currentValue + Math.ceil(maxUse * 0.35)));
+    const delta = nextValue - currentValue;
+    return {
+      serviceId: normalizedId,
+      eligible: delta > 0,
+      currentValue,
+      nextValue,
+      delta,
+      maxValue: maxUse,
+      summary: delta > 0
+        ? `Restore ${delta} use (${currentValue} -> ${nextValue}/${maxUse}).`
+        : "Already at full use counter.",
+      reason: delta > 0 ? null : "Already at full use counter.",
+    };
+  }
+
+  if (normalizedId === "Stabilise") {
+    const baseValue = getCardFinalCountdownBase(data, ci);
+    const maxValue = baseValue + 6;
+    const currentValue = Math.max(0, Math.min(maxValue, Number(ci.finalMutationCountdown ?? baseValue)));
+    const nextValue = Math.max(0, Math.min(maxValue, currentValue + 2));
+    const delta = nextValue - currentValue;
+    return {
+      serviceId: normalizedId,
+      eligible: delta > 0,
+      currentValue,
+      nextValue,
+      delta,
+      maxValue,
+      summary: delta > 0
+        ? `Add ${delta} to final countdown (${currentValue} -> ${nextValue}).`
+        : "Already at the maximum stabilised countdown.",
+      reason: delta > 0 ? null : "Already at the maximum stabilised countdown.",
+    };
+  }
+
+  if (normalizedId === "Accelerate") {
+    const baseValue = getCardFinalCountdownBase(data, ci);
+    const currentValue = Math.max(0, Math.min(999, Number(ci.finalMutationCountdown ?? baseValue)));
+    const nextValue = Math.max(0, Math.min(999, currentValue - 2));
+    const delta = currentValue - nextValue;
+    return {
+      serviceId: normalizedId,
+      eligible: delta > 0,
+      currentValue,
+      nextValue,
+      delta,
+      summary: delta > 0
+        ? `Reduce final countdown by ${delta} (${currentValue} -> ${nextValue}).`
+        : "Already at the minimum final countdown.",
+      reason: delta > 0 ? null : "Already at the minimum final countdown.",
+    };
+  }
+
+  return {
+    serviceId: normalizedId,
+    eligible: false,
+    reason: "Unknown service.",
+  };
+}
+
+export function getServiceTargetPreview(serviceId, state, data, instanceId = null) {
+  const normalizedId = normalizeDeckServiceId(serviceId);
+  if (normalizedId === "Heal") {
+    const maxHP = state?.run?.maxHP ?? 0;
+    const currentHP = state?.run?.hp ?? 0;
+    const baseAmount = Math.ceil(maxHP * 0.25);
+    const amount = Math.max(0, Math.min(baseAmount, maxHP - currentHP));
+    return {
+      serviceId: normalizedId,
+      eligible: amount > 0,
+      amount,
+      baseAmount,
+      currentValue: currentHP,
+      maxValue: maxHP,
+      summary: amount > 0
+        ? `Restore ${amount} HP now (${baseAmount} max, capped at full).`
+        : "Already at full HP.",
+      reason: amount > 0 ? null : "Already at full HP.",
+    };
+  }
+
+  const ci = instanceId ? state?.deck?.cardInstances?.[instanceId] : null;
+  const def = data?.cards?.[ci?.defId];
+  if (!def || def.tags?.includes("EnemyCard")) {
+    return {
+      serviceId: normalizedId,
+      eligible: false,
+      reason: "This card cannot be targeted.",
+    };
+  }
+  return {
+    defId: ci?.defId ?? null,
+    name: def?.name ?? ci?.defId ?? instanceId ?? null,
+    ...getServiceCardPreview(normalizedId, data, ci),
+  };
+}
+
+export function getServiceOfferPreview(serviceId, state, data) {
+  const normalizedId = normalizeDeckServiceId(serviceId);
+  if (normalizedId === "Heal") {
+    const preview = getServiceTargetPreview(normalizedId, state, data);
+    return {
+      ...preview,
+      serviceId: normalizedId,
+      targeted: false,
+      available: preview.eligible,
+      detail: preview.eligible ? "Applies immediately." : "Unavailable while HP is already full.",
+    };
+  }
+
+  const targetCards = (state?.deck?.master || [])
+    .map((instanceId) => {
+      const ci = state?.deck?.cardInstances?.[instanceId];
+      const def = data?.cards?.[ci?.defId];
+      if (!ci || !def || def.tags?.includes("EnemyCard")) return null;
+      return {
+        instanceId,
+        defId: ci.defId,
+        name: def.name ?? ci.defId ?? instanceId,
+        ...getServiceCardPreview(normalizedId, data, ci),
+      };
+    })
+    .filter(Boolean);
+
+  const eligibleCount = targetCards.filter((entry) => entry.eligible).length;
+  const countLabel = `${eligibleCount} eligible card${eligibleCount === 1 ? "" : "s"}`;
+  const genericDetail = targetCards.length > 0
+    ? `${countLabel}. Gold is charged when you apply the service.`
+    : "No cards are available to target.";
+
+  let summary = "Choose a card.";
+  if (normalizedId === "RemoveCard") {
+    summary = "Choose 1 card and permanently delete it from your deck.";
+  } else if (normalizedId === "Repair") {
+    summary = "Choose 1 non-final card. Restore 35% of its max use counter.";
+  } else if (normalizedId === "Stabilise") {
+    summary = "Choose 1 non-final card. Add 2 to its final mutation countdown.";
+  } else if (normalizedId === "Accelerate") {
+    summary = "Choose 1 non-final card. Reduce its final mutation countdown by 2.";
+  }
+
+  return {
+    serviceId: normalizedId,
+    targeted: true,
+    available: eligibleCount > 0,
+    eligibleCount,
+    totalCount: targetCards.length,
+    targetCards,
+    summary,
+    detail: eligibleCount > 0 ? genericDetail : "No eligible cards in your deck right now.",
+  };
 }
 
 function pickWeighted(rng, weightedTypes) {
@@ -513,27 +707,31 @@ function service_RemoveCard(state, data, source = 'shop', log = null) {
 function service_RepairCard(state, data) {
   const sel = state.deckView?.selectedInstanceId;
   if (!state.deck || !sel) return false;
+  const preview = getServiceTargetPreview("Repair", state, data, sel);
+  if (!preview.eligible) return false;
   const ci = state.deck.cardInstances[sel];
-  if (!ci || ci.finalMutationId) return false;
-  const maxUse = getCardUseCounterLimit(data, ci);
-  ci.useCounter = clamp(ci.useCounter + Math.ceil(maxUse * 0.35), 0, maxUse);
+  if (!ci) return false;
+  ci.useCounter = preview.nextValue;
   return true;
 }
 function service_StabiliseCard(state, data) {
   const sel = state.deckView?.selectedInstanceId;
   if (!state.deck || !sel) return false;
+  const preview = getServiceTargetPreview("Stabilise", state, data, sel);
+  if (!preview.eligible) return false;
   const ci = state.deck.cardInstances[sel];
-  if (!ci || ci.finalMutationId) return false;
-  const base = getCardFinalCountdownBase(data, ci);
-  ci.finalMutationCountdown = clamp(ci.finalMutationCountdown + 2, 0, base + 6);
+  if (!ci) return false;
+  ci.finalMutationCountdown = preview.nextValue;
   return true;
 }
-function service_AccelerateCard(state) {
+function service_AccelerateCard(state, data) {
   const sel = state.deckView?.selectedInstanceId;
   if (!state.deck || !sel) return false;
+  const preview = getServiceTargetPreview("Accelerate", state, data, sel);
+  if (!preview.eligible) return false;
   const ci = state.deck.cardInstances[sel];
-  if (!ci || ci.finalMutationId) return false;
-  ci.finalMutationCountdown = clamp(ci.finalMutationCountdown - 2, 0, 999);
+  if (!ci) return false;
+  ci.finalMutationCountdown = preview.nextValue;
   return true;
 }
 function service_DuplicateCard(state, rng) {
@@ -548,8 +746,9 @@ function service_DuplicateCard(state, rng) {
 }
 function service_HealPlayer(state) {
   if (!state.run) return false;
-  const heal = Math.ceil(state.run.maxHP * 0.25);
-  state.run.hp = clamp(state.run.hp + heal, 0, state.run.maxHP);
+  const preview = getServiceTargetPreview("Heal", state, null, null);
+  if (!preview.eligible) return false;
+  state.run.hp = clamp(state.run.hp + preview.amount, 0, state.run.maxHP);
   return true;
 }
 
@@ -1008,9 +1207,8 @@ export function dispatchGame(stateIn, data, action) {
       if (!offer) return state;
       if (state.run.gold < offer.price) { log({ t: "Info", msg: "Not enough gold" }); return state; }
 
-      state.run.gold -= offer.price;
-
       if (offer.kind === "Card") {
+        state.run.gold -= offer.price;
         const rng = new RNG((state.run.seed ^ state.run.floor ^ 0xC0FFEE) >>> 0);
         addCardToRunDeck(data, state.deck, rng, offer.defId);
         log({ t: "Info", msg: `Bought card: ${offer.defId}` });
@@ -1019,6 +1217,7 @@ export function dispatchGame(stateIn, data, action) {
 
       if (offer.kind === "Relic") {
         if (state.run.relicIds.includes(offer.relicId)) return state; // already owned
+        state.run.gold -= offer.price;
         state.run.relicIds.push(offer.relicId);
         // Apply run-level stat mods (same logic as Reward_PickRelic)
         const boughtRelic = data.relics?.[offer.relicId];
@@ -1043,12 +1242,23 @@ export function dispatchGame(stateIn, data, action) {
 
       // service
       if (offer.serviceId === "Heal") {
+        const healPreview = getServiceOfferPreview("Heal", state, data);
+        if (!healPreview.available) {
+          log({ t: "Info", msg: "Service unavailable: Heal" });
+          return state;
+        }
+        state.run.gold -= offer.price;
         if (!service_HealPlayer(state)) return state;
-        log({ t: "Info", msg: "Bought service: Heal" });
+        log({ t: "Info", msg: `Bought service: Heal (+${healPreview.amount} HP)` });
         return state;
       }
 
       // card-targeting services
+      const servicePreview = getServiceOfferPreview(offer.serviceId, state, data);
+      if (!servicePreview.available) {
+        log({ t: "Info", msg: `Service unavailable: ${offer.serviceId}` });
+        return state;
+      }
       state.deckView = { selectedInstanceId: null, returnMode: "Shop" };
       state.shop.pendingService = offer.serviceId;
       state.shop.pendingPrice = offer.price;
@@ -1180,6 +1390,11 @@ export function dispatchGame(stateIn, data, action) {
       return state;
     }
     case "CloseDeck": {
+      if (state.mode === "Shop" && state.shop?.pendingService) {
+        delete state.shop.pendingService;
+        delete state.shop.pendingPrice;
+        log({ t: "Info", msg: "Cancelled shop service selection" });
+      }
       state.deckView = null;
       log({ t: "Info", msg: "Closed deck" });
       return state;
@@ -1193,12 +1408,18 @@ export function dispatchGame(stateIn, data, action) {
       // shop pending service apply
       if (state.mode === "Shop" && state.shop?.pendingService) {
         const serviceId = state.shop.pendingService;
+        const servicePrice = Math.max(0, Number(state.shop.pendingPrice ?? 0));
+        if ((state.run?.gold ?? 0) < servicePrice) {
+          log({ t: "Info", msg: `Not enough gold for service: ${serviceId}` });
+          return state;
+        }
         let ok = false;
         if (serviceId === "RemoveCard") ok = service_RemoveCard(state, data, 'shop', log);
         if (serviceId === "Repair") ok = service_RepairCard(state, data);
         if (serviceId === "Stabilise") ok = service_StabiliseCard(state, data);
-        if (serviceId === "Accelerate") ok = service_AccelerateCard(state);
+        if (serviceId === "Accelerate") ok = service_AccelerateCard(state, data);
         if (!ok) { log({ t: "Info", msg: `Service failed: ${serviceId}` }); return state; }
+        state.run.gold -= servicePrice;
         log({ t: "Info", msg: `Applied service: ${serviceId}` });
         delete state.shop.pendingService;
         delete state.shop.pendingPrice;
@@ -1212,7 +1433,7 @@ export function dispatchGame(stateIn, data, action) {
         if (op === "RemoveSelectedCard") ok = service_RemoveCard(state, data, 'event', log);
         if (op === "RepairSelectedCard") ok = service_RepairCard(state, data);
         if (op === "StabiliseSelectedCard") ok = service_StabiliseCard(state, data);
-        if (op === "AccelerateSelectedCard") ok = service_AccelerateCard(state);
+        if (op === "AccelerateSelectedCard") ok = service_AccelerateCard(state, data);
         if (op === "DuplicateSelectedCard") {
           const dupRng = new RNG((state.run?.seed ^ state.run?.floor ^ 0xD0D0D0) >>> 0);
           ok = service_DuplicateCard(state, dupRng);

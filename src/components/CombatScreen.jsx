@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { getEnemyImage } from '../data/enemyImages';
 import { getCardImage } from '../data/cardImages';
 import { sfx } from '../game/sounds';
+import useDialogAccessibility from '../hooks/useDialogAccessibility';
 
 /**
  * CombatScreen - Cyberpunk deckbuilder combat UI
@@ -1581,6 +1582,111 @@ function EnemyFocusPanel({ enemy, intentBadges = EMPTY_ARRAY, compact = false })
   );
 }
 
+function EnemySummaryStrip({ enemy, intentBadges = EMPTY_ARRAY, onToggleDetails, detailsOpen = false }) {
+  if (!enemy) return null;
+
+  const firewallStacks = enemy?.statuses?.find((status) => status.id === 'Firewall')?.stacks ?? 0;
+  const intentColor = getIntentColor(enemy.intent?.type);
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        minWidth: 0,
+        padding: '7px 8px',
+        borderRadius: 12,
+        background: 'linear-gradient(180deg, rgba(8,12,20,0.96) 0%, rgba(5,8,14,0.98) 100%)',
+        border: `1px solid ${C.neonCyan}22`,
+        boxShadow: `0 8px 18px rgba(0,0,0,0.22), 0 0 14px ${C.neonCyan}0d`,
+      }}
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0, flex: '1 1 auto' }}>
+        <span
+          style={{
+            fontFamily: MONO,
+            fontSize: 7,
+            fontWeight: 700,
+            letterSpacing: '0.12em',
+            color: C.textDim,
+          }}
+        >
+          TARGET
+        </span>
+        <span
+          style={{
+            fontFamily: MONO,
+            fontSize: 10,
+            fontWeight: 700,
+            color: C.textPrimary,
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}
+        >
+          {enemy.name ?? 'Unknown Target'}
+        </span>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+        <div
+          style={{
+            padding: '3px 7px',
+            borderRadius: 999,
+            background: `${getHealthColor(enemy.hp, enemy.maxHP)}14`,
+            border: `1px solid ${getHealthColor(enemy.hp, enemy.maxHP)}2f`,
+            color: getHealthColor(enemy.hp, enemy.maxHP),
+            fontFamily: MONO,
+            fontSize: 8,
+            fontWeight: 700,
+          }}
+        >
+          {enemy.hp}/{enemy.maxHP}
+        </div>
+        <div
+          style={{
+            padding: '3px 7px',
+            borderRadius: 999,
+            background: firewallStacks > 0 ? `${C.neonCyan}14` : 'rgba(255,255,255,0.03)',
+            border: `1px solid ${firewallStacks > 0 ? `${C.neonCyan}2f` : C.borderLight}`,
+            color: firewallStacks > 0 ? C.neonCyan : C.textDim,
+            fontFamily: MONO,
+            fontSize: 8,
+            fontWeight: 700,
+          }}
+        >
+          FW {firewallStacks}
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+        {intentBadges.slice(0, 2).map((badge, index) => (
+          <IntentEffectBadge key={`${enemy.id}-summary-${index}`} badge={badge} />
+        ))}
+        <button
+          onClick={onToggleDetails}
+          style={{
+            padding: '4px 8px',
+            borderRadius: 999,
+            border: `1px solid ${intentColor}30`,
+            background: detailsOpen ? `${intentColor}18` : 'rgba(255,255,255,0.03)',
+            color: detailsOpen ? intentColor : C.textSecondary,
+            fontFamily: MONO,
+            fontSize: 7,
+            fontWeight: 700,
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {detailsOpen ? 'Hide' : 'Info'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ============================================================
 // PLAYER STATS PANEL (bottom-left)
 // ============================================================
@@ -1928,86 +2034,70 @@ function MobilePlayerHud({ player, ram = 0, maxRam = 0, powerPile = [], cardInst
       style={{
         display: 'flex',
         flexDirection: 'column',
-        gap: isPhonePortrait ? 6 : 8,
+        gap: isPhonePortrait ? 5 : 7,
         minWidth: 0,
         borderRadius: 14,
-        padding: isPhonePortrait ? '8px 9px' : '10px',
+        padding: isPhonePortrait ? '7px 8px' : '9px',
         background: 'linear-gradient(180deg, rgba(8,12,20,0.97) 0%, rgba(5,8,14,0.96) 100%)',
         border: `1px solid ${C.neonCyan}28`,
         boxShadow: `0 8px 22px rgba(0,0,0,0.26), 0 0 18px ${C.neonCyan}10`,
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <span style={{ fontFamily: MONO, fontSize: isPhonePortrait ? 7 : 8, fontWeight: 700, letterSpacing: '0.14em', color: C.textDim }}>
-            PLAYER
-          </span>
-          <span style={{ fontFamily: MONO, fontSize: isPhonePortrait ? 7 : 8, color: C.neonCyan, letterSpacing: '0.08em' }}>
-            CORE STATUS
-          </span>
-        </div>
-        <span
-          style={{
-            padding: '3px 7px',
-            borderRadius: 999,
-            background: `${C.neonGreen}14`,
-            border: `1px solid ${C.neonGreen}30`,
-            color: C.neonGreen,
-            fontFamily: MONO,
-            fontSize: isPhonePortrait ? 6 : 7,
-            fontWeight: 700,
-            letterSpacing: '0.08em',
-            textTransform: 'uppercase',
-          }}
-        >
-          Center = play
-        </span>
-      </div>
-
       <div
         style={{
           display: 'flex',
           flexDirection: 'column',
-          gap: isPhonePortrait ? 5 : 6,
-          padding: isPhonePortrait ? '7px 8px' : '8px 9px',
+          gap: isPhonePortrait ? 4 : 5,
+          padding: isPhonePortrait ? '6px 7px' : '7px 8px',
           borderRadius: 12,
           background: 'rgba(3,7,14,0.72)',
           border: `1px solid ${C.borderLight}`,
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-          <span style={{ fontFamily: MONO, fontSize: isPhonePortrait ? 6 : 7, fontWeight: 700, letterSpacing: '0.12em', color: C.textDim }}>
-            VITALS
+          <span style={{ fontFamily: MONO, fontSize: isPhonePortrait ? 9 : 10, fontWeight: 700, letterSpacing: '0.12em', color: C.textDim }}>
+            PLAYER
           </span>
-          <span style={{ fontFamily: MONO, fontSize: isPhonePortrait ? 6 : 7, color: C.textSecondary }}>
-            Firewall, HP, RAM
+          <span style={{ fontFamily: MONO, fontSize: isPhonePortrait ? 9 : 10, color: C.textSecondary }}>
+            FW / HP / RAM
           </span>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-            <span style={{ fontFamily: MONO, fontSize: isPhonePortrait ? 7 : 8, fontWeight: 700, color: C.neonCyan }}>FW</span>
-            <span style={{ fontFamily: MONO, fontSize: isPhonePortrait ? 8 : 9, color: C.textPrimary }}>{firewallStacks}/{maxHp}</span>
+            <span style={{ fontFamily: MONO, fontSize: isPhonePortrait ? 10 : 11, fontWeight: 700, color: C.neonCyan }}>FW</span>
+            <span style={{ fontFamily: MONO, fontSize: isPhonePortrait ? 11 : 12, color: C.textPrimary }}>{firewallStacks}/{maxHp}</span>
           </div>
           <FirewallBar current={firewallStacks} max={maxHp} height={isPhonePortrait ? 8 : 10} showText={false} />
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-            <span style={{ fontFamily: MONO, fontSize: isPhonePortrait ? 7 : 8, fontWeight: 700, color: C.neonGreen }}>HP</span>
-            <span style={{ fontFamily: MONO, fontSize: isPhonePortrait ? 8 : 9, color: C.textPrimary }}>{hp}/{maxHp}</span>
+            <span style={{ fontFamily: MONO, fontSize: isPhonePortrait ? 10 : 11, fontWeight: 700, color: C.neonGreen }}>HP</span>
+            <span style={{ fontFamily: MONO, fontSize: isPhonePortrait ? 11 : 12, color: C.textPrimary }}>{hp}/{maxHp}</span>
           </div>
           <HealthBar current={hp} max={maxHp} height={isPhonePortrait ? 8 : 10} showText={false} />
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-            <span style={{ fontFamily: MONO, fontSize: isPhonePortrait ? 7 : 8, fontWeight: 700, color: C.neonCyan }}>RAM</span>
-            <span style={{ fontFamily: MONO, fontSize: isPhonePortrait ? 8 : 9, color: C.textPrimary }}>{ram}/{maxRam}</span>
+            <span style={{ fontFamily: MONO, fontSize: isPhonePortrait ? 10 : 11, fontWeight: 700, color: C.neonCyan }}>RAM</span>
+            <span style={{ fontFamily: MONO, fontSize: isPhonePortrait ? 11 : 12, color: C.textPrimary }}>{ram}/{maxRam}</span>
           </div>
           <RamBar ram={ram} maxRam={maxRam} compact={true} showLabel={false} />
         </div>
       </div>
 
       {(nonFirewallStatuses.length > 0 || activePowers.length > 0) && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+        <div
+          style={{
+            display: 'flex',
+            gap: 4,
+            overflowX: 'auto',
+            overflowY: 'hidden',
+            WebkitOverflowScrolling: 'touch',
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+            paddingBottom: 1,
+          }}
+        >
           {nonFirewallStatuses.map((status, index) => (
             <StatusBadge key={`${status.id}-${index}`} status={status} size="small" />
           ))}
@@ -2017,13 +2107,14 @@ function MobilePlayerHud({ player, ram = 0, maxRam = 0, powerPile = [], cardInst
               title={power.effects?.find((effect) => effect.op === 'RawText')?.text || power.name}
               style={{
                 fontFamily: MONO,
-                fontSize: isPhonePortrait ? 6 : 7,
+                fontSize: isPhonePortrait ? 9 : 10,
                 fontWeight: 700,
                 color: '#cc88ff',
                 backgroundColor: '#aa44ff12',
                 border: '1px solid #aa44ff30',
                 borderRadius: 999,
-                padding: isPhonePortrait ? '2px 6px' : '3px 7px',
+                padding: isPhonePortrait ? '4px 8px' : '5px 9px',
+                flexShrink: 0,
                 maxWidth: '100%',
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
@@ -2049,10 +2140,10 @@ function PileCountButton({ label, count, color, onClick, compact = false }) {
         justifyContent: 'space-between',
         gap: 6,
         minWidth: 0,
-        padding: compact ? '6px 8px' : '7px 12px',
+        padding: compact ? '10px 12px' : '10px 14px',
         borderRadius: 10,
         fontFamily: MONO,
-        fontSize: compact ? 9 : 11,
+        fontSize: compact ? 11 : 12,
         color: C.textPrimary,
         backgroundColor: `${color}12`,
         border: `1px solid ${color}32`,
@@ -2106,7 +2197,7 @@ function CombatActionButton({ label, onClick, disabled = false, active = false, 
       disabled={disabled}
       style={{
         minWidth: 0,
-        padding: compact ? '7px 6px' : '8px 10px',
+        padding: compact ? '11px 10px' : '12px 14px',
         borderRadius: 10,
         fontFamily: MONO,
         fontWeight: 700,
@@ -2119,7 +2210,7 @@ function CombatActionButton({ label, onClick, disabled = false, active = false, 
         color: styleTone.color,
         border: `1px solid ${active && tone !== 'primary' ? styleTone.border : styleTone.border}`,
         boxShadow: active ? `${styleTone.shadow}, inset 0 1px 0 rgba(255,255,255,0.08)` : styleTone.shadow,
-        fontSize: compact ? 7 : 9,
+        fontSize: compact ? 11 : 12,
         cursor: disabled ? 'default' : 'pointer',
         opacity: disabled ? 0.45 : 1,
         whiteSpace: 'nowrap',
@@ -2146,6 +2237,7 @@ function CombatUtilityPanel({
 }) {
   const compact = layoutMode !== 'desktop';
   const isPhonePortrait = layoutMode === 'phone-portrait';
+  const actionColumns = isPhonePortrait ? 'repeat(2, minmax(0, 1fr))' : 'repeat(4, minmax(0, 1fr))';
   const handleOpenPile = (pile) => {
     onViewPile?.(pile);
     onToggleDeckMenu?.(false);
@@ -2165,22 +2257,24 @@ function CombatUtilityPanel({
           display: 'flex',
           flexDirection: 'column',
           gap: compact ? (isPhonePortrait ? 5 : 6) : 8,
-          padding: compact ? (isPhonePortrait ? '8px 9px' : '10px') : '10px 12px',
+          padding: compact ? (isPhonePortrait ? '7px 8px' : '9px') : '10px 12px',
           borderRadius: compact ? 14 : 16,
           background: 'linear-gradient(180deg, rgba(8,12,20,0.96) 0%, rgba(5,8,14,0.98) 100%)',
           border: `1px solid ${C.borderLight}`,
           boxShadow: compact ? '0 8px 22px rgba(0,0,0,0.22)' : '0 10px 24px rgba(0,0,0,0.24)',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-          <span style={{ fontFamily: MONO, fontSize: compact ? (isPhonePortrait ? 7 : 8) : 8, fontWeight: 700, letterSpacing: '0.12em', color: C.textDim }}>
-            COMBAT OPS
-          </span>
-          <span style={{ fontFamily: MONO, fontSize: compact ? (isPhonePortrait ? 6 : 7) : 8, color: C.textSecondary }}>
-            Hand {handCount} | center card plays
-          </span>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: compact ? 6 : 8 }}>
+        {!compact && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+            <span style={{ fontFamily: MONO, fontSize: 8, fontWeight: 700, letterSpacing: '0.12em', color: C.textDim }}>
+              COMBAT OPS
+            </span>
+            <span style={{ fontFamily: MONO, fontSize: 8, color: C.textSecondary }}>
+              Hand {handCount} | center card plays
+            </span>
+          </div>
+        )}
+        <div style={{ display: 'grid', gridTemplateColumns: actionColumns, gap: compact ? 8 : 8 }}>
           <CombatActionButton
             label="Settings"
             onClick={onOpenSettings}
@@ -2334,10 +2428,7 @@ function CenterCardDisplay({
             ACTIVE CARD
           </div>
           <span style={{ fontFamily: MONO, color: C.textPrimary, fontSize: isMobileLayout ? 10 : 12, textAlign: 'center' }}>
-            {dismissed ? 'Swipe the hand to reopen the focused card' : 'Swipe the hand to focus a card'}
-          </span>
-          <span style={{ fontFamily: MONO, color: C.textSecondary, fontSize: isMobileLayout ? 9 : 10, letterSpacing: '0.04em', textAlign: 'center' }}>
-            {dismissed ? 'Tap the centered hand card when you are ready' : 'Tap the centered card to play it'}
+            {dismissed ? 'Swipe the hand to reopen the active card' : 'Swipe the hand to choose a card'}
           </span>
         </div>
       </div>
@@ -2357,7 +2448,7 @@ function CenterCardDisplay({
 
   if (isMobileLayout) {
     const mobileCardWidth = layoutMode === 'phone-portrait'
-      ? 'min(42vw, 160px)'
+      ? 'min(38vw, 148px)'
       : 'clamp(122px, 18vw, 156px)';
 
     return (
@@ -2375,11 +2466,12 @@ function CenterCardDisplay({
         <div style={{ width: '100%', display: 'flex', justifyContent: 'flex-end', padding: '0 2px' }}>
           <button
             onClick={onDismiss}
+            aria-label="Hide active card details"
             style={{
-              padding: '5px 8px',
+              padding: '8px 12px',
               borderRadius: 999,
               fontFamily: MONO,
-              fontSize: 7,
+              fontSize: 10,
               fontWeight: 700,
               letterSpacing: '0.08em',
               textTransform: 'uppercase',
@@ -2396,6 +2488,7 @@ function CenterCardDisplay({
           role="button"
           tabIndex={canActivate ? 0 : -1}
           aria-disabled={!canActivate}
+          aria-label={cardDef?.name ? `${activateHint}: ${cardDef.name}` : activateHint}
           title={activateHint}
           onClick={canActivate ? onActivate : undefined}
           onKeyDown={canActivate ? (event) => {
@@ -2587,6 +2680,7 @@ function CenterCardDisplay({
           role="button"
           tabIndex={canActivate ? 0 : -1}
           aria-disabled={!canActivate}
+          aria-label={cardDef?.name ? `${activateHint}: ${cardDef.name}` : activateHint}
           title={activateHint}
           onClick={canActivate ? onActivate : undefined}
           onKeyDown={canActivate ? (event) => {
@@ -2757,6 +2851,7 @@ function HandCard({ cardInstance, cardDef, isSelected, onSelect, canPlay, compac
   const imgSrc = getCardImage(cardDef?.id);
   const touchStartRef = useRef(null);
   const touchMovedRef = useRef(false);
+  const suppressClickRef = useRef(false);
 
   const clearTouchGesture = useCallback(() => {
     touchStartRef.current = null;
@@ -2767,24 +2862,35 @@ function HandCard({ cardInstance, cardDef, isSelected, onSelect, canPlay, compac
     if (e.pointerType !== 'touch') return;
     touchStartRef.current = { x: e.clientX, y: e.clientY };
     touchMovedRef.current = false;
+    suppressClickRef.current = false;
   }, []);
 
   const handlePointerMove = useCallback((e) => {
     if (e.pointerType !== 'touch' || !touchStartRef.current) return;
     const dx = Math.abs(e.clientX - touchStartRef.current.x);
     const dy = Math.abs(e.clientY - touchStartRef.current.y);
-    if (dx > 10 || dy > 10) {
+    if ((dx > 8 && dx >= dy * 0.75) || dy > 14) {
       touchMovedRef.current = true;
     }
   }, []);
 
-  const handlePointerUp = useCallback(() => {
+  const handlePointerUp = useCallback((e) => {
+    if (e.pointerType === 'touch' && !touchMovedRef.current) {
+      suppressClickRef.current = true;
+      onSelect?.();
+    }
     window.setTimeout(() => {
       clearTouchGesture();
     }, 0);
-  }, [clearTouchGesture]);
+  }, [clearTouchGesture, onSelect]);
 
   const handleClick = useCallback((e) => {
+    if (suppressClickRef.current) {
+      suppressClickRef.current = false;
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
     if (touchMovedRef.current) {
       e.preventDefault();
       e.stopPropagation();
@@ -3691,6 +3797,15 @@ function RamBar({ ram, maxRam, compact = false, showLabel = true }) {
 // PILE VIEWER (bottom-sheet modal)
 // ============================================================
 function PileViewer({ title, cards, cardInstances, data, onClose }) {
+  const dialogRef = useRef(null);
+  const closeButtonRef = useRef(null);
+
+  useDialogAccessibility(true, {
+    containerRef: dialogRef,
+    initialFocusRef: closeButtonRef,
+    onClose,
+  });
+
   return (
     <div
       style={{
@@ -3708,7 +3823,12 @@ function PileViewer({ title, cards, cardInstances, data, onClose }) {
       onClick={onClose}
     >
       <div
+        ref={dialogRef}
         className="safe-area-bottom animate-slide-up"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="pile-viewer-title"
+        tabIndex={-1}
         style={{
           width: '100%',
           maxHeight: '75vh',
@@ -3729,21 +3849,24 @@ function PileViewer({ title, cards, cardInstances, data, onClose }) {
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <h3 style={{ fontFamily: MONO, fontWeight: 700, color: C.textPrimary, fontSize: 16 }}>
+          <h3 id="pile-viewer-title" style={{ fontFamily: MONO, fontWeight: 700, color: C.textPrimary, fontSize: 16 }}>
             {title}
             <span style={{ marginLeft: '8px', fontWeight: 400, color: C.textDim }}>({cards.length})</span>
           </h3>
           <button
+            ref={closeButtonRef}
             onClick={onClose}
+            aria-label={`Close ${title}`}
             style={{
-              width: '32px',
-              height: '32px',
+              width: '40px',
+              height: '40px',
               borderRadius: '9999px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               backgroundColor: C.bgCard,
               color: C.textSecondary,
+              border: `1px solid ${C.borderLight}`,
             }}
           >
             {'\u2715'}
@@ -3883,11 +4006,11 @@ function ArcHand({
   const autoSnapReleaseRef = useRef(null);
   const isPhonePortrait = layoutMode === 'phone-portrait';
   const isPhoneLandscape = layoutMode === 'phone-landscape';
-  const CARD_W = isPhonePortrait ? 64 : isPhoneLandscape ? 72 : 78;
-  const CARD_H = isPhonePortrait ? 92 : isPhoneLandscape ? 100 : 108;
-  const CARD_STEP = isPhonePortrait ? 36 : isPhoneLandscape ? 40 : 44;
-  const MAX_DROP = isPhonePortrait ? 18 : isPhoneLandscape ? 28 : 34;
-  const MAX_ANGLE = isPhonePortrait ? 14 : isPhoneLandscape ? 18 : 20;
+  const CARD_W = isPhonePortrait ? 62 : isPhoneLandscape ? 72 : 78;
+  const CARD_H = isPhonePortrait ? 90 : isPhoneLandscape ? 100 : 108;
+  const CARD_STEP = isPhonePortrait ? 34 : isPhoneLandscape ? 40 : 44;
+  const MAX_DROP = isPhonePortrait ? 16 : isPhoneLandscape ? 28 : 34;
+  const MAX_ANGLE = isPhonePortrait ? 12 : isPhoneLandscape ? 18 : 20;
   const SLOT_H = CARD_H + MAX_DROP + 28;
   const visualCenterIndex = Math.max(0, hand.indexOf(activeCardId));
   const handWidth = isPhonePortrait
@@ -3972,7 +4095,7 @@ function ArcHand({
     autoSnapReleaseRef.current = window.setTimeout(() => {
       autoSnapRef.current = false;
       autoSnapReleaseRef.current = null;
-    }, 220);
+    }, 260);
   }, [centerCard, clearAutoSnapRelease, syncFocusedCard]);
 
   useEffect(() => {
@@ -4071,7 +4194,7 @@ function ArcHand({
           if (!autoSnapRef.current) {
             scrollIdleRef.current = window.setTimeout(() => {
               settleFocusedCard();
-            }, 110);
+            }, 150);
           }
         }}
         style={{
@@ -4080,8 +4203,8 @@ function ArcHand({
           overflowY: 'visible',
           display: 'flex',
           alignItems: 'flex-start',
-          paddingTop: isPhonePortrait ? 10 : 14,
-          paddingBottom: isPhonePortrait ? 8 : 12,
+          paddingTop: isPhonePortrait ? 8 : 14,
+          paddingBottom: isPhonePortrait ? 6 : 12,
           paddingInline: `calc(50% - ${CARD_W / 2}px)`,
           scrollSnapType: 'x mandatory',
           scrollPaddingInline: `calc(50% - ${CARD_W / 2}px)`,
@@ -4161,6 +4284,7 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
   const [viewingPile, setViewingPile] = useState(null);
   const [deckMenuOpen, setDeckMenuOpen] = useState(false);
   const [targetedEnemyIndex, setTargetedEnemyIndex] = useState(0);
+  const [enemyInfoOpen, setEnemyInfoOpen] = useState(false);
   const [animationQueue, setAnimationQueue] = useState([]);
   const [activeAnimation, setActiveAnimation] = useState(null);
   const [endTurnPending, setEndTurnPending] = useState(false);
@@ -4179,6 +4303,10 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
   const enemyImpactTimeoutsRef = useRef({});
   const playerImpactTimeoutRef = useRef(null);
   const combatFlashTimeoutRef = useRef(null);
+  const enemyDialogRef = useRef(null);
+  const enemyDialogCloseRef = useRef(null);
+  const scryDialogRef = useRef(null);
+  const scryConfirmRef = useRef(null);
   const [viewport, setViewport] = useState(() => ({
     width: typeof window !== 'undefined' ? window.innerWidth : 1280,
     height: typeof window !== 'undefined'
@@ -4250,8 +4378,6 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
   const isPhoneLayout = layoutMode !== 'desktop';
   const isPhonePortrait = layoutMode === 'phone-portrait';
   const isPhoneLandscape = layoutMode === 'phone-landscape';
-  const isVeryNarrowPhone = isPhonePortrait && viewport.width < 380;
-  const portraitFocusWidth = viewport.width < 420 ? 136 : 148;
   const landscapeFocusWidth = viewport.width < 720 ? 156 : 168;
   const landscapeSidebarWidth = viewport.width < 720 ? 224 : 244;
 
@@ -4260,6 +4386,17 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
   const targetedEnemy = visibleEnemies[targetedEnemyIndex] ?? visibleEnemies[0] ?? null;
   const targetedIntentCardDef = targetedEnemy ? data?.cards?.[targetedEnemy.intent?.cardDefId] : null;
   const targetedIntentBadges = targetedEnemy ? getIntentEffectBadges(targetedEnemy, targetedIntentCardDef) : EMPTY_ARRAY;
+
+  useDialogAccessibility(isPhonePortrait && enemyInfoOpen && !!targetedEnemy, {
+    containerRef: enemyDialogRef,
+    initialFocusRef: enemyDialogCloseRef,
+    onClose: () => setEnemyInfoOpen(false),
+  });
+
+  useDialogAccessibility(Boolean(combat?._scryPending), {
+    containerRef: scryDialogRef,
+    initialFocusRef: scryConfirmRef,
+  });
 
   const focusActiveCard = useCallback((cardId) => {
     setCenterCardDismissed(false);
@@ -4296,12 +4433,13 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
   useEffect(() => {
     if (visibleEnemies.length <= 0) {
       if (targetedEnemyIndex !== 0) setTargetedEnemyIndex(0);
+      if (enemyInfoOpen) setEnemyInfoOpen(false);
       return;
     }
     if (targetedEnemyIndex >= visibleEnemies.length) {
       setTargetedEnemyIndex(Math.max(0, visibleEnemies.length - 1));
     }
-  }, [visibleEnemies.length, targetedEnemyIndex]);
+  }, [enemyInfoOpen, visibleEnemies.length, targetedEnemyIndex]);
 
   // Keep the centered card stable across hand changes
   useEffect(() => {
@@ -4545,7 +4683,7 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
         justifyContent: isPhoneLayout ? 'flex-start' : 'flex-end',
         overflowX: 'auto',
         overflowY: 'visible',
-        padding: '0 2px 4px',
+        padding: isPhonePortrait ? '0 0 2px' : '0 2px 4px',
         WebkitOverflowScrolling: 'touch',
       }}
     >
@@ -4565,7 +4703,13 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
             enemy={enemy}
             isTargeted={i === targetedEnemyIndex}
             onClick={() => {
-              if (!interactionLocked) setTargetedEnemyIndex(i);
+              if (interactionLocked) return;
+              if (isPhonePortrait && i === targetedEnemyIndex) {
+                setEnemyInfoOpen((prev) => !prev);
+                return;
+              }
+              setTargetedEnemyIndex(i);
+              if (enemyInfoOpen) setEnemyInfoOpen(false);
             }}
             actingType={activeAnimation?.actor === 'enemy' && activeAnimation.enemyId === enemy.id ? activeAnimation.intentType : null}
             data={data}
@@ -4582,6 +4726,15 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
       enemy={targetedEnemy}
       intentBadges={targetedIntentBadges}
       compact={isPhoneLayout}
+    />
+  );
+
+  const portraitEnemySummary = (
+    <EnemySummaryStrip
+      enemy={targetedEnemy}
+      intentBadges={targetedIntentBadges}
+      detailsOpen={enemyInfoOpen}
+      onToggleDetails={() => setEnemyInfoOpen((prev) => !prev)}
     />
   );
 
@@ -4618,9 +4771,7 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
     <div
       style={{
         display: 'grid',
-        gridTemplateColumns: isPhonePortrait
-          ? (isVeryNarrowPhone ? 'minmax(0, 1fr)' : 'minmax(0, 1fr) minmax(0, 1fr)')
-          : 'minmax(0, 1fr)',
+        gridTemplateColumns: isPhonePortrait ? 'minmax(0, 1fr)' : 'minmax(0, 1fr)',
         gap: 8,
         width: '100%',
       }}
@@ -5002,24 +5153,16 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
               justifyContent: 'center',
             }}
           >
-            <div
-              style={{
-                width: '100%',
-                display: 'grid',
-                gridTemplateColumns: `minmax(0, 1fr) ${portraitFocusWidth}px`,
-                gap: 8,
-                alignItems: 'start',
-              }}
-            >
+            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 6 }}>
               {enemyCardsStrip}
-              {enemyFocusPanel}
+              {portraitEnemySummary}
             </div>
           </div>
 
           <div
             style={{
               flex: '0 0 auto',
-              padding: '0 8px 8px',
+              padding: '0 8px 6px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -5029,7 +5172,7 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
             {centeredCardPanel}
           </div>
 
-          <div className="safe-area-bottom" style={{ flex: '0 0 auto', padding: '0 8px 4px' }}>
+          <div className="safe-area-bottom" style={{ flex: '0 0 auto', padding: '0 8px 2px' }}>
             {handFan}
           </div>
 
@@ -5090,6 +5233,65 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
         </>
       )}
 
+      {isPhonePortrait && enemyInfoOpen && targetedEnemy && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 320,
+            display: 'flex',
+            alignItems: 'flex-start',
+            justifyContent: 'center',
+            padding: 'max(env(safe-area-inset-top, 0px), 10px) 8px 8px',
+            background: 'rgba(2,6,12,0.34)',
+            backdropFilter: 'blur(6px)',
+          }}
+          onClick={() => setEnemyInfoOpen(false)}
+        >
+          <div
+            ref={enemyDialogRef}
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label={targetedEnemy?.name ? `${targetedEnemy.name} details` : 'Enemy details'}
+            tabIndex={-1}
+            style={{
+              width: 'min(100%, 360px)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 6,
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                ref={enemyDialogCloseRef}
+                onClick={() => setEnemyInfoOpen(false)}
+                aria-label="Close enemy details"
+                style={{
+                  padding: '8px 12px',
+                  borderRadius: 999,
+                  border: `1px solid ${C.borderLight}`,
+                  background: 'rgba(8,12,20,0.88)',
+                  color: C.textSecondary,
+                  fontFamily: MONO,
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                }}
+              >
+                Close
+              </button>
+            </div>
+            <EnemyFocusPanel
+              enemy={targetedEnemy}
+              intentBadges={targetedIntentBadges}
+              compact={false}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Pile viewer modal */}
       {viewingPile && (
         <PileViewer
@@ -5143,12 +5345,19 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
             backgroundColor: 'rgba(0,0,0,0.88)',
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
             padding: '24px',
-          }}>
+          }}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="scry-title"
+            aria-describedby="scry-desc"
+            ref={scryDialogRef}
+            tabIndex={-1}
+          >
             {/* Header */}
-            <div style={{ fontFamily: MONO, color: C.neonCyan, fontSize: 22, fontWeight: 900, letterSpacing: '0.12em', marginBottom: 4 }}>
+            <div id="scry-title" style={{ fontFamily: MONO, color: C.neonCyan, fontSize: 22, fontWeight: 900, letterSpacing: '0.12em', marginBottom: 4 }}>
               SCRY {n}
             </div>
-            <div style={{ fontFamily: MONO, color: C.textDim, fontSize: 12, marginBottom: 24, textAlign: 'center' }}>
+            <div id="scry-desc" style={{ fontFamily: MONO, color: C.textDim, fontSize: 13, marginBottom: 24, textAlign: 'center' }}>
               Tap cards to discard · The rest return to top of draw pile in order
             </div>
 
@@ -5207,6 +5416,7 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
 
             {/* Confirm button */}
             <button
+              ref={scryConfirmRef}
               onClick={() => {
                 const toDiscard = [...scryDiscard].filter(c => scryCards.includes(c));
                 const top = scryCards.filter(c => !toDiscard.includes(c));
@@ -5214,7 +5424,7 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
                 setScryDiscard(new Set());
               }}
               style={{
-                padding: '12px 36px', borderRadius: 10, border: 'none',
+                padding: '14px 40px', borderRadius: 12, border: 'none',
                 fontFamily: MONO, fontWeight: 700, fontSize: 15,
                 backgroundColor: C.neonCyan, color: '#000',
                 cursor: 'pointer', letterSpacing: '0.08em',

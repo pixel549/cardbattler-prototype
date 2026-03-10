@@ -256,6 +256,17 @@ a:focus:not(:focus-visible) {
 .animate-neon-pulse { animation: neon-pulse 1.5s ease-in-out infinite; }
 .animate-pulse { animation: neon-pulse 1.5s ease-in-out infinite; }
 
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* ── Floating damage / heal numbers ── */
 @keyframes float-dmg {
   0%   { opacity: 1;   transform: translateY(0)    scale(1.1); }
@@ -408,8 +419,8 @@ a:focus:not(:focus-visible) {
 
 @media (pointer: coarse) {
   button, a {
-    min-height: 44px;
-    min-width: 44px;
+    min-height: 48px;
+    min-width: 48px;
   }
 }
 

@@ -12,6 +12,7 @@ import { getRunMods } from './game/rules_mods';
 import { sfx } from './game/sounds';
 import { getEventImage } from './data/eventImages';
 import { getCardImage } from './data/cardImages';
+import useDialogAccessibility from './hooks/useDialogAccessibility';
 
 // Module-level event registry (created once)
 const EVENT_REG_UI = createBasicEventRegistry();
@@ -941,6 +942,7 @@ function MuteButton({ muted, onToggle }) {
     <button
       onClick={onToggle}
       title={muted ? 'Unmute sound' : 'Mute sound'}
+      aria-label={muted ? 'Unmute sound' : 'Mute sound'}
       style={{
         position: 'fixed',
         top: 10,
@@ -968,6 +970,9 @@ function PauseMenuButton({ onClick, open = false }) {
     <button
       onClick={onClick}
       title={open ? 'Close menu' : 'Open menu'}
+      aria-label={open ? 'Close pause menu' : 'Open pause menu'}
+      aria-haspopup="dialog"
+      aria-expanded={open}
       style={{
         position: 'fixed',
         top: 10,
@@ -1048,9 +1053,17 @@ function PauseMenuOverlay({
   onToggleLog,
   aiPanel,
 }) {
-  if (!open) return null;
-
+  const dialogRef = useRef(null);
+  const closeButtonRef = useRef(null);
   const isNarrow = typeof window !== 'undefined' ? window.innerWidth < 900 : false;
+
+  useDialogAccessibility(open, {
+    containerRef: dialogRef,
+    initialFocusRef: closeButtonRef,
+    onClose,
+  });
+
+  if (!open) return null;
 
   return (
     <div
@@ -1068,7 +1081,13 @@ function PauseMenuOverlay({
       }}
     >
       <div
+        ref={dialogRef}
         onClick={(event) => event.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="pause-menu-title"
+        aria-describedby="pause-menu-desc"
+        tabIndex={-1}
         style={{
           width: 'min(1180px, 100%)',
           maxHeight: '100%',
@@ -1085,23 +1104,25 @@ function PauseMenuOverlay({
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <div style={{ fontFamily: UI_MONO, fontSize: 11, fontWeight: 700, letterSpacing: '0.16em', color: C.cyan }}>
+            <div id="pause-menu-title" style={{ fontFamily: UI_MONO, fontSize: 13, fontWeight: 700, letterSpacing: '0.16em', color: C.cyan }}>
               PAUSE MENU
             </div>
-            <div style={{ fontFamily: UI_MONO, fontSize: 11, color: C.textDim }}>
+            <div id="pause-menu-desc" style={{ fontFamily: UI_MONO, fontSize: 12, color: C.textDim }}>
               {state?.mode === 'Combat' ? 'Combat tools, AI controls, and quick help.' : 'Run controls, debug tools, and quick help.'}
             </div>
           </div>
           <button
+            ref={closeButtonRef}
             onClick={onClose}
+            aria-label="Close pause menu"
             style={{
-              padding: '8px 10px',
+              padding: '12px 14px',
               borderRadius: 10,
               border: `1px solid ${C.border}`,
               background: 'rgba(255,255,255,0.03)',
               color: C.text,
               fontFamily: UI_MONO,
-              fontSize: 11,
+              fontSize: 12,
               fontWeight: 700,
               letterSpacing: '0.08em',
               cursor: 'pointer',
@@ -1304,14 +1325,23 @@ function MapScreen({ state, data, onAction }) {
   const curId   = state.map?.currentNodeId;
   const selNext = state.map?.selectableNext || [];
   const nodeList = Object.values(nodes);
-  const [previewNodeId, setPreviewNodeId] = useState(selNext.length === 1 ? selNext[0] : null);
+  const [manualPreviewNodeId, setManualPreviewNodeId] = useState(null);
+  const [viewportWidth, setViewportWidth] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 1280));
 
   // Detour edge lookup (amber dashed lines)
   const detourSet = new Set((state.map?.detourEdges || []).map(([f, t]) => `${f}-${t}`));
 
   useEffect(() => {
-    setPreviewNodeId(selNext.length === 1 ? selNext[0] : null);
-  }, [curId, selNext.join('|')]);
+    if (typeof window === 'undefined') return undefined;
+
+    const syncViewport = () => setViewportWidth(window.innerWidth);
+    syncViewport();
+    window.addEventListener('resize', syncViewport);
+    return () => window.removeEventListener('resize', syncViewport);
+  }, []);
+
+  const autoPreviewNodeId = selNext.length === 1 ? selNext[0] : null;
+  const previewNodeId = selNext.includes(manualPreviewNodeId) ? manualPreviewNodeId : autoPreviewNodeId;
 
   const previewNodeSet = new Set();
   const previewEdgeSet = new Set();
@@ -1338,18 +1368,238 @@ function MapScreen({ state, data, onAction }) {
     }
   }
 
+  const isWideLayout = viewportWidth >= 980;
+  const mapWidth = isWideLayout ? 760 : 340;
+  const routeLabelFontSize = isWideLayout ? 12 : 11;
+  const routeHintFontSize = isWideLayout ? 11 : 10;
+  const routeControls = selNext.length > 0 ? (
+    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 8, padding: isWideLayout ? 0 : '0 4px', marginTop: isWideLayout ? 0 : 4 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 2 }}>
+        <div style={{ fontFamily: MONO, fontSize: routeLabelFontSize, color: C.textMuted, letterSpacing: '0.12em' }}>
+          MOVE TO
+        </div>
+        <div style={{ fontFamily: MONO, fontSize: routeHintFontSize, color: C.textDim }}>
+          Tap once preview | tap twice confirm
+        </div>
+      </div>
+      {selNext.map(nodeId => {
+        const node  = nodes[nodeId];
+        const color = NODE_COLORS[node?.type] || '#888';
+        const icon  = NODE_ICONS[node?.type]  || '.';
+        const desc  = NODE_TYPE_DESCS[node?.type] || '';
+        const isPreviewed = previewNodeId === nodeId;
+        return (
+          <button
+            key={nodeId}
+            onMouseEnter={() => setManualPreviewNodeId(nodeId)}
+            onFocus={() => setManualPreviewNodeId(nodeId)}
+            onClick={() => {
+              if (previewNodeId === nodeId) {
+                onAction({ type: 'SelectNextNode', nodeId });
+                return;
+              }
+              setManualPreviewNodeId(nodeId);
+            }}
+            aria-label={isPreviewed ? `Confirm route to ${node?.type}` : `Preview route to ${node?.type}`}
+            aria-pressed={isPreviewed}
+            style={{
+              width: '100%',
+              padding: isWideLayout ? '14px 16px' : '12px 14px',
+              borderRadius: '12px',
+              fontFamily: MONO,
+              textAlign: 'left',
+              transition: 'all 0.15s',
+              background: isPreviewed
+                ? `linear-gradient(135deg, ${color}1c 0%, rgba(12,16,24,0.92) 100%)`
+                : `linear-gradient(135deg, ${color}10 0%, rgba(10,12,20,0.9) 100%)`,
+              border: `2px solid ${isPreviewed ? `${color}aa` : `${color}55`}`,
+              boxShadow: isPreviewed ? `0 0 22px ${color}2c` : `0 0 14px ${color}12`,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+            }}
+          >
+            <div style={{
+              width: 40,
+              height: 40,
+              borderRadius: 10,
+              flexShrink: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: 20,
+              backgroundColor: `${color}18`,
+              border: `1px solid ${color}40`,
+            }}>
+              {icon}
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 700, color, fontSize: isWideLayout ? 16 : 14 }}>{node?.type}</div>
+              <div style={{ color: C.textMuted, fontSize: 12, marginTop: 2, lineHeight: 1.45 }}>{desc}</div>
+              {isPreviewed && (
+                <div style={{
+                  display: 'inline-flex',
+                  marginTop: 6,
+                  padding: '4px 8px',
+                  borderRadius: 999,
+                  backgroundColor: `${color}20`,
+                  border: `1px solid ${color}55`,
+                  color,
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: '0.08em',
+                }}>
+                  CONFIRM ROUTE
+                </div>
+              )}
+            </div>
+            <div style={{ color: C.textMuted, fontSize: 18 }}>{'>'}</div>
+          </button>
+        );
+      })}
+    </div>
+  ) : null;
+  const actionsPanel = (
+    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {routeControls}
+      {state.run?.debugOverrides?.showLegacyMapRouteControls === true && selNext.length > 0 && (
+        <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 8, padding: isWideLayout ? 0 : '0 4px', marginTop: isWideLayout ? 0 : 4 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 2 }}>
+            <div style={{ fontFamily: MONO, fontSize: isWideLayout ? 12 : 11, color: C.textMuted, letterSpacing: '0.12em' }}>
+              MOVE TO
+            </div>
+            <div style={{ fontFamily: MONO, fontSize: isWideLayout ? 11 : 10, color: C.textDim }}>
+              Tap once preview | tap twice confirm
+            </div>
+          </div>
+          {selNext.map(nodeId => {
+            const node  = nodes[nodeId];
+            const color = NODE_COLORS[node?.type] || '#888';
+            const icon  = NODE_ICONS[node?.type]  || '·';
+            const desc  = NODE_TYPE_DESCS[node?.type] || '';
+            const isPreviewed = previewNodeId === nodeId;
+            return (
+              <button
+                key={nodeId}
+                onMouseEnter={() => setManualPreviewNodeId(nodeId)}
+                onFocus={() => setManualPreviewNodeId(nodeId)}
+                onClick={() => {
+                  if (previewNodeId === nodeId) {
+                    onAction({ type: 'SelectNextNode', nodeId });
+                    return;
+                  }
+                  setManualPreviewNodeId(nodeId);
+                }}
+                aria-label={isPreviewed ? `Confirm route to ${node?.type}` : `Preview route to ${node?.type}`}
+                aria-pressed={isPreviewed}
+                style={{
+                  width: '100%',
+                  padding: isWideLayout ? '14px 16px' : '12px 14px',
+                  borderRadius: '12px',
+                  fontFamily: MONO,
+                  textAlign: 'left',
+                  transition: 'all 0.15s',
+                  background: isPreviewed
+                    ? `linear-gradient(135deg, ${color}1c 0%, rgba(12,16,24,0.92) 100%)`
+                    : `linear-gradient(135deg, ${color}10 0%, rgba(10,12,20,0.9) 100%)`,
+                  border: `2px solid ${isPreviewed ? `${color}aa` : `${color}55`}`,
+                  boxShadow: isPreviewed ? `0 0 22px ${color}2c` : `0 0 14px ${color}12`,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                }}
+              >
+                <div style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 10,
+                  flexShrink: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 20,
+                  backgroundColor: `${color}18`,
+                  border: `1px solid ${color}40`,
+                }}>
+                  {icon}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 700, color, fontSize: isWideLayout ? 16 : 14 }}>{node?.type}</div>
+                  <div style={{ color: C.textMuted, fontSize: 12, marginTop: 2, lineHeight: 1.45 }}>{desc}</div>
+                  {isPreviewed && (
+                    <div style={{
+                      display: 'inline-flex',
+                      marginTop: 6,
+                      padding: '4px 8px',
+                      borderRadius: 999,
+                      backgroundColor: `${color}20`,
+                      border: `1px solid ${color}55`,
+                      color,
+                      fontSize: 10,
+                      fontWeight: 700,
+                      letterSpacing: '0.08em',
+                    }}>
+                      CONFIRM ROUTE
+                    </div>
+                  )}
+                </div>
+                <div style={{ color: C.textMuted, fontSize: 18 }}>›</div>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      <button
+        onClick={() => onAction({ type: 'OpenDeck' })}
+        aria-label={`View deck with ${state.deck?.master?.length || 0} cards`}
+        className={isWideLayout ? undefined : 'safe-area-bottom'}
+        style={{
+          width: '100%',
+          padding: isWideLayout ? '15px 16px' : '13px 14px',
+          borderRadius: '14px',
+          fontFamily: MONO,
+          textAlign: 'center',
+          transition: 'all 0.15s',
+          background: `linear-gradient(135deg, ${C.cyan}18 0%, rgba(9,16,24,0.96) 100%)`,
+          border: `1px solid ${C.cyan}50`,
+          color: '#b8fbff',
+          fontSize: isWideLayout ? 14 : 13,
+          cursor: 'pointer',
+          boxShadow: `0 0 20px ${C.cyan}12`,
+          letterSpacing: '0.05em',
+          margin: isWideLayout ? 0 : '12px 4px 8px',
+        }}
+      >
+        📋 View Deck ({state.deck?.master?.length || 0} cards)
+      </button>
+    </div>
+  );
+
   return (
     <ScreenShell>
       <RunHeader run={state.run} data={data} />
 
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '8px 8px 0', overflowY: 'auto' }}>
+      <div style={{ flex: 1, display: 'flex', justifyContent: 'center', padding: isWideLayout ? '14px 16px 0' : '8px 8px 0', overflowY: 'auto' }}>
+        <div
+          style={{
+            width: 'min(100%, 1120px)',
+            display: 'grid',
+            gridTemplateColumns: isWideLayout ? 'minmax(0, 1fr) minmax(280px, 320px)' : 'minmax(0, 1fr)',
+            gap: isWideLayout ? 18 : 0,
+            alignItems: 'start',
+          }}
+        >
+          <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
 
-        <div style={{ fontFamily: MONO, fontSize: 10, color: C.textMuted, letterSpacing: '0.15em', marginBottom: 4, marginTop: 4 }}>
+        <div style={{ fontFamily: MONO, fontSize: isWideLayout ? 12 : 11, color: C.textMuted, letterSpacing: '0.15em', marginBottom: 6, marginTop: 4 }}>
           ACT {state.run?.act} — CHOOSE YOUR PATH
         </div>
 
         {/* ── SVG Map ─────────────────────────────────────── */}
-        <svg width="100%" viewBox={`0 0 ${SVG_MAP_W} ${SVG_MAP_H}`} style={{ maxWidth: 340, display: 'block' }}>
+        <svg width="100%" viewBox={`0 0 ${SVG_MAP_W} ${SVG_MAP_H}`} style={{ maxWidth: mapWidth, display: 'block' }}>
           <defs>
             <filter id="mglow" x="-60%" y="-60%" width="220%" height="220%">
               <feGaussianBlur stdDeviation="4" result="b" />
@@ -1412,17 +1662,33 @@ function MapScreen({ state, data, onAction }) {
             const col  = NODE_COLORS[node.type] || '#888';
             const ico  = NODE_ICONS[node.type]  || '?';
             const R    = isCur ? 23 : isPreviewRoot ? 22 : isSel ? 21 : isPreviewReachable ? 18 : 17;
+            const desc = NODE_TYPE_DESCS[node.type] || '';
+            const handleNodeActivate = () => {
+              if (!isSel) return;
+              if (previewNodeId === node.id) {
+                onAction({ type: 'SelectNextNode', nodeId: node.id });
+                return;
+              }
+              setManualPreviewNodeId(node.id);
+            };
 
             return (
               <g key={node.id}
-                onClick={() => {
+                onClick={handleNodeActivate}
+                onKeyDown={(event) => {
                   if (!isSel) return;
-                  if (previewNodeId === node.id) {
-                    onAction({ type: 'SelectNextNode', nodeId: node.id });
-                    return;
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    handleNodeActivate();
                   }
-                  setPreviewNodeId(node.id);
                 }}
+                role={isSel ? 'button' : undefined}
+                tabIndex={isSel ? 0 : -1}
+                focusable={isSel ? 'true' : undefined}
+                aria-disabled={!isSel}
+                aria-label={isSel
+                  ? `${previewNodeId === node.id ? 'Confirm route to' : 'Preview route to'} ${node.type}${desc ? `. ${desc}` : ''}`
+                  : `${node.type}${isDone ? ', cleared' : ''}`}
                 style={{ cursor: isSel ? 'pointer' : 'default' }}
               >
                 {/* Outer glow ring */}
@@ -1454,7 +1720,7 @@ function MapScreen({ state, data, onAction }) {
                 {/* Type label */}
                 {(isCur || isSel || isDone || isPreviewReachable) && (
                   <text x={cx} y={cy + R + 13} textAnchor="middle"
-                    fontSize={8}
+                    fontSize={9}
                     fill={isCur ? col : isPreviewRoot ? `${col}ff` : isSel ? `${col}cc` : `${col}44`}
                     fontFamily="JetBrains Mono, monospace"
                     letterSpacing="0.3"
@@ -1469,13 +1735,13 @@ function MapScreen({ state, data, onAction }) {
         </svg>
 
         {/* Quick-tap node buttons */}
-        {selNext.length > 0 && (
+        {!isWideLayout && selNext.length > 0 && (
           <div style={{ width: '100%', maxWidth: 340, display: 'flex', flexDirection: 'column', gap: 8, padding: '0 4px', marginTop: 4 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 2 }}>
-              <div style={{ fontFamily: MONO, fontSize: 10, color: C.textMuted, letterSpacing: '0.12em' }}>
+              <div style={{ fontFamily: MONO, fontSize: 11, color: C.textMuted, letterSpacing: '0.12em' }}>
                 MOVE TO
               </div>
-              <div style={{ fontFamily: MONO, fontSize: 8, color: C.textDim }}>
+              <div style={{ fontFamily: MONO, fontSize: 10, color: C.textDim }}>
                 Tap once preview | tap twice confirm
               </div>
             </div>
@@ -1487,15 +1753,17 @@ function MapScreen({ state, data, onAction }) {
               const isPreviewed = previewNodeId === nodeId;
               return (
                 <button key={nodeId}
-                  onMouseEnter={() => setPreviewNodeId(nodeId)}
-                  onFocus={() => setPreviewNodeId(nodeId)}
+                  onMouseEnter={() => setManualPreviewNodeId(nodeId)}
+                  onFocus={() => setManualPreviewNodeId(nodeId)}
                   onClick={() => {
                     if (previewNodeId === nodeId) {
                       onAction({ type: 'SelectNextNode', nodeId });
                       return;
                     }
-                    setPreviewNodeId(nodeId);
+                    setManualPreviewNodeId(nodeId);
                   }}
+                  aria-label={isPreviewed ? `Confirm route to ${node?.type}` : `Preview route to ${node?.type}`}
+                  aria-pressed={isPreviewed}
                   style={{
                     width: '100%', padding: '12px 14px', borderRadius: '12px',
                     fontFamily: MONO, textAlign: 'left', transition: 'all 0.15s',
@@ -1517,7 +1785,7 @@ function MapScreen({ state, data, onAction }) {
                   </div>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 700, color, fontSize: 14 }}>{node?.type}</div>
-                    <div style={{ color: C.textMuted, fontSize: 11, marginTop: 2 }}>{desc}</div>
+                    <div style={{ color: C.textMuted, fontSize: 12, marginTop: 2, lineHeight: 1.45 }}>{desc}</div>
                     {isPreviewed && (
                       <div style={{
                         display: 'inline-flex',
@@ -1527,7 +1795,7 @@ function MapScreen({ state, data, onAction }) {
                         backgroundColor: `${color}20`,
                         border: `1px solid ${color}55`,
                         color,
-                        fontSize: 8,
+                        fontSize: 10,
                         fontWeight: 700,
                         letterSpacing: '0.08em',
                       }}>
@@ -1545,15 +1813,17 @@ function MapScreen({ state, data, onAction }) {
         {/* Deck button */}
         <button
           onClick={() => onAction({ type: 'OpenDeck' })}
+          aria-label={`View deck with ${state.deck?.master?.length || 0} cards`}
           className="safe-area-bottom"
           style={{
+            display: isWideLayout ? 'none' : 'block',
             width: '100%', maxWidth: 340,
             padding: '13px 14px', borderRadius: '14px',
             fontFamily: MONO, textAlign: 'center',
             transition: 'all 0.15s',
             background: `linear-gradient(135deg, ${C.cyan}18 0%, rgba(9,16,24,0.96) 100%)`,
             border: `1px solid ${C.cyan}50`,
-            color: '#b8fbff', fontSize: 12, cursor: 'pointer',
+            color: '#b8fbff', fontSize: 13, cursor: 'pointer',
             boxShadow: `0 0 20px ${C.cyan}12`,
             letterSpacing: '0.05em',
             margin: '12px 4px 8px',
@@ -1561,6 +1831,42 @@ function MapScreen({ state, data, onAction }) {
         >
           📋 View Deck ({state.deck?.master?.length || 0} cards)
         </button>
+          </div>
+
+          {isWideLayout && (
+            <div
+              className="safe-area-bottom"
+              style={{
+                position: 'sticky',
+                top: 12,
+                alignSelf: 'start',
+                minWidth: 0,
+                padding: '8px 0 12px',
+              }}
+            >
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 12,
+                padding: '14px',
+                borderRadius: 16,
+                background: 'linear-gradient(180deg, rgba(8,12,20,0.94) 0%, rgba(5,8,14,0.98) 100%)',
+                border: `1px solid ${C.border}`,
+                boxShadow: '0 12px 28px rgba(0,0,0,0.22)',
+              }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <div style={{ fontFamily: MONO, fontSize: 12, fontWeight: 700, letterSpacing: '0.12em', color: C.cyan }}>
+                    ROUTE CONTROLS
+                  </div>
+                  <div style={{ fontFamily: MONO, fontSize: 12, color: C.textMuted, lineHeight: 1.5 }}>
+                    Preview the next branch directly on the map, then confirm the route from this panel.
+                  </div>
+                </div>
+                {actionsPanel}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </ScreenShell>
   );
@@ -1592,7 +1898,7 @@ function RewardScreen({ state, data, onAction }) {
           >
             VICTORY
           </div>
-          <div style={{ fontFamily: MONO, color: C.textMuted, fontSize: 12 }}>
+          <div style={{ fontFamily: MONO, color: C.textMuted, fontSize: 13 }}>
             {hasRelics ? 'Select a relic — then choose a card' : 'Select a card reward'}
           </div>
         </div>
@@ -1600,7 +1906,7 @@ function RewardScreen({ state, data, onAction }) {
         {/* Relic choices (shown above card choices when available) */}
         {hasRelics && (
           <div style={{ marginBottom: '16px' }}>
-            <div style={{ fontFamily: MONO, fontSize: 9, color: C.yellow, letterSpacing: '0.1em', marginBottom: '8px', textAlign: 'center' }}>
+            <div style={{ fontFamily: MONO, fontSize: 11, color: C.yellow, letterSpacing: '0.1em', marginBottom: '8px', textAlign: 'center' }}>
               ◈ RELIC REWARD — pick one
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -1626,11 +1932,11 @@ function RewardScreen({ state, data, onAction }) {
                     <div style={{ fontFamily: MONO, fontWeight: 700, color: col, fontSize: 13, marginBottom: '3px' }}>
                       {relic?.icon && <span style={{ marginRight: 5 }}>{relic.icon}</span>}
                       {relic?.name || rid}
-                      <span style={{ marginLeft: 6, fontSize: 9, fontWeight: 400, opacity: 0.7, textTransform: 'uppercase' }}>
+                      <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 400, opacity: 0.7, textTransform: 'uppercase' }}>
                         [{tier}]
                       </span>
                     </div>
-                    <div style={{ fontFamily: MONO, fontSize: 10, color: C.textDim }}>
+                    <div style={{ fontFamily: MONO, fontSize: 11, color: C.textDim, lineHeight: 1.45 }}>
                       {relic?.description || ''}
                     </div>
                   </button>
@@ -1735,7 +2041,7 @@ function ShopScreen({ state, data, onAction }) {
           🛒 MARKET
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontFamily: MONO, color: C.textMuted, fontSize: 11 }}>
+          <span style={{ fontFamily: MONO, color: C.textMuted, fontSize: 12 }}>
             ACT {state.run?.act} · FLOOR {state.run?.floor}
           </span>
           <div
@@ -1758,7 +2064,7 @@ function ShopScreen({ state, data, onAction }) {
         {/* Cards section */}
         {offers.some(o => o.kind === 'Card') && (
           <div style={{ marginBottom: '20px' }}>
-            <div style={{ fontFamily: MONO, fontSize: 10, color: C.textMuted, letterSpacing: '0.1em', marginBottom: '10px' }}>
+            <div style={{ fontFamily: MONO, fontSize: 11, color: C.textMuted, letterSpacing: '0.1em', marginBottom: '10px' }}>
               CARDS FOR SALE
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fit, minmax(${MENU_CARD_MIN_W}px, ${MENU_CARD_MAX_W}px))`, gap: '12px', justifyContent: 'center' }}>
@@ -1784,7 +2090,7 @@ function ShopScreen({ state, data, onAction }) {
         {/* Services section */}
         {offers.some(o => o.kind === 'Service') && (
           <div style={{ marginBottom: '20px' }}>
-            <div style={{ fontFamily: MONO, fontSize: 10, color: C.textMuted, letterSpacing: '0.1em', marginBottom: '10px' }}>
+            <div style={{ fontFamily: MONO, fontSize: 11, color: C.textMuted, letterSpacing: '0.1em', marginBottom: '10px' }}>
               SERVICES
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -1820,7 +2126,7 @@ function ShopScreen({ state, data, onAction }) {
                         <div style={{ fontFamily: MONO, fontWeight: 700, color: canAfford ? svc.color : C.textMuted, fontSize: 14 }}>
                           {offer.serviceId}
                         </div>
-                        <div style={{ fontFamily: MONO, marginTop: 2, color: C.textMuted, fontSize: 11 }}>
+                        <div style={{ fontFamily: MONO, marginTop: 2, color: C.textMuted, fontSize: 12, lineHeight: 1.45 }}>
                           {svc.desc}
                         </div>
                       </div>
@@ -1844,7 +2150,7 @@ function ShopScreen({ state, data, onAction }) {
         {/* Relic section */}
         {offers.some(o => o.kind === 'Relic') && (
           <div style={{ marginBottom: '20px' }}>
-            <div style={{ fontFamily: MONO, fontSize: 10, color: C.textMuted, letterSpacing: '0.1em', marginBottom: '10px' }}>
+            <div style={{ fontFamily: MONO, fontSize: 11, color: C.textMuted, letterSpacing: '0.1em', marginBottom: '10px' }}>
               RELICS
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -1885,11 +2191,11 @@ function ShopScreen({ state, data, onAction }) {
                           <span style={{ fontFamily: MONO, fontWeight: 700, color: canAfford ? col : C.textMuted, fontSize: 14 }}>
                             {relic?.name || offer.relicId}
                           </span>
-                          <span style={{ fontFamily: MONO, fontSize: 9, color: C.textMuted, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                          <span style={{ fontFamily: MONO, fontSize: 10, color: C.textMuted, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                             [{tier}]
                           </span>
                         </div>
-                        <div style={{ fontFamily: MONO, marginTop: 2, color: C.textMuted, fontSize: 11 }}>
+                        <div style={{ fontFamily: MONO, marginTop: 2, color: C.textMuted, fontSize: 12, lineHeight: 1.45 }}>
                           {relic?.description || ''}
                         </div>
                       </div>
@@ -2714,10 +3020,20 @@ const DECK_OP_LABELS = {
 
 function DeckPickerOverlay({ state, data, onAction }) {
   const dv = state.deckView;
+  const dialogRef = useRef(null);
+  const closeButtonRef = useRef(null);
+  const handleClose = useCallback(() => onAction({ type: 'CloseDeck' }), [onAction]);
+  const pendingOp = state.event?.pendingSelectOp || state.shop?.pendingService;
+
+  useDialogAccessibility(Boolean(dv), {
+    containerRef: dialogRef,
+    initialFocusRef: closeButtonRef,
+    onClose: handleClose,
+  });
+
   if (!dv) return null;
 
   const MONO = "'JetBrains Mono', 'Fira Code', 'Consolas', monospace";
-  const pendingOp = state.event?.pendingSelectOp || state.shop?.pendingService;
   const opInfo = DECK_OP_LABELS[pendingOp] || { label: 'SELECT A CARD', desc: pendingOp || '', color: '#00f0ff' };
 
   const master = state.deck?.master || [];
@@ -2735,30 +3051,64 @@ function DeckPickerOverlay({ state, data, onAction }) {
     })
     .filter(Boolean);
 
-  const canCancel = !pendingOp; // Can only cancel if just viewing deck, not mid-op
+  const canCancel = !pendingOp;
+  const closeLabel = canCancel ? 'Close deck' : 'Cancel selection';
   const showLegacyDeckList = state.run?.debugOverrides?.showLegacyDeckList === true;
 
   return (
-    <div style={{
+    <div
+      ref={dialogRef}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="deck-picker-title"
+      aria-describedby="deck-picker-desc"
+      tabIndex={-1}
+      style={{
       position: 'fixed', inset: 0, zIndex: 200,
       backgroundColor: 'rgba(0,0,0,0.88)',
       display: 'flex', flexDirection: 'column',
-    }}>
+      }}
+    >
       {/* Header */}
       <div className="safe-area-top" style={{
         padding: '16px',
         backgroundColor: C.bgBar,
         borderBottom: `1px solid ${opInfo.color}40`,
+        display: 'flex',
+        alignItems: 'flex-start',
+        justifyContent: 'space-between',
+        gap: 12,
       }}>
-        <div style={{ fontFamily: MONO, fontWeight: 700, fontSize: 15, color: opInfo.color, marginBottom: 4 }}>
-          {opInfo.label}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div id="deck-picker-title" style={{ fontFamily: MONO, fontWeight: 700, fontSize: 15, color: opInfo.color, marginBottom: 4 }}>
+            {opInfo.label}
+          </div>
+          <div id="deck-picker-desc" style={{ fontFamily: MONO, fontSize: 12, color: C.textMuted, lineHeight: 1.45 }}>
+            {opInfo.desc}
+          </div>
+          <div style={{ fontFamily: MONO, fontSize: 11, color: C.textDim, marginTop: 6 }}>
+            {cards.length} card{cards.length !== 1 ? 's' : ''} in deck
+          </div>
         </div>
-        <div style={{ fontFamily: MONO, fontSize: 11, color: C.textMuted }}>
-          {opInfo.desc}
-        </div>
-        <div style={{ fontFamily: MONO, fontSize: 10, color: C.textDim, marginTop: 6 }}>
-          {cards.length} card{cards.length !== 1 ? 's' : ''} in deck
-        </div>
+        <button
+          ref={closeButtonRef}
+          onClick={handleClose}
+          aria-label={closeLabel}
+          style={{
+            padding: '12px 14px',
+            borderRadius: '10px',
+            border: `1px solid ${C.border}`,
+            backgroundColor: 'rgba(255,255,255,0.04)',
+            color: C.text,
+            fontFamily: MONO,
+            fontSize: 12,
+            fontWeight: 700,
+            cursor: 'pointer',
+            flexShrink: 0,
+          }}
+        >
+          CLOSE
+        </button>
       </div>
 
       {/* Card list */}
@@ -2903,14 +3253,14 @@ function DeckPickerOverlay({ state, data, onAction }) {
       {/* Cancel / close footer */}
       <div className="safe-area-bottom" style={{ padding: '12px', backgroundColor: C.bgBar, borderTop: `1px solid ${C.border}` }}>
         <button
-          onClick={() => onAction({ type: 'CloseDeck' })}
+          onClick={handleClose}
           style={getSecondaryActionButtonStyle(opInfo.color, {
             borderRadius: '10px',
             fontFamily: MONO,
             fontSize: 13,
           })}
         >
-          {canCancel ? 'Close' : 'Cancel'}
+          {canCancel ? 'Close Deck' : 'Cancel Selection'}
         </button>
       </div>
     </div>
@@ -3292,15 +3642,6 @@ function App() {
   }
 
   useEffect(() => {
-    if (!showPauseMenu) return undefined;
-    const handleKeyDown = (event) => {
-      if (event.key === 'Escape') setShowPauseMenu(false);
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showPauseMenu]);
-
-  useEffect(() => {
     if (typeof window === 'undefined') return undefined;
     const hasActiveRun = Boolean(state?.run) && state?.mode !== 'GameOver';
     if (!hasActiveRun) {
@@ -3318,6 +3659,14 @@ function App() {
       if (!liveState?.run || liveState.mode === 'GameOver') return;
       if (!showPauseMenu) {
         window.history.pushState({ cardbattlerGuard: true }, '', window.location.href);
+        if (aiTimerRef.current) {
+          clearTimeout(aiTimerRef.current);
+          aiTimerRef.current = null;
+        }
+        aiPausedRef.current = true;
+        setAiPaused(true);
+        setAiHandoffReason('Paused from menu');
+        setAiWatchdog(AI_WATCHDOG_IDLE);
         setShowPauseMenu(true);
       }
     };
@@ -3352,8 +3701,14 @@ function App() {
 
   useEffect(() => {
     if (showPauseMenu && aiEnabled && !aiPaused) {
+      if (aiTimerRef.current) {
+        clearTimeout(aiTimerRef.current);
+        aiTimerRef.current = null;
+      }
+      aiPausedRef.current = true;
       setAiPaused(true);
       setAiHandoffReason('Paused from menu');
+      setAiWatchdog(AI_WATCHDOG_IDLE);
     }
   }, [showPauseMenu, aiEnabled, aiPaused]);
   // ── Custom run config: explicit per-field overrides ─────────────────────
@@ -4166,6 +4521,21 @@ function App() {
     stopAiForTakeover('Manual takeover engaged.');
   }, [stopAiForTakeover]);
 
+  const openPauseMenu = useCallback(() => {
+    clearAiTimer();
+    if (aiEnabledRef.current && !aiPausedRef.current) {
+      aiPausedRef.current = true;
+      setAiPaused(true);
+      resetAiStallTracker(null);
+      setAiHandoffReason('Paused from menu');
+    }
+    setShowPauseMenu(true);
+  }, [clearAiTimer, resetAiStallTracker]);
+
+  const closePauseMenu = useCallback(() => {
+    setShowPauseMenu(false);
+  }, []);
+
   function startNewRun(overrideDebugSeed) {
     if (!data) return;
     setAiHandoffReason('');
@@ -4271,7 +4641,7 @@ function App() {
   let content;
   switch (state.mode) {
     case 'Combat':
-      content = <CombatScreen state={state} data={data} onAction={handleAction} aiPaused={aiPaused} onOpenMenu={() => setShowPauseMenu(true)} />;
+      content = <CombatScreen state={state} data={data} onAction={handleAction} aiPaused={aiPaused} onOpenMenu={openPauseMenu} />;
       break;
     case 'Map':
       content = <MapScreen state={state} data={data} onAction={handleAction} />;
@@ -4340,11 +4710,11 @@ function App() {
     <>
       {content}
       {state.mode !== 'Combat' && (
-        <PauseMenuButton open={showPauseMenu} onClick={() => setShowPauseMenu((prev) => !prev)} />
+        <PauseMenuButton open={showPauseMenu} onClick={() => (showPauseMenu ? closePauseMenu() : openPauseMenu())} />
       )}
       <PauseMenuOverlay
         open={showPauseMenu}
-        onClose={() => setShowPauseMenu(false)}
+        onClose={closePauseMenu}
         soundMuted={soundMuted}
         onToggleMute={toggleMute}
         state={state}

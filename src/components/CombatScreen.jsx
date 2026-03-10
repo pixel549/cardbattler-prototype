@@ -2800,6 +2800,7 @@ function CenterCardDisplay({
   data,
   dismissed = false,
   onDismiss,
+  onOpenMenu,
   onActivate,
   canActivate = false,
   activateHint = 'Tap to play',
@@ -2883,9 +2884,171 @@ function CenterCardDisplay({
   const rightMutations = mutations.filter((_, i) => i % 2 === 1);
 
   if (isMobileLayout) {
-    const mobileCardWidth = layoutMode === 'phone-portrait'
+    const isPhonePortrait = layoutMode === 'phone-portrait';
+    const mobileCardWidth = isPhonePortrait
       ? 'min(38vw, 148px)'
       : 'clamp(122px, 18vw, 156px)';
+    const utilityRailWidth = isPhonePortrait ? 62 : 0;
+    const utilityButtonBaseStyle = {
+      borderRadius: 999,
+      border: `1px solid ${C.borderLight}`,
+      background: 'rgba(10,14,22,0.84)',
+      color: C.textSecondary,
+      fontFamily: MONO,
+      fontSize: 10,
+      fontWeight: 700,
+      letterSpacing: '0.08em',
+      textTransform: 'uppercase',
+      boxShadow: '0 10px 22px rgba(0,0,0,0.22)',
+    };
+    const mobileCard = (
+      <div
+        role="button"
+        tabIndex={canActivate ? 0 : -1}
+        aria-disabled={!canActivate}
+        aria-label={cardDef?.name ? `${activateHint}: ${cardDef.name}` : activateHint}
+        title={activateHint}
+        onClick={canActivate ? onActivate : undefined}
+        onKeyDown={canActivate ? (event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            onActivate?.();
+          }
+        } : undefined}
+        style={{
+          position: 'relative',
+          borderRadius: 12,
+          width: mobileCardWidth,
+          aspectRatio: '13 / 18',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'flex-end',
+          backgroundColor: C.bgCard,
+          border: `2px solid ${shellBorder}`,
+          boxShadow: shellShadow,
+          overflow: 'hidden',
+          cursor: canActivate ? 'pointer' : 'default',
+          flexShrink: 0,
+        }}
+      >
+        {imgSrc ? (
+          <img
+            src={imgSrc}
+            alt=""
+            style={{
+              position: 'absolute',
+              inset: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              objectPosition: 'center center',
+              display: 'block',
+              transform: 'scale(1.02)',
+              filter: shellArtFilter,
+            }}
+          />
+        ) : (
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background: shellFallbackBackground,
+            }}
+          />
+        )}
+
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background: shellOverlayBackground,
+            pointerEvents: 'none',
+          }}
+        />
+
+        {!isPlayable && (
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background: 'rgba(10,12,18,0.28)',
+              pointerEvents: 'none',
+            }}
+          />
+        )}
+
+        <div
+          style={{
+            position: 'absolute',
+            top: 8,
+            left: 8,
+            width: 26,
+            height: 26,
+            borderRadius: '9999px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontWeight: 700,
+            fontFamily: MONO,
+            zIndex: 10,
+            backgroundColor: color,
+            color: '#000',
+            boxShadow: isPlayable ? `0 0 10px ${color}80` : '0 0 10px rgba(154,164,186,0.32)',
+            fontSize: 12,
+          }}
+        >
+          {cost}
+        </div>
+
+        <div
+          style={{
+            position: 'relative',
+            zIndex: 2,
+            margin: 'auto 8px 8px',
+            padding: '10px 9px 8px',
+            borderRadius: 12,
+            background: shellInfoBackground,
+            border: `1px solid ${shellInfoBorder}`,
+            boxShadow: '0 8px 20px rgba(0,0,0,0.24)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 6,
+            minHeight: '44%',
+          }}
+        >
+          <div style={{ fontFamily: MONO, fontWeight: 700, color: C.textPrimary, fontSize: 12, textShadow: '0 1px 10px rgba(0,0,0,0.55)' }}>
+            {cardDef.name}
+          </div>
+          <div style={{ fontFamily: MONO, textTransform: 'uppercase', color: shellTypeColor, fontSize: 8, letterSpacing: '0.1em' }}>
+            {cardDef.type}
+          </div>
+
+          <div style={{ fontFamily: MONO, color: '#bcc3cf', fontSize: 10, lineHeight: 1.45, display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {effectLines.map((line, i) => (
+              <div key={i}>{renderKeywordText(line, `center-effect-mobile-${i}`)}</div>
+            ))}
+          </div>
+
+          {visibleTags.length > 0 && (
+            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+              {visibleTags.map((tag, i) => (
+                <KeywordTooltipToken key={i} text={tag} asChip={true} />
+              ))}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto', paddingTop: '6px', borderTop: `1px solid ${shellDivider}` }}>
+            <div style={{ fontFamily: MONO, color: C.textDim, fontSize: 8 }}>
+              NEXT: <span style={{ color: C.textPrimary, fontWeight: 700 }}>{nextMutationIn ?? '-'}</span>
+            </div>
+            <div style={{ fontFamily: MONO, color: isDecaying ? C.neonOrange : C.textDim, fontSize: 8 }}>
+              FINAL: <span style={{ fontWeight: 700 }}>{finalMutationIn ?? '-'}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
 
     return (
       <div
@@ -2896,176 +3059,76 @@ function CenterCardDisplay({
           flexDirection: 'column',
           alignItems: 'center',
           gap: 8,
-          padding: layoutMode === 'phone-portrait' ? '2px 0' : '4px 0',
+          padding: isPhonePortrait ? '0 0 2px' : '4px 0',
+          marginTop: isPhonePortrait ? -8 : 0,
         }}
       >
-        <div style={{ width: '100%', display: 'flex', justifyContent: 'flex-end', padding: '0 2px' }}>
-          <button
-            onClick={onDismiss}
-            aria-label="Hide active card details"
-            style={{
-              padding: '8px 12px',
-              borderRadius: 999,
-              fontFamily: MONO,
-              fontSize: 10,
-              fontWeight: 700,
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
-              background: 'rgba(255,255,255,0.04)',
-              color: C.textSecondary,
-              border: `1px solid ${C.borderLight}`,
-            }}
-          >
-            Hide
-          </button>
-        </div>
-
-        <div
-          role="button"
-          tabIndex={canActivate ? 0 : -1}
-          aria-disabled={!canActivate}
-          aria-label={cardDef?.name ? `${activateHint}: ${cardDef.name}` : activateHint}
-          title={activateHint}
-          onClick={canActivate ? onActivate : undefined}
-          onKeyDown={canActivate ? (event) => {
-            if (event.key === 'Enter' || event.key === ' ') {
-              event.preventDefault();
-              onActivate?.();
-            }
-          } : undefined}
-          style={{
-            position: 'relative',
-            borderRadius: 12,
-            width: mobileCardWidth,
-            aspectRatio: '13 / 18',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'flex-end',
-            backgroundColor: C.bgCard,
-            border: `2px solid ${shellBorder}`,
-            boxShadow: shellShadow,
-            overflow: 'hidden',
-            cursor: canActivate ? 'pointer' : 'default',
-            flexShrink: 0,
-          }}
-        >
-          {imgSrc ? (
-            <img
-              src={imgSrc}
-              alt=""
-              style={{
-                position: 'absolute',
-                inset: 0,
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover',
-                objectPosition: 'center center',
-                display: 'block',
-                transform: 'scale(1.02)',
-                filter: shellArtFilter,
-              }}
-            />
-          ) : (
-            <div
-              style={{
-                position: 'absolute',
-                inset: 0,
-                background: shellFallbackBackground,
-              }}
-            />
-          )}
-
+        {isPhonePortrait ? (
           <div
             style={{
-              position: 'absolute',
-              inset: 0,
-              background: shellOverlayBackground,
-              pointerEvents: 'none',
-            }}
-          />
-
-          {!isPlayable && (
-            <div
-              style={{
-                position: 'absolute',
-                inset: 0,
-                background: 'rgba(10,12,18,0.28)',
-                pointerEvents: 'none',
-              }}
-            />
-          )}
-
-          <div
-            style={{
-              position: 'absolute',
-              top: 8,
-              left: 8,
-              width: 26,
-              height: 26,
-              borderRadius: '9999px',
-              display: 'flex',
-              alignItems: 'center',
+              width: '100%',
+              display: 'grid',
+              gridTemplateColumns: `${utilityRailWidth}px auto ${utilityRailWidth}px`,
+              columnGap: 8,
               justifyContent: 'center',
-              fontWeight: 700,
-              fontFamily: MONO,
-              zIndex: 10,
-              backgroundColor: color,
-              color: '#000',
-              boxShadow: isPlayable ? `0 0 10px ${color}80` : '0 0 10px rgba(154,164,186,0.32)',
-              fontSize: 12,
+              alignItems: 'start',
             }}
           >
-            {cost}
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 8,
+                alignItems: 'stretch',
+                paddingTop: 16,
+              }}
+            >
+              {onOpenMenu && (
+                <button
+                  onClick={onOpenMenu}
+                  aria-label="Open combat menu"
+                  style={{
+                    ...utilityButtonBaseStyle,
+                    width: utilityRailWidth,
+                    height: 52,
+                    fontSize: 9,
+                  }}
+                >
+                  Menu
+                </button>
+              )}
+              <button
+                onClick={onDismiss}
+                aria-label="Hide active card details"
+                style={{
+                  ...utilityButtonBaseStyle,
+                  width: utilityRailWidth,
+                  height: 62,
+                }}
+              >
+                Hide
+              </button>
+            </div>
+            {mobileCard}
+            <div style={{ width: utilityRailWidth }} />
           </div>
-
-          <div
-            style={{
-              position: 'relative',
-              zIndex: 2,
-              margin: 'auto 8px 8px',
-              padding: '10px 9px 8px',
-              borderRadius: 12,
-              background: shellInfoBackground,
-              border: `1px solid ${shellInfoBorder}`,
-              boxShadow: '0 8px 20px rgba(0,0,0,0.24)',
-              backdropFilter: 'blur(4px)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 6,
-              minHeight: '44%',
-            }}
-          >
-            <div style={{ fontFamily: MONO, fontWeight: 700, color: C.textPrimary, fontSize: 12, textShadow: '0 1px 10px rgba(0,0,0,0.55)' }}>
-              {cardDef.name}
+        ) : (
+          <>
+            <div style={{ width: '100%', display: 'flex', justifyContent: 'flex-end', padding: '0 2px' }}>
+              <button
+                onClick={onDismiss}
+                aria-label="Hide active card details"
+                style={{
+                  ...utilityButtonBaseStyle,
+                  padding: '8px 12px',
+                }}
+              >
+                Hide
+              </button>
             </div>
-            <div style={{ fontFamily: MONO, textTransform: 'uppercase', color: shellTypeColor, fontSize: 8, letterSpacing: '0.1em' }}>
-              {cardDef.type}
-            </div>
-
-            <div style={{ fontFamily: MONO, color: '#bcc3cf', fontSize: 10, lineHeight: 1.45, display: 'flex', flexDirection: 'column', gap: 2 }}>
-              {effectLines.map((line, i) => (
-                <div key={i}>{renderKeywordText(line, `center-effect-mobile-${i}`)}</div>
-              ))}
-            </div>
-
-            {visibleTags.length > 0 && (
-              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                {visibleTags.map((tag, i) => (
-                  <KeywordTooltipToken key={i} text={tag} asChip={true} />
-                ))}
-              </div>
-            )}
-
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto', paddingTop: '6px', borderTop: `1px solid ${shellDivider}` }}>
-              <div style={{ fontFamily: MONO, color: C.textDim, fontSize: 8 }}>
-                NEXT: <span style={{ color: C.textPrimary, fontWeight: 700 }}>{nextMutationIn ?? '-'}</span>
-              </div>
-              <div style={{ fontFamily: MONO, color: isDecaying ? C.neonOrange : C.textDim, fontSize: 8 }}>
-                FINAL: <span style={{ fontWeight: 700 }}>{finalMutationIn ?? '-'}</span>
-              </div>
-            </div>
-          </div>
-        </div>
+            {mobileCard}
+          </>
+        )}
 
         {mutations.length > 0 && (
           <div
@@ -5224,6 +5287,10 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
       data={data}
       dismissed={centerCardDismissed}
       onDismiss={() => setCenterCardDismissed(true)}
+      onOpenMenu={() => {
+        setDeckMenuOpen(false);
+        onOpenMenu?.();
+      }}
       onActivate={() => handlePlayCard(activeCardId)}
       canActivate={!interactionLocked && !!activeCardId && canPlayCard(activeCardId)}
       activateHint={interactionLocked ? 'Resolving action' : (activeCardId && canPlayCard(activeCardId) ? 'Tap to play' : 'Not enough RAM')}
@@ -5313,26 +5380,28 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
           <PileCountButton label="Exhaust" count={exhaustPile.length} color={C.neonRed} onClick={() => setViewingPile('exhaust')} compact={true} />
         </div>
       )}
-      <CombatUtilityPanel
-        handCount={hand.length}
-        drawCount={drawPile.length}
-        discardCount={discardPile.length}
-        exhaustCount={exhaustPile.length}
-        interactionLocked={interactionLocked}
-        onViewPile={setViewingPile}
-        onOpenSettings={() => {
-          setDeckMenuOpen(false);
-          onOpenMenu?.();
-        }}
-        onAuto={() => onAction?.({ type: 'Combat_Simulate', maxTurns: 50 })}
-        onEndTurn={handleEndTurn}
-        deckMenuOpen={deckMenuOpen}
-        onToggleDeckMenu={setDeckMenuOpen}
-        layoutMode={layoutMode}
-        showDeckAction={!isPhonePortrait}
-        showEndTurnAction={!isPhonePortrait}
-        showDeckMenu={!isPhonePortrait}
-      />
+      {!isPhonePortrait && (
+        <CombatUtilityPanel
+          handCount={hand.length}
+          drawCount={drawPile.length}
+          discardCount={discardPile.length}
+          exhaustCount={exhaustPile.length}
+          interactionLocked={interactionLocked}
+          onViewPile={setViewingPile}
+          onOpenSettings={() => {
+            setDeckMenuOpen(false);
+            onOpenMenu?.();
+          }}
+          onAuto={() => onAction?.({ type: 'Combat_Simulate', maxTurns: 50 })}
+          onEndTurn={handleEndTurn}
+          deckMenuOpen={deckMenuOpen}
+          onToggleDeckMenu={setDeckMenuOpen}
+          layoutMode={layoutMode}
+          showDeckAction={!isPhonePortrait}
+          showEndTurnAction={!isPhonePortrait}
+          showDeckMenu={!isPhonePortrait}
+        />
+      )}
     </div>
   );
 

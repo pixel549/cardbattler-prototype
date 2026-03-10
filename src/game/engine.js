@@ -128,10 +128,95 @@ function getTargetEnemy(state, targetEnemyId = null) {
   return getAliveEnemies(state)[0] || null;
 }
 
+function getSelectedTargetEntity(state, targetEnemyId = null, targetSelf = false) {
+  if (targetSelf) return state.player || null;
+  return getTargetEnemy(state, targetEnemyId);
+}
+
+function getSelectedPatchTarget(state) {
+  if (state._selfTargetOverride) return state.player || null;
+  return getTargetEnemy(state, state._targetOverride || null);
+}
+
+function getCurrentPlayerCardTarget(state) {
+  if (state._selfTargetOverride) return state.player || null;
+  return getTargetEnemy(state, state._targetOverride || null) || state.player || null;
+}
+
 function getEntityHpPercent(entity) {
   const max = Math.max(1, Number(entity?.maxHP ?? entity?.hp ?? 1));
   const hp = Math.max(0, Number(entity?.hp ?? 0));
   return (hp / max) * 100;
+}
+
+function getCardEffectOps(def) {
+  const effectOps = [];
+  for (const effect of (def?.effects || [])) {
+    if (!effect) continue;
+    if (effect.op === "RawText") {
+      const parsed = parseRawText(effect.text || "");
+      if (parsed.length > 0) {
+        effectOps.push(...parsed);
+        continue;
+      }
+    }
+    effectOps.push(effect);
+  }
+  return effectOps;
+}
+
+function inferEffectTargetHint(op) {
+  if (!op) return null;
+  if (op.target) return op.target;
+  switch (op.op) {
+    case "DrawCards":
+    case "GainRAM":
+    case "LoseRAM":
+    case "_GainRAMFull":
+    case "_HealFull":
+    case "_LoseHP":
+    case "_SpendAllRAM":
+    case "_SpendAllFirewall":
+    case "CleanseNegatives":
+      return "Self";
+    default:
+      return null;
+  }
+}
+
+function isSelfTargetHint(targetHint) {
+  return targetHint === "Self" || targetHint === "Player" || targetHint === "AllPlayers";
+}
+
+function isEnemyTargetHint(targetHint) {
+  return targetHint === "Enemy" || targetHint === "AllEnemies";
+}
+
+function inferPatchTargetHint(entry) {
+  if (!entry || entry.trigger !== "onPlay") return null;
+  switch (entry.op) {
+    case "DealDamage":
+    case "DealBonusDamage":
+    case "ApplyEnemyStatus":
+    case "GrantEnemyEffect":
+      return "Enemy";
+    case "DealSelfDamage":
+    case "HPtoRAM":
+    case "LoseRAM":
+    case "RAMDoubleTurn":
+    case "ReduceMaxRAM":
+    case "ReduceMaxHP":
+    case "GainFirewall":
+    case "LoseFirewall":
+    case "ClearSelfFirewall":
+    case "ApplySelfStatus":
+    case "ConvertNegStatus":
+    case "DrawCards":
+    case "SplitDamageSelf":
+      return "Self";
+    default:
+      return null;
+  }
 }
 
 function isPositiveStatusId(state, statusId) {
@@ -1013,8 +1098,12 @@ function parseRawText(text) {
 // ---------- effects interpreter ----------
 function resolveTargets(state, sourceId, targetHint) {
   const sourceIsPlayer = (sourceId === "player" || sourceId === state.player.id);
+  const unifiedPlayerTarget = sourceIsPlayer && state._unifiedPlayerCardTargeting
+    ? getCurrentPlayerCardTarget(state)
+    : null;
 
   if (targetHint === "Self") {
+    if (unifiedPlayerTarget) return [unifiedPlayerTarget];
     const t = sourceIsPlayer ? state.player : state.enemies.find(e => e.id === sourceId);
     return t ? [t] : [];
   }
@@ -1042,7 +1131,10 @@ function resolveTargets(state, sourceId, targetHint) {
     return t ? [t] : [];
   }
 
-  if (targetHint === "Player") return [state.player];
+  if (targetHint === "Player") {
+    if (unifiedPlayerTarget) return [unifiedPlayerTarget];
+    return [state.player];
+  }
   return [state.player];
 }
 
@@ -1076,11 +1168,13 @@ export function applyEffectOp(state, sourceId, op, rng) {
   const cardMods = state._cardMutMods || null;
   const playCtx = state._currentPlayContext || null;
   const isPlayerSource = sourceId === "player" || sourceId === state.player.id;
+  const effectRandomMin = Number(cardMods?.randomizeEffectMin ?? 1);
+  const effectRandomMax = Number(cardMods?.randomizeEffectMax ?? 1);
   const effectRoll = playCtx?.effectRoll
     ?? (cardMods?.deterministicEffect
       ? getDeterministicEffectMultiplier(state, playCtx?.cardInstanceId, cardMods)
-      : (cardMods?.randomizeEffect || cardMods?.randomizeEffectMax !== 1 || cardMods?.randomizeEffectMin !== 1)
-        ? ((cardMods.randomizeEffectMin || 1) + (((cardMods.randomizeEffectMax || 1) - (cardMods.randomizeEffectMin || 1)) * (rng ? rng.next() : 0.5)))
+      : (cardMods?.randomizeEffect || effectRandomMax !== 1 || effectRandomMin !== 1)
+        ? (effectRandomMin + ((effectRandomMax - effectRandomMin) * (rng ? rng.next() : 0.5)))
         : 1);
   if (playCtx && playCtx.effectRoll == null) playCtx.effectRoll = effectRoll;
   const effectMult = (cardMods?.effectMult ?? 1) * effectRoll;
@@ -1301,8 +1395,7 @@ export function applyEffectOp(state, sourceId, op, rng) {
       return;
     }
     case "DrawCards": {
-      const self = (sourceId === "player" || sourceId === state.player.id)
-        ? state.player : null;
+      const self = targets.find((target) => target?.id === state.player?.id) || null;
       if (!self) return;
       // rng may not be passed for enemy effects — safe fallback
       if (rng) {
@@ -1337,8 +1430,7 @@ export function applyEffectOp(state, sourceId, op, rng) {
       return;
     }
     case "GainRAM": {
-      const self = (sourceId === "player" || sourceId === state.player.id)
-        ? state.player : null;
+      const self = targets.find((target) => target?.id === state.player?.id) || null;
       if (!self) return;
       const amount = Math.max(0, Math.floor(((effectiveOp.amount || 0) + effectFlatMod) * effectMult));
       self.ram = Math.min(self.maxRAM + (cardMods?.ramBufferMod || 0), self.ram + amount);
@@ -1351,8 +1443,7 @@ export function applyEffectOp(state, sourceId, op, rng) {
       return;
     }
     case "LoseRAM": {
-      const self = (sourceId === "player" || sourceId === state.player.id)
-        ? state.player : null;
+      const self = targets.find((target) => target?.id === state.player?.id) || null;
       if (!self) return;
       const amount = Math.max(0, Math.floor(((effectiveOp.amount || 0) + effectFlatMod) * effectMult));
       self.ram = Math.max(0, self.ram - amount);
@@ -1367,17 +1458,17 @@ export function applyEffectOp(state, sourceId, op, rng) {
         let ramSpent = 0;
         let firewallSpent = 0;
         for (const pOp of parsed) {
-          const self = (sourceId === "player" || sourceId === state.player.id) ? state.player : null;
           const actor = resolveTargets(state, sourceId, 'Self')[0] || null;
+          const self = actor?.id === state.player?.id ? state.player : null;
 
           if (pOp.op === '_GainRAMFull') {
             if (self) { self.ram = self.maxRAM; push(state.log, { t: "Info", msg: `RAM fully restored` }); }
 
           } else if (pOp.op === '_HealFull') {
-            if (self) { const before = self.hp; self.hp = self.maxHP; push(state.log, { t: "Info", msg: `Healed ${self.hp - before}` }); }
+            if (actor) { const before = actor.hp; actor.hp = actor.maxHP; push(state.log, { t: "Info", msg: `Healed ${actor.hp - before}` }); }
 
           } else if (pOp.op === '_LoseHP') {
-            if (self) { self.hp = Math.max(0, self.hp - (pOp.amount || 0)); enforceFirewallCap(state, self, { silent: true }); push(state.log, { t: "Info", msg: `Lost ${pOp.amount} HP` }); }
+            if (actor) { actor.hp = Math.max(0, actor.hp - (pOp.amount || 0)); enforceFirewallCap(state, actor, { silent: true }); push(state.log, { t: "Info", msg: `Lost ${pOp.amount} HP` }); }
 
           } else if (pOp.op === '_SpendAllRAM') {
             // Drain all player RAM; subsequent scaleByRAM ops scale by this amount
@@ -2241,11 +2332,11 @@ function getCurrentPlayCount(state) {
   return Number(state._cardsPlayedThisTurn || 0);
 }
 
-function getCardConditionState(state, targetEnemy) {
-  const enemy = targetEnemy || getTargetEnemy(state);
+function getCardConditionState(state, targetEntity) {
+  const target = targetEntity || getTargetEnemy(state);
   return {
-    targetHasStatus: !!(enemy?.statuses || []).some((status) => status.stacks > 0),
-    targetHasNegativeStatus: !!(enemy?.statuses || []).some((status) => state.dataRef?.statuses?.[status.id]?.isNegative),
+    targetHasStatus: !!(target?.statuses || []).some((status) => status.stacks > 0),
+    targetHasNegativeStatus: !!(target?.statuses || []).some((status) => state.dataRef?.statuses?.[status.id]?.isNegative),
     playerAboveHalf: getEntityHpPercent(state.player) > 50,
   };
 }
@@ -2295,7 +2386,52 @@ function getAdjustedCardCost(state, data, cardInstanceId, mods = null) {
   return Math.max(0, cost);
 }
 
-export function getCardPlayability(state, data, cardInstanceId, targetEnemyId = null) {
+export function getCardTargetingProfile(state, data, cardInstanceId) {
+  const ci = state?.cardInstances?.[cardInstanceId];
+  const def = ci?.defId ? data?.cards?.[ci.defId] : null;
+  if (!ci || !def) {
+    return {
+      canTargetEnemy: false,
+      canTargetSelf: false,
+      targetHints: [],
+    };
+  }
+
+  const mods = computePassiveMods(state, data, cardInstanceId);
+  const workingState = { ...state, _cardMutMods: mods };
+  const targetHints = [];
+  let canTargetEnemy = false;
+  let canTargetSelf = false;
+
+  for (const effect of getCardEffectOps(def)) {
+    const effective = buildEffectiveEffectOp(workingState, effect, null);
+    const targetHint = inferEffectTargetHint(effective);
+    if (!targetHint) continue;
+    targetHints.push(targetHint);
+    if (isEnemyTargetHint(targetHint)) canTargetEnemy = true;
+    if (isSelfTargetHint(targetHint)) canTargetSelf = true;
+  }
+
+  for (const mid of (ci.appliedMutations || [])) {
+    const mut = data?.mutations?.[mid];
+    if (!mut?.patch) continue;
+    for (const entry of parsePatch(mut.patch)) {
+      const targetHint = inferPatchTargetHint(entry);
+      if (!targetHint) continue;
+      targetHints.push(targetHint);
+      if (isEnemyTargetHint(targetHint)) canTargetEnemy = true;
+      if (isSelfTargetHint(targetHint)) canTargetSelf = true;
+    }
+  }
+
+  return {
+    canTargetEnemy,
+    canTargetSelf,
+    targetHints,
+  };
+}
+
+export function getCardPlayability(state, data, cardInstanceId, targetEnemyId = null, targetSelf = false) {
   const ci = state.cardInstances?.[cardInstanceId];
   const def = ci?.defId ? data?.cards?.[ci.defId] : null;
   if (!ci || !def || !state?.player) {
@@ -2303,8 +2439,8 @@ export function getCardPlayability(state, data, cardInstanceId, targetEnemyId = 
   }
   const mods = computePassiveMods(state, data, cardInstanceId);
   const runtime = getCardRuntime(ci);
-  const targetEnemy = getTargetEnemy(state, targetEnemyId);
-  const conditionState = getCardConditionState(state, targetEnemy);
+  const conditionTarget = getSelectedTargetEntity(state, targetEnemyId, targetSelf);
+  const conditionState = getCardConditionState(state, conditionTarget);
   const cost = getAdjustedCardCost(state, data, cardInstanceId, mods);
   const hpPct = getEntityHpPercent(state.player);
   const playCount = getCurrentPlayCount(state);
@@ -2330,17 +2466,21 @@ export function getCardPlayability(state, data, cardInstanceId, targetEnemyId = 
     reason,
     cost,
     mods,
-    targetEnemy,
+    targetEnemy: targetSelf ? null : conditionTarget,
+    targetEntity: conditionTarget,
+    targetSelf,
     conditionState,
   };
 }
 
-function queueDelayedCardEffects(state, cardInstanceId, effects, targetEnemyId, turns = 1) {
+function queueDelayedCardEffects(state, cardInstanceId, effects, targetEnemyId, turns = 1, targetSelf = false, unifiedTargeting = false) {
   if (!Array.isArray(state._delayedCardEffects)) state._delayedCardEffects = [];
   state._delayedCardEffects.push({
     cardInstanceId,
     turnsRemaining: Math.max(1, turns),
     targetEnemyId: targetEnemyId || null,
+    targetSelf: !!targetSelf,
+    unifiedTargeting: !!unifiedTargeting,
     effects: JSON.parse(JSON.stringify(effects || [])),
   });
   push(state.log, {
@@ -2361,12 +2501,20 @@ function resolveDelayedCardEffects(state, data, rng) {
       continue;
     }
     const prevTarget = state._targetOverride;
+    const prevSelfTarget = state._selfTargetOverride;
+    const prevUnifiedTargeting = state._unifiedPlayerCardTargeting;
     if (item.targetEnemyId) state._targetOverride = item.targetEnemyId;
+    if (item.targetSelf) state._selfTargetOverride = true;
+    if (item.unifiedTargeting) state._unifiedPlayerCardTargeting = true;
     for (const op of item.effects || []) {
       applyEffectOp(state, "player", op, rng);
     }
     if (prevTarget) state._targetOverride = prevTarget;
     else delete state._targetOverride;
+    if (prevSelfTarget) state._selfTargetOverride = prevSelfTarget;
+    else delete state._selfTargetOverride;
+    if (prevUnifiedTargeting) state._unifiedPlayerCardTargeting = prevUnifiedTargeting;
+    else delete state._unifiedPlayerCardTargeting;
     push(state.log, {
       t: "Info",
       msg: `Delayed mutation effect resolved for ${item.cardInstanceId}`,
@@ -2420,8 +2568,8 @@ function execPatchOp(state, data, rng, cardInstanceId, op, args, ctx = null) {
     case 'DealDamage':
     case 'DealBonusDamage': {
       const amt = parseInt(args[0]) || 0;
-      const enemy = state.enemies.find(e => e.hp > 0);
-      if (enemy && amt > 0) { applyDamage(state, 'player', enemy, amt); log(`${op} ${amt}`); }
+      const target = getSelectedPatchTarget(state);
+      if (target && amt > 0) { applyDamage(state, 'player', target, amt); log(`${op} ${amt}`); }
       break;
     }
     case 'HPtoRAM': {
@@ -2487,10 +2635,8 @@ function execPatchOp(state, data, rng, cardInstanceId, op, args, ctx = null) {
       break;
     }
     case 'ApplyEnemyStatus': {
-      const enemy = state._targetOverride
-        ? state.enemies.find(e => e.id === state._targetOverride && e.hp > 0)
-        : state.enemies.find(e => e.hp > 0);
-      if (enemy) { addStatus(state, enemy, args[0], parseInt(args[1]) || 1); log(`ApplyEnemyStatus ${args[0]}`); }
+      const target = getSelectedPatchTarget(state);
+      if (target) { addStatus(state, target, args[0], parseInt(args[1]) || 1); log(`ApplyEnemyStatus ${args[0]}`); }
       break;
     }
     case 'ConvertNegStatus': {
@@ -3655,15 +3801,19 @@ export function dispatchCombat(state, data, action) {
       const playedCard = getCardLogData(state, cid);
       const handBefore = getHandTelemetry(state, data, state.player);
       const selectedOption = handBefore.find((option) => option.instanceId === cid) || null;
+      const targetSelf = !!action.targetSelf;
+      const targetingProfile = getCardTargetingProfile(state, data, cid);
+      const unifiedTargeting = targetingProfile.canTargetEnemy && targetingProfile.canTargetSelf;
       const targetEnemy = action.targetEnemyId
         ? state.enemies.find((enemy) => enemy.id === action.targetEnemyId && enemy.hp > 0)
         : null;
-      const resolvedTargetEnemy = targetEnemy || state.enemies.find((enemy) => enemy.hp > 0) || null;
-      const targetBefore = getEntityCombatSnapshot(resolvedTargetEnemy);
+      const resolvedContextEnemy = targetEnemy || state.enemies.find((enemy) => enemy.hp > 0) || null;
+      const selectedTarget = targetSelf ? state.player : resolvedContextEnemy;
+      const targetBefore = getEntityCombatSnapshot(selectedTarget);
       const playerBefore = getEntityCombatSnapshot(state.player);
       const alternativeAffordable = handBefore.filter((option) => option.instanceId !== cid && option.affordable);
       const playedSummary = selectedOption?.effectSummary || summarizeCardEffectsForTelemetry(state, data, def, state.player);
-      const targetProtection = targetBefore?.protection ?? 0;
+      const targetProtection = targetSelf ? 0 : (targetBefore?.protection ?? 0);
       const hasAffordableBreachAlternative = alternativeAffordable.some((option) => {
         const summary = option.effectSummary || {};
         return summary.firewallBreachAll || summary.firewallBreach > 0;
@@ -3683,7 +3833,13 @@ export function dispatchCombat(state, data, action) {
         firewallSpendWithoutFirewall: playedSummary.firewallSpend && getFirewallStacks(state.player) <= 0,
       };
 
-      const playability = getCardPlayability(state, data, cid, resolvedTargetEnemy?.id ?? action.targetEnemyId ?? null);
+      const playability = getCardPlayability(
+        state,
+        data,
+        cid,
+        resolvedContextEnemy?.id ?? action.targetEnemyId ?? null,
+        targetSelf,
+      );
       const mutPassives = playability.mods;
 
       // Compute RAM cost, accounting for mutation-rewritten cost rules
@@ -3709,7 +3865,8 @@ export function dispatchCombat(state, data, action) {
           ramBefore,
           ramAfter: state.player.ram,
           playerBefore,
-          targetEnemyId: resolvedTargetEnemy?.id ?? action.targetEnemyId ?? null,
+          targetEnemyId: resolvedContextEnemy?.id ?? action.targetEnemyId ?? null,
+          targetSelf,
           targetBefore,
           enemiesBefore: state.enemies.filter((enemy) => enemy.hp > 0).map(getEntityCombatSnapshot),
           handBefore,
@@ -3797,7 +3954,9 @@ export function dispatchCombat(state, data, action) {
       state._cardMutMods = mutPassives;
       state._currentPlayContext = {
         cardInstanceId: cid,
-        targetEnemyId: resolvedTargetEnemy?.id ?? action.targetEnemyId ?? null,
+        targetEnemyId: resolvedContextEnemy?.id ?? action.targetEnemyId ?? null,
+        targetSelf,
+        unifiedTargeting,
         totalDamageDealt: 0,
         dealtDamage: false,
         appliedStatus: false,
@@ -3809,8 +3968,12 @@ export function dispatchCombat(state, data, action) {
       };
 
       // Set target override so effects hit the selected enemy
-      if (resolvedTargetEnemy?.id) state._targetOverride = resolvedTargetEnemy.id;
-      delete state._selfTargetOverride;
+      if (resolvedContextEnemy?.id) state._targetOverride = resolvedContextEnemy.id;
+      else delete state._targetOverride;
+      if (targetSelf) state._selfTargetOverride = true;
+      else delete state._selfTargetOverride;
+      if (unifiedTargeting) state._unifiedPlayerCardTargeting = true;
+      else delete state._unifiedPlayerCardTargeting;
 
       // Pre-effects fizzle check (A-07 Latency Spike, B-05 Signal Loss)
       // Fizzle must resolve BEFORE effects so the card's effects are skipped on proc
@@ -3828,7 +3991,7 @@ export function dispatchCombat(state, data, action) {
             break;
           }
           if (fe.op === 'SwapTarget') {
-            execPatchOp(state, data, rng, cid, fe.op, fe.args, { phase: 'pre', targetEnemyId: resolvedTargetEnemy?.id ?? null });
+            execPatchOp(state, data, rng, cid, fe.op, fe.args, { phase: 'pre', targetEnemyId: resolvedContextEnemy?.id ?? null });
           }
           if (fe.op === 'EffectBoostOnce') {
             mutPassives.effectMult *= parseFloat(fe.args[0]) || 1;
@@ -3852,7 +4015,15 @@ export function dispatchCombat(state, data, action) {
           if (spliceCard?.effects?.[0]) effectList.push(spliceCard.effects[0]);
         }
         if (mutPassives.deferredPlay || mutPassives.delayTurns > 0 || (mutPassives.unstableTimingChance > 0 && rng && rng.next() < mutPassives.unstableTimingChance)) {
-          queueDelayedCardEffects(state, cid, effectList, resolvedTargetEnemy?.id ?? action.targetEnemyId ?? null, Math.max(1, mutPassives.delayTurns || 1));
+          queueDelayedCardEffects(
+            state,
+            cid,
+            effectList,
+            resolvedContextEnemy?.id ?? action.targetEnemyId ?? null,
+            Math.max(1, mutPassives.delayTurns || 1),
+            targetSelf,
+            unifiedTargeting,
+          );
         } else {
           const forkCount = Math.max(1, mutPassives.forkCount || 1);
           for (let forkIndex = 0; forkIndex < forkCount; forkIndex++) {
@@ -3865,6 +4036,7 @@ export function dispatchCombat(state, data, action) {
 
       delete state._targetOverride;
       delete state._selfTargetOverride;
+      delete state._unifiedPlayerCardTargeting;
       delete state._cardMutMods;
       delete state._currentlyPlayingCard;
 
@@ -3872,7 +4044,7 @@ export function dispatchCombat(state, data, action) {
       runPatchTrigger(state, data, rng, cid, 'onPlay', { alwaysMeetCondition: mutPassives.alwaysMeetCondition, phase: 'post' });
 
       if (mutPassives.enemyArmorOnPlay > 0) {
-        const enemy = getTargetEnemy(state, resolvedTargetEnemy?.id ?? action.targetEnemyId ?? null);
+        const enemy = getTargetEnemy(state, resolvedContextEnemy?.id ?? action.targetEnemyId ?? null);
         if (enemy) grantFirewall(state, enemy, mutPassives.enemyArmorOnPlay, rng);
       }
       if (mutPassives.conditionalDraw > 0 && (mutPassives.alwaysMeetCondition || state._currentPlayContext?.appliedNegativeStatus || state._currentPlayContext?.dealtDamage)) {

@@ -1154,7 +1154,9 @@ export function dispatchGame(stateIn, data, action) {
       const combatAction =
         action.type === "Combat_StartTurn" ? { type: "StartTurn" } :
         action.type === "Combat_EndTurn" ? { type: "EndTurn" } :
-        action.type === "Combat_PlayCard" ? { type: "PlayCard", cardInstanceId: action.cardInstanceId, targetEnemyId: action.targetEnemyId } :
+        action.type === "Combat_PlayCard"
+          ? { type: "PlayCard", cardInstanceId: action.cardInstanceId, targetEnemyId: action.targetEnemyId, targetSelf: !!action.targetSelf }
+          :
         action.type === "Combat_ScryResolve" ? { type: "ScryResolve", discard: action.discard, top: action.top } :
         { type: "SimulateEncounter", maxTurns: action.maxTurns };
 

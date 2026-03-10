@@ -23,7 +23,7 @@ const TUTORIAL_STEP_DEFS = [
   {
     id: "overview",
     title: "Welcome To Combat",
-    body: "This encounter is fixed so each turn teaches one thing. Watch the enemy panel up top for intents, use RAM to play cards, and remember that Firewall absorbs damage before HP does.",
+    body: "This encounter is fixed so each turn teaches one thing. Center a card from your hand, double tap an enemy to use it, and double tap your own FW / HP / RAM panel when a card can target you.",
     concepts: ["Intents", "RAM", "Firewall", "HP"],
     acknowledgeOnly: true,
     ctaLabel: "Start Tutorial",
@@ -31,21 +31,21 @@ const TUTORIAL_STEP_DEFS = [
   {
     id: "strike_firewall",
     title: "Break Firewall First",
-    body: "Play Strike. The Training Proxy starts with Firewall, so you can see shield damage get soaked before HP drops.",
+    body: "Center Strike, then double tap the Training Proxy. It starts with Firewall, so you can see shield damage get soaked before HP drops.",
     concepts: ["Enemy Firewall", "Damage"],
     requiredAction: "play_strike",
   },
   {
     id: "charge_ram",
     title: "RAM Fuels Your Turn",
-    body: "Play Charge Pack next. RAM is your action budget each turn, and some cards refill it so you can keep going.",
+    body: "Center Charge Pack next, then double tap your own FW / HP / RAM panel. RAM is your action budget each turn, and some cards refill it so you can keep going.",
     concepts: ["RAM", "Utility"],
     requiredAction: "play_charge_pack",
   },
   {
     id: "guard_firewall",
     title: "Build Your Own Firewall",
-    body: "Play Guard. Your Firewall is your first layer of defense, and it sits in front of your HP.",
+    body: "Center Guard, then double tap your own panel again. Your Firewall is your first layer of defense, and it sits in front of your HP.",
     concepts: ["Player Firewall", "Defense"],
     requiredAction: "play_guard",
   },
@@ -59,7 +59,7 @@ const TUTORIAL_STEP_DEFS = [
   {
     id: "status_and_mutation",
     title: "Statuses And Mutations",
-    body: "Play Corrode Dart. Corrode is a status effect that ticks each turn, and this card is rigged to mutate immediately so you can see the mutation system in action.",
+    body: "Center Corrode Dart, then double tap the Training Proxy. Corrode is a status effect that ticks each turn, and this card is rigged to mutate immediately so you can see the mutation system in action.",
     concepts: ["Status Effects", "Mutations"],
     requiredAction: "play_corrode_dart",
   },
@@ -236,17 +236,17 @@ export function canUseTutorialAction(state, action) {
       break;
     case 1:
       if (isCombatAction && !(action.type === "Combat_PlayCard" && action.cardInstanceId === cardIds.strike)) {
-        return buildTutorialBlock("Use Strike first so the Training Proxy's Firewall lesson lands cleanly.");
+        return buildTutorialBlock("Use Strike first. Center it, then double tap the Training Proxy so the Firewall lesson lands cleanly.");
       }
       break;
     case 2:
       if (isCombatAction && !(action.type === "Combat_PlayCard" && action.cardInstanceId === cardIds.chargePack)) {
-        return buildTutorialBlock("Charge Pack is the next step. RAM is your action economy, so that is the next lesson.");
+        return buildTutorialBlock("Charge Pack is next. Center it, then double tap your own FW / HP / RAM panel so the RAM lesson lands cleanly.");
       }
       break;
     case 3:
       if (isCombatAction && !(action.type === "Combat_PlayCard" && action.cardInstanceId === cardIds.guard)) {
-        return buildTutorialBlock("Guard is next. We want you to see your own Firewall absorb the incoming hit.");
+        return buildTutorialBlock("Guard is next. Center it, then double tap your own panel so you can see Firewall absorb the incoming hit.");
       }
       break;
     case 4:
@@ -256,7 +256,7 @@ export function canUseTutorialAction(state, action) {
       break;
     case 5:
       if (isCombatAction && !(action.type === "Combat_PlayCard" && action.cardInstanceId === cardIds.corrodeDart)) {
-        return buildTutorialBlock("Corrode Dart is the tutorial card here. It shows a status effect and an immediate mutation.");
+        return buildTutorialBlock("Corrode Dart is the tutorial card here. Center it, then double tap the Training Proxy to see a status effect and an immediate mutation.");
       }
       break;
     case 6:

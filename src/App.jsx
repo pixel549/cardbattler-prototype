@@ -1214,7 +1214,7 @@ function PauseMenuButton({ onClick, open = false }) {
 }
 
 const HOW_TO_PLAY = [
-  'Scroll the hand until the card you want is centered, then tap the centered card to play it.',
+  'Scroll or tap the hand until the card you want is centered, then double tap an enemy to use it. If the card can affect you, double tap your FW / HP / RAM panel instead.',
   'RAM is your per-turn resource. Sequence setup and RAM gain before your heavy cards when you can.',
   'Firewall absorbs damage before HP. If an enemy stacks Firewall, use shield-break or breach effects before damage cards.',
   'Use the selected enemy panel to read HP, Firewall, and the next action without cluttering the enemy art.',

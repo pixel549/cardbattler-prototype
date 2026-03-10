@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { getEnemyImage } from '../data/enemyImages';
 import { getCardImage } from '../data/cardImages';
 import { sfx } from '../game/sounds';
-import { getCardPlayability } from '../game/engine';
+import { getCardPlayability, getCardTargetingProfile } from '../game/engine';
 import useDialogAccessibility from '../hooks/useDialogAccessibility';
 
 /**
@@ -51,6 +51,8 @@ const TYPE_COLORS = {
 
 const EMPTY_ARRAY = [];
 const EMPTY_OBJECT = {};
+const DOUBLE_TAP_WINDOW_MS = 320;
+const PLAYER_TARGET_ID = '__player__';
 
 // ============================================================
 // STATUS EFFECT ICONS & COLORS
@@ -2155,7 +2157,17 @@ function PlayerPanel({ player, ram = 0, maxRam = 0, powerPile = [], cardInstance
 
 void PlayerPanel;
 
-function CompactPlayerHud({ player, ram = 0, maxRam = 0, powerPile = [], cardInstances = {}, data }) {
+function CompactPlayerHud({
+  player,
+  ram = 0,
+  maxRam = 0,
+  powerPile = [],
+  cardInstances = {},
+  data,
+  selfTargetable = false,
+  selfTargetSelected = false,
+  onTargetSelf = null,
+}) {
   const hp = player?.hp ?? 0;
   const maxHp = player?.maxHP ?? 1;
   const firewallStacks = player?.statuses?.find((s) => s.id === 'Firewall')?.stacks ?? 0;
@@ -2195,9 +2207,9 @@ function CompactPlayerHud({ player, ram = 0, maxRam = 0, powerPile = [], cardIns
             alignSelf: 'center',
             padding: '4px 8px',
             borderRadius: 999,
-            background: `${C.neonGreen}14`,
-            border: `1px solid ${C.neonGreen}34`,
-            color: C.neonGreen,
+            background: selfTargetSelected ? `${C.neonYellow}18` : `${C.neonGreen}14`,
+            border: `1px solid ${selfTargetSelected ? `${C.neonYellow}40` : `${C.neonGreen}34`}`,
+            color: selfTargetSelected ? C.neonYellow : C.neonGreen,
             fontFamily: MONO,
             fontSize: 8,
             fontWeight: 700,
@@ -2205,11 +2217,26 @@ function CompactPlayerHud({ player, ram = 0, maxRam = 0, powerPile = [], cardIns
             textTransform: 'uppercase',
           }}
         >
-          Center card = play
+          {selfTargetable ? (selfTargetSelected ? 'Self target armed' : 'Double tap self') : 'Double tap target'}
         </div>
       </div>
 
       <div
+        role={selfTargetable ? 'button' : undefined}
+        tabIndex={selfTargetable ? 0 : undefined}
+        aria-pressed={selfTargetable ? selfTargetSelected : undefined}
+        aria-label={selfTargetable ? 'Select yourself as the current card target' : undefined}
+        onClick={selfTargetable ? (event) => {
+          event.stopPropagation();
+          onTargetSelf?.();
+        } : undefined}
+        onKeyDown={selfTargetable ? (event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            event.stopPropagation();
+            onTargetSelf?.();
+          }
+        } : undefined}
         style={{
           display: 'flex',
           flexDirection: 'column',
@@ -2217,7 +2244,13 @@ function CompactPlayerHud({ player, ram = 0, maxRam = 0, powerPile = [], cardIns
           padding: '10px',
           borderRadius: 14,
           background: 'rgba(3,7,14,0.72)',
-          border: `1px solid ${C.borderLight}`,
+          border: `1px solid ${selfTargetSelected ? `${C.neonYellow}4a` : selfTargetable ? `${C.neonGreen}32` : C.borderLight}`,
+          boxShadow: selfTargetSelected
+            ? `0 0 26px ${C.neonYellow}14, inset 0 0 0 1px ${C.neonYellow}12`
+            : selfTargetable
+              ? `0 0 18px ${C.neonGreen}10`
+              : 'none',
+          cursor: selfTargetable ? 'pointer' : 'default',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
@@ -2343,6 +2376,9 @@ function MobilePlayerHud({
   onToggleDeckMenu,
   onViewPile,
   deckMenuRef,
+  selfTargetable = false,
+  selfTargetSelected = false,
+  onTargetSelf = null,
 }) {
   const hp = player?.hp ?? 0;
   const maxHp = player?.maxHP ?? 1;
@@ -2403,6 +2439,21 @@ function MobilePlayerHud({
       }}
     >
       <div
+        role={selfTargetable ? 'button' : undefined}
+        tabIndex={selfTargetable ? 0 : undefined}
+        aria-pressed={selfTargetable ? selfTargetSelected : undefined}
+        aria-label={selfTargetable ? 'Select yourself as the current card target' : undefined}
+        onClick={selfTargetable ? (event) => {
+          event.stopPropagation();
+          onTargetSelf?.();
+        } : undefined}
+        onKeyDown={selfTargetable ? (event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            event.stopPropagation();
+            onTargetSelf?.();
+          }
+        } : undefined}
         style={{
           display: 'flex',
           flexDirection: 'column',
@@ -2410,15 +2461,21 @@ function MobilePlayerHud({
           padding: isPhonePortrait ? '6px 7px' : '7px 8px',
           borderRadius: 12,
           background: 'rgba(3,7,14,0.72)',
-          border: `1px solid ${C.borderLight}`,
+          border: `1px solid ${selfTargetSelected ? `${C.neonYellow}48` : selfTargetable ? `${C.neonGreen}34` : C.borderLight}`,
+          boxShadow: selfTargetSelected
+            ? `0 0 24px ${C.neonYellow}12, inset 0 0 0 1px ${C.neonYellow}12`
+            : selfTargetable
+              ? `0 0 16px ${C.neonGreen}10`
+              : 'none',
+          cursor: selfTargetable ? 'pointer' : 'default',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
           <span style={{ fontFamily: MONO, fontSize: isPhonePortrait ? 9 : 10, fontWeight: 700, letterSpacing: '0.12em', color: C.textDim }}>
             PLAYER
           </span>
-          <span style={{ fontFamily: MONO, fontSize: isPhonePortrait ? 9 : 10, color: C.textSecondary }}>
-            FW / HP / RAM
+          <span style={{ fontFamily: MONO, fontSize: isPhonePortrait ? 9 : 10, color: selfTargetSelected ? C.neonYellow : selfTargetable ? C.neonGreen : C.textSecondary }}>
+            {selfTargetable ? (selfTargetSelected ? 'SELF TARGET' : 'DOUBLE TAP SELF') : 'FW / HP / RAM'}
           </span>
         </div>
         {hasPortraitActionRail ? (
@@ -2765,7 +2822,7 @@ function CombatUtilityPanel({
               COMBAT OPS
             </span>
             <span style={{ fontFamily: MONO, fontSize: 8, color: C.textSecondary }}>
-              Hand {handCount} | center card plays
+              Hand {handCount} | center card arms target
             </span>
           </div>
         )}
@@ -2874,7 +2931,7 @@ function CenterCardDisplay({
   onDismiss,
   onActivate,
   canActivate = false,
-  activateHint = 'Tap to play',
+  activateHint = 'Double tap a target to play',
   layoutMode = 'desktop',
 }) {
   const isMobileLayout = layoutMode !== 'desktop';
@@ -2907,7 +2964,7 @@ function CenterCardDisplay({
             ACTIVE CARD
           </div>
           <span style={{ fontFamily: MONO, color: C.textPrimary, fontSize: isMobileLayout ? 10 : 12, textAlign: 'center' }}>
-            {dismissed ? 'Swipe the hand to reopen the active card' : 'Swipe the hand to choose a card'}
+            {dismissed ? 'Swipe the hand to reopen the active card' : 'Swipe or tap the hand to choose a card, then double tap a target'}
           </span>
         </div>
       </div>
@@ -2979,7 +3036,6 @@ function CenterCardDisplay({
         aria-disabled={!canActivate}
         aria-label={cardDef?.name ? `${activateHint}: ${cardDef.name}` : activateHint}
         title={activateHint}
-        onClick={canActivate ? onActivate : undefined}
         onKeyDown={canActivate ? (event) => {
           if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault();
@@ -2998,7 +3054,7 @@ function CenterCardDisplay({
           border: `2px solid ${shellBorder}`,
           boxShadow: shellShadow,
           overflow: 'hidden',
-          cursor: canActivate ? 'pointer' : 'default',
+          cursor: 'default',
           flexShrink: 0,
         }}
       >
@@ -3246,7 +3302,6 @@ function CenterCardDisplay({
           aria-disabled={!canActivate}
           aria-label={cardDef?.name ? `${activateHint}: ${cardDef.name}` : activateHint}
           title={activateHint}
-          onClick={canActivate ? onActivate : undefined}
           onKeyDown={canActivate ? (event) => {
             if (event.key === 'Enter' || event.key === ' ') {
               event.preventDefault();
@@ -3266,7 +3321,7 @@ function CenterCardDisplay({
             border: `2px solid ${shellBorder}`,
             boxShadow: desktopShellShadow,
             overflow: 'hidden',
-            cursor: canActivate ? 'pointer' : 'default',
+            cursor: 'default',
             flexShrink: 0,
           }}
         >
@@ -4856,6 +4911,7 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
   const [viewingPile, setViewingPile] = useState(null);
   const [deckMenuOpen, setDeckMenuOpen] = useState(false);
   const [targetedEnemyIndex, setTargetedEnemyIndex] = useState(0);
+  const [selectedTargetMode, setSelectedTargetMode] = useState('enemy');
   const [enemyInfoOpen, setEnemyInfoOpen] = useState(false);
   const [animationQueue, setAnimationQueue] = useState([]);
   const [activeAnimation, setActiveAnimation] = useState(null);
@@ -4882,6 +4938,7 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
   const screenRef = useRef(null);
   const portraitDeckMenuRef = useRef(null);
   const portraitPileAnchorRef = useRef(null);
+  const tapTargetRef = useRef({ kind: null, id: null, timestamp: 0 });
   const [viewport, setViewport] = useState(() => ({
     width: typeof window !== 'undefined' ? window.innerWidth : 1280,
     height: typeof window !== 'undefined'
@@ -4961,8 +5018,22 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
   const targetedEnemy = visibleEnemies[targetedEnemyIndex] ?? visibleEnemies[0] ?? null;
   const targetedIntentCardDef = targetedEnemy ? data?.cards?.[targetedEnemy.intent?.cardDefId] : null;
   const targetedIntentBadges = targetedEnemy ? getIntentEffectBadges(targetedEnemy, targetedIntentCardDef) : EMPTY_ARRAY;
+  const activeTargetingProfile = activeCardId
+    ? getCardTargetingProfile(state.combat, data, activeCardId)
+    : { canTargetEnemy: false, canTargetSelf: false, targetHints: EMPTY_ARRAY };
+  const defaultEnemyTargetId = targetedEnemy?.id ?? visibleEnemies[0]?.id ?? enemies.find((enemy) => enemy.hp > 0)?.id ?? null;
+  const canCastActiveOnSelf = Boolean(
+    activeCardId
+    && activeTargetingProfile.canTargetSelf
+    && getCardPlayability(state.combat, data, activeCardId, defaultEnemyTargetId, true).playable,
+  );
+  const canCastActiveOnEnemy = Boolean(
+    activeCardId
+    && activeTargetingProfile.canTargetEnemy
+    && getCardPlayability(state.combat, data, activeCardId, defaultEnemyTargetId, false).playable,
+  );
 
-  useDialogAccessibility(isPhoneLayout && enemyInfoOpen && !!targetedEnemy, {
+  useDialogAccessibility(enemyInfoOpen && !!targetedEnemy, {
     containerRef: enemyDialogRef,
     initialFocusRef: enemyDialogCloseRef,
     onClose: () => setEnemyInfoOpen(false),
@@ -4996,10 +5067,115 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
     window.requestAnimationFrame(runScroll);
   }, [isPhonePortrait]);
 
+  const clearTapTarget = useCallback(() => {
+    tapTargetRef.current = { kind: null, id: null, timestamp: 0 };
+  }, []);
+
+  const getPlayabilityForTarget = useCallback((cardId, targetMode = 'enemy', enemyId = defaultEnemyTargetId) => {
+    if (!cardId || !state?.combat || !data) {
+      return { playable: false, reason: 'missing_card' };
+    }
+    return getCardPlayability(
+      state.combat,
+      data,
+      cardId,
+      enemyId ?? defaultEnemyTargetId,
+      targetMode === 'self',
+    );
+  }, [data, defaultEnemyTargetId, state?.combat]);
+
+  const canPlayCard = useCallback((cardId) => {
+    if (!cardId || !state?.combat || !data) return false;
+    const profile = getCardTargetingProfile(state.combat, data, cardId);
+    if (profile.canTargetEnemy && getPlayabilityForTarget(cardId, 'enemy').playable) return true;
+    if (profile.canTargetSelf && getPlayabilityForTarget(cardId, 'self').playable) return true;
+    return !profile.canTargetEnemy && !profile.canTargetSelf
+      ? getPlayabilityForTarget(cardId, 'enemy').playable
+      : false;
+  }, [data, getPlayabilityForTarget, state?.combat]);
+
+  const playCardToTarget = useCallback((cardId = activeCardId, targetMode = 'enemy', enemyId = defaultEnemyTargetId) => {
+    const playability = getPlayabilityForTarget(cardId, targetMode, enemyId);
+    if (interactionLocked || !cardId || !playability.playable) return false;
+    sfx.unlock();
+    sfx.cardPlay();
+    onAction?.({
+      type: 'Combat_PlayCard',
+      cardInstanceId: cardId,
+      targetEnemyId: enemyId ?? null,
+      targetSelf: targetMode === 'self',
+    });
+    clearTapTarget();
+    setSelectedTargetMode(targetMode === 'self' ? 'self' : 'enemy');
+    return true;
+  }, [activeCardId, clearTapTarget, defaultEnemyTargetId, getPlayabilityForTarget, interactionLocked, onAction]);
+
   const focusActiveCard = useCallback((cardId) => {
+    clearTapTarget();
+    if (enemyInfoOpen) setEnemyInfoOpen(false);
     setCenterCardDismissed(false);
     setActiveCardId(cardId);
-  }, []);
+  }, [clearTapTarget, enemyInfoOpen]);
+
+  const handleEnemyTap = useCallback((enemy, enemyIndex) => {
+    if (!enemy || interactionLocked) return;
+    const now = Date.now();
+    const sameTarget = tapTargetRef.current.kind === 'enemy' && tapTargetRef.current.id === enemy.id;
+    const withinDoubleTap = sameTarget && (now - tapTargetRef.current.timestamp) <= DOUBLE_TAP_WINDOW_MS;
+    const canUseOnEnemy = Boolean(
+      activeCardId
+      && activeTargetingProfile.canTargetEnemy
+      && getPlayabilityForTarget(activeCardId, 'enemy', enemy.id).playable
+    );
+
+    setTargetedEnemyIndex(enemyIndex);
+    setSelectedTargetMode('enemy');
+    if (enemyInfoOpen) setEnemyInfoOpen(false);
+
+    if (sameTarget) {
+      if (canUseOnEnemy && withinDoubleTap) {
+        playCardToTarget(activeCardId, 'enemy', enemy.id);
+        return;
+      }
+      if (!canUseOnEnemy || !withinDoubleTap) {
+        setEnemyInfoOpen(true);
+      }
+    }
+
+    tapTargetRef.current = { kind: 'enemy', id: enemy.id, timestamp: now };
+  }, [
+    activeCardId,
+    activeTargetingProfile.canTargetEnemy,
+    enemyInfoOpen,
+    getPlayabilityForTarget,
+    interactionLocked,
+    playCardToTarget,
+  ]);
+
+  const handlePlayerTargetTap = useCallback(() => {
+    if (interactionLocked || !activeCardId || !activeTargetingProfile.canTargetSelf) return;
+
+    const now = Date.now();
+    const sameTarget = tapTargetRef.current.kind === 'self' && tapTargetRef.current.id === PLAYER_TARGET_ID;
+    const withinDoubleTap = sameTarget && (now - tapTargetRef.current.timestamp) <= DOUBLE_TAP_WINDOW_MS;
+    const canUseOnSelf = getPlayabilityForTarget(activeCardId, 'self', defaultEnemyTargetId).playable;
+
+    setSelectedTargetMode('self');
+
+    if (sameTarget && canUseOnSelf && withinDoubleTap) {
+      playCardToTarget(activeCardId, 'self', defaultEnemyTargetId);
+      return;
+    }
+
+    tapTargetRef.current = { kind: 'self', id: PLAYER_TARGET_ID, timestamp: now };
+  }, [
+    activeCardId,
+    activeTargetingProfile.canTargetSelf,
+    defaultEnemyTargetId,
+    getPlayabilityForTarget,
+    interactionLocked,
+    playCardToTarget,
+  ]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined;
@@ -5027,17 +5203,41 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
     if (combatFlashTimeoutRef.current) clearTimeout(combatFlashTimeoutRef.current);
   }, []);
 
+  useEffect(() => {
+    clearTapTarget();
+  }, [activeCardId, clearTapTarget, interactionLocked]);
+
   // Reset target when enemies change
   useEffect(() => {
     if (visibleEnemies.length <= 0) {
       if (targetedEnemyIndex !== 0) setTargetedEnemyIndex(0);
+      if (selectedTargetMode !== 'enemy') setSelectedTargetMode('enemy');
       if (enemyInfoOpen) setEnemyInfoOpen(false);
       return;
     }
     if (targetedEnemyIndex >= visibleEnemies.length) {
       setTargetedEnemyIndex(Math.max(0, visibleEnemies.length - 1));
     }
-  }, [enemyInfoOpen, visibleEnemies.length, targetedEnemyIndex]);
+  }, [enemyInfoOpen, selectedTargetMode, targetedEnemyIndex, visibleEnemies.length]);
+
+  useEffect(() => {
+    if (!activeCardId) {
+      if (selectedTargetMode !== 'enemy') setSelectedTargetMode('enemy');
+      return;
+    }
+    if (activeTargetingProfile.canTargetSelf && !activeTargetingProfile.canTargetEnemy) {
+      if (selectedTargetMode !== 'self') setSelectedTargetMode('self');
+      return;
+    }
+    if (selectedTargetMode === 'self' && !activeTargetingProfile.canTargetSelf) {
+      setSelectedTargetMode('enemy');
+    }
+  }, [
+    activeCardId,
+    activeTargetingProfile.canTargetEnemy,
+    activeTargetingProfile.canTargetSelf,
+    selectedTargetMode,
+  ]);
 
   // Keep the centered card stable across hand changes
   useEffect(() => {
@@ -5259,17 +5459,15 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
     }
   }, [activeAnimation, animationQueue.length, endTurnPending]);
 
-  const canPlayCard = (cid) => {
-    if (!cid || !state?.combat || !data) return false;
-    return getCardPlayability(state.combat, data, cid, targetedEnemy?.id ?? visibleEnemies[0]?.id ?? enemies.find((enemy) => enemy.hp > 0)?.id).playable;
-  };
-
-  const handlePlayCard = (cardId = activeCardId) => {
-    if (interactionLocked || !cardId || !canPlayCard(cardId)) return;
-    sfx.unlock(); sfx.cardPlay();
-    const target = targetedEnemy?.id ?? visibleEnemies[0]?.id ?? enemies.find((enemy) => enemy.hp > 0)?.id;
-    onAction?.({ type: 'Combat_PlayCard', cardInstanceId: cardId, targetEnemyId: target });
-  };
+  const activeCardHint = !activeCardId
+    ? 'Tap a hand card to center it'
+    : canCastActiveOnEnemy && canCastActiveOnSelf
+      ? 'Double tap an enemy or the player panel'
+      : canCastActiveOnSelf
+        ? 'Double tap the player panel'
+        : canCastActiveOnEnemy
+          ? 'Double tap an enemy'
+          : 'Not enough RAM';
 
   const handleEndTurn = () => {
     if (interactionLocked) return;
@@ -5306,15 +5504,7 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
             key={enemy.id}
             enemy={enemy}
             isTargeted={i === targetedEnemyIndex}
-            onClick={() => {
-              if (interactionLocked) return;
-              if (isPhoneLayout && i === targetedEnemyIndex) {
-                setEnemyInfoOpen(true);
-                return;
-              }
-              setTargetedEnemyIndex(i);
-              if (enemyInfoOpen) setEnemyInfoOpen(false);
-            }}
+            onClick={() => handleEnemyTap(enemy, i)}
             actingType={activeAnimation?.actor === 'enemy' && activeAnimation.enemyId === enemy.id ? activeAnimation.intentType : null}
             data={data}
             compact={isPhoneLayout}
@@ -5344,9 +5534,9 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
       data={data}
       dismissed={centerCardDismissed}
       onDismiss={() => setCenterCardDismissed(true)}
-      onActivate={() => handlePlayCard(activeCardId)}
+      onActivate={() => playCardToTarget(activeCardId, selectedTargetMode, defaultEnemyTargetId)}
       canActivate={!interactionLocked && !!activeCardId && canPlayCard(activeCardId)}
-      activateHint={interactionLocked ? 'Resolving action' : (activeCardId && canPlayCard(activeCardId) ? 'Tap to play' : 'Not enough RAM')}
+      activateHint={interactionLocked ? 'Resolving action' : activeCardHint}
       layoutMode={layoutMode}
     />
   );
@@ -5396,6 +5586,9 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
             data={data}
             layoutMode={layoutMode}
             interactionLocked={interactionLocked}
+            selfTargetable={Boolean(activeCardId && activeTargetingProfile.canTargetSelf)}
+            selfTargetSelected={selectedTargetMode === 'self' && !!activeCardId && activeTargetingProfile.canTargetSelf}
+            onTargetSelf={handlePlayerTargetTap}
           />
           <PortraitCombatRail
             interactionLocked={interactionLocked}
@@ -5417,6 +5610,9 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
           data={data}
           layoutMode={layoutMode}
           interactionLocked={interactionLocked}
+          selfTargetable={Boolean(activeCardId && activeTargetingProfile.canTargetSelf)}
+          selfTargetSelected={selectedTargetMode === 'self' && !!activeCardId && activeTargetingProfile.canTargetSelf}
+          onTargetSelf={handlePlayerTargetTap}
         />
       )}
       {isPhonePortrait && deckMenuOpen && (
@@ -5482,6 +5678,9 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
         powerPile={powerPile}
         cardInstances={cardInstances}
         data={data}
+        selfTargetable={Boolean(activeCardId && activeTargetingProfile.canTargetSelf)}
+        selfTargetSelected={selectedTargetMode === 'self' && !!activeCardId && activeTargetingProfile.canTargetSelf}
+        onTargetSelf={handlePlayerTargetTap}
       />
 
       <div style={{ flex: '1 1 340px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: '10px', justifyContent: 'space-between' }}>
@@ -5896,7 +6095,7 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
         </>
       )}
 
-      {isPhoneLayout && enemyInfoOpen && targetedEnemy && (
+      {enemyInfoOpen && targetedEnemy && (
         <EnemyDetailDialog
           enemy={targetedEnemy}
           data={data}

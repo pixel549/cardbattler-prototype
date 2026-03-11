@@ -4,6 +4,7 @@ import { getCardImage } from '../data/cardImages';
 import RuntimeArt from './RuntimeArt';
 import { sfx } from '../game/sounds';
 import { getCardPlayability, getCardTargetingProfile } from '../game/engine';
+import { getEnemyDirectiveSummaries } from '../game/combatDirectives';
 import useDialogAccessibility from '../hooks/useDialogAccessibility';
 import usePlaytestRecorder from '../hooks/usePlaytestRecorder';
 
@@ -2060,6 +2061,7 @@ function EnemyDetailDialog({
   const intentLines = intentCardDef?.effects?.length
     ? formatEffectsLong(intentCardDef.effects)
     : intentBadges.map((badge) => badge.description).filter(Boolean);
+  const directiveLines = getEnemyDirectiveSummaries(enemy);
 
   return (
     <div
@@ -2216,6 +2218,30 @@ function EnemyDetailDialog({
               </div>
             )}
           </div>
+
+          {directiveLines.length > 0 && (
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 8,
+                padding: '12px 14px',
+                borderRadius: 18,
+                background: 'linear-gradient(180deg, rgba(8,12,20,0.97) 0%, rgba(5,8,14,0.95) 100%)',
+                border: `1px solid ${C.borderLight}`,
+                boxShadow: '0 10px 26px rgba(0,0,0,0.24)',
+              }}
+            >
+              <div style={{ fontFamily: MONO, fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', color: C.textDim }}>
+                TACTICAL PROFILE
+              </div>
+              {directiveLines.map((line, index) => (
+                <div key={`${enemy.id}-directive-${index}`} style={{ fontFamily: MONO, fontSize: 11, color: C.textSecondary, lineHeight: 1.5 }}>
+                  {line}
+                </div>
+              ))}
+            </div>
+          )}
 
           <div
             style={{

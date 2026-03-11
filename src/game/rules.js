@@ -114,6 +114,16 @@ export function applyDamage(state, sourceId, target, amount) {
   if (isEnemy && enemyDmgMult !== 1) {
     amount = Math.floor(amount * enemyDmgMult);
   }
+  if (isEnemy && target === state.player) {
+    const encounterDirectives = Array.isArray(state.encounterDirectives) ? state.encounterDirectives : [];
+    const swarmDirective = encounterDirectives.find((directive) => directive?.type === "swarm");
+    if (swarmDirective) {
+      const aliveEnemyCount = (state.enemies || []).filter((enemy) => enemy?.hp > 0).length;
+      if (aliveEnemyCount >= Math.max(3, Number(swarmDirective.minEnemies || 3))) {
+        amount += aliveEnemyCount >= 4 ? 2 : 1;
+      }
+    }
+  }
 
   // --- passive_combat relic effects on outgoing player damage ---
   const relics = state.relicIds || [];
@@ -131,6 +141,11 @@ export function applyDamage(state, sourceId, target, amount) {
   }
 
   const statusModdedAmount = amount; // after status mods, before shields
+  const hitCap = Math.max(0, Number(target?.combatFlags?.damageCapPerHit || 0));
+  if (!isEnemy && target !== state.player && hitCap > 0 && amount > hitCap) {
+    amount = hitCap;
+    push(state.log, { t: 'Info', msg: `${target.id} limited the hit to ${hitCap}` });
+  }
 
   // --- relic damage intake modifiers (enemy → player only) ---
   if (isEnemy && target === state.player) {
@@ -181,6 +196,16 @@ export function applyDamage(state, sourceId, target, amount) {
     if (firewallAbsorbed > 0) {
       amount -= firewallAbsorbed;
       push(state.log, { t: 'Info', msg: `${target.id} Firewall absorbed ${firewallAbsorbed}` });
+    }
+  }
+  if (!isEnemy && target !== state.player && target?.combatFlags?.hpPhaseShield) {
+    const firewallRemaining = getFirewallStacks(target);
+    if (firewallRemaining > 0 && amount > 0) {
+      push(state.log, { t: 'Info', msg: `${target.id} phase shell blocked HP damage` });
+      amount = 0;
+    } else if (firewallRemaining <= 0) {
+      target.combatFlags.hpPhaseShield = false;
+      push(state.log, { t: 'Info', msg: `${target.id} phase shell broken` });
     }
   }
 

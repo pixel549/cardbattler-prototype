@@ -6,7 +6,7 @@ import { pickEncounter } from "./encounters";
 import { startCombatFromRunDeck, dispatchCombat, forceNewMutation } from "./engine";
 import { makeRelicChoices } from "./relic_rewards";
 import { getRunMods } from "./rules_mods";
-import { createBasicEventRegistry, applyEventChoiceImmediate } from "./events";
+import { createBasicEventRegistry, applyEventChoiceImmediate, pickContextualEventId } from "./events";
 import { getMinigameRewards, getMinigamePoolForAct } from "./minigames";
 import { decodeDebugSeed, decodeSensibleDebugSeed } from "./debugSeed";
 import { getCardBalanceMeta } from "./card_balance";
@@ -1058,6 +1058,9 @@ function resolveCurrentNodeInternal(state, data, log) {
       act: effectiveAct,
       runDeck: state.deck,
       enemyIds,
+      encounterId,
+      encounterName,
+      encounterKind: effectiveKind,
       playerMaxHP: state.run.maxHP,
       playerMaxRAM: (dbg?.playerMaxRAM ?? 8) + (mods.maxRAMDelta ?? 0),
       playerRamRegen: (dbg?.playerRamRegen ?? 2) + (mods.ramRegenDelta ?? 0),
@@ -1101,10 +1104,15 @@ function resolveCurrentNodeInternal(state, data, log) {
     markNodeResolved();
     state.mode = "Event";
     const minigameIds = getMinigamePoolForAct(state.run.act);
-    const allEventIds = [...EVENT_REG.pool, ...minigameIds];
-    const eventRng = new RNG((state.run.seed ^ resolvedFloor ^ 0xE17E17) >>> 0);
-    const eid = eventRng.pick(allEventIds);
+    const eid = pickContextualEventId(
+      EVENT_REG,
+      data,
+      state,
+      (state.run.seed ^ resolvedFloor ^ 0xE17E17) >>> 0,
+      minigameIds,
+    );
     state.event = { eventId: eid, step: 0 };
+    state.run.eventSeen = [...(state.run.eventSeen || []), eid].slice(-18);
     log({ t: "Info", msg: `Entered event: ${eid}` });
     return state;
   }
@@ -1168,6 +1176,9 @@ export function dispatchGame(stateIn, data, action) {
         relicIds: starterRelicIds,
         seenMutationIds: [],
         encounterHistory: [],
+        eventSeen: [],
+        eventFlags: {},
+        factionRep: { ghosts: 0, architects: 0, scrappers: 0 },
         starterProfileId: starterProfile.id,
         starterProfileName: starterProfile.name,
         difficultyId: action.difficultyId || "standard",

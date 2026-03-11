@@ -1,4 +1,5 @@
 import { pickEncounter } from "./encounters";
+import { getBossDirective } from "./combatDirectives";
 
 function getEncounterIds(data, act, kind) {
   const tables = data?.encounterTables || [];
@@ -64,12 +65,15 @@ export function summarizeBossEncounter(data, encounter) {
   const enemies = (encounter.enemyIds || [])
     .map((enemyId) => {
       const enemy = data?.enemies?.[enemyId];
+      const directive = getBossDirective(enemy, encounter?.act || 1);
       return enemy
         ? {
             id: enemyId,
             name: enemy.name || enemyId,
             role: enemy.role || "Unknown",
             hp: Number(enemy.maxHP || 0),
+            gimmick: directive?.label || null,
+            gimmickSummary: directive?.summary || null,
           }
         : null;
     })

@@ -2,6 +2,8 @@ import { RNG } from "./rng";
 import { push } from "./log";
 import { applyDamage, addStatus, getFirewallStacks, getStatusStacks, loseFirewall, clearFirewall, enforceFirewallCap } from "./rules";
 import { getCompileBonus } from "./cardCompile";
+import { getBossDirective, getEncounterDirectives } from "./combatDirectives";
+import { analyzeDeckState } from "./runInsights";
 
 function getCardLogData(state, cid) {
   if (!cid) return null;
@@ -116,6 +118,100 @@ function getCardRuntime(ci) {
 
 function getAliveEnemies(state) {
   return (state.enemies || []).filter((enemy) => enemy.hp > 0);
+}
+
+function isBossEnemy(enemy) {
+  return String(enemy?.bossDirective?.type || "") !== "";
+}
+
+function getBossEnemies(state) {
+  return getAliveEnemies(state).filter((enemy) => isBossEnemy(enemy));
+}
+
+function getRandomFromList(rng, list) {
+  if (!Array.isArray(list) || list.length === 0) return null;
+  if (!rng) return list[0];
+  return list[rng.int(list.length)];
+}
+
+function queueLockedCardsForNextTurn(state, cardIds) {
+  if (!Array.isArray(cardIds) || cardIds.length === 0) return;
+  if (!state._lockedCardsNextTurn) state._lockedCardsNextTurn = new Set();
+  for (const cardId of cardIds) {
+    if (cardId) state._lockedCardsNextTurn.add(cardId);
+  }
+}
+
+function returnOracleStashToDraw(state, enemy, reason = "oracle_return") {
+  const stash = enemy?.combatFlags?.oracleStash;
+  if (!Array.isArray(stash) || stash.length === 0) return 0;
+  let returned = 0;
+  while (stash.length > 0) {
+    const cid = stash.pop();
+    if (!cid || !state.cardInstances?.[cid]) continue;
+    state.player.piles.draw.unshift(cid);
+    returned += 1;
+  }
+  if (returned > 0) {
+    push(state.log, { t: "Info", msg: `${enemy.name} returned ${returned} stolen card${returned === 1 ? "" : "s"} (${reason})` });
+  }
+  return returned;
+}
+
+function stealOracleCardFromHand(state, enemy, rng) {
+  const hand = state.player?.piles?.hand || [];
+  if (hand.length === 0) return false;
+  const nonCore = hand.filter((cid) => {
+    const def = state.dataRef?.cards?.[state.cardInstances?.[cid]?.defId];
+    return !def?.tags?.includes("Core");
+  });
+  const picked = getRandomFromList(rng, nonCore.length > 0 ? nonCore : hand);
+  if (!picked) return false;
+  state.player.piles.hand = hand.filter((cid) => cid !== picked);
+  if (!enemy.combatFlags.oracleStash) enemy.combatFlags.oracleStash = [];
+  enemy.combatFlags.oracleStash.push(picked);
+  enemy.combatFlags.oracleReturnTurn = (enemy.combatFlags.enemyTurn || 0) + 1;
+  push(state.log, { t: "Info", msg: `${enemy.name} stole a card from your hand` });
+  pushHandState(state, "oracle_steal", {
+    source: enemy.id,
+    stolen: getCardLogList(state, [picked]),
+  });
+  return true;
+}
+
+function getMutatedCardPool(state) {
+  return (state.player?.piles?.draw || [])
+    .concat(state.player?.piles?.hand || [])
+    .concat(state.player?.piles?.discard || [])
+    .filter((cid, index, list) => list.indexOf(cid) === index)
+    .filter((cid) => {
+      const ci = state.cardInstances?.[cid];
+      return !!ci && ((ci.appliedMutations?.length || 0) > 0 || !!ci.finalMutationId);
+    });
+}
+
+function accelerateCardInstability(state, cid, { useDelta = 1, finalDelta = 1, sourceLabel = "encounter" } = {}) {
+  const ci = state.cardInstances?.[cid];
+  if (!ci) return false;
+  ci.useCounter = Math.max(0, Number(ci.useCounter ?? 0) - Math.max(0, useDelta));
+  ci.finalMutationCountdown = Math.max(0, Number(ci.finalMutationCountdown ?? 0) - Math.max(0, finalDelta));
+  const def = state.dataRef?.cards?.[ci.defId];
+  push(state.log, { t: "Info", msg: `${sourceLabel}: destabilised ${def?.name || ci.defId || cid}` });
+  return true;
+}
+
+function getWeakestOtherEnemy(state, sourceId) {
+  const alive = getAliveEnemies(state).filter((enemy) => enemy.id !== sourceId);
+  if (alive.length === 0) return null;
+  return alive.sort((a, b) => {
+    const hpDiff = (a.hp || 0) - (b.hp || 0);
+    if (hpDiff !== 0) return hpDiff;
+    return String(a.id).localeCompare(String(b.id));
+  })[0];
+}
+
+function getEncounterDirectiveSet(state) {
+  return new Set((state.encounterDirectives || []).map((directive) => directive.type));
 }
 
 function getTargetEnemy(state, targetEnemyId = null) {
@@ -472,6 +568,235 @@ export function drawCards(state, rng, n, source = "draw") {
   if (isFirstDraw && drawn.length > 0) {
     state._firstDrawDoneThisTurn = true;
     runPowerTriggers(state, state.dataRef, rng, 'FirstDraw', {});
+  }
+}
+
+function handleEncounterCombatStart(state) {
+  for (const directive of state.encounterDirectives || []) {
+    push(state.log, { t: "Info", msg: `Encounter directive: ${directive.label}` });
+  }
+}
+
+function handleEncounterAfterEnemyActs(state, data, rng, enemy) {
+  if (!enemy || enemy.hp <= 0) return;
+  const directiveTypes = getEncounterDirectiveSet(state);
+
+  if (directiveTypes.has("linked_support") && String(enemy.role || "").toLowerCase() === "support/heal") {
+    const ally = getWeakestOtherEnemy(state, enemy.id);
+    if (ally) {
+      ally.hp = Math.min(ally.maxHP, ally.hp + 4);
+      grantFirewall(state, ally, 4, rng);
+      push(state.log, { t: "Info", msg: `${enemy.name} patched ${ally.name}` });
+    }
+  } else if (directiveTypes.has("shield_wall") && String(enemy.role || "").toLowerCase() === "defense/tank") {
+    for (const ally of getAliveEnemies(state)) {
+      grantFirewall(state, ally, ally.id === enemy.id ? 2 : 1, rng);
+    }
+    push(state.log, { t: "Info", msg: `${enemy.name} projected a defense grid` });
+  }
+
+  if (directiveTypes.has("mutation_hunters") && /Warden|Oracle|Hacker/i.test(String(enemy.name || ""))) {
+    const mutatedCardPool = getMutatedCardPool(state);
+    const picked = getRandomFromList(rng, mutatedCardPool);
+    if (picked) {
+      accelerateCardInstability(state, picked, { useDelta: 1, finalDelta: 1, sourceLabel: enemy.name });
+      if ((state.player?.piles?.hand || []).includes(picked)) {
+        queueLockedCardsForNextTurn(state, [picked]);
+        push(state.log, { t: "Info", msg: `${enemy.name} marked a mutated hand card for lockdown next turn` });
+      }
+    }
+  }
+}
+
+function initBossDirective(enemy) {
+  const type = enemy?.bossDirective?.type;
+  if (!type) return;
+  if (!enemy.combatFlags) enemy.combatFlags = {};
+  if (type === "goliath") {
+    enemy.combatFlags.damageCapPerHit = Number(enemy.bossDirective.hitCap || 12);
+  }
+  if (type === "apex") {
+    enemy.combatFlags.apexNextThreshold = 4;
+    enemy.combatFlags.apexLastTriggerTurn = 0;
+  }
+  if (type === "oracle") {
+    enemy.combatFlags.oracleStash = [];
+    enemy.combatFlags.oracleReturnTurn = 0;
+  }
+  if (type === "core") {
+    enemy.combatFlags.hpPhaseShield = false;
+  }
+}
+
+function handleBossDirectiveCombatStart(state, data, rng, enemy) {
+  if (!enemy?.bossDirective) return;
+  initBossDirective(enemy);
+  push(state.log, { t: "Info", msg: `${enemy.name}: ${enemy.bossDirective.label}` });
+  switch (enemy.bossDirective.type) {
+    case "hydra":
+      applyEffectOp(state, enemy.id, {
+        op: "SummonEnemy",
+        templateId: enemy.bossDirective.summonTemplate || "E_SCRAP_MINION",
+        countMin: 1,
+        countMax: 1,
+        ifNoSlot: { op: "ApplyStatus", target: "Self", statusId: "Firewall", stacks: 8 },
+      }, rng);
+      break;
+    case "citadel":
+      applyEffectOp(state, enemy.id, {
+        op: "SummonEnemy",
+        templateId: enemy.bossDirective.summonTemplate || "E_FIREWALL_POD",
+        countMin: 1,
+        countMax: 1,
+        ifNoSlot: { op: "ApplyStatus", target: "Self", statusId: "Firewall", stacks: 10 },
+      }, rng);
+      for (const ally of getAliveEnemies(state)) {
+        grantFirewall(state, ally, ally.id === enemy.id ? 6 : 3, rng);
+      }
+      break;
+    default:
+      break;
+  }
+}
+
+function handleBossDirectiveTurnStart(state, data, rng, enemy) {
+  if (!enemy?.bossDirective || enemy.hp <= 0) return;
+  switch (enemy.bossDirective.type) {
+    case "oracle":
+      if ((enemy.combatFlags?.oracleReturnTurn || 0) > 0 && (enemy.combatFlags?.enemyTurn || 0) >= enemy.combatFlags.oracleReturnTurn) {
+        returnOracleStashToDraw(state, enemy, "oracle_cycle");
+        enemy.combatFlags.oracleReturnTurn = 0;
+      }
+      break;
+    case "mainframe":
+      if ((enemy.combatFlags?.enemyTurn || 0) >= 2 && (enemy.combatFlags.enemyTurn % 2) === 0) {
+        state._bossNextTurnDrawPenalty = (state._bossNextTurnDrawPenalty || 0) + 1;
+        state._bossNextTurnFirstCardTax = Math.max(state._bossNextTurnFirstCardTax || 0, 1);
+        push(state.log, { t: "Info", msg: `${enemy.name} rewrote the rules: next turn draw -1, first card +1 RAM` });
+      }
+      break;
+    default:
+      break;
+  }
+}
+
+function handleBossDirectiveAfterActs(state, data, rng, enemy) {
+  if (!enemy?.bossDirective || enemy.hp <= 0) return;
+  switch (enemy.bossDirective.type) {
+    case "hydra": {
+      const supportAdds = getAliveEnemies(state).filter((ally) => ally.id !== enemy.id);
+      if (supportAdds.length > 0) {
+        grantFirewall(state, enemy, supportAdds.length * 3, rng);
+        push(state.log, { t: "Info", msg: `${enemy.name} absorbed cover from its spawned heads` });
+      }
+      break;
+    }
+    case "oracle":
+      stealOracleCardFromHand(state, enemy, rng);
+      break;
+    case "warden": {
+      const mutatedCardPool = getMutatedCardPool(state);
+      const picked = getRandomFromList(rng, mutatedCardPool);
+      if (picked) {
+        accelerateCardInstability(state, picked, { useDelta: 1, finalDelta: 2, sourceLabel: enemy.name });
+        if ((state.player?.piles?.hand || []).includes(picked)) {
+          queueLockedCardsForNextTurn(state, [picked]);
+        }
+      }
+      break;
+    }
+    case "citadel": {
+      const allies = getAliveEnemies(state);
+      for (const ally of allies) {
+        grantFirewall(state, ally, ally.id === enemy.id ? 5 : 3, rng);
+      }
+      push(state.log, { t: "Info", msg: `${enemy.name} refreshed the defense grid` });
+      break;
+    }
+    default:
+      break;
+  }
+}
+
+function handleBossDirectivePhaseChange(state, data, rng, enemy, thresholdPct) {
+  if (!enemy?.bossDirective || enemy.hp <= 0) return;
+  switch (enemy.bossDirective.type) {
+    case "hydra":
+      applyEffectOp(state, enemy.id, {
+        op: "SummonEnemy",
+        templateId: enemy.bossDirective.summonTemplate || "E_SCRAP_MINION",
+        countMin: 1,
+        countMax: thresholdPct <= 30 ? 2 : 1,
+        ifNoSlot: { op: "ApplyStatus", target: "Self", statusId: "Firewall", stacks: thresholdPct <= 30 ? 14 : 10 },
+      }, rng);
+      break;
+    case "mainframe":
+      state._bossNextTurnDrawPenalty = (state._bossNextTurnDrawPenalty || 0) + 1;
+      state._bossNextTurnFirstCardTax = Math.max(state._bossNextTurnFirstCardTax || 0, 1);
+      enemy.combatFlags.extraPlaysNow = (enemy.combatFlags.extraPlaysNow || 0) + 1;
+      push(state.log, { t: "Info", msg: `${enemy.name} forced a rule rewrite and queued an extra action` });
+      break;
+    case "oracle":
+      stealOracleCardFromHand(state, enemy, rng);
+      grantFirewall(state, enemy, 6, rng);
+      break;
+    case "warden": {
+      const mutatedCardPool = getMutatedCardPool(state).slice(0, 3);
+      for (const cardId of mutatedCardPool) {
+        accelerateCardInstability(state, cardId, { useDelta: 1, finalDelta: 1, sourceLabel: `${enemy.name} phase shift` });
+      }
+      queueLockedCardsForNextTurn(state, (state.player?.piles?.hand || []).filter((cid) => mutatedCardPool.includes(cid)).slice(0, 1));
+      break;
+    }
+    case "citadel":
+      applyEffectOp(state, enemy.id, {
+        op: "SummonEnemy",
+        templateId: enemy.bossDirective.summonTemplate || "E_FIREWALL_POD",
+        countMin: 1,
+        countMax: 1,
+        ifNoSlot: { op: "ApplyStatus", target: "Self", statusId: "Firewall", stacks: 12 },
+      }, rng);
+      for (const ally of getAliveEnemies(state)) grantFirewall(state, ally, 5, rng);
+      break;
+    case "core":
+      enemy.combatFlags.hpPhaseShield = true;
+      grantFirewall(state, enemy, thresholdPct <= 50 ? 18 : 14, rng);
+      push(state.log, { t: "Info", msg: `${enemy.name} entered a shielded phase` });
+      break;
+    case "goliath":
+      enemy.combatFlags.damageCapPerHit = Math.max(Number(enemy.combatFlags.damageCapPerHit || 0), Number(enemy.bossDirective.hitCap || 12)) + 2;
+      grantFirewall(state, enemy, 10, rng);
+      break;
+    case "apex":
+      enemy.combatFlags.extraPlaysNow = (enemy.combatFlags.extraPlaysNow || 0) + 1;
+      enemy.combatFlags.apexNextThreshold = 3;
+      push(state.log, { t: "Info", msg: `${enemy.name} tightened its combo punish threshold` });
+      break;
+    default:
+      break;
+  }
+}
+
+function handleBossDirectiveDeath(state, enemy) {
+  if (!enemy?.bossDirective) return;
+  if (enemy.bossDirective.type === "oracle") {
+    returnOracleStashToDraw(state, enemy, "oracle_down");
+  }
+}
+
+function handleBossPlayerCardReaction(state, data, rng) {
+  const cardsPlayedThisTurn = Number(state._cardsPlayedThisTurn || 0);
+  if (cardsPlayedThisTurn <= 0) return;
+  for (const enemy of getBossEnemies(state)) {
+    if (enemy.bossDirective?.type !== "apex") continue;
+    const threshold = Number(enemy.combatFlags?.apexNextThreshold || 4);
+    if (cardsPlayedThisTurn < threshold) continue;
+    if (Number(enemy.combatFlags?.apexLastTriggerTurn || 0) === state.turn && threshold > 3) continue;
+    enemy.combatFlags.apexLastTriggerTurn = state.turn;
+    enemy.combatFlags.apexNextThreshold = threshold + 2;
+    enemy.combatFlags.extraPlaysNow = (enemy.combatFlags.extraPlaysNow || 0) + 1;
+    applyDamage(state, enemy.id, state.player, 3);
+    push(state.log, { t: "Info", msg: `${enemy.name} punished your combo chain` });
   }
 }
 
@@ -1194,6 +1519,7 @@ function checkPhaseChange(state, rng, enemy, wasHp) {
     if (enemy.combatFlags.phaseTriggered[t]) continue;
     if (wasPct > t && nowPct <= t && enemy.hp > 0) {
       enemy.combatFlags.phaseTriggered[t] = true;
+      handleBossDirectivePhaseChange(state, state.dataRef, rng, enemy, t);
       runEnemyPassives(state, "PhaseChange", rng, enemy.id, { thresholdPct: t });
     }
   }
@@ -1281,6 +1607,7 @@ export function applyEffectOp(state, sourceId, op, rng) {
         if (target.id && String(target.id).startsWith("enemy_")) {
           checkPhaseChange(state, rng, target, wasHp);
           if (wasHp > 0 && target.hp <= 0) {
+            handleBossDirectiveDeath(state, target);
             runEnemyPassives(state, "Death", rng, target.id);
             // POWER: NC-070 Dark Web Broker — gain gold on kill
             runPowerTriggers(state, state.dataRef, rng, 'EnemyDeath', { target });
@@ -1410,21 +1737,28 @@ export function applyEffectOp(state, sourceId, op, rng) {
           push(state.log, { t: "Warn", msg: `Summon failed: missing enemy template ${templateId}` });
           return;
         }
+        const bossDirective = getBossDirective(ed, state.act || 1);
         const id = `enemy_${state.enemySeq++}`;
         const hp = Math.max(1, Math.floor(ed.maxHP * (state.balance?.enemyHpMult ?? 1)));
         const enemy = {
           id,
           enemyDefId: templateId,
           name: ed.name,
+          role: ed.role || null,
           hp,
           maxHP: hp,
           statuses: [],
           intent: undefined,
           passives: Array.isArray(ed.passives) ? ed.passives : [],
-          phaseThresholdsPct: Array.isArray(ed.phaseThresholdsPct) ? ed.phaseThresholdsPct : null,
+          phaseThresholdsPct: Array.isArray(ed.phaseThresholdsPct) && ed.phaseThresholdsPct.length
+            ? ed.phaseThresholdsPct
+            : (bossDirective?.phaseThresholdsPct || null),
           ai: ed.ai ?? null,
+          bossDirective,
+          encounterHints: [],
           combatFlags: { firstDebuffSeen: false, phaseTriggered: {}, enemyTurn: 0, playsThisTurnOverride: null, extraPlaysNow: 0 }
         };
+        initBossDirective(enemy);
         state.enemies.push(enemy);
         state.enemyAI.cursorByEnemyId[id] = 0;
         setEnemyIntent(state, state.dataRef, id);
@@ -3502,6 +3836,7 @@ function enemyTurn(state, data, rng, enemyId) {
   // Turn-start passives
   runEnemyPassives(state, "TurnStart", rng, enemyId, { enemyTurn: enemy.combatFlags.enemyTurn, turn: state.turn });
   runEnemyPassives(state, "EveryNTurns", rng, enemyId, { enemyTurn: enemy.combatFlags.enemyTurn, turn: state.turn });
+  handleBossDirectiveTurnStart(state, data, rng, enemy);
 
   const enemyDef = data.enemies[enemy.enemyDefId];
   const basePlays = enemyDef?.actionsPerTurn || 1;
@@ -3542,6 +3877,8 @@ function enemyTurn(state, data, rng, enemyId) {
 
   // After-acting passives
   runEnemyPassives(state, "AfterEnemyActs", rng, enemyId, { enemyTurn: enemy.combatFlags.enemyTurn, turn: state.turn });
+  handleBossDirectiveAfterActs(state, data, rng, enemy);
+  handleEncounterAfterEnemyActs(state, data, rng, enemy);
 
   setEnemyIntent(state, data, enemyId);
 }
@@ -3762,7 +4099,24 @@ function applyRelicHook(state, data, relic, ctx) {
 }
 
 export function startCombatFromRunDeck(params) {
-  const { data, seed, act, runDeck, enemyIds, playerMaxHP=50, playerMaxRAM=8, playerRamRegen=2, openingHand=5, ruleMods={}, forcedMutationTier=null, debugOverrides=null, relicIds=[] } = params;
+  const {
+    data,
+    seed,
+    act,
+    runDeck,
+    enemyIds,
+    playerMaxHP = 50,
+    playerMaxRAM = 8,
+    playerRamRegen = 2,
+    openingHand = 5,
+    ruleMods = {},
+    forcedMutationTier = null,
+    debugOverrides = null,
+    relicIds = [],
+    encounterId = null,
+    encounterName = null,
+    encounterKind = "normal",
+  } = params;
   // ThrottledProc: cap RAM at 3, max card cost 1 (passive_combat)
   const effectiveMaxRAM = relicIds.includes('ThrottledProc') ? Math.min(3, playerMaxRAM) : playerMaxRAM;
   const rng = new RNG(seed);
@@ -3785,21 +4139,44 @@ export function startCombatFromRunDeck(params) {
     effectiveRuleMods.drawPerTurnDelta = debugOverrides.drawPerTurnDelta;
   }
 
+  const deckAnalysis = analyzeDeckState(data, runDeck);
+  const enemyDefs = enemyIds.map((eid) => data.enemies[eid]).filter(Boolean);
+  const encounterDirectives = encounterKind === "boss"
+    ? []
+    : getEncounterDirectives({
+        enemyDefs,
+        deckAnalysis,
+        encounterName: encounterName || encounterId || "",
+        encounterKind,
+      });
+
   const enemies = enemyIds.map((eid, idx) => {
     const ed = data.enemies[eid];
     if (!ed) throw new Error(`Unknown enemy id: ${eid}`);
+    const bossDirective = getBossDirective(ed, act);
     const hp = Math.max(1, Math.floor(ed.maxHP * effectiveEnemyHpMult));
+    const encounterHints = encounterDirectives.filter((directive) => {
+      if (directive.type === "linked_support") return String(ed.role || "").toLowerCase() === "support/heal";
+      if (directive.type === "shield_wall") return String(ed.role || "").toLowerCase() === "defense/tank";
+      if (directive.type === "mutation_hunters") return /Warden|Oracle|Hacker/i.test(String(ed.name || ""));
+      return directive.type === "swarm" || directive.type === "formed";
+    });
     return {
       id: `enemy_${idx}`,
       enemyDefId: eid,
       name: ed.name,
+      role: ed.role || null,
       hp,
       maxHP: hp,
       statuses: [],
       intent: undefined,
       passives: Array.isArray(ed.passives) ? ed.passives : [],
-      phaseThresholdsPct: Array.isArray(ed.phaseThresholdsPct) ? ed.phaseThresholdsPct : null,
+      phaseThresholdsPct: Array.isArray(ed.phaseThresholdsPct) && ed.phaseThresholdsPct.length
+        ? ed.phaseThresholdsPct
+        : (bossDirective?.phaseThresholdsPct || null),
       ai: ed.ai ?? null,
+      bossDirective,
+      encounterHints,
       combatFlags: { firstDebuffSeen: false, phaseTriggered: {}, enemyTurn: 0, playsThisTurnOverride: null, extraPlaysNow: 0 }
     };
   });
@@ -3809,6 +4186,7 @@ export function startCombatFromRunDeck(params) {
 
   const state = {
     seed,
+    act,
     turn: 0,
     player: {
       id: "player",
@@ -3824,6 +4202,10 @@ export function startCombatFromRunDeck(params) {
     enemies,
     enemyAI: { cursorByEnemyId },
     enemySeq: enemies.length,
+    encounterId,
+    encounterName,
+    encounterKind,
+    encounterDirectives,
     cardInstances: runDeck.cardInstances,
     log: [],
     combatOver: false,
@@ -3839,6 +4221,8 @@ export function startCombatFromRunDeck(params) {
   push(state.log, { t: "Info", msg: `Combat started (seed=${seed})` });
   runRelicHooks(state, data, 'on_combat_start', { rng });
   runEnemyPassives(state, "CombatStart", rng, null, { turn: 0 });
+  for (const enemy of enemies) handleBossDirectiveCombatStart(state, data, rng, enemy);
+  handleEncounterCombatStart(state);
   for (const cid of Object.keys(state.cardInstances || {})) {
     getCardRuntime(state.cardInstances[cid]);
     runPatchTrigger(state, data, rng, cid, 'onCombatStart', { alwaysMeetCondition: true });
@@ -3904,7 +4288,19 @@ export function dispatchCombat(state, data, action) {
       }
       const handPassiveTotals = getHandPassiveTotals(state, data);
       state._handSizeDeltaThisTurn = handPassiveTotals.maxHandMod || 0;
-      drawCards(state, rng, 5 + (state.ruleMods?.drawPerTurnDelta || 0), "turn_start_draw");
+      const bossDrawPenalty = Math.max(0, Number(state._bossNextTurnDrawPenalty || 0));
+      state._bossThisTurnFirstCardTax = Math.max(0, Number(state._bossNextTurnFirstCardTax || 0));
+      if (bossDrawPenalty > 0) {
+        push(state.log, { t: "Info", msg: `Rule rewrite: draw reduced by ${bossDrawPenalty} this turn` });
+        delete state._bossNextTurnDrawPenalty;
+      }
+      delete state._bossNextTurnFirstCardTax;
+      drawCards(
+        state,
+        rng,
+        Math.max(0, 5 + (state.ruleMods?.drawPerTurnDelta || 0) - bossDrawPenalty),
+        "turn_start_draw",
+      );
       // Reset transient per-turn combat flags before recomputing them via processStatusEffects
       const _clearFlags = (ent) => {
         ent._underclockMult = undefined;
@@ -3928,9 +4324,20 @@ export function dispatchCombat(state, data, action) {
       delete state._protocolBreachTriggered;
       // Clear mutation-patch per-turn flags
       delete state._lockedCards;
+      if (state._lockedCardsNextTurn?.size) {
+        state._lockedCards = new Set(state._lockedCardsNextTurn);
+        delete state._lockedCardsNextTurn;
+        push(state.log, { t: "Info", msg: "Enemy lockdown: a card is disabled this turn" });
+      }
       state._pendingEndTurnSelfDamage = 0;
       state._mutationTurnDamageReduce = 0;
       state._mutationTurnDamageSink = 0;
+      for (const enemy of state.enemies || []) {
+        if (enemy?.bossDirective?.type === "apex") {
+          enemy.combatFlags.apexNextThreshold = Math.max(3, Number(enemy.combatFlags.apexNextThreshold || 4));
+          enemy.combatFlags.apexLastTriggerTurn = 0;
+        }
+      }
 
       if (handPassiveTotals.clearFirewallOnTurnStart) {
         clearFirewall(state, state.player, { silent: true });
@@ -4038,11 +4445,23 @@ export function dispatchCombat(state, data, action) {
       // Compute RAM cost, accounting for mutation-rewritten cost rules
       const ramBefore = state.player.ram;
       let cost = playability.cost;
+      const rewriteTax = (state._cardsPlayedThisTurn || 0) === 0 ? Math.max(0, Number(state._bossThisTurnFirstCardTax || 0)) : 0;
+      if (rewriteTax > 0) {
+        cost += rewriteTax;
+      }
       if (state._nextCardFree) state._nextCardFree = false;
       if (state._relicOverclockCostMod != null) delete state._relicOverclockCostMod;
       if (!playability.playable) {
         push(state.log, { t: "Info", msg: `Card not playable (${playability.reason || 'blocked'})` });
         return state;
+      }
+      if (cost > state.player.ram) {
+        push(state.log, { t: "Info", msg: rewriteTax > 0 ? "Card not playable (rule rewrite tax)" : "Card not playable (insufficient RAM)" });
+        return state;
+      }
+      if (rewriteTax > 0) {
+        push(state.log, { t: "Info", msg: `Rule rewrite taxed the first card by +${rewriteTax} RAM` });
+        delete state._bossThisTurnFirstCardTax;
       }
 
       state.player.ram -= cost;
@@ -4320,6 +4739,7 @@ export function dispatchCombat(state, data, action) {
         if (mutPassives.skipEveryOther) runtime.skipNextPlay = !runtime.skipNextPlay;
       }
       state._cardsPlayedThisTurn = (state._cardsPlayedThisTurn || 0) + 1;
+      handleBossPlayerCardReaction(state, data, rng);
       state._lastPlayedCardInstanceId = cid;
       state._lastPlayedCardDefId = ci.defId;
       state.player.piles.hand = state.player.piles.hand.filter(x => x !== cid);

@@ -165,6 +165,12 @@ function getCardEffectOps(def) {
   return effectOps;
 }
 
+function getOtherHandCards(state) {
+  const hand = state?.player?.piles?.hand || [];
+  const currentCard = state?._currentlyPlayingCard;
+  return hand.filter((cardInstanceId) => cardInstanceId !== currentCard);
+}
+
 function inferEffectTargetHint(op) {
   if (!op) return null;
   if (op.target) return op.target;
@@ -627,11 +633,13 @@ function _applyPowerEffect(state, data, rng, text, event, ctx) {
         state.player.statuses = state.player.statuses.filter(s => s.stacks > 0);
       }
     }
-    // NC-072: If your hand is empty, draw 2
-    if (/hand is empty.*draw 2/i.test(text)) {
+    // NC-072: If your hand is empty, draw N
+    const emptyHandDrawMatch = text.match(/hand is empty.*draw (\d+)/i);
+    if (emptyHandDrawMatch) {
       if (state.player.piles.hand.length === 0) {
-        drawCards(state, rng, 2, 'IOPrioritiser');
-        push(state.log, { t: 'Info', msg: 'Power: drew 2 (I/O Prioritiser, empty hand)' });
+        const drawAmount = parseInt(emptyHandDrawMatch[1], 10);
+        drawCards(state, rng, drawAmount, 'IOPrioritiser');
+        push(state.log, { t: 'Info', msg: `Power: drew ${drawAmount} (I/O Prioritiser, empty hand)` });
       }
     }
   }
@@ -724,10 +732,12 @@ function _applyPowerEffect(state, data, rng, text, event, ctx) {
 
   // ── First draw each turn ──
   if (event === 'FirstDraw') {
-    // NC-061: The first time you draw each turn, draw 1 additional card
-    if (/first time you draw each turn.*draw 1 additional/i.test(text)) {
-      drawCards(state, rng, 1, 'SignalAmplifier');
-      push(state.log, { t: 'Info', msg: 'Power: +1 card draw (Signal Amplifier)' });
+    // NC-061: The first time you draw each turn, draw N additional cards
+    const firstDrawMatch = text.match(/first time you draw each turn.*draw (\d+) additional/i);
+    if (firstDrawMatch) {
+      const drawAmount = parseInt(firstDrawMatch[1], 10);
+      drawCards(state, rng, drawAmount, 'SignalAmplifier');
+      push(state.log, { t: 'Info', msg: `Power: +${drawAmount} card draw (Signal Amplifier)` });
     }
   }
 
@@ -1023,6 +1033,32 @@ function parseRawText(text) {
     // "Shuffle your hand into your draw pile" (NC-054 Cold Boot)
     else if (/Shuffle your hand into your draw pile/i.test(s)) {
       ops.push({ op: '_ShuffleHandIntoDraw' });
+    }
+    else if (/^Discard your hand$/i.test(s)) {
+      ops.push({ op: '_DiscardHand' });
+    }
+    else if ((m = s.match(/Discard (\d+) random card(?:s)?(?: from your hand)?, draw (\d+)/i))) {
+      ops.push({
+        op: '_DiscardRandomFromHandThenDraw',
+        discardCount: parseInt(m[1]),
+        drawCount: parseInt(m[2]),
+      });
+    }
+    else if ((m = s.match(/Exhaust (\d+) random (?:other )?cards? from your hand for this combat, draw (\d+)/i))) {
+      ops.push({
+        op: '_ExhaustRandomFromHandThenDraw',
+        exhaustCount: parseInt(m[1]),
+        drawCount: parseInt(m[2]),
+      });
+    }
+    else if ((m = s.match(/Remove up to (\d+) Status\/Junk cards from your hand or discard \(place into Removed\)/i))) {
+      ops.push({
+        op: '_PurgeStatusJunkFromHandOrDiscard',
+        amount: parseInt(m[1]),
+      });
+    }
+    else if (/Shuffle your discard pile into your draw pile/i.test(s)) {
+      ops.push({ op: '_ShuffleDiscardIntoDraw' });
     }
 
     // === Scry ===
@@ -1543,6 +1579,72 @@ export function applyEffectOp(state, sourceId, op, rng) {
               }
             }
 
+          } else if (pOp.op === '_DiscardHand') {
+            if (self) {
+              const discarded = state.player.piles.hand.filter((cid) => cid !== state._currentlyPlayingCard);
+              state.player.piles.hand = state.player.piles.hand.filter((cid) => cid === state._currentlyPlayingCard);
+              state.player.piles.discard.push(...discarded);
+              if (discarded.length > 0) {
+                push(state.log, { t: "Info", msg: `Discarded ${discarded.length} cards from hand` });
+                pushHandState(state, "discard_hand_for_card", {
+                  source: "card_effect",
+                  discarded: getCardLogList(state, discarded),
+                });
+              }
+            }
+
+          } else if (pOp.op === '_DiscardRandomFromHandThenDraw') {
+            if (self && rng) {
+              const candidates = getOtherHandCards(state);
+              const discardCount = Math.min(Math.max(0, pOp.discardCount || 0), candidates.length);
+              const handCopy = [...candidates];
+              const discarded = [];
+              for (let i = 0; i < discardCount; i++) {
+                const pick = handCopy[rng.int(handCopy.length)];
+                discarded.push(pick);
+                handCopy.splice(handCopy.indexOf(pick), 1);
+              }
+              for (const cid of discarded) {
+                state.player.piles.hand = state.player.piles.hand.filter((x) => x !== cid);
+                state.player.piles.discard.push(cid);
+              }
+              if (discarded.length > 0) {
+                push(state.log, { t: "Info", msg: `Discarded ${discarded.length} random cards` });
+                pushHandState(state, "discard_from_hand", {
+                  source: "card_effect",
+                  removed: getCardLogList(state, discarded),
+                  movedTo: "discard",
+                });
+              }
+              drawCards(state, rng, pOp.drawCount || 0, "discard_random_replace_draw");
+            }
+
+          } else if (pOp.op === '_ExhaustRandomFromHandThenDraw') {
+            if (self && rng) {
+              const candidates = getOtherHandCards(state);
+              const exhaustCount = Math.min(Math.max(0, pOp.exhaustCount || 0), candidates.length);
+              const handCopy = [...candidates];
+              const exhausted = [];
+              for (let i = 0; i < exhaustCount; i++) {
+                const pick = handCopy[rng.int(handCopy.length)];
+                exhausted.push(pick);
+                handCopy.splice(handCopy.indexOf(pick), 1);
+              }
+              for (const cid of exhausted) {
+                state.player.piles.hand = state.player.piles.hand.filter((x) => x !== cid);
+                state.player.piles.exhaust.push(cid);
+              }
+              if (exhausted.length > 0) {
+                push(state.log, { t: "Info", msg: `Exhausted ${exhausted.length} cards from hand` });
+                pushHandState(state, "exhaust_from_hand", {
+                  source: "card_effect",
+                  removed: getCardLogList(state, exhausted),
+                  movedTo: "exhaust",
+                });
+              }
+              drawCards(state, rng, pOp.drawCount || 0, "exhaust_random_replace_draw");
+            }
+
           } else if (pOp.op === '_ShuffleHandIntoDraw') {
             // Move all hand cards (except the currently-played one) to draw pile, shuffled in
             if (rng) {
@@ -1564,6 +1666,41 @@ export function applyEffectOp(state, sourceId, op, rng) {
                   source: "card_effect",
                   removed: getCardLogList(state, handToShuffle),
                   movedTo: "draw",
+                });
+              }
+            }
+
+          } else if (pOp.op === '_ShuffleDiscardIntoDraw') {
+            if (rng && state.player.piles.discard.length > 0) {
+              const cardsToShuffle = state.player.piles.discard.splice(0, state.player.piles.discard.length);
+              for (const cid of cardsToShuffle) {
+                const pos = rng.int(state.player.piles.draw.length + 1);
+                state.player.piles.draw.splice(pos, 0, cid);
+              }
+              push(state.log, { t: "Info", msg: `Shuffled ${cardsToShuffle.length} discard cards into draw` });
+            }
+
+          } else if (pOp.op === '_PurgeStatusJunkFromHandOrDiscard') {
+            const amount = Math.max(0, pOp.amount || 0);
+            if (amount > 0) {
+              const isPurgeable = (cid) => {
+                const def = state.dataRef?.cards?.[state.cardInstances?.[cid]?.defId];
+                const tags = def?.tags || [];
+                return tags.includes('Status') || tags.includes('Junk');
+              };
+              const fromHand = state.player.piles.hand.filter(isPurgeable).slice(0, amount);
+              const remaining = amount - fromHand.length;
+              const fromDiscard = remaining > 0 ? state.player.piles.discard.filter(isPurgeable).slice(0, remaining) : [];
+              const purged = [...fromHand, ...fromDiscard];
+              if (purged.length > 0) {
+                state.player.piles.hand = state.player.piles.hand.filter((cid) => !fromHand.includes(cid));
+                state.player.piles.discard = state.player.piles.discard.filter((cid) => !fromDiscard.includes(cid));
+                state.player.piles.exhaust.push(...purged);
+                push(state.log, { t: "Info", msg: `Purged ${purged.length} Status/Junk cards` });
+                pushHandState(state, "purge_status_junk", {
+                  source: "card_effect",
+                  removed: getCardLogList(state, purged),
+                  movedTo: "exhaust",
                 });
               }
             }
@@ -2445,6 +2582,11 @@ export function getCardPlayability(state, data, cardInstanceId, targetEnemyId = 
   const hpPct = getEntityHpPercent(state.player);
   const playCount = getCurrentPlayCount(state);
   const handIndex = getHandIndex(state, cardInstanceId);
+  const requiresOtherHandCard = getCardEffectOps(def).some((effect) => {
+    if (effect?.op === '_DiscardRandomFromHandThenDraw') return (effect.discardCount || 0) > 0;
+    if (effect?.op === '_ExhaustRandomFromHandThenDraw') return (effect.exhaustCount || 0) > 0;
+    return false;
+  });
 
   let reason = null;
   if (mods.disabled || mods.noEffect) reason = "disabled";
@@ -2459,6 +2601,7 @@ export function getCardPlayability(state, data, cardInstanceId, targetEnemyId = 
   else if (mods.lockedSlot && runtime?.lockedSlotIndex != null && handIndex !== runtime.lockedSlotIndex) reason = "locked_slot";
   else if (mods.skipEveryOther && runtime?.skipNextPlay) reason = "skip_every_other";
   else if ((runtime?.lockedTurnsRemaining || 0) > 0) reason = "locked_turns";
+  else if (requiresOtherHandCard && getOtherHandCards(state).length === 0) reason = "requires_hand_card";
   else if ((state.player?.ram || 0) < cost) reason = "ram";
 
   return {

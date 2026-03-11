@@ -82,6 +82,8 @@ function describeCardPlayabilityReason(reason, targetLabel = 'that target') {
       return 'This card is waiting out its skip turn';
     case 'locked_turns':
       return 'This card is still locked for a few turns';
+    case 'requires_hand_card':
+      return 'You need another card in hand to fuel this effect';
     case 'ram':
       return 'Not enough RAM';
     default:

@@ -9,6 +9,7 @@ import { getRunMods } from "./rules_mods";
 import { createBasicEventRegistry, applyEventChoiceImmediate } from "./events";
 import { getMinigameRewards, getMinigamePoolForAct } from "./minigames";
 import { decodeDebugSeed, decodeSensibleDebugSeed } from "./debugSeed";
+import { getCardBalanceMeta } from "./card_balance";
 
 const EVENT_REG = createBasicEventRegistry();
 
@@ -423,9 +424,144 @@ function buildRowTypeTable(seed, cols) {
   return table;
 }
 
+function getCardPoolEntry(id, card) {
+  const meta = getCardBalanceMeta(id, card);
+  return { id, card, meta };
+}
+
+function getRewardCardPool(data) {
+  return Object.entries(data?.cards || {})
+    .map(([id, card]) => getCardPoolEntry(id, card))
+    .filter(({ id, card, meta }) => {
+      const tags = card?.tags || [];
+      return meta.rewardEligible
+        && !String(id || "").startsWith("EC-")
+        && !tags.includes("EnemyAbility")
+        && !tags.includes("Status")
+        && !tags.includes("Junk");
+    });
+}
+
+function getShopCardPool(data) {
+  return Object.entries(data?.cards || {})
+    .map(([id, card]) => getCardPoolEntry(id, card))
+    .filter(({ id, card, meta }) => {
+      const tags = card?.tags || [];
+      return meta.shopEligible
+        && !String(id || "").startsWith("EC-")
+        && !tags.includes("EnemyAbility")
+        && !tags.includes("Status")
+        && !tags.includes("Junk");
+    });
+}
+
+function getCardRarityWeight(entry, act = 1) {
+  const card = entry?.card;
+  let weight = Number(entry?.meta?.rewardWeight ?? 1);
+  if ((card?.costRAM ?? 0) >= 3 && act >= 2) weight *= 1.12;
+  if ((card?.costRAM ?? 0) >= 4 && act >= 3) weight *= 1.08;
+  return Math.max(0.01, weight);
+}
+
+function weightedPickEntry(rng, items, weightFn = null) {
+  if (!items.length) return null;
+  const weights = items.map((item) => {
+    const raw = weightFn ? weightFn(item) : 1;
+    return Number.isFinite(raw) && raw > 0 ? raw : 0;
+  });
+  const total = weights.reduce((sum, value) => sum + value, 0);
+  if (!(total > 0)) return items[rng.int(items.length)];
+  let roll = rng.next() * total;
+  for (let i = 0; i < items.length; i++) {
+    roll -= weights[i];
+    if (roll <= 0) return items[i];
+  }
+  return items[items.length - 1];
+}
+
+function chooseWeightedRarity(rng, tables, fallbackOrder = []) {
+  const entries = Object.entries(tables || {}).filter(([, weight]) => weight > 0);
+  if (entries.length === 0) return fallbackOrder[0] || "common";
+  return pickWeighted(rng, entries);
+}
+
+function makeDistinctCardSelection(rng, pool, rarityTables, act = 1) {
+  const remaining = [...pool];
+  const picks = [];
+  for (const rarityTable of rarityTables) {
+    let rarity = chooseWeightedRarity(rng, rarityTable, ["common", "uncommon", "rare"]);
+    let candidates = remaining.filter((entry) => entry.meta.rarity === rarity);
+    if (candidates.length === 0) {
+      candidates = remaining.filter((entry) => entry.meta.rarity !== "starter" && entry.meta.rarity !== "special");
+      if (candidates.length === 0) break;
+      rarity = candidates[0].meta.rarity;
+    }
+    const picked = weightedPickEntry(rng, candidates, (entry) => getCardRarityWeight(entry, act));
+    if (!picked) break;
+    picks.push(picked.id);
+    const index = remaining.findIndex((entry) => entry.id === picked.id);
+    if (index >= 0) remaining.splice(index, 1);
+  }
+  return picks;
+}
+
+function getCombatRewardRarityTables(nodeType, act) {
+  if (nodeType === "Boss") {
+    return [
+      { rare: act >= 3 ? 0.72 : 0.62, uncommon: act >= 3 ? 0.28 : 0.38 },
+      { uncommon: 0.68, rare: 0.32 },
+      { common: 0.2, uncommon: 0.55, rare: 0.25 },
+    ];
+  }
+  if (nodeType === "Elite") {
+    if (act >= 3) {
+      return [
+        { uncommon: 0.62, rare: 0.38 },
+        { common: 0.28, uncommon: 0.5, rare: 0.22 },
+        { common: 0.28, uncommon: 0.5, rare: 0.22 },
+      ];
+    }
+    if (act === 2) {
+      return [
+        { uncommon: 0.72, rare: 0.28 },
+        { common: 0.38, uncommon: 0.44, rare: 0.18 },
+        { common: 0.38, uncommon: 0.44, rare: 0.18 },
+      ];
+    }
+    return [
+      { uncommon: 0.8, rare: 0.2 },
+      { common: 0.5, uncommon: 0.38, rare: 0.12 },
+      { common: 0.5, uncommon: 0.38, rare: 0.12 },
+    ];
+  }
+  if (act >= 3) return Array.from({ length: 3 }, () => ({ common: 0.62, uncommon: 0.26, rare: 0.12 }));
+  if (act === 2) return Array.from({ length: 3 }, () => ({ common: 0.72, uncommon: 0.22, rare: 0.06 }));
+  return Array.from({ length: 3 }, () => ({ common: 0.82, uncommon: 0.16, rare: 0.02 }));
+}
+
+function getShopCardRarityTables(act) {
+  if (act >= 3) {
+    return [
+      { common: 0.46, uncommon: 0.38, rare: 0.16 },
+      { common: 0.2, uncommon: 0.5, rare: 0.3 },
+    ];
+  }
+  if (act === 2) {
+    return [
+      { common: 0.58, uncommon: 0.3, rare: 0.12 },
+      { common: 0.34, uncommon: 0.44, rare: 0.22 },
+    ];
+  }
+  return [
+    { common: 0.72, uncommon: 0.24, rare: 0.04 },
+    { common: 0.52, uncommon: 0.36, rare: 0.12 },
+  ];
+}
+
 function isStarterLowTierCard(id, card) {
   const tags = card?.tags || [];
   const numericId = parseInt(String(id || '').split('-')[1], 10);
+  const meta = getCardBalanceMeta(id, card);
   return String(id || '').startsWith('NC-')
     && Number.isFinite(numericId)
     && numericId <= 60
@@ -435,6 +571,7 @@ function isStarterLowTierCard(id, card) {
     && !tags.includes('Junk')
     && !tags.includes('Power')
     && card?.type !== 'Power'
+    && meta.starterEligible
     && (card?.costRAM ?? 99) <= 2;
 }
 
@@ -518,7 +655,7 @@ function classifyStarterCard(card) {
 
 function buildDefaultStarterDeck(data, seed) {
   const starterRng = new RNG((seed ^ 0x5EED5EED) >>> 0);
-  const baseCards = ['C-001', 'C-002', 'C-003', 'C-006', 'C-011'].filter((id) => data?.cards?.[id]);
+  const baseCards = ['C-001', 'C-002', 'C-003', 'C-004', 'C-006'].filter((id) => data?.cards?.[id]);
   const extras = [];
   const seen = new Set(baseCards);
 
@@ -672,69 +809,14 @@ export function generateMap(seed) {
 
 function makeCardRewards(data, seed, act = 1, nodeType = 'Combat') {
   const rng = new RNG(seed ^ 0x55CCAA11);
-
-  // Partition player-usable cards into POWER vs standard
-  const powerIds   = [];
-  const standardIds = [];
-  for (const id of Object.keys(data.cards)) {
-    const c = data.cards[id];
-    const tags = c.tags || [];
-    if (tags.includes('EnemyCard') || tags.includes('Core') || id.startsWith('EC-')) continue;
-    const isPower = tags.includes('Power') || c.type === 'Power';
-    if (isPower) powerIds.push(id);
-    else standardIds.push(id);
-  }
-
-  // In Act 2+ bias toward higher-cost cards (costRAM >= act threshold)
-  // by duplicating qualifying cards in the pool for weighted selection
-  const costThreshold = act >= 3 ? 4 : act >= 2 ? 3 : 0;
-  const weightedStd = [];
-  for (const id of standardIds) {
-    weightedStd.push(id);
-    if (costThreshold > 0 && (data.cards[id].costRAM || 0) >= costThreshold) {
-      weightedStd.push(id); // double-weight strong cards in later acts
-    }
-  }
-
-  // Helper: pick N distinct from a pool (modifies a local copy)
-  function pickDistinct(pool, n) {
-    const p = [...pool];
-    const out = [];
-    while (out.length < n && p.length > 0) {
-      const idx = rng.int(p.length);
-      out.push(p[idx]);
-      p.splice(idx, 1);
-    }
-    return out;
-  }
-
-  let choices;
-  if ((nodeType === 'Elite' || nodeType === 'Boss') && powerIds.length > 0) {
-    // Elite / Boss: 1 guaranteed POWER card + 2 standard cards
-    const powerPick   = pickDistinct(powerIds, 1);
-    const standardPick = pickDistinct(weightedStd, 2);
-    // Shuffle so POWER card isn't always in the same slot
-    choices = [...powerPick, ...standardPick];
-    for (let i = choices.length - 1; i > 0; i--) {
-      const j = rng.int(i + 1);
-      [choices[i], choices[j]] = [choices[j], choices[i]];
-    }
-  } else {
-    // Normal combat: 3 standard cards (no POWER cards)
-    choices = pickDistinct(weightedStd, 3);
-  }
-
-  return { cardChoices: choices, canSkip: true };
+  const pool = getRewardCardPool(data);
+  const cardChoices = makeDistinctCardSelection(rng, pool, getCombatRewardRarityTables(nodeType, act), act);
+  return { cardChoices, canSkip: true };
 }
 
 function makeShop(data, seed, relicIds = [], act = 1) {
   const rng = new RNG(seed ^ 0x0F0F0F0F);
-  // Only offer player-usable cards (same filter as card rewards)
-  const ids = Object.keys(data.cards).filter(id => {
-    const c = data.cards[id];
-    const tags = c.tags || [];
-    return !tags.includes('EnemyCard') && !tags.includes('Core') && !id.startsWith('EC-');
-  });
+  const pool = getShopCardPool(data);
   // TheArchitect: all shop prices reduced by 15g
   const disc = relicIds.includes('TheArchitect') ? 15 : 0;
   const p = (base) => Math.max(5, base - disc);
@@ -753,9 +835,14 @@ function makeShop(data, seed, relicIds = [], act = 1) {
     relicOffer = { kind: "Relic", relicId: rid, price: relicPrice };
   }
 
+  const cardOfferIds = makeDistinctCardSelection(rng, pool, getShopCardRarityTables(act), act);
+  const cardOffers = cardOfferIds.map((defId) => {
+    const meta = getCardBalanceMeta(defId, data?.cards?.[defId]);
+    return { kind: "Card", defId, price: p(meta.shopPrice), sold: false };
+  });
+
   const offers = [
-    { kind: "Card", defId: rng.pick(ids), price: p(50), sold: false },
-    { kind: "Card", defId: rng.pick(ids), price: p(50), sold: false },
+    ...cardOffers,
     { kind: "Service", serviceId: "RemoveCard", price: p(75), basePrice: p(75), requiresCard: true },
     { kind: "Service", serviceId: "Repair", price: p(60), basePrice: p(60), requiresCard: true, timesPurchased: 0 },
     { kind: "Service", serviceId: "Stabilise", price: p(60), basePrice: p(60), requiresCard: true, timesPurchased: 0 },
@@ -1057,7 +1144,7 @@ export function dispatchGame(stateIn, data, action) {
       } else {
         starter = buildDefaultStarterDeck(data, action.seed);
       }
-      state.deck = createRunDeckFromDefs(data, action.seed, starter.length ? starter : ['C-001', 'C-002', 'C-003', 'C-006', 'C-011']);
+      state.deck = createRunDeckFromDefs(data, action.seed, starter.length ? starter : ['C-001', 'C-002', 'C-003', 'C-004', 'C-006']);
       state.map = generateMap(action.seed);
       state.combat = null;
       state.reward = null;

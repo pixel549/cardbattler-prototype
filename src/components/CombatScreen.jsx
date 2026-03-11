@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { getEnemyImage } from '../data/enemyImages';
 import { getCardImage } from '../data/cardImages';
+import RuntimeArt from './RuntimeArt';
 import { sfx } from '../game/sounds';
 import { getCardPlayability, getCardTargetingProfile } from '../game/engine';
 import useDialogAccessibility from '../hooks/useDialogAccessibility';
@@ -1307,17 +1308,21 @@ function EnemyCard({
         }}
       >
         {/* Full artwork — no cropping */}
-        <img
+        <RuntimeArt
           src={imgSrc}
           alt={enemy.name ?? 'Enemy'}
+          accent={intentColor}
+          label={enemy.name ?? 'Enemy'}
           style={{
             position: 'absolute',
             inset: 0,
             width: '100%',
             height: '100%',
+            display: 'block',
+          }}
+          imageStyle={{
             objectFit: 'cover',
             objectPosition: 'center center',
-            display: 'block',
             transform: 'scale(1.02)',
             filter: 'saturate(1.04) contrast(1.03) brightness(0.88)',
           }}
@@ -2125,22 +2130,27 @@ function EnemyDetailDialog({
               boxShadow: `0 18px 36px rgba(0,0,0,0.34), 0 0 26px ${intentColor}18`,
             }}
           >
-            {imgSrc && (
-              <img
-                src={imgSrc}
-                alt={enemy.name ?? 'Enemy'}
-                style={{
-                  position: 'absolute',
-                  inset: 0,
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover',
-                  objectPosition: 'center center',
-                  display: 'block',
-                  filter: 'saturate(1.04) contrast(1.04) brightness(0.88)',
-                }}
-              />
-            )}
+            <RuntimeArt
+              src={imgSrc}
+              alt={enemy.name ?? 'Enemy'}
+              accent={intentColor}
+              label={enemy.name ?? 'Enemy'}
+              style={{
+                position: 'absolute',
+                inset: 0,
+                width: '100%',
+                height: '100%',
+                display: 'block',
+              }}
+              imageStyle={{
+                objectFit: 'cover',
+                objectPosition: 'center center',
+                filter: 'saturate(1.04) contrast(1.04) brightness(0.88)',
+              }}
+              fallbackStyle={{
+                background: `linear-gradient(145deg, ${intentColor}16 0%, rgba(10,12,20,0.98) 58%, rgba(10,12,20,1) 100%)`,
+              }}
+            />
 
             <div
               style={{
@@ -3381,31 +3391,29 @@ function CenterCardDisplay({
           flexShrink: 0,
         }}
       >
-        {imgSrc ? (
-          <img
-            src={imgSrc}
-            alt=""
-            style={{
-              position: 'absolute',
-              inset: 0,
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
-              objectPosition: 'center center',
-              display: 'block',
-              transform: 'scale(1.02)',
-              filter: shellArtFilter,
-            }}
-          />
-        ) : (
-          <div
-            style={{
-              position: 'absolute',
-              inset: 0,
-              background: shellFallbackBackground,
-            }}
-          />
-        )}
+        <RuntimeArt
+          src={imgSrc}
+          alt={cardDef?.name || 'Selected card'}
+          accent={shellAccent}
+          label={cardDef?.name || 'Selected card'}
+          loading="eager"
+          style={{
+            position: 'absolute',
+            inset: 0,
+            width: '100%',
+            height: '100%',
+            display: 'block',
+          }}
+          imageStyle={{
+            objectFit: 'cover',
+            objectPosition: 'center center',
+            transform: 'scale(1.02)',
+            filter: shellArtFilter,
+          }}
+          fallbackStyle={{
+            background: shellFallbackBackground,
+          }}
+        />
 
         <div
           style={{
@@ -3650,31 +3658,29 @@ function CenterCardDisplay({
             flexShrink: 0,
           }}
         >
-          {imgSrc ? (
-            <img
-              src={imgSrc}
-              alt=""
-              style={{
-                position: 'absolute',
-                inset: 0,
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover',
-                objectPosition: 'center center',
-                display: 'block',
-                transform: 'scale(1.02)',
-                filter: shellArtFilter,
-              }}
-            />
-          ) : (
-            <div
-              style={{
-                position: 'absolute',
-                inset: 0,
-                background: shellFallbackBackground,
-              }}
-            />
-          )}
+          <RuntimeArt
+            src={imgSrc}
+            alt={cardDef?.name || 'Selected card'}
+            accent={shellAccent}
+            label={cardDef?.name || 'Selected card'}
+            loading="eager"
+            style={{
+              position: 'absolute',
+              inset: 0,
+              width: '100%',
+              height: '100%',
+              display: 'block',
+            }}
+            imageStyle={{
+              objectFit: 'cover',
+              objectPosition: 'center center',
+              transform: 'scale(1.02)',
+              filter: shellArtFilter,
+            }}
+            fallbackStyle={{
+              background: shellFallbackBackground,
+            }}
+          />
 
           <div
             style={{
@@ -4055,24 +4061,26 @@ function HandCard({ cardInstance, cardDef, isSelected, onSelect, canPlay, compac
         position: 'relative',
         backgroundColor: `${color}08`,
       }}>
-        {imgSrc ? (
-          <img
-            src={imgSrc}
-            alt=""
-            style={{
-              width: '100%', height: '100%',
-              objectFit: 'cover', objectPosition: compact ? 'center center' : 'top center',
-              display: 'block',
-              transform: compact ? 'scale(1.03)' : 'none',
-              filter: compact ? 'saturate(1.05) contrast(1.02) brightness(0.92)' : 'none',
-            }}
-          />
-        ) : (
-          <div style={{
+        <RuntimeArt
+          src={imgSrc}
+          alt={cardDef?.name || 'Card art'}
+          accent={color}
+          label={cardDef?.name || 'Card art'}
+          style={{
+            width: '100%',
             height: '100%',
+            display: 'block',
+          }}
+          imageStyle={{
+            objectFit: 'cover',
+            objectPosition: compact ? 'center center' : 'top center',
+            transform: compact ? 'scale(1.03)' : 'none',
+            filter: compact ? 'saturate(1.05) contrast(1.02) brightness(0.92)' : 'none',
+          }}
+          fallbackStyle={{
             background: `linear-gradient(135deg, ${color}15 0%, ${C.bgCard} 50%, ${color}08 100%)`,
-          }} />
-        )}
+          }}
+        />
         {/* Type colour tint overlay */}
         <div style={{
           position: 'absolute', inset: 0,
@@ -4454,29 +4462,27 @@ function MutationRepeatOverlay({ animation, data, cardInstances }) {
           boxShadow: `0 0 40px ${mutationColor}24, 0 20px 40px rgba(0,0,0,0.58)`,
         }}
       >
-        {imgSrc ? (
-          <img
-            src={imgSrc}
-            alt=""
-            style={{
-              position: 'absolute',
-              inset: 0,
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
-              objectPosition: 'center center',
-              filter: 'saturate(1.06) brightness(0.92)',
-            }}
-          />
-        ) : (
-          <div
-            style={{
-              position: 'absolute',
-              inset: 0,
-              background: `linear-gradient(145deg, ${cardColor}22 0%, ${C.bgCard} 48%, ${cardColor}0c 100%)`,
-            }}
-          />
-        )}
+        <RuntimeArt
+          src={imgSrc}
+          alt={cardDef?.name || 'Mutation preview'}
+          accent={mutationColor}
+          label={cardDef?.name || 'Mutation preview'}
+          style={{
+            position: 'absolute',
+            inset: 0,
+            width: '100%',
+            height: '100%',
+            display: 'block',
+          }}
+          imageStyle={{
+            objectFit: 'cover',
+            objectPosition: 'center center',
+            filter: 'saturate(1.06) brightness(0.92)',
+          }}
+          fallbackStyle={{
+            background: `linear-gradient(145deg, ${cardColor}22 0%, ${C.bgCard} 48%, ${cardColor}0c 100%)`,
+          }}
+        />
 
         <div
           style={{
@@ -4776,27 +4782,25 @@ function CombatPlayAnimationLayer({ animation, data, enemies = EMPTY_ARRAY, card
             backgroundColor: `${accent}10`,
           }}
         >
-          {imgSrc ? (
-            <img
-              src={imgSrc}
-              alt=""
-              style={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover',
-                objectPosition: 'top center',
-                display: 'block',
-                filter: animation.actor === 'enemy' ? 'saturate(0.9) brightness(0.9)' : 'none',
-              }}
-            />
-          ) : (
-            <div
-              style={{
-                height: '100%',
-                background: `linear-gradient(135deg, ${accent}1c 0%, ${C.bgCard} 52%, ${accent}08 100%)`,
-              }}
-            />
-          )}
+          <RuntimeArt
+            src={imgSrc}
+            alt={card?.name || 'Animated card'}
+            accent={accent}
+            label={card?.name || 'Animated card'}
+            style={{
+              width: '100%',
+              height: '100%',
+              display: 'block',
+            }}
+            imageStyle={{
+              objectFit: 'cover',
+              objectPosition: 'top center',
+              filter: animation.actor === 'enemy' ? 'saturate(0.9) brightness(0.9)' : 'none',
+            }}
+            fallbackStyle={{
+              background: `linear-gradient(135deg, ${accent}1c 0%, ${C.bgCard} 52%, ${accent}08 100%)`,
+            }}
+          />
           <div
             style={{
               position: 'absolute',

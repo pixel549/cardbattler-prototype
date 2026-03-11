@@ -9,6 +9,7 @@ import {
 import { dispatchWithJournal } from './game/dispatch_with_journal';
 import CombatScreen from './components/CombatScreen';
 import AIDebugPanel from './components/AIDebugPanel';
+import RuntimeArt from './components/RuntimeArt';
 import { getAIAction, AI_PLAYSTYLES } from './game/aiPlayer';
 import { decodeDebugSeed, decodeSensibleDebugSeed, randomDebugSeed } from './game/debugSeed';
 import { createBasicEventRegistry } from './game/events';
@@ -893,31 +894,29 @@ function CardChoiceTile({
         transition: 'transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease',
       }}
     >
-      {imgSrc ? (
-        <img
-          src={imgSrc}
-          alt={card.name}
-          style={{
-            position: 'absolute',
-            inset: 0,
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-            objectPosition: 'center center',
-            display: 'block',
-            transform: 'scale(1.02)',
-            filter: 'saturate(1.04) contrast(1.02) brightness(0.92)',
-          }}
-        />
-      ) : (
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            background: `linear-gradient(145deg, ${color}22 0%, ${C.bgCard} 48%, ${color}0c 100%)`,
-          }}
-        />
-      )}
+      <RuntimeArt
+        src={imgSrc}
+        alt={card.name}
+        accent={color}
+        label={card.name}
+        loading="eager"
+        style={{
+          position: 'absolute',
+          inset: 0,
+          width: '100%',
+          height: '100%',
+          display: 'block',
+        }}
+        imageStyle={{
+          objectFit: 'cover',
+          objectPosition: 'center center',
+          transform: 'scale(1.02)',
+          filter: 'saturate(1.04) contrast(1.02) brightness(0.92)',
+        }}
+        fallbackStyle={{
+          background: `linear-gradient(145deg, ${color}22 0%, ${C.bgCard} 48%, ${color}0c 100%)`,
+        }}
+      />
 
       <div
         style={{
@@ -3413,14 +3412,50 @@ function EventScreen({ state, data, onAction }) {
         >
           {/* Banner image — shown when event has art */}
           {eventDef.image && (
-            <img
+            <RuntimeArt
               src={eventDef.image}
               alt={eventDef.title}
+              accent={C.cyan}
+              label={eventDef.title}
               style={{
-                width: '100%', height: '150px',
-                objectFit: 'cover', display: 'block',
+                width: '100%',
+                height: '150px',
+                display: 'block',
                 borderBottom: `1px solid ${C.cyan}20`,
+                position: 'relative',
               }}
+              imageStyle={{
+                objectFit: 'cover',
+              }}
+              fallbackContent={(
+                <div
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '18px 20px',
+                    background: `
+                      radial-gradient(circle at 20% 18%, ${C.cyan}26 0%, transparent 34%),
+                      linear-gradient(135deg, rgba(0,240,255,0.12) 0%, rgba(9,13,22,0.94) 48%, rgba(9,13,22,1) 100%)
+                    `,
+                  }}
+                >
+                  <div style={{ fontSize: 40, lineHeight: 1 }}>{eventDef.icon || '◈'}</div>
+                  <div
+                    style={{
+                      fontFamily: MONO,
+                      fontSize: 11,
+                      letterSpacing: '0.14em',
+                      textTransform: 'uppercase',
+                      color: C.cyan,
+                    }}
+                  >
+                    Event Art Loading
+                  </div>
+                </div>
+              )}
             />
           )}
           <div style={{ padding: '20px 24px 24px' }}>

@@ -1268,6 +1268,10 @@ function EnemyCard({
                     : actingType === 'Debuff'  ? 'enemy-act-debuff'
                     : actingType               ? 'enemy-act-defend'
                     : '';
+  const actingMeta = actingType ? getPlayAnimationMeta('enemy', actingType, actingType) : null;
+  const actingCue = actingType ? getEnemyActionCue(actingType, actingMeta?.accent ?? intentColor) : null;
+  const actingColor = actingMeta?.accent ?? intentColor;
+  const actingDuration = actingType ? Math.max(760, getPlayAnimationDuration('enemy', actingType) - 120) : null;
   const statusPreview = nonFirewallStatuses.slice(0, compact ? 3 : 6);
 
   if (imgSrc) {
@@ -1288,9 +1292,16 @@ function EnemyCard({
           backgroundColor: C.bgCard,
           cursor: 'pointer',
           transition: 'all 0.2s ease',
-          boxShadow: isTargeted
-            ? `0 0 ${compact ? 18 : 28}px ${C.neonCyan}60`
-            : '0 4px 16px rgba(0,0,0,0.7)',
+          boxShadow: actingType
+            ? `0 0 ${compact ? 22 : 34}px ${actingColor}40, 0 10px 24px rgba(0,0,0,0.72)`
+            : isTargeted
+              ? `0 0 ${compact ? 18 : 28}px ${C.neonCyan}60`
+              : '0 4px 16px rgba(0,0,0,0.7)',
+          '--enemy-act-duration': actingDuration ? `${actingDuration}ms` : undefined,
+          '--enemy-act-glow': actingColor,
+          '--enemy-action-accent': actingColor,
+          '--enemy-action-shadow': `${actingColor}66`,
+          ...(actingType ? { transform: compact ? 'translateY(-2px)' : 'translateY(-3px)' } : EMPTY_OBJECT),
           display: 'flex',
           alignItems: 'stretch',
         }}
@@ -1323,6 +1334,36 @@ function EnemyCard({
             pointerEvents: 'none',
           }}
         />
+
+        {actingCue && (
+          <div
+            className="enemy-action-chip"
+            style={{
+              position: 'absolute',
+              left: compact ? 6 : 8,
+              right: compact ? 6 : 8,
+              top: compact ? 26 : 34,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: compact ? 4 : 6,
+              padding: compact ? '3px 5px' : '4px 7px',
+              borderRadius: 999,
+              border: `1px solid ${actingColor}58`,
+              background: `linear-gradient(90deg, ${actingColor}18 0%, rgba(5,8,14,0.82) 42%, rgba(5,8,14,0.68) 100%)`,
+              boxShadow: `0 0 18px ${actingColor}24`,
+              backdropFilter: 'blur(4px)',
+              pointerEvents: 'none',
+            }}
+          >
+            <span style={{ fontFamily: MONO, fontSize: compact ? 6 : 7, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: actingColor }}>
+              {actingMeta?.label || actingType}
+            </span>
+            <span style={{ fontFamily: MONO, fontSize: compact ? 5 : 6, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#c8d1de' }}>
+              {actingCue.shortLabel}
+            </span>
+          </div>
+        )}
 
         {impact && (
           <div
@@ -1448,17 +1489,49 @@ function EnemyCard({
         transition: 'all 0.2s ease',
         backgroundColor: C.bgCard,
         border: `2px solid ${isTargeted ? C.neonCyan : C.border}`,
-        boxShadow: isTargeted
-          ? `0 0 24px ${C.neonCyan}40, inset 0 0 20px ${C.neonCyan}06`
-          : `0 2px 12px rgba(0,0,0,0.5)`,
+        boxShadow: actingType
+          ? `0 0 26px ${actingColor}30, inset 0 0 20px ${actingColor}0c, 0 2px 12px rgba(0,0,0,0.5)`
+          : isTargeted
+            ? `0 0 24px ${C.neonCyan}40, inset 0 0 20px ${C.neonCyan}06`
+            : `0 2px 12px rgba(0,0,0,0.5)`,
         padding: compact ? '8px 10px' : '10px 14px',
         minWidth: compact ? 82 : 140,
         maxWidth: compact ? 102 : 180,
         display: 'flex',
         flexDirection: 'column',
         gap: '6px',
+        '--enemy-act-duration': actingDuration ? `${actingDuration}ms` : undefined,
+        '--enemy-act-glow': actingColor,
       }}
     >
+      {actingCue && (
+        <div
+          className="enemy-action-chip"
+          style={{
+            position: 'absolute',
+            top: compact ? 24 : 30,
+            left: compact ? 6 : 8,
+            right: compact ? 6 : 8,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: compact ? 4 : 6,
+            padding: compact ? '3px 5px' : '4px 7px',
+            borderRadius: 999,
+            border: `1px solid ${actingColor}58`,
+            background: `linear-gradient(90deg, ${actingColor}18 0%, rgba(5,8,14,0.82) 42%, rgba(5,8,14,0.68) 100%)`,
+            boxShadow: `0 0 18px ${actingColor}24`,
+            pointerEvents: 'none',
+          }}
+        >
+          <span style={{ fontFamily: MONO, fontSize: compact ? 6 : 7, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: actingColor }}>
+            {actingMeta?.label || actingType}
+          </span>
+          <span style={{ fontFamily: MONO, fontSize: compact ? 5 : 6, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#c8d1de' }}>
+            {actingCue.shortLabel}
+          </span>
+        </div>
+      )}
       {impact && (
         <div
           key={`${enemy.id}-fallback-${impact.token}`}
@@ -4113,11 +4186,11 @@ const PLAYER_PLAY_ANIMATION_MS = 460;
 const MUTATION_DISCOVERY_MS = 1750;
 const MUTATION_REPEAT_LINGER_MS = 1220;
 const ENEMY_PLAY_ANIMATION_MS = {
-  Attack: 720,
-  Defense: 620,
-  Buff: 620,
-  Debuff: 700,
-  Unknown: 640,
+  Attack: 1120,
+  Defense: 920,
+  Buff: 980,
+  Debuff: 1080,
+  Unknown: 920,
 };
 
 function getPlayAnimationDuration(actor, intentType) {
@@ -4148,6 +4221,107 @@ function getPlayAnimationMeta(actor, intentType, cardType) {
       return { accent: C.neonPurple, className: 'play-card-enemy-debuff', label: 'JAM', badge: getIntentIcon(intentType), badgeColor: C.neonPurple };
     default:
       return { accent: C.neonOrange, className: 'play-card-enemy-defense', label: 'SYSTEM', badge: getIntentIcon(intentType), badgeColor: C.neonOrange };
+  }
+}
+
+function getEnemyActionCue(intentType, accent) {
+  switch (intentType) {
+    case 'Attack':
+      return {
+        title: 'Incoming attack',
+        targetLabel: 'Targets you',
+        shortLabel: 'TO YOU',
+        targetZone: 'player',
+        wash: `linear-gradient(180deg, transparent 0%, ${accent}12 22%, ${accent}0f 48%, transparent 100%)`,
+        lane: `linear-gradient(180deg, ${accent}00 0%, ${accent}30 12%, ${accent}5c 46%, ${accent}18 82%, ${accent}00 100%)`,
+        zone: `radial-gradient(circle at 50% 52%, ${accent}20 0%, ${accent}12 30%, transparent 72%)`,
+      };
+    case 'Defense':
+      return {
+        title: 'Enemy fortifying',
+        targetLabel: 'Boosting self',
+        shortLabel: 'FORTIFY',
+        targetZone: 'enemy',
+        wash: `linear-gradient(180deg, ${accent}0f 0%, ${accent}09 18%, transparent 58%, transparent 100%)`,
+        lane: `linear-gradient(180deg, ${accent}00 0%, ${accent}24 20%, ${accent}46 50%, ${accent}0a 100%)`,
+        zone: `radial-gradient(circle at 50% 40%, ${accent}1c 0%, ${accent}10 28%, transparent 70%)`,
+      };
+    case 'Buff':
+      return {
+        title: 'Enemy self-buff',
+        targetLabel: 'Empowering self',
+        shortLabel: 'BOOST',
+        targetZone: 'enemy',
+        wash: `linear-gradient(180deg, ${accent}12 0%, ${accent}08 22%, transparent 62%, transparent 100%)`,
+        lane: `linear-gradient(180deg, ${accent}00 0%, ${accent}26 16%, ${accent}44 48%, ${accent}08 100%)`,
+        zone: `radial-gradient(circle at 50% 42%, ${accent}22 0%, ${accent}11 30%, transparent 72%)`,
+      };
+    case 'Debuff':
+      return {
+        title: 'Incoming disruption',
+        targetLabel: 'Status pressure',
+        shortLabel: 'JAM YOU',
+        targetZone: 'player',
+        wash: `linear-gradient(180deg, transparent 0%, ${accent}10 20%, ${accent}0d 54%, transparent 100%)`,
+        lane: `linear-gradient(180deg, ${accent}00 0%, ${accent}2a 10%, ${accent}4f 42%, ${accent}12 82%, ${accent}00 100%)`,
+        zone: `radial-gradient(circle at 50% 52%, ${accent}22 0%, ${accent}12 28%, transparent 72%)`,
+      };
+    default:
+      return {
+        title: 'Enemy action',
+        targetLabel: 'System effect',
+        shortLabel: 'SYSTEM',
+        targetZone: 'neutral',
+        wash: `linear-gradient(180deg, transparent 0%, ${accent}0d 22%, ${accent}08 52%, transparent 100%)`,
+        lane: `linear-gradient(180deg, ${accent}00 0%, ${accent}26 16%, ${accent}42 48%, ${accent}08 100%)`,
+        zone: `radial-gradient(circle at 50% 50%, ${accent}1e 0%, ${accent}10 28%, transparent 72%)`,
+      };
+  }
+}
+
+function getActionZoneLayout(targetZone) {
+  switch (targetZone) {
+    case 'player':
+      return {
+        left: '50%',
+        top: '77%',
+        width: 'min(76vw, 560px)',
+        height: 'min(28vh, 220px)',
+      };
+    case 'enemy':
+      return {
+        left: '50%',
+        top: '19%',
+        width: 'min(70vw, 520px)',
+        height: 'min(22vh, 180px)',
+      };
+    default:
+      return {
+        left: '50%',
+        top: '48%',
+        width: 'min(58vw, 420px)',
+        height: 'min(20vh, 150px)',
+      };
+  }
+}
+
+function getActionCaptionLayout(targetZone) {
+  switch (targetZone) {
+    case 'player':
+      return {
+        left: '50%',
+        top: '67%',
+      };
+    case 'enemy':
+      return {
+        left: '50%',
+        top: '27%',
+      };
+    default:
+      return {
+        left: '50%',
+        top: '47%',
+      };
   }
 }
 
@@ -4423,6 +4597,27 @@ function CombatPlayAnimationLayer({ animation, data, enemies = EMPTY_ARRAY, card
   const bodyLabel = animation.actor === 'enemy'
     ? (animation.enemyName || 'Enemy protocol')
     : (cardDef?.type || 'Player');
+  const cue = animation.actor === 'enemy'
+    ? getEnemyActionCue(animation.intentType, accent)
+    : null;
+  const cueZoneLayout = cue ? getActionZoneLayout(cue.targetZone) : null;
+  const cueCaptionLayout = cue ? getActionCaptionLayout(cue.targetZone) : null;
+  const playDuration = animation.duration || getPlayAnimationDuration(animation.actor, animation.intentType);
+  const laneHeight = cue?.targetZone === 'player'
+    ? '56vh'
+    : cue?.targetZone === 'enemy'
+      ? '18vh'
+      : '34vh';
+  const laneTop = cue?.targetZone === 'player'
+    ? '18%'
+    : cue?.targetZone === 'enemy'
+      ? '12%'
+      : '32%';
+  const laneTilt = cue?.targetZone === 'player'
+    ? '-3deg'
+    : cue?.targetZone === 'enemy'
+      ? '3deg'
+      : '0deg';
 
   return (
     <div
@@ -4434,6 +4629,72 @@ function CombatPlayAnimationLayer({ animation, data, enemies = EMPTY_ARRAY, card
         overflow: 'hidden',
       }}
     >
+      {cue && (
+        <>
+          <div
+            className="play-action-wash"
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background: cue.wash,
+              '--play-duration': `${playDuration}ms`,
+            }}
+          />
+          <div
+            className="play-action-lane"
+            style={{
+              position: 'absolute',
+              left: cue.targetZone === 'neutral' ? '50%' : anchor.left,
+              top: laneTop,
+              width: cue.targetZone === 'player' ? 20 : 18,
+              height: laneHeight,
+              transform: `translateX(-50%) rotate(${laneTilt})`,
+              transformOrigin: '50% 0%',
+              borderRadius: 999,
+              background: cue.lane,
+              filter: `drop-shadow(0 0 16px ${accent}66)`,
+              '--play-duration': `${playDuration}ms`,
+            }}
+          />
+          <div
+            className="play-action-zone"
+            style={{
+              position: 'absolute',
+              transform: 'translate(-50%, -50%)',
+              borderRadius: 36,
+              pointerEvents: 'none',
+              background: cue.zone,
+              border: `1px solid ${accent}38`,
+              boxShadow: `0 0 26px ${accent}18`,
+              '--play-duration': `${playDuration}ms`,
+              ...(cueZoneLayout || EMPTY_OBJECT),
+            }}
+          />
+          <div
+            className="play-action-caption"
+            style={{
+              position: 'absolute',
+              transform: 'translate(-50%, -50%)',
+              padding: '8px 12px',
+              borderRadius: 14,
+              border: `1px solid ${accent}4a`,
+              background: `linear-gradient(180deg, ${accent}18 0%, rgba(6,9,15,0.92) 28%, rgba(6,9,15,0.98) 100%)`,
+              boxShadow: `0 0 20px ${accent}18, 0 10px 24px rgba(0,0,0,0.34)`,
+              backdropFilter: 'blur(6px)',
+              pointerEvents: 'none',
+              '--play-duration': `${playDuration}ms`,
+              ...(cueCaptionLayout || EMPTY_OBJECT),
+            }}
+          >
+            <div style={{ fontFamily: MONO, color: accent, fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
+              {cue.title}
+            </div>
+            <div style={{ fontFamily: MONO, color: '#d4dbe6', fontSize: 10, marginTop: 3, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+              {cue.targetLabel}
+            </div>
+          </div>
+        </>
+      )}
       <div
         className={`play-card-overlay ${meta.className}`}
         style={{
@@ -4450,6 +4711,7 @@ function CombatPlayAnimationLayer({ animation, data, enemies = EMPTY_ARRAY, card
           boxShadow: `0 0 34px ${accent}44, 0 18px 44px rgba(0,0,0,0.58)`,
           '--play-accent': accent,
           '--play-glow': `${accent}66`,
+          '--play-duration': `${playDuration}ms`,
         }}
       >
         <div
@@ -4572,6 +4834,40 @@ function CombatPlayAnimationLayer({ animation, data, enemies = EMPTY_ARRAY, card
           >
             {meta.label}
           </div>
+          {cue && (
+            <div
+              style={{
+                marginBottom: 8,
+                padding: '6px 8px',
+                borderRadius: 10,
+                border: `1px solid ${accent}28`,
+                background: `linear-gradient(180deg, ${accent}12 0%, rgba(8,10,16,0.72) 100%)`,
+              }}
+            >
+              <div
+                style={{
+                  fontFamily: MONO,
+                  color: accent,
+                  fontSize: 8,
+                  letterSpacing: '0.12em',
+                  textTransform: 'uppercase',
+                  marginBottom: 4,
+                }}
+              >
+                {cue.title}
+              </div>
+              <div
+                style={{
+                  fontFamily: MONO,
+                  color: '#cfd6e1',
+                  fontSize: 9,
+                  lineHeight: 1.45,
+                }}
+              >
+                {cue.targetLabel}
+              </div>
+            </div>
+          )}
           <div
             style={{
               fontFamily: MONO,

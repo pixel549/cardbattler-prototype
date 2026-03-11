@@ -153,24 +153,39 @@ a:focus:not(:focus-visible) {
 
 /* ── Enemy action animations ── */
 @keyframes enemy-act-attack {
-  0%   { transform: scale(1);     filter: brightness(1); }
-  20%  { transform: scale(1.13);  filter: brightness(2.4) saturate(2.5) drop-shadow(0 0 10px #ff4400); }
-  55%  { transform: scale(0.95);  filter: brightness(1.15); }
-  100% { transform: scale(1);     filter: brightness(1); }
+  0%   { transform: scale(1); filter: brightness(1) saturate(1); box-shadow: 0 0 0 var(--enemy-act-glow, #ff4400); }
+  18%  { transform: scale(1.03); filter: brightness(1.15) saturate(1.18); box-shadow: 0 0 18px var(--enemy-act-glow, #ff4400); }
+  42%  { transform: scale(1.1); filter: brightness(1.85) saturate(1.5); box-shadow: 0 0 28px var(--enemy-act-glow, #ff4400); }
+  72%  { transform: scale(0.98); filter: brightness(1.18) saturate(1.08); box-shadow: 0 0 14px var(--enemy-act-glow, #ff4400); }
+  100% { transform: scale(1); filter: brightness(1) saturate(1); box-shadow: 0 0 0 transparent; }
 }
 @keyframes enemy-act-defend {
-  0%   { filter: brightness(1); }
-  40%  { filter: brightness(1.7) hue-rotate(175deg) saturate(2.5); }
-  100% { filter: brightness(1); }
+  0%   { transform: scale(1); filter: brightness(1) saturate(1); box-shadow: 0 0 0 transparent; }
+  24%  { transform: scale(1.02); filter: brightness(1.2) saturate(1.18); }
+  56%  { transform: scale(1.05); filter: brightness(1.6) hue-rotate(170deg) saturate(1.7); box-shadow: 0 0 24px var(--enemy-act-glow, #00f0ff); }
+  100% { transform: scale(1); filter: brightness(1) saturate(1); box-shadow: 0 0 0 transparent; }
 }
 @keyframes enemy-act-debuff {
-  0%   { filter: brightness(1); }
-  35%  { filter: brightness(1.8) hue-rotate(265deg) saturate(3); }
-  100% { filter: brightness(1); }
+  0%   { transform: scale(1); filter: brightness(1) saturate(1); box-shadow: 0 0 0 transparent; }
+  18%  { transform: scale(1.02); filter: brightness(1.16) saturate(1.2); }
+  48%  { transform: scale(1.08); filter: brightness(1.72) hue-rotate(258deg) saturate(1.8); box-shadow: 0 0 26px var(--enemy-act-glow, #b44aff); }
+  100% { transform: scale(1); filter: brightness(1) saturate(1); box-shadow: 0 0 0 transparent; }
 }
-.enemy-act-attack { animation: enemy-act-attack 0.55s ease-out forwards; }
-.enemy-act-defend { animation: enemy-act-defend 0.55s ease-out forwards; }
-.enemy-act-debuff { animation: enemy-act-debuff 0.55s ease-out forwards; }
+.enemy-act-attack { animation: enemy-act-attack var(--enemy-act-duration, 0.96s) cubic-bezier(0.18, 0.82, 0.26, 1) forwards; }
+.enemy-act-defend { animation: enemy-act-defend var(--enemy-act-duration, 0.84s) cubic-bezier(0.18, 0.82, 0.26, 1) forwards; }
+.enemy-act-debuff { animation: enemy-act-debuff var(--enemy-act-duration, 0.92s) cubic-bezier(0.18, 0.82, 0.26, 1) forwards; }
+
+.enemy-action-chip {
+  opacity: 0;
+  animation: enemy-action-chip var(--enemy-act-duration, 0.9s) cubic-bezier(0.18, 0.82, 0.26, 1) forwards;
+}
+
+@keyframes enemy-action-chip {
+  0%   { opacity: 0; transform: translateY(-6px) scale(0.94); }
+  18%  { opacity: 1; }
+  54%  { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(3px) scale(0.98); }
+}
 
 /* Overlay card-play animations */
 .play-card-overlay {
@@ -189,36 +204,69 @@ a:focus:not(:focus-visible) {
 @keyframes play-card-enemy-attack {
   0%   { opacity: 0; transform: translate(-50%, -50%) translate(0, -2vh) scale(0.82) rotate(10deg); filter: brightness(1) saturate(1); }
   14%  { opacity: 1; }
-  54%  { opacity: 1; transform: translate(-50%, -50%) translate(-2vw, 20vh) scale(1.06) rotate(-8deg); filter: brightness(1.55) saturate(1.2); }
+  56%  { opacity: 1; transform: translate(-50%, -50%) translate(-2vw, 18vh) scale(1.08) rotate(-8deg); filter: brightness(1.66) saturate(1.26); }
   100% { opacity: 0; transform: translate(-50%, -50%) translate(0, 38vh) scale(0.72) rotate(-14deg); filter: brightness(2.05) saturate(1.35); }
 }
 
 @keyframes play-card-enemy-defense {
   0%   { opacity: 0; transform: translate(-50%, -50%) translate(0, 0) scale(0.82) rotate(-4deg); filter: brightness(1) saturate(1); }
   18%  { opacity: 1; }
-  58%  { opacity: 1; transform: translate(-50%, -50%) translate(0, 6vh) scale(1.14) rotate(0deg); filter: brightness(1.65) saturate(1.25); }
+  60%  { opacity: 1; transform: translate(-50%, -50%) translate(0, 6vh) scale(1.14) rotate(0deg); filter: brightness(1.65) saturate(1.25); }
   100% { opacity: 0; transform: translate(-50%, -50%) translate(0, 1vh) scale(0.88) rotate(4deg); filter: brightness(1.2) saturate(1.05); }
 }
 
 @keyframes play-card-enemy-buff {
   0%   { opacity: 0; transform: translate(-50%, -50%) translate(0, 0) scale(0.84) rotate(4deg); filter: brightness(1) saturate(1); }
   18%  { opacity: 1; }
-  50%  { opacity: 1; transform: translate(-50%, -50%) translate(8vw, -7vh) scale(1.08) rotate(11deg); filter: brightness(1.55) saturate(1.2); }
+  58%  { opacity: 1; transform: translate(-50%, -50%) translate(8vw, -7vh) scale(1.08) rotate(11deg); filter: brightness(1.55) saturate(1.2); }
   100% { opacity: 0; transform: translate(-50%, -50%) translate(15vw, -14vh) scale(0.76) rotate(16deg); filter: brightness(1.9) saturate(1.28); }
 }
 
 @keyframes play-card-enemy-debuff {
   0%   { opacity: 0; transform: translate(-50%, -50%) translate(0, 0) scale(0.82) rotate(8deg); filter: brightness(1) saturate(1); }
   16%  { opacity: 1; }
-  50%  { opacity: 1; transform: translate(-50%, -50%) translate(-8vw, 15vh) scale(1.04) rotate(-9deg); filter: brightness(1.55) saturate(1.18); }
+  58%  { opacity: 1; transform: translate(-50%, -50%) translate(-8vw, 15vh) scale(1.04) rotate(-9deg); filter: brightness(1.55) saturate(1.18); }
   100% { opacity: 0; transform: translate(-50%, -50%) translate(-18vw, 30vh) scale(0.78) rotate(-18deg); filter: brightness(1.95) saturate(1.3); }
 }
 
 .play-card-player { animation: play-card-player 0.46s cubic-bezier(0.18, 0.84, 0.34, 1) forwards; }
-.play-card-enemy-attack { animation: play-card-enemy-attack 0.72s cubic-bezier(0.22, 0.8, 0.24, 1) forwards; }
-.play-card-enemy-defense { animation: play-card-enemy-defense 0.62s cubic-bezier(0.22, 0.8, 0.24, 1) forwards; }
-.play-card-enemy-buff { animation: play-card-enemy-buff 0.62s cubic-bezier(0.22, 0.8, 0.24, 1) forwards; }
-.play-card-enemy-debuff { animation: play-card-enemy-debuff 0.7s cubic-bezier(0.22, 0.8, 0.24, 1) forwards; }
+.play-card-enemy-attack { animation: play-card-enemy-attack var(--play-duration, 1.12s) cubic-bezier(0.22, 0.8, 0.24, 1) forwards; }
+.play-card-enemy-defense { animation: play-card-enemy-defense var(--play-duration, 0.92s) cubic-bezier(0.22, 0.8, 0.24, 1) forwards; }
+.play-card-enemy-buff { animation: play-card-enemy-buff var(--play-duration, 0.98s) cubic-bezier(0.22, 0.8, 0.24, 1) forwards; }
+.play-card-enemy-debuff { animation: play-card-enemy-debuff var(--play-duration, 1.08s) cubic-bezier(0.22, 0.8, 0.24, 1) forwards; }
+
+@keyframes play-action-wash {
+  0%   { opacity: 0; }
+  18%  { opacity: 0.8; }
+  68%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes play-action-lane {
+  0%   { opacity: 0; filter: brightness(0.9); }
+  22%  { opacity: 0.92; }
+  70%  { opacity: 1; filter: brightness(1.08); }
+  100% { opacity: 0; filter: brightness(1.2); }
+}
+
+@keyframes play-action-zone {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.88); }
+  22%  { opacity: 1; }
+  68%  { opacity: 1; transform: translate(-50%, -50%) scale(1.02); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.06); }
+}
+
+@keyframes play-action-caption {
+  0%   { opacity: 0; transform: translate(-50%, calc(-50% + 8px)) scale(0.94); }
+  18%  { opacity: 1; }
+  64%  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, calc(-50% - 6px)) scale(0.98); }
+}
+
+.play-action-wash { animation: play-action-wash var(--play-duration, 0.96s) ease-out forwards; }
+.play-action-lane { animation: play-action-lane var(--play-duration, 0.96s) ease-out forwards; }
+.play-action-zone { animation: play-action-zone var(--play-duration, 0.96s) ease-out forwards; }
+.play-action-caption { animation: play-action-caption var(--play-duration, 0.96s) cubic-bezier(0.18, 0.84, 0.24, 1) forwards; }
 
 @keyframes mutation-discovery-popup {
   0%   { opacity: 0; transform: translateY(12px) scale(0.88); filter: brightness(0.92) saturate(0.92); }

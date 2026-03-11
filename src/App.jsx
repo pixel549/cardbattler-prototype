@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import { loadGameData } from './data/loadData';
 import {
@@ -96,6 +96,7 @@ const MENU_CARD_MIN_W = 156;
 const MENU_CARD_MAX_W = 188;
 
 const TELEMETRY_VERSION = 5;
+const STATE_SNAPSHOT_SCHEMA_VERSION = 2;
 const KNOWN_ENEMY_ACTION_TYPES = new Set(['Attack', 'Defense', 'Buff', 'Debuff']);
 const AI_EXPORT_OPTIONS_DEFAULTS = {
   cards: true,
@@ -120,6 +121,114 @@ const AI_WATCHDOG_IDLE = {
   lastChangedAt: 0,
 };
 
+function hashString(value) {
+  let hash = 5381;
+  const source = String(value ?? '');
+  for (let i = 0; i < source.length; i += 1) {
+    hash = ((hash << 5) + hash) ^ source.charCodeAt(i);
+  }
+  return (hash >>> 0).toString(16);
+}
+
+function getSnapshotContentFingerprint(data) {
+  if (!data || typeof data !== 'object') return 'unknown';
+  const { builtAt, ...stableData } = data;
+  return `v${data.version ?? 0}:${hashString(JSON.stringify(stableData))}`;
+}
+
+function sanitizeStatuses(statuses) {
+  return Array.isArray(statuses) ? statuses.filter(Boolean) : [];
+}
+
+function sanitizeCombatEntity(entity) {
+  if (!entity || typeof entity !== 'object') return null;
+  return {
+    ...entity,
+    statuses: sanitizeStatuses(entity.statuses),
+  };
+}
+
+function sanitizeRestoredState(rawState) {
+  if (!rawState || typeof rawState !== 'object') return null;
+
+  const next = {
+    ...createInitialState(),
+    ...rawState,
+  };
+
+  next.run = rawState.run && typeof rawState.run === 'object' ? rawState.run : null;
+  next.deck = rawState.deck && typeof rawState.deck === 'object' ? rawState.deck : null;
+  next.map = rawState.map && typeof rawState.map === 'object' ? rawState.map : null;
+  next.reward = rawState.reward && typeof rawState.reward === 'object' ? rawState.reward : null;
+  next.shop = rawState.shop && typeof rawState.shop === 'object' ? rawState.shop : null;
+  next.event = rawState.event && typeof rawState.event === 'object' ? rawState.event : null;
+  next.deckView = rawState.deckView && typeof rawState.deckView === 'object' ? rawState.deckView : null;
+  next.log = Array.isArray(rawState.log) ? rawState.log : [];
+  next.journal = rawState.journal && typeof rawState.journal === 'object'
+    ? {
+        ...rawState.journal,
+        actions: Array.isArray(rawState.journal.actions) ? rawState.journal.actions : [],
+      }
+    : null;
+
+  if (rawState.combat && typeof rawState.combat === 'object') {
+    const combat = rawState.combat;
+    const player = sanitizeCombatEntity(combat.player);
+    if (!player) return null;
+    const piles = player.piles && typeof player.piles === 'object' ? player.piles : {};
+    player.piles = {
+      draw: Array.isArray(piles.draw) ? piles.draw : [],
+      hand: Array.isArray(piles.hand) ? piles.hand : [],
+      discard: Array.isArray(piles.discard) ? piles.discard : [],
+      exhaust: Array.isArray(piles.exhaust) ? piles.exhaust : [],
+      power: Array.isArray(piles.power) ? piles.power : [],
+    };
+
+    next.combat = {
+      ...combat,
+      player,
+      enemies: Array.isArray(combat.enemies)
+        ? combat.enemies.map((enemy) => sanitizeCombatEntity(enemy)).filter(Boolean)
+        : [],
+      cardInstances: combat.cardInstances && typeof combat.cardInstances === 'object' ? combat.cardInstances : {},
+      enemyAI: combat.enemyAI && typeof combat.enemyAI === 'object' ? combat.enemyAI : { cursorByEnemyId: {} },
+      log: Array.isArray(combat.log) ? combat.log : [],
+      relicIds: Array.isArray(combat.relicIds) ? combat.relicIds : [],
+    };
+  } else {
+    next.combat = null;
+  }
+
+  if (next.mode !== 'MainMenu' && !next.run) return null;
+  if (next.mode === 'Combat' && !next.combat) return null;
+
+  return next;
+}
+
+function restorePersistedSnapshot(payload, contentFingerprint = null) {
+  if (!payload || typeof payload !== 'object' || !payload.state) {
+    return { ok: false, reason: 'missing_state', payload: null };
+  }
+  if (Number(payload.schemaVersion ?? 0) !== STATE_SNAPSHOT_SCHEMA_VERSION) {
+    return { ok: false, reason: 'schema_mismatch', payload: null };
+  }
+  if (contentFingerprint && payload.contentFingerprint !== contentFingerprint) {
+    return { ok: false, reason: 'content_mismatch', payload: null };
+  }
+  const sanitizedState = sanitizeRestoredState(payload.state);
+  if (!sanitizedState) {
+    return { ok: false, reason: 'invalid_state', payload: null };
+  }
+  return {
+    ok: true,
+    reason: null,
+    payload: {
+      ...payload,
+      state: sanitizedState,
+    },
+  };
+}
+
 function buildNodeAutosaveToken(state) {
   if (!state?.run || !state?.map?.currentNodeId) return null;
   if (!['Combat', 'Shop', 'Event'].includes(state.mode)) return null;
@@ -143,11 +252,13 @@ function buildNodeAutosaveState(state) {
   return snapshot;
 }
 
-function writeNodeAutosave(state) {
+function writeNodeAutosave(state, contentFingerprint = null) {
   const token = buildNodeAutosaveToken(state);
   if (!token) return null;
   const payload = {
     version: 1,
+    schemaVersion: STATE_SNAPSHOT_SCHEMA_VERSION,
+    contentFingerprint,
     savedAt: Date.now(),
     token,
     state: buildNodeAutosaveState(state),
@@ -156,13 +267,13 @@ function writeNodeAutosave(state) {
   return token;
 }
 
-function readNodeAutosave() {
+function readNodeAutosave(contentFingerprint = null) {
   try {
     const raw = localStorage.getItem(NODE_AUTOSAVE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    if (!parsed?.state?.run || !parsed?.state?.map) return null;
-    return parsed;
+    const restored = restorePersistedSnapshot(parsed, contentFingerprint);
+    return restored.ok ? restored.payload : null;
   } catch {
     return null;
   }
@@ -192,9 +303,11 @@ function describeDebugSaveState(state) {
   return parts.join(' • ');
 }
 
-function buildDebugSavePayload(slotId, state) {
+function buildDebugSavePayload(slotId, state, contentFingerprint = null) {
   return {
     version: 1,
+    schemaVersion: STATE_SNAPSHOT_SCHEMA_VERSION,
+    contentFingerprint,
     slotId,
     savedAt: Date.now(),
     label: describeDebugSaveState(state),
@@ -202,12 +315,19 @@ function buildDebugSavePayload(slotId, state) {
   };
 }
 
-function readDebugSaveSlots() {
+function readDebugSaveSlots(contentFingerprint = null) {
   try {
     const raw = localStorage.getItem(DEBUG_SAVE_SLOTS_KEY);
     if (!raw) return {};
     const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === 'object' ? parsed : {};
+    if (!parsed || typeof parsed !== 'object') return {};
+    if (!contentFingerprint) return parsed;
+    const nextSlots = {};
+    for (const [slotId, payload] of Object.entries(parsed)) {
+      const restored = restorePersistedSnapshot(payload, contentFingerprint);
+      if (restored.ok) nextSlots[slotId] = restored.payload;
+    }
+    return nextSlots;
   } catch {
     return {};
   }
@@ -1159,6 +1279,111 @@ function ScreenShell({ children, extraStyle = {} }) {
     >
       {children}
     </div>
+  );
+}
+
+class ScreenErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { error };
+  }
+
+  componentDidCatch(error, info) {
+    this.props.onError?.(error, info);
+  }
+
+  componentDidUpdate(prevProps) {
+    if (prevProps.resetKey !== this.props.resetKey && this.state.error) {
+      this.setState({ error: null });
+    }
+  }
+
+  render() {
+    if (this.state.error) {
+      return this.props.fallback?.(this.state.error) ?? null;
+    }
+    return this.props.children;
+  }
+}
+
+function CombatRecoveryScreen({ message, onReturnToMenu, onStartFreshRun, onReloadApp }) {
+  return (
+    <ScreenShell extraStyle={{ alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+      <div
+        style={{
+          width: 'min(520px, 100%)',
+          padding: '24px',
+          borderRadius: '20px',
+          border: `1px solid ${C.red}55`,
+          background: 'rgba(10, 10, 20, 0.92)',
+          boxShadow: `0 0 32px ${C.red}18`,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '18px',
+        }}
+      >
+        <div style={{ fontFamily: UI_MONO, color: C.red, fontWeight: 700, letterSpacing: '0.12em', fontSize: 13 }}>
+          COMBAT RECOVERY
+        </div>
+        <div style={{ fontFamily: UI_MONO, color: C.text, fontSize: 22, fontWeight: 700 }}>
+          Combat hit a bad saved state
+        </div>
+        <div style={{ fontFamily: UI_MONO, color: C.textDim, fontSize: 13, lineHeight: 1.7 }}>
+          {message || 'The stored combat snapshot no longer matches the current build. You can return to the menu or start fresh without staying stuck on a black screen.'}
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(148px, 1fr))', gap: '12px' }}>
+          <button
+            onClick={onReturnToMenu}
+            style={{
+              padding: '14px 16px',
+              borderRadius: '14px',
+              border: `1px solid ${C.cyan}55`,
+              background: `${C.cyan}12`,
+              color: C.cyan,
+              fontFamily: UI_MONO,
+              fontWeight: 700,
+              cursor: 'pointer',
+            }}
+          >
+            Back To Menu
+          </button>
+          <button
+            onClick={onStartFreshRun}
+            style={{
+              padding: '14px 16px',
+              borderRadius: '14px',
+              border: `1px solid ${C.yellow}55`,
+              background: `${C.yellow}12`,
+              color: C.yellow,
+              fontFamily: UI_MONO,
+              fontWeight: 700,
+              cursor: 'pointer',
+            }}
+          >
+            Start Fresh Run
+          </button>
+          <button
+            onClick={onReloadApp}
+            style={{
+              padding: '14px 16px',
+              borderRadius: '14px',
+              border: `1px solid ${C.borderLight}`,
+              background: 'rgba(255,255,255,0.05)',
+              color: C.text,
+              fontFamily: UI_MONO,
+              fontWeight: 700,
+              cursor: 'pointer',
+            }}
+          >
+            Reload App
+          </button>
+        </div>
+      </div>
+    </ScreenShell>
   );
 }
 
@@ -4818,6 +5043,7 @@ function App() {
   const aiTimerRef   = useRef(null);
   const stateRef     = useRef(state);
   const dataRef      = useRef(data);
+  const contentFingerprintRef = useRef('unknown');
   const exportCurrentGameDataRef = useRef(async () => false);
   const startNewRunRef = useRef(() => {});
   const autosaveTokenRef = useRef(null);
@@ -4906,9 +5132,15 @@ function App() {
 
   function resumeAutosavedRun() {
     if (!menuAutosave?.state) return;
-    const token = menuAutosave.token || buildNodeAutosaveToken(menuAutosave.state);
+    const restored = restorePersistedSnapshot(menuAutosave, contentFingerprintRef.current);
+    if (!restored.ok) {
+      clearNodeAutosave();
+      setMenuAutosave(null);
+      return;
+    }
+    const token = restored.payload.token || buildNodeAutosaveToken(restored.payload.state);
     setMenuAutosave(null);
-    adoptState(menuAutosave.state, {
+    adoptState(restored.payload.state, {
       handoffReason: 'Resumed from node autosave.',
       pauseAi: false,
       clearAutosave: false,
@@ -4942,15 +5174,15 @@ function App() {
     const liveState = stateRef.current;
     if (!liveState?.run) return;
     const nextSlots = {
-      ...readDebugSaveSlots(),
-      [slotId]: buildDebugSavePayload(slotId, liveState),
+      ...readDebugSaveSlots(contentFingerprintRef.current),
+      [slotId]: buildDebugSavePayload(slotId, liveState, contentFingerprintRef.current),
     };
     writeDebugSaveSlots(nextSlots);
     setDebugSaveSlots(nextSlots);
   }
 
   function loadDebugSlot(slotId) {
-    const slots = readDebugSaveSlots();
+    const slots = readDebugSaveSlots(contentFingerprintRef.current);
     const slot = slots?.[slotId];
     if (!slot?.state) return;
     setShowPauseMenu(false);
@@ -5126,7 +5358,7 @@ function App() {
     const token = buildNodeAutosaveToken(state);
     if (!token || token === autosaveTokenRef.current) return;
     try {
-      const savedToken = writeNodeAutosave(state);
+      const savedToken = writeNodeAutosave(state, contentFingerprintRef.current);
       if (savedToken) autosaveTokenRef.current = savedToken;
     } catch (err) {
       console.error('Failed to write node autosave', err);
@@ -5141,6 +5373,12 @@ function App() {
 
   useEffect(() => {
     if (data && !state) {
+      const contentFingerprint = getSnapshotContentFingerprint(data);
+      contentFingerprintRef.current = contentFingerprint;
+      const compatibleDebugSlots = readDebugSaveSlots(contentFingerprint);
+      writeDebugSaveSlots(compatibleDebugSlots);
+      setDebugSaveSlots(compatibleDebugSlots);
+
       const forcedRun = consumeForcedNewRun();
       if (forcedRun) {
         const nextSeedMode = forcedRun.seedMode === 'sensible' ? 'sensible' : 'wild';
@@ -5170,7 +5408,7 @@ function App() {
         return;
       }
 
-      const autosave = readNodeAutosave();
+      const autosave = readNodeAutosave(contentFingerprint);
       if (autosave?.state) {
         autosaveTokenRef.current = autosave.token || buildNodeAutosaveToken(autosave.state);
         setMenuAutosave(autosave);
@@ -5997,7 +6235,24 @@ function App() {
       );
       break;
     case 'Combat':
-      content = <CombatScreen state={state} data={data} onAction={handleAction} aiPaused={aiPaused} onOpenMenu={openPauseMenu} />;
+      content = (
+        <ScreenErrorBoundary
+          resetKey={`${state.run?.seed ?? 'seed'}:${state.run?.floor ?? 'floor'}:${state.map?.currentNodeId ?? 'node'}`}
+          onError={(combatError) => {
+            console.error('CombatScreen render failed', combatError, state);
+          }}
+          fallback={(combatError) => (
+            <CombatRecoveryScreen
+              message={combatError?.message || 'Combat failed to render.'}
+              onReturnToMenu={returnToMainMenu}
+              onStartFreshRun={hardReloadIntoFreshRun}
+              onReloadApp={reloadApp}
+            />
+          )}
+        >
+          <CombatScreen state={state} data={data} onAction={handleAction} aiPaused={aiPaused} onOpenMenu={openPauseMenu} />
+        </ScreenErrorBoundary>
+      );
       break;
     case 'Map':
       content = <MapScreen state={state} data={data} onAction={handleAction} />;

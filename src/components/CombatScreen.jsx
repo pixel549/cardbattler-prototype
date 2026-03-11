@@ -6091,6 +6091,7 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
         });
       } else if (entry.t === 'EnemyCardPlayed') {
         sawEnemyCard = true;
+        sfx.enemyAction(entry.data?.intentType || 'Unknown');
         newAnimations.push({
           id: ++playAnimationIdRef.current,
           kind: 'cardPlay',

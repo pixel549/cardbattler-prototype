@@ -70,6 +70,18 @@ function noise(duration, gainNode, color = 0.95) {
   src.stop(c.currentTime + duration);
 }
 
+function sweep(freqFrom, freqTo, type, duration, gainNode) {
+  const c = getCtx();
+  if (!c || !gainNode) return;
+  const o = c.createOscillator();
+  o.type = type;
+  o.frequency.setValueAtTime(freqFrom, c.currentTime);
+  o.frequency.exponentialRampToValueAtTime(Math.max(1, freqTo), c.currentTime + duration);
+  o.connect(gainNode);
+  o.start(c.currentTime);
+  o.stop(c.currentTime + duration + 0.02);
+}
+
 // ── Public sound effects ──────────────────────────────────────────────────────
 
 export const sfx = {
@@ -201,11 +213,69 @@ export const sfx = {
     osc(220, 'square', 0.08, g);
   },
 
-  /** Enemy action — low ominous buzz */
-  enemyAction() {
-    const g = gain(0.1, 0.2);
+  /** Enemy attack telegraph — hostile warning stab */
+  enemyAttack() {
+    const g = gain(0.11, 0.34);
     if (!g) return;
-    osc(110, 'sawtooth', 0.18, g);
+    sweep(140, 280, 'sawtooth', 0.18, g);
+    osc(92, 'triangle', 0.24, g);
+    noise(0.04, g, 0.42);
+  },
+
+  /** Enemy defense telegraph — cool shield swell */
+  enemyDefense() {
+    const g = gain(0.085, 0.3);
+    if (!g) return;
+    sweep(220, 360, 'sine', 0.2, g);
+    osc(540, 'triangle', 0.16, g);
+  },
+
+  /** Enemy buff telegraph — upward charge tone */
+  enemyBuff() {
+    const g = gain(0.09, 0.34);
+    if (!g) return;
+    const c = getCtx();
+    const notes = [260, 328, 390];
+    notes.forEach((freq, index) => {
+      const o = c.createOscillator();
+      o.type = 'triangle';
+      o.frequency.setValueAtTime(freq, c.currentTime + index * 0.045);
+      o.connect(g);
+      o.start(c.currentTime + index * 0.045);
+      o.stop(c.currentTime + 0.16 + index * 0.045);
+    });
+  },
+
+  /** Enemy debuff telegraph — glitchy interference pulse */
+  enemyDebuff() {
+    const g = gain(0.095, 0.32);
+    if (!g) return;
+    sweep(620, 210, 'square', 0.18, g);
+    noise(0.06, g, 0.66);
+  },
+
+  /** Enemy action cue, based on intent type */
+  enemyAction(intentType = 'Unknown') {
+    switch (intentType) {
+      case 'Attack':
+        this.enemyAttack();
+        break;
+      case 'Defense':
+        this.enemyDefense();
+        break;
+      case 'Buff':
+        this.enemyBuff();
+        break;
+      case 'Debuff':
+        this.enemyDebuff();
+        break;
+      default: {
+        const g = gain(0.1, 0.22);
+        if (!g) return;
+        osc(110, 'sawtooth', 0.18, g);
+        break;
+      }
+    }
   },
 
   // Toggle mute

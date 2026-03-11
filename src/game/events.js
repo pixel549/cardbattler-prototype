@@ -69,6 +69,22 @@ function awardRandomPlayerCard(state, data, op, seedSalt = 0xCA4DCA4D) {
   return true;
 }
 
+function awardTaggedPlayerCard(state, data, tag, seedSalt = 0xCE571234) {
+  if (!state?.deck || !state?.run || !data?.cards || !tag) return false;
+  const rng = new RNG((state.run.seed ^ state.run.floor ^ seedSalt) >>> 0);
+  const pool = Object.keys(data.cards).filter((id) => {
+    const card = data.cards[id];
+    const tags = card?.tags || [];
+    return tags.includes(tag)
+      && !tags.includes("EnemyCard")
+      && !tags.includes("EnemyAbility")
+      && !id.startsWith("EC-");
+  });
+  if (pool.length === 0) return false;
+  addCardToRunDeck(data, state.deck, rng, rng.pick(pool));
+  return true;
+}
+
 function cullBrickedCards(state, data, count = 3, replacementCount = 1) {
   if (!state?.deck) return false;
   const analysis = analyzeDeckState(data, state.deck);
@@ -372,7 +388,7 @@ export function createBasicEventRegistry() {
       weight: 14,
       isEligible: (state) => !state?.run?.eventFlags?.blacksiteDebt,
       choices: [
-        { id: "sign", label: "Sign it - gain a cursed relic, +110g, debt follows you", ops: [{ op: "GainRelic", relicId: "CursedCompiler" }, { op: "GainGold", amount: 110 }, { op: "SetRunFlag", flag: "blacksiteDebt", value: true }] },
+        { id: "sign", label: "Sign it - gain a cursed relic, +110g, add a Curse, debt follows you", ops: [{ op: "GainRelic", relicId: "CursedCompiler" }, { op: "GainGold", amount: 110 }, { op: "GainCurseCard" }, { op: "SetRunFlag", flag: "blacksiteDebt", value: true }] },
         { id: "decline", label: "Decline - heal 8 and keep moving", ops: [{ op: "Heal", amount: 8 }] },
       ],
     },
@@ -515,6 +531,9 @@ export function applyEventChoiceImmediate(state, data, reg, choiceId) {
         break;
       case "GainRandomCard":
         awardRandomPlayerCard(state, data, op, 0xABCD1000);
+        break;
+      case "GainCurseCard":
+        awardTaggedPlayerCard(state, data, "Curse", 0xABCD2000);
         break;
       case "CullBrickedCards":
         cullBrickedCards(state, data, Number(op.count || 3), Number(op.replacementCount || 1));

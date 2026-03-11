@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "builtAt": "2026-03-11T12:58:54.756Z",
+  "builtAt": "2026-03-11T15:35:59.134Z",
   "cards": {
     "C-001": {
       "id": "C-001",
@@ -3343,7 +3343,8 @@
       "costRAM": 0,
       "tags": [
         "Status",
-        "Junk"
+        "Junk",
+        "Curse"
       ],
       "effects": [
         {
@@ -3379,6 +3380,7 @@
       "tags": [
         "Status",
         "Junk",
+        "Curse",
         "Debuff"
       ],
       "effects": [
@@ -3414,7 +3416,8 @@
       "costRAM": 0,
       "tags": [
         "Status",
-        "Junk"
+        "Junk",
+        "Curse"
       ],
       "effects": [
         {
@@ -3449,7 +3452,8 @@
       "costRAM": 0,
       "tags": [
         "Status",
-        "Junk"
+        "Junk",
+        "Curse"
       ],
       "effects": [
         {
@@ -3484,7 +3488,8 @@
       "costRAM": 0,
       "tags": [
         "Status",
-        "Junk"
+        "Junk",
+        "Curse"
       ],
       "effects": [
         {
@@ -3519,7 +3524,8 @@
       "costRAM": 0,
       "tags": [
         "Status",
-        "Junk"
+        "Junk",
+        "Curse"
       ],
       "effects": [
         {

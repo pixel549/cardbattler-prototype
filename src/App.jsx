@@ -4820,7 +4820,7 @@ function MainMenuScreen({
               RUN MODES
             </div>
             <div style={{ fontFamily: UI_MONO, fontSize: 12, lineHeight: 1.6, color: C.textDim }}>
-              Difficulties and optional challenge runs unlock as you prove the build can survive deeper pressure.
+              Standard is the baseline. Ascensions unlock one rung at a time as you clear the previous tier, then optional challenge runs stack on top.
             </div>
           </div>
           <div style={{ display: 'grid', gap: 8 }}>

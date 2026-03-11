@@ -3,9 +3,13 @@ export const RUN_BASELINE = {
   startingGold: 99,
   maxMP: 6,
   travelHpCost: 2,
+  playerMaxRAM: 8,
+  playerRamRegen: 2,
   drawPerTurnDelta: 0,
   enemyHpMult: 1,
   enemyDmgMult: 1,
+  finalCountdownTickDelta: 0,
+  mutationTriggerChanceMult: 1,
 };
 
 export const STARTER_PROFILES = {
@@ -76,9 +80,166 @@ export const STARTER_PROFILES = {
   },
 };
 
+const ASCENSION_LEVELS = [
+  {
+    level: 1,
+    accent: "#ffb347",
+    description: "Enemies scale up immediately and early gold dries up. A clean first step once Standard is solved.",
+    modifiers: {
+      enemyHpMultMult: 1.1,
+      enemyDmgMultMult: 1.08,
+      startingGoldDelta: -10,
+    },
+    unlock: { totalWins: 1, highestDifficultyRankCleared: 0 },
+  },
+  {
+    level: 2,
+    accent: "#ffad5a",
+    description: "Travel mistakes sting harder and frontline enemies survive long enough to force real sequencing.",
+    modifiers: {
+      enemyHpMultMult: 1.18,
+      enemyDmgMultMult: 1.14,
+      startingGoldDelta: -20,
+      travelHpCostDelta: 1,
+    },
+    unlock: { highestDifficultyRankCleared: 1 },
+  },
+  {
+    level: 3,
+    accent: "#ff9966",
+    description: "Draw slows down, so deck control matters more than raw hand extension.",
+    modifiers: {
+      enemyHpMultMult: 1.24,
+      enemyDmgMultMult: 1.18,
+      drawPerTurnDelta: -1,
+      startingGoldDelta: -24,
+    },
+    unlock: { highestDifficultyRankCleared: 2 },
+  },
+  {
+    level: 4,
+    accent: "#ff826f",
+    description: "Mutation clocks speed up. Strong cards get weird sooner, and bad sequencing snowballs faster.",
+    modifiers: {
+      enemyHpMultMult: 1.3,
+      enemyDmgMultMult: 1.22,
+      finalCountdownTickDelta: 1,
+      mutationTriggerChanceMultMult: 1.08,
+      startingGoldDelta: -30,
+    },
+    unlock: { highestDifficultyRankCleared: 3 },
+  },
+  {
+    level: 5,
+    accent: "#ff6c79",
+    description: "Your RAM ceiling tightens while enemies keep scaling. Tempo decks need real discipline here.",
+    modifiers: {
+      enemyHpMultMult: 1.36,
+      enemyDmgMultMult: 1.26,
+      playerMaxRAMDelta: -1,
+      mutationTriggerChanceMultMult: 1.12,
+      startingGoldDelta: -34,
+    },
+    unlock: { highestDifficultyRankCleared: 4 },
+  },
+  {
+    level: 6,
+    accent: "#ff5a86",
+    description: "Your shell gets thinner: less HP, less RAM regen, and more mutation pressure every combat.",
+    modifiers: {
+      enemyHpMultMult: 1.42,
+      enemyDmgMultMult: 1.3,
+      playerMaxHPDelta: -6,
+      playerRamRegenDelta: -1,
+      finalCountdownTickDelta: 1,
+      mutationTriggerChanceMultMult: 1.18,
+      startingGoldDelta: -38,
+    },
+    unlock: { highestDifficultyRankCleared: 5 },
+  },
+  {
+    level: 7,
+    accent: "#ff4a93",
+    description: "Card velocity drops again and your RAM bar shrinks. Thin, decisive decks pull ahead.",
+    modifiers: {
+      enemyHpMultMult: 1.48,
+      enemyDmgMultMult: 1.34,
+      playerMaxRAMDelta: -1,
+      drawPerTurnDelta: -1,
+      startingGoldDelta: -42,
+    },
+    unlock: { highestDifficultyRankCleared: 6 },
+  },
+  {
+    level: 8,
+    accent: "#ff4aa8",
+    description: "The route itself bites back. Mutations spiral faster and travel pressure punishes sloppy pathing.",
+    modifiers: {
+      enemyHpMultMult: 1.54,
+      enemyDmgMultMult: 1.38,
+      travelHpCostDelta: 1,
+      finalCountdownTickDelta: 1,
+      mutationTriggerChanceMultMult: 1.25,
+      startingGoldDelta: -48,
+    },
+    unlock: { highestDifficultyRankCleared: 7 },
+  },
+  {
+    level: 9,
+    accent: "#ff52c1",
+    description: "Recovery windows nearly disappear. Lower HP, lower draw, and lower regen force proactive lines.",
+    modifiers: {
+      enemyHpMultMult: 1.6,
+      enemyDmgMultMult: 1.42,
+      playerMaxHPDelta: -10,
+      playerRamRegenDelta: -1,
+      drawPerTurnDelta: -1,
+      startingGoldDelta: -52,
+    },
+    unlock: { highestDifficultyRankCleared: 8 },
+  },
+  {
+    level: 10,
+    accent: "#ff5fe0",
+    description: "Full pressure mode: harder fights, weaker economy, tighter RAM, and mutation decay at its meanest.",
+    modifiers: {
+      enemyHpMultMult: 1.68,
+      enemyDmgMultMult: 1.48,
+      playerMaxRAMDelta: -2,
+      travelHpCostDelta: 1,
+      finalCountdownTickDelta: 2,
+      mutationTriggerChanceMultMult: 1.35,
+      startingGoldDelta: -58,
+    },
+    unlock: { highestDifficultyRankCleared: 9 },
+  },
+];
+
+const ASCENSION_DIFFICULTIES = Object.fromEntries(
+  ASCENSION_LEVELS.map((entry) => {
+    const id = `ascension_${entry.level}`;
+    return [
+      id,
+      {
+        id,
+        rank: entry.level,
+        name: `Ascension ${entry.level}`,
+        accent: entry.accent,
+        description: entry.description,
+        unlockHint: entry.level === 1
+          ? "Unlock by winning a Standard run."
+          : `Unlock by clearing Ascension ${entry.level - 1}.`,
+        modifiers: entry.modifiers,
+        unlock: entry.unlock,
+      },
+    ];
+  }),
+);
+
 export const DIFFICULTY_PROFILES = {
   standard: {
     id: "standard",
+    rank: 0,
     name: "Standard",
     accent: "#00f0ff",
     description: "Baseline run balance.",
@@ -86,33 +247,12 @@ export const DIFFICULTY_PROFILES = {
     modifiers: {},
     unlock: { defaultUnlocked: true },
   },
-  veteran: {
-    id: "veteran",
-    name: "Veteran",
-    accent: "#ffb347",
-    description: "Enemies hit harder and hold the board more often. Recommended once you've cleared a run.",
-    unlockHint: "Unlock by winning a run.",
-    modifiers: {
-      enemyHpMultMult: 1.16,
-      enemyDmgMultMult: 1.14,
-      startingGoldDelta: -10,
-    },
-    unlock: { totalWins: 1 },
-  },
-  blackout: {
-    id: "blackout",
-    name: "Blackout",
-    accent: "#ff5a7a",
-    description: "A pressure-cooker mode: tougher enemies, less setup room, and tighter resource starts.",
-    unlockHint: "Unlock by winning 3 runs.",
-    modifiers: {
-      enemyHpMultMult: 1.28,
-      enemyDmgMultMult: 1.24,
-      drawPerTurnDelta: -1,
-      startingGoldDelta: -25,
-    },
-    unlock: { totalWins: 3 },
-  },
+  ...ASCENSION_DIFFICULTIES,
+};
+
+const LEGACY_DIFFICULTY_ALIASES = {
+  veteran: "ascension_1",
+  blackout: "ascension_3",
 };
 
 export const CHALLENGE_MODES = {
@@ -147,7 +287,8 @@ export function getStarterProfile(profileId) {
 }
 
 export function getDifficultyProfile(difficultyId) {
-  return DIFFICULTY_PROFILES[difficultyId] || DIFFICULTY_PROFILES.standard;
+  const resolvedId = LEGACY_DIFFICULTY_ALIASES[difficultyId] || difficultyId;
+  return DIFFICULTY_PROFILES[resolvedId] || DIFFICULTY_PROFILES.standard;
 }
 
 export function getChallengeMode(challengeId) {
@@ -160,6 +301,7 @@ function meetsUnlock(metaProgress, unlock = {}) {
   if ((metaProgress?.totalWins || 0) < (unlock.totalWins || 0)) return false;
   if ((metaProgress?.bestActReached || 0) < (unlock.bestActReached || 0)) return false;
   if ((metaProgress?.totalUniqueMutations || 0) < (unlock.totalUniqueMutations || 0)) return false;
+  if ((metaProgress?.highestDifficultyRankCleared || 0) < (unlock.highestDifficultyRankCleared || 0)) return false;
   return true;
 }
 
@@ -208,9 +350,13 @@ export function composeRunConfig(customConfig = {}, profileId = "kernel", diffic
   if (merged.startingGold == null) merged.startingGold = RUN_BASELINE.startingGold;
   if (merged.maxMP == null) merged.maxMP = RUN_BASELINE.maxMP;
   if (merged.travelHpCost == null) merged.travelHpCost = RUN_BASELINE.travelHpCost;
+  if (merged.playerMaxRAM == null) merged.playerMaxRAM = RUN_BASELINE.playerMaxRAM;
+  if (merged.playerRamRegen == null) merged.playerRamRegen = RUN_BASELINE.playerRamRegen;
   if (merged.drawPerTurnDelta == null) merged.drawPerTurnDelta = RUN_BASELINE.drawPerTurnDelta;
   if (merged.enemyHpMult == null) merged.enemyHpMult = RUN_BASELINE.enemyHpMult;
   if (merged.enemyDmgMult == null) merged.enemyDmgMult = RUN_BASELINE.enemyDmgMult;
+  if (merged.finalCountdownTickDelta == null) merged.finalCountdownTickDelta = RUN_BASELINE.finalCountdownTickDelta;
+  if (merged.mutationTriggerChanceMult == null) merged.mutationTriggerChanceMult = RUN_BASELINE.mutationTriggerChanceMult;
 
   const allModifierSources = [profile, difficulty, ...challenges];
   for (const source of allModifierSources) {
@@ -219,18 +365,26 @@ export function composeRunConfig(customConfig = {}, profileId = "kernel", diffic
     if (modifiers.startingGoldDelta) merged.startingGold += modifiers.startingGoldDelta;
     if (modifiers.maxMPDelta) merged.maxMP += modifiers.maxMPDelta;
     if (modifiers.travelHpCostDelta) merged.travelHpCost += modifiers.travelHpCostDelta;
+    if (modifiers.playerMaxRAMDelta) merged.playerMaxRAM += modifiers.playerMaxRAMDelta;
+    if (modifiers.playerRamRegenDelta) merged.playerRamRegen += modifiers.playerRamRegenDelta;
     if (modifiers.drawPerTurnDelta) merged.drawPerTurnDelta += modifiers.drawPerTurnDelta;
     if (modifiers.enemyHpMultMult) merged.enemyHpMult *= modifiers.enemyHpMultMult;
     if (modifiers.enemyDmgMultMult) merged.enemyDmgMult *= modifiers.enemyDmgMultMult;
+    if (modifiers.finalCountdownTickDelta) merged.finalCountdownTickDelta += modifiers.finalCountdownTickDelta;
+    if (modifiers.mutationTriggerChanceMultMult) merged.mutationTriggerChanceMult *= modifiers.mutationTriggerChanceMultMult;
   }
 
   merged.playerMaxHP = Math.max(20, Math.round(merged.playerMaxHP));
   merged.startingGold = Math.max(0, Math.round(merged.startingGold));
   merged.maxMP = Math.max(3, Math.round(merged.maxMP));
   merged.travelHpCost = Math.max(0, Math.round(merged.travelHpCost));
+  merged.playerMaxRAM = Math.max(3, Math.round(merged.playerMaxRAM));
+  merged.playerRamRegen = Math.max(0, Math.round(merged.playerRamRegen));
   merged.drawPerTurnDelta = Math.round(merged.drawPerTurnDelta);
   merged.enemyHpMult = Number(merged.enemyHpMult.toFixed(2));
   merged.enemyDmgMult = Number(merged.enemyDmgMult.toFixed(2));
+  merged.finalCountdownTickDelta = Math.max(0, Math.round(merged.finalCountdownTickDelta));
+  merged.mutationTriggerChanceMult = Number(merged.mutationTriggerChanceMult.toFixed(2));
 
   return merged;
 }

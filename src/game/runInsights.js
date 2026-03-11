@@ -56,6 +56,7 @@ export function analyzeDeckState(data, deckOrState) {
       compiled: Number(instance.compileLevel || 0) > 0,
       isCore: !!def?.tags?.includes("Core"),
       isPower: !!(def?.type === "Power" || def?.tags?.includes("Power")),
+      isCurse: !!def?.tags?.includes("Curse"),
       cost: Number(def?.costRAM || 0) + Number(instance.ramCostDelta || 0),
     };
     cards.push(entry);
@@ -65,6 +66,7 @@ export function analyzeDeckState(data, deckOrState) {
   const mutatedCards = cards.filter((card) => card.mutated);
   const unstableCards = cards.filter((card) => card.unstable);
   const brickedCards = cards.filter((card) => card.bricked);
+  const curseCards = cards.filter((card) => card.isCurse);
   const duplicates = Object.entries(defCounts)
     .filter(([, count]) => count >= 2)
     .map(([defId, count]) => ({ defId, count }));
@@ -74,6 +76,7 @@ export function analyzeDeckState(data, deckOrState) {
     mutatedCount: mutatedCards.length,
     unstableCount: unstableCards.length,
     brickedCount: brickedCards.length,
+    curseCount: curseCards.length,
     compiledCount: cards.filter((card) => card.compiled).length,
     coreCount: cards.filter((card) => card.isCore).length,
     powerCount: cards.filter((card) => card.isPower).length,
@@ -83,9 +86,11 @@ export function analyzeDeckState(data, deckOrState) {
     mutatedCards,
     unstableCards,
     brickedCards,
+    curseCards,
     mutatedInstanceIds: mutatedCards.map((card) => card.instanceId),
     unstableInstanceIds: unstableCards.map((card) => card.instanceId),
     brickedInstanceIds: brickedCards.map((card) => card.instanceId),
+    curseInstanceIds: curseCards.map((card) => card.instanceId),
   };
 }
 

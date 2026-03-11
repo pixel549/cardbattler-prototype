@@ -4133,10 +4133,16 @@ export function startCombatFromRunDeck(params) {
   const effectiveEnemyHpMult  = debugOverrides?.enemyHpMult  ?? (bal.enemyHpMult  ?? 1);
   const effectiveEnemyDmgMult = debugOverrides?.enemyDmgMult ?? (bal.enemyDmgMult ?? 1);
 
-  // Debug draw override replaces ruleMods value when set
+  // Debug/run overrides replace ruleMods when explicitly set.
   const effectiveRuleMods = { ...ruleMods };
   if (debugOverrides?.drawPerTurnDelta != null) {
     effectiveRuleMods.drawPerTurnDelta = debugOverrides.drawPerTurnDelta;
+  }
+  if (debugOverrides?.finalCountdownTickDelta != null) {
+    effectiveRuleMods.finalCountdownTickDelta = debugOverrides.finalCountdownTickDelta;
+  }
+  if (debugOverrides?.mutationTriggerChanceMult != null) {
+    effectiveRuleMods.mutationTriggerChanceMult = debugOverrides.mutationTriggerChanceMult;
   }
 
   const deckAnalysis = analyzeDeckState(data, runDeck);

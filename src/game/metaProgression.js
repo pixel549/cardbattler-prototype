@@ -15,6 +15,7 @@ export function createDefaultMetaProgress() {
     totalRuns: 0,
     totalWins: 0,
     totalLosses: 0,
+    highestDifficultyRankCleared: 0,
     bestActReached: 1,
     highestFloorReached: 1,
     totalBossesDefeated: 0,
@@ -49,6 +50,7 @@ function normalizeMetaProgress(raw) {
     totalRuns: Math.max(0, Number(raw.totalRuns ?? base.totalRuns)),
     totalWins: Math.max(0, Number(raw.totalWins ?? base.totalWins)),
     totalLosses: Math.max(0, Number(raw.totalLosses ?? base.totalLosses)),
+    highestDifficultyRankCleared: Math.max(0, Number(raw.highestDifficultyRankCleared ?? base.highestDifficultyRankCleared)),
     bestActReached: Math.max(1, Number(raw.bestActReached ?? base.bestActReached)),
     highestFloorReached: Math.max(1, Number(raw.highestFloorReached ?? base.highestFloorReached)),
     totalBossesDefeated: Math.max(0, Number(raw.totalBossesDefeated ?? base.totalBossesDefeated)),
@@ -119,6 +121,7 @@ function summarizeRunForMeta(run) {
     starterProfileName: run.starterProfileName || STARTER_PROFILES[run.starterProfileId || "kernel"]?.name || "Kernel Runner",
     difficultyId: run.difficultyId || "standard",
     difficultyName: DIFFICULTY_PROFILES[run.difficultyId || "standard"]?.name || "Standard",
+    difficultyRank: Math.max(0, Number(DIFFICULTY_PROFILES[run.difficultyId || "standard"]?.rank || 0)),
     challengeIds: Array.isArray(run.challengeIds) ? run.challengeIds : [],
     seenMutationIds,
   };
@@ -141,6 +144,9 @@ export function applyRunResultToMetaProgress(currentMetaProgress, run) {
     totalRuns: current.totalRuns + 1,
     totalWins: current.totalWins + (summary.victory ? 1 : 0),
     totalLosses: current.totalLosses + (summary.victory ? 0 : 1),
+    highestDifficultyRankCleared: summary.victory
+      ? Math.max(current.highestDifficultyRankCleared || 0, summary.difficultyRank || 0)
+      : Math.max(0, Number(current.highestDifficultyRankCleared || 0)),
     bestActReached: Math.max(current.bestActReached, summary.actReached),
     highestFloorReached: Math.max(current.highestFloorReached, summary.floorReached),
     totalBossesDefeated: current.totalBossesDefeated + summary.bossesDefeated,

@@ -1,6 +1,7 @@
 import { RNG } from "./rng";
 import { push } from "./log";
 import { applyDamage, addStatus, getFirewallStacks, getStatusStacks, loseFirewall, clearFirewall, enforceFirewallCap } from "./rules";
+import { getCompileBonus } from "./cardCompile";
 
 function getCardLogData(state, cid) {
   if (!cid) return null;
@@ -53,6 +54,7 @@ function getCardMutationSnapshot(state, cid) {
     finalMutationCountdown: ci?.finalMutationCountdown ?? null,
     finalMutationId: ci?.finalMutationId ?? null,
     ramCostDelta: ci?.ramCostDelta ?? 0,
+    compileLevel: ci?.compileLevel ?? 0,
     appliedMutations,
     appliedMutationCount: appliedMutations.length,
   };
@@ -2674,6 +2676,54 @@ function chooseWrongTarget(state, targetEnemyId, rng) {
   return rng ? candidates[rng.int(candidates.length)]?.id : candidates[0]?.id;
 }
 
+function cardTargetsAllEnemies(def) {
+  return (def?.effects || []).some((effect) => {
+    if (effect?.target === "AllEnemies") return true;
+    if (effect?.op === "RawText" && /ALL enemies/i.test(effect.text || "")) return true;
+    return false;
+  });
+}
+
+function applyCompiledCardBonus(state, data, rng, cardInstanceId, def, targetEnemyId = null) {
+  const ci = state.cardInstances?.[cardInstanceId];
+  const compileLevel = Math.max(0, Number(ci?.compileLevel || 0));
+  if (!ci || !def || compileLevel <= 0) return;
+
+  const bonus = getCompileBonus(def);
+  const scaledAmount = Math.max(1, compileLevel) * (
+    bonus.type === "Attack" ? 4
+      : bonus.type === "Defense" ? 5
+        : bonus.type === "Support" ? 4
+          : bonus.type === "Power" ? 3
+            : 1
+  );
+
+  if (bonus.type === "Attack") {
+    if (state._selfTargetOverride) {
+      applyDamage(state, "player", state.player, scaledAmount);
+    } else if (cardTargetsAllEnemies(def)) {
+      for (const enemy of getAliveEnemies(state)) {
+        applyDamage(state, "player", enemy, scaledAmount);
+      }
+    } else {
+      const enemy = getTargetEnemy(state, targetEnemyId) || getAliveEnemies(state)[0];
+      if (enemy) applyDamage(state, "player", enemy, scaledAmount);
+    }
+  } else if (bonus.type === "Defense" || bonus.type === "Power") {
+    grantFirewall(state, state.player, scaledAmount, rng);
+  } else if (bonus.type === "Support") {
+    state.player.hp = Math.min(state.player.maxHP, state.player.hp + scaledAmount);
+  } else {
+    state.player.ram = Math.min(state.player.maxRAM, state.player.ram + scaledAmount);
+  }
+
+  push(state.log, {
+    t: "Info",
+    msg: `Compiled bonus: ${def.name} grants ${bonus.label}`,
+    data: { cardInstanceId, compileLevel, bonusType: bonus.type, amount: scaledAmount },
+  });
+}
+
 /**
  * Execute a single patch op.
  */
@@ -4175,6 +4225,14 @@ export function dispatchCombat(state, data, action) {
             }
           }
         }
+        applyCompiledCardBonus(
+          state,
+          data,
+          rng,
+          cid,
+          def,
+          resolvedContextEnemy?.id ?? action.targetEnemyId ?? null,
+        );
       }
 
       delete state._targetOverride;

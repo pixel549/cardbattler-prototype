@@ -10,6 +10,8 @@ import { createBasicEventRegistry, applyEventChoiceImmediate } from "./events";
 import { getMinigameRewards, getMinigamePoolForAct } from "./minigames";
 import { decodeDebugSeed, decodeSensibleDebugSeed } from "./debugSeed";
 import { getCardBalanceMeta } from "./card_balance";
+import { getStarterProfile } from "./runProfiles";
+import { getCompilePreview, applyCompileToCardInstance } from "./cardCompile";
 
 const EVENT_REG = createBasicEventRegistry();
 
@@ -45,6 +47,8 @@ export function normalizeDeckServiceId(rawId) {
       return "Stabilise";
     case "AccelerateSelectedCard":
       return "Accelerate";
+    case "CompileSelectedCard":
+      return "Compile";
     default:
       return rawId ?? null;
   }
@@ -240,6 +244,16 @@ function getServiceCardPreview(serviceId, data, ci) {
     };
   }
 
+  if (normalizedId === "Compile") {
+    const preview = getCompilePreview(data?.cards?.[ci?.defId], ci);
+    return {
+      serviceId: normalizedId,
+      ...preview,
+      summary: preview.summary,
+      reason: preview.reason,
+    };
+  }
+
   return {
     serviceId: normalizedId,
     eligible: false,
@@ -372,9 +386,10 @@ function replaceRandomType(types, rng, fromType, toType) {
 function getRowTypeWeights(row) {
   if (row === 6 || row === 12) return { Elite: 1 };
   if (row === 7) return { Rest: 4, Shop: 2 };
+  if (row === 5 || row === 10) return { Combat: 3, Event: 1, Shop: 1, Rest: 1, Compile: 2 };
   if (row === 13) return { Rest: 2, Shop: 2, Event: 2 };
   if (row <= 2) return { Combat: 4, Event: 1, Shop: 1 };
-  return { Combat: 4, Event: 2, Shop: 2, Rest: 1 };
+  return { Combat: 4, Event: 2, Shop: 2, Rest: 1, Compile: 1 };
 }
 
 function rebalanceRowTypes(row, types, rng, allowedTypes) {
@@ -940,6 +955,14 @@ function service_AccelerateCard(state, data) {
   ci.finalMutationCountdown = preview.nextFinalCountdown;
   return true;
 }
+function service_CompileCard(state, data) {
+  const sel = state.deckView?.selectedInstanceId;
+  if (!state.deck || !sel) return false;
+  const ci = state.deck.cardInstances[sel];
+  const def = data?.cards?.[ci?.defId];
+  if (!ci || !def) return false;
+  return applyCompileToCardInstance(def, ci);
+}
 function service_DuplicateCard(state, rng) {
   const sel = state.deckView?.selectedInstanceId;
   if (!state.deck || !sel) return false;
@@ -1066,6 +1089,14 @@ function resolveCurrentNodeInternal(state, data, log) {
     return state;
   }
 
+  if (node.type === "Compile") {
+    markNodeResolved();
+    state.mode = "Event";
+    state.event = { eventId: "CompileStation", step: 0 };
+    log({ t: "Info", msg: "Entered compile station" });
+    return state;
+  }
+
   if (node.type === "Event") {
     markNodeResolved();
     state.mode = "Event";
@@ -1089,6 +1120,8 @@ export function dispatchGame(stateIn, data, action) {
 
   switch (action.type) {
     case "NewRun": {
+      const starterProfile = getStarterProfile(action.starterProfileId);
+      const starterRelicIds = [...(starterProfile.startingRelicIds || [])];
       const debugSeed = action.debugSeed ?? null;
       // Decode seed-based overrides first
       const seedOverrides = debugSeed !== null
@@ -1116,6 +1149,8 @@ export function dispatchGame(stateIn, data, action) {
 
       const startMaxHP = dbg?.playerMaxHP ?? 75;
       const startGold  = dbg?.startingGold ?? 99;
+      const startMaxMP = dbg?.maxMP ?? 6;
+      const travelHpCost = dbg?.travelHpCost ?? 2;
 
       state.mode = "Map";
       state.run = {
@@ -1124,15 +1159,19 @@ export function dispatchGame(stateIn, data, action) {
         debugOverrides: dbg,
         act: 1,
         floor: 1,
-        mp: 6,
-        maxMP: 6,
+        mp: startMaxMP,
+        maxMP: startMaxMP,
         gold: startGold,
         hp: startMaxHP,
         maxHP: startMaxHP,
-        travelHpCost: 2,
-        relicIds: [],
+        travelHpCost,
+        relicIds: starterRelicIds,
         seenMutationIds: [],
-        encounterHistory: []
+        encounterHistory: [],
+        starterProfileId: starterProfile.id,
+        starterProfileName: starterProfile.name,
+        difficultyId: action.difficultyId || "standard",
+        challengeIds: Array.isArray(action.challengeIds) ? action.challengeIds : [],
       };
 
       // Starter deck: explicit debug list > default 9-card starter
@@ -1141,6 +1180,8 @@ export function dispatchGame(stateIn, data, action) {
         starter = dbg.startingCardIds;
       } else if (dbg?.startingCardCount != null) {
         starter = Object.keys(data.cards).slice(0, dbg.startingCardCount);
+      } else if (starterProfile?.deck?.length) {
+        starter = starterProfile.deck;
       } else {
         starter = buildDefaultStarterDeck(data, action.seed);
       }
@@ -1153,7 +1194,10 @@ export function dispatchGame(stateIn, data, action) {
       state.deckView = null;
       state.journal = { seed: action.seed, debugSeed, actions: [] };
 
-      log({ t: "Info", msg: `New run (seed=${action.seed}, debugSeed=${debugSeed ?? 'none'})` });
+      log({
+        t: "Info",
+        msg: `New run (${starterProfile.name}, seed=${action.seed}, debugSeed=${debugSeed ?? 'none'})`,
+      });
       return state;
     }
 
@@ -1633,6 +1677,7 @@ export function dispatchGame(stateIn, data, action) {
         if (serviceId === "Repair") ok = service_RepairCard(state, data);
         if (serviceId === "Stabilise") ok = service_StabiliseCard(state, data);
         if (serviceId === "Accelerate") ok = service_AccelerateCard(state, data);
+        if (serviceId === "Compile") ok = service_CompileCard(state, data);
         if (!ok) { log({ t: "Info", msg: `Service failed: ${serviceId}` }); return state; }
         state.run.gold -= servicePrice;
         advanceRepeatableShopServiceOffer(state.shop, serviceId, serviceOfferIndex, servicePrice);
@@ -1651,6 +1696,7 @@ export function dispatchGame(stateIn, data, action) {
         if (op === "RepairSelectedCard") ok = service_RepairCard(state, data);
         if (op === "StabiliseSelectedCard") ok = service_StabiliseCard(state, data);
         if (op === "AccelerateSelectedCard") ok = service_AccelerateCard(state, data);
+        if (op === "CompileSelectedCard") ok = service_CompileCard(state, data);
         if (op === "DuplicateSelectedCard") {
           const dupRng = new RNG((state.run?.seed ^ state.run?.floor ^ 0xD0D0D0) >>> 0);
           ok = service_DuplicateCard(state, dupRng);
@@ -1694,6 +1740,20 @@ export function dispatchGame(stateIn, data, action) {
     case "Rest_Leave": {
       if (state.mode !== "Event" || state.event?.eventId !== "RestSite") return state;
       log({ t: "Info", msg: "Left rest site" });
+      state.mode = "Map";
+      state.event = null;
+      return state;
+    }
+    case "Compile_Open": {
+      if (state.mode !== "Event" || state.event?.eventId !== "CompileStation") return state;
+      state.deckView = { selectedInstanceId: null, returnMode: "Event" };
+      state.event.pendingSelectOp = "CompileSelectedCard";
+      log({ t: "Info", msg: "Compile: choose a card to upgrade" });
+      return state;
+    }
+    case "Compile_Leave": {
+      if (state.mode !== "Event" || state.event?.eventId !== "CompileStation") return state;
+      log({ t: "Info", msg: "Left compile station" });
       state.mode = "Map";
       state.event = null;
       return state;

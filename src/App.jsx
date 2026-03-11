@@ -36,6 +36,26 @@ import {
   canUseTutorialAction,
   advanceTutorialState,
 } from './game/tutorial';
+import {
+  STARTER_PROFILES,
+  DIFFICULTY_PROFILES,
+  CHALLENGE_MODES,
+  RUN_BASELINE,
+  getUnlockedStarterProfiles,
+  getUnlockedDifficulties,
+  getUnlockedChallenges,
+  composeRunConfig,
+} from './game/runProfiles';
+import {
+  readMetaProgress,
+  writeMetaProgress,
+  applyRunResultToMetaProgress,
+} from './game/metaProgression';
+import {
+  getBossArchiveEntries,
+  getProjectedBossEncounter,
+  summarizeBossEncounter,
+} from './game/bossIntel';
 
 // Module-level event registry (created once)
 const EVENT_REG_UI = createBasicEventRegistry();
@@ -67,6 +87,7 @@ const NODE_COLORS = {
   Boss: C.purple,
   Shop: C.yellow,
   Rest: C.green,
+  Compile: C.orange,
   Event: C.cyan,
   Start: C.textMuted,
 };
@@ -77,6 +98,7 @@ const NODE_ICONS = {
   Boss: '\uD83D\uDC51',
   Shop: '\uD83D\uDED2',
   Rest: '\u2665',
+  Compile: '\u2699',
   Event: '?',
   Start: '\u25CF',
 };
@@ -106,6 +128,9 @@ const AI_EXPORT_OPTIONS_DEFAULTS = {
   floor: true,
   decks: true,
 };
+const STARTER_PROFILE_STORAGE_KEY = 'cb_selected_starter_profile_v1';
+const DIFFICULTY_STORAGE_KEY = 'cb_selected_difficulty_v1';
+const CHALLENGES_STORAGE_KEY = 'cb_selected_challenges_v1';
 const AI_STALL_EXPORT_MS = 15000;
 const AI_STALL_RECOVER_MS = 28000;
 const NODE_AUTOSAVE_KEY = 'cb_node_autosave_v1';
@@ -458,6 +483,27 @@ function getAiExportProfileLabel(options) {
   if (enabled.length === Object.keys(AI_EXPORT_OPTIONS_DEFAULTS).length) return 'all';
   if (enabled.length === 0) return 'summary';
   return 'custom';
+}
+
+function readStoredString(key, fallback = '') {
+  if (typeof window === 'undefined') return fallback;
+  try {
+    return window.localStorage.getItem(key) || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function readStoredArray(key) {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
+  } catch {
+    return [];
+  }
 }
 
 function filterEncounterForExport(encounter, options) {
@@ -980,6 +1026,8 @@ function CardChoiceTile({
   const mutations = instance?.appliedMutations || [];
   const isBricked = instance?.finalMutationId === 'J_BRICK';
   const isRewritten = instance?.finalMutationId === 'J_REWRITE';
+  const isCompiled = Number(instance?.compileLevel || 0) > 0;
+  const displayedCost = Math.max(0, Number(card.costRAM ?? 0) + Number(instance?.ramCostDelta || 0));
   const { nextValue: visibleUseCounter, finalValue: visibleFinalCounter, isDecaying } = getCardLifecycleDisplay(card, instance);
   const effectText = describeEffects(card.effects);
 
@@ -1079,7 +1127,7 @@ function CardChoiceTile({
           boxShadow: `0 0 10px ${color}55`,
         }}
       >
-        {card.costRAM ?? 0}
+        {displayedCost}
       </div>
 
       {(statusLabel || price != null) && (
@@ -1173,8 +1221,24 @@ function CardChoiceTile({
             {effectText}
           </div>
 
-          {tags.length > 0 && (
+          {(tags.length > 0 || isCompiled) && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+              {isCompiled && (
+                <span
+                  style={{
+                    padding: '2px 5px',
+                    borderRadius: 4,
+                    fontFamily: MONO,
+                    fontSize: 8,
+                    backgroundColor: `${C.orange}16`,
+                    color: C.orange,
+                    border: `1px solid ${C.orange}30`,
+                    boxShadow: '0 1px 6px rgba(0,0,0,0.25)',
+                  }}
+                >
+                  COMPILED
+                </span>
+              )}
               {tags.slice(0, 4).map((tag) => (
                 <span
                   key={tag}
@@ -1901,6 +1965,12 @@ function RunHeader({ run, data }) {
           <span style={{ opacity: 0.5 }}>ACT</span> {run.act}
           <span style={{ marginLeft: '8px', marginRight: '8px', opacity: 0.3 }}>|</span>
           <span style={{ opacity: 0.5 }}>FLOOR</span> {run.floor}
+          {run.starterProfileName && (
+            <>
+              <span style={{ marginLeft: '8px', marginRight: '8px', opacity: 0.3 }}>|</span>
+              <span style={{ color: C.text }}>{run.starterProfileName}</span>
+            </>
+          )}
         </div>
         <div style={{ display: 'flex', gap: '12px', fontFamily: MONO, fontSize: 12 }}>
           <span style={{ color: C.green }}>{run.hp}/{run.maxHP}</span>
@@ -1973,10 +2043,11 @@ const NODE_TYPE_DESCS = {
   Boss:   'Act boss — prepare',
   Shop:   'Buy cards & services',
   Rest:   'Heal, repair, or stabilise',
+  Compile:'Deliberate card upgrade',
   Event:  'Unknown encounter',
 };
 
-function MapScreen({ state, data, onAction }) {
+function MapScreen({ state, data, onAction, metaProgress = null }) {
   const nodes   = state.map?.nodes || {};
   const curId   = state.map?.currentNodeId;
   const selNext = state.map?.selectableNext || [];
@@ -2028,6 +2099,14 @@ function MapScreen({ state, data, onAction }) {
   const mapWidth = isWideLayout ? 760 : 340;
   const routeLabelFontSize = isWideLayout ? 12 : 11;
   const routeHintFontSize = isWideLayout ? 11 : 10;
+  const bossPreviewNodeId = (previewNodeId && nodes[previewNodeId]?.type === 'Boss')
+    ? previewNodeId
+    : selNext.find((nodeId) => nodes[nodeId]?.type === 'Boss') || null;
+  const projectedBossSummary = bossPreviewNodeId
+    ? summarizeBossEncounter(data, getProjectedBossEncounter(data, state.run))
+    : null;
+  const seenBossSet = new Set(metaProgress?.bossEncounterIdsSeen || []);
+  const defeatedBossSet = new Set(metaProgress?.bossEncounterIdsDefeated || []);
   const routeControls = selNext.length > 0 ? (
     <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 8, padding: isWideLayout ? 0 : '0 4px', marginTop: isWideLayout ? 0 : 4 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 2 }}>
@@ -2116,8 +2195,75 @@ function MapScreen({ state, data, onAction }) {
       })}
     </div>
   ) : null;
+  const bossIntelPanel = bossPreviewNodeId ? (
+    <div
+      style={{
+        width: '100%',
+        padding: isWideLayout ? '14px 16px' : '12px 14px',
+        borderRadius: 16,
+        border: `1px solid ${C.purple}32`,
+        background: 'linear-gradient(180deg, rgba(20, 10, 28, 0.92) 0%, rgba(8, 10, 18, 0.98) 100%)',
+        display: 'grid',
+        gap: 8,
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+        <div style={{ fontFamily: MONO, fontSize: 11, letterSpacing: '0.14em', color: C.purple }}>
+          ACT BOSS INTEL
+        </div>
+        {!projectedBossSummary?.debugPool && (
+          <div
+            style={{
+              fontFamily: MONO,
+              fontSize: 10,
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              color: defeatedBossSet.has(projectedBossSummary?.id) ? C.green : seenBossSet.has(projectedBossSummary?.id) ? C.yellow : C.red,
+            }}
+          >
+            {defeatedBossSet.has(projectedBossSummary?.id) ? 'Defeated before' : seenBossSet.has(projectedBossSummary?.id) ? 'Seen before' : 'New threat'}
+          </div>
+        )}
+      </div>
+      <div style={{ fontFamily: MONO, fontWeight: 700, fontSize: 15, color: C.text }}>
+        {projectedBossSummary?.name || 'Boss prediction unavailable'}
+      </div>
+      {projectedBossSummary?.debugPool ? (
+        <div style={{ fontFamily: MONO, fontSize: 12, lineHeight: 1.55, color: C.textDim }}>
+          {projectedBossSummary.notes}
+        </div>
+      ) : (
+        <>
+          <div style={{ fontFamily: MONO, fontSize: 12, lineHeight: 1.55, color: C.textDim }}>
+            {projectedBossSummary?.enemyCount || 0} enemy{projectedBossSummary?.enemyCount === 1 ? '' : 'ies'} • {projectedBossSummary?.totalHp || '?'} total HP
+            {projectedBossSummary?.roleSummary?.length ? ` • ${projectedBossSummary.roleSummary.join(' • ')}` : ''}
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {(projectedBossSummary?.enemies || []).map((enemy) => (
+              <span
+                key={enemy.id}
+                style={{
+                  padding: '5px 8px',
+                  borderRadius: 999,
+                  border: `1px solid ${C.purple}28`,
+                  background: `${C.purple}12`,
+                  color: C.purple,
+                  fontFamily: MONO,
+                  fontSize: 10,
+                  letterSpacing: '0.08em',
+                }}
+              >
+                {enemy.name} • {enemy.hp} HP
+              </span>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  ) : null;
   const actionsPanel = (
     <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {bossIntelPanel}
       {routeControls}
       {state.run?.debugOverrides?.showLegacyMapRouteControls === true && selNext.length > 0 && (
         <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 8, padding: isWideLayout ? 0 : '0 4px', marginTop: isWideLayout ? 0 : 4 }}>
@@ -3571,6 +3717,81 @@ function EventScreen({ state, data, onAction }) {
     );
   }
 
+  if (eventId === 'CompileStation') {
+    return (
+      <ScreenShell>
+        <RunHeader run={state.run} data={data} />
+        <div style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+          <div
+            className="animate-slide-up"
+            style={{
+              fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace",
+              fontWeight: 700,
+              fontSize: '24px',
+              marginBottom: '8px',
+              color: C.orange,
+            }}
+          >
+            COMPILE STATION
+          </div>
+          <div style={{ fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace", marginBottom: '24px', color: C.textMuted, fontSize: 12, maxWidth: 360, textAlign: 'center', lineHeight: 1.6 }}>
+            Spend this node to deliberately upgrade one card. Compiled cards cost 1 less RAM and gain a permanent typed bonus when played.
+          </div>
+
+          <div style={{ width: '100%', maxWidth: '360px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <button
+              onClick={() => onAction({ type: 'Compile_Open' })}
+              style={{
+                width: '100%',
+                padding: '16px',
+                borderRadius: '12px',
+                fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace",
+                textAlign: 'left',
+                transition: 'all 0.15s ease',
+                backgroundColor: C.bgCard,
+                border: `2px solid ${C.orange}40`,
+                boxShadow: `0 0 16px ${C.orange}10`,
+                cursor: 'pointer',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div
+                  style={{
+                    width: '40px',
+                    height: '40px',
+                    borderRadius: '8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '18px',
+                    backgroundColor: `${C.orange}15`,
+                    border: `1px solid ${C.orange}40`,
+                  }}
+                >
+                  {'⚙'}
+                </div>
+                <div>
+                  <div style={{ fontWeight: 700, color: C.orange, fontSize: 14 }}>Compile</div>
+                  <div style={{ color: C.textMuted, fontSize: 11 }}>Choose a card and permanently enhance it for this run.</div>
+                </div>
+              </div>
+            </button>
+
+            <button
+              onClick={() => onAction({ type: 'Compile_Leave' })}
+              style={getSecondaryActionButtonStyle(C.orange, {
+                textAlign: 'center',
+                marginTop: '8px',
+              })}
+            >
+              Leave
+            </button>
+          </div>
+        </div>
+      </ScreenShell>
+    );
+  }
+
   // Registry-driven generic event
   const MONO = "'JetBrains Mono', 'Fira Code', 'Consolas', monospace";
   const _baseDef = EVENT_REG_UI.events[eventId];
@@ -3779,6 +4000,8 @@ const DECK_OP_LABELS = {
   StabiliseSelectedCard: { label: 'STABILISE A CARD', desc: 'Extend the chosen card\'s use and final mutation clocks by 10%.', color: '#b44aff' },
   Accelerate:            { label: 'ACCELERATE A CARD',desc: 'Reduce the chosen card\'s use and final mutation clocks by 10%.', color: '#ff6b00' },
   AccelerateSelectedCard:{ label: 'ACCELERATE A CARD',desc: 'Reduce the chosen card\'s use and final mutation clocks by 10%.', color: '#ff6b00' },
+  Compile:               { label: 'COMPILE A CARD',   desc: 'Reduce its RAM cost and add a permanent typed bonus.', color: '#ff6b00' },
+  CompileSelectedCard:   { label: 'COMPILE A CARD',   desc: 'Reduce its RAM cost and add a permanent typed bonus.', color: '#ff6b00' },
 };
 
 function DeckPickerOverlay({ state, data, onAction }) {
@@ -4084,7 +4307,7 @@ const DEATH_QUIPS = [
   'Runtime exception: fatal.',
 ];
 
-function GameOverScreen({ state, onNewRun }) {
+function GameOverScreen({ state, onNewRun, recentUnlocks = [] }) {
   const MONO   = "'JetBrains Mono', 'Fira Code', 'Consolas', monospace";
   const run    = state.run   || {};
   const deck   = state.deck  || {};
@@ -4159,6 +4382,9 @@ function GameOverScreen({ state, onNewRun }) {
         )}
 
         {/* Stats grid */}
+        <div style={{ fontFamily: MONO, fontSize: 11, color: C.textDim, marginBottom: 12 }}>
+          {(run.starterProfileName || 'Kernel Runner')} • {(DIFFICULTY_PROFILES[run.difficultyId || 'standard']?.name || 'Standard')}
+        </div>
         <div style={{
           display: 'grid', gridTemplateColumns: '1fr 1fr 1fr',
           gap: 8, marginBottom: 32,
@@ -4176,6 +4402,26 @@ function GameOverScreen({ state, onNewRun }) {
             </div>
           ))}
         </div>
+
+        {recentUnlocks.length > 0 && (
+          <div
+            style={{
+              marginBottom: 24,
+              padding: '12px 14px',
+              borderRadius: 12,
+              border: `1px solid ${C.green}35`,
+              background: `${C.green}10`,
+              textAlign: 'left',
+            }}
+          >
+            <div style={{ fontFamily: MONO, fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: C.green, marginBottom: 6 }}>
+              NEW UNLOCKS
+            </div>
+            <div style={{ fontFamily: MONO, fontSize: 12, lineHeight: 1.5, color: C.text }}>
+              {recentUnlocks.map((unlock) => unlock.name).join(' • ')}
+            </div>
+          </div>
+        )}
 
         {/* HP bar */}
         <div style={{ marginBottom: 32 }}>
@@ -4236,6 +4482,7 @@ function LoadingScreen() {
 }
 
 function MainMenuScreen({
+  data = null,
   canContinue = false,
   onContinue,
   onStartTutorial,
@@ -4245,8 +4492,53 @@ function MainMenuScreen({
   onLoadDebugSave,
   tutorialCatalog = [],
   completedTutorialIds = [],
+  metaProgress = null,
+  recentUnlocks = [],
+  starterProfiles = [],
+  unlockedStarterProfileIds = [],
+  selectedStarterProfileId = 'kernel',
+  onSelectStarterProfile,
+  difficultyProfiles = [],
+  unlockedDifficultyIds = [],
+  selectedDifficultyId = 'standard',
+  onSelectDifficulty,
+  challengeModes = [],
+  unlockedChallengeIds = [],
+  selectedChallengeIds = [],
+  onToggleChallenge,
 }) {
   const completedSet = new Set(completedTutorialIds);
+  const unlockedStarterSet = new Set(unlockedStarterProfileIds);
+  const unlockedDifficultySet = new Set(unlockedDifficultyIds);
+  const unlockedChallengeSet = new Set(unlockedChallengeIds);
+  const selectedChallenges = new Set(selectedChallengeIds);
+  const selectedProfile = starterProfiles.find((profile) => profile.id === selectedStarterProfileId) || starterProfiles[0];
+  const selectedDifficulty = difficultyProfiles.find((difficulty) => difficulty.id === selectedDifficultyId) || difficultyProfiles[0];
+  const selectedProfileRelics = (selectedProfile?.startingRelicIds || []).map((relicId) => data?.relics?.[relicId]?.name || relicId);
+  const selectedProfileDeckNames = (selectedProfile?.deck || []).map((cardId) => data?.cards?.[cardId]?.name || cardId);
+  const selectedRunConfig = composeRunConfig({}, selectedStarterProfileId, selectedDifficultyId, selectedChallengeIds);
+  const selectedModeSummary = [];
+  if (selectedRunConfig.playerMaxHP !== RUN_BASELINE.playerMaxHP) {
+    selectedModeSummary.push(`${selectedRunConfig.playerMaxHP > RUN_BASELINE.playerMaxHP ? '+' : ''}${selectedRunConfig.playerMaxHP - RUN_BASELINE.playerMaxHP} max HP`);
+  }
+  if (selectedRunConfig.startingGold !== RUN_BASELINE.startingGold) {
+    selectedModeSummary.push(`${selectedRunConfig.startingGold > RUN_BASELINE.startingGold ? '+' : ''}${selectedRunConfig.startingGold - RUN_BASELINE.startingGold} starting gold`);
+  }
+  if (selectedRunConfig.drawPerTurnDelta !== RUN_BASELINE.drawPerTurnDelta) {
+    selectedModeSummary.push(`${selectedRunConfig.drawPerTurnDelta > 0 ? '+' : ''}${selectedRunConfig.drawPerTurnDelta} draw / turn`);
+  }
+  if (selectedRunConfig.enemyHpMult !== RUN_BASELINE.enemyHpMult) {
+    const delta = Math.round((selectedRunConfig.enemyHpMult - 1) * 100);
+    selectedModeSummary.push(`${delta > 0 ? '+' : ''}${delta}% enemy HP`);
+  }
+  if (selectedRunConfig.enemyDmgMult !== RUN_BASELINE.enemyDmgMult) {
+    const delta = Math.round((selectedRunConfig.enemyDmgMult - 1) * 100);
+    selectedModeSummary.push(`${delta > 0 ? '+' : ''}${delta}% enemy damage`);
+  }
+  const bossArchiveEntries = data ? getBossArchiveEntries(data, metaProgress, 6) : [];
+  const totalBossCount = Object.values(data?.encounters || {}).filter((encounter) => encounter?.kind === 'boss').length;
+  const seenBossCount = metaProgress?.bossEncounterIdsSeen?.length ?? 0;
+  const defeatedBossCount = metaProgress?.bossEncounterIdsDefeated?.length ?? 0;
   const menuActionStyle = (accent, solid = false) => ({
     width: '100%',
     padding: '18px 18px',
@@ -4286,6 +4578,39 @@ function MainMenuScreen({
     gap: 10,
   });
 
+  const optionCardStyle = (accent, selected, locked = false) => ({
+    width: '100%',
+    padding: '14px 14px 12px',
+    borderRadius: 18,
+    border: `1px solid ${selected ? `${accent}88` : `${accent}24`}`,
+    background: selected
+      ? `linear-gradient(180deg, ${accent}24 0%, rgba(8, 10, 16, 0.96) 100%)`
+      : 'linear-gradient(180deg, rgba(8, 10, 16, 0.96) 0%, rgba(5, 7, 12, 0.98) 100%)',
+    color: C.text,
+    boxShadow: selected
+      ? `0 18px 34px ${accent}22`
+      : '0 12px 26px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.04)',
+    cursor: locked ? 'default' : 'pointer',
+    textAlign: 'left',
+    opacity: locked ? 0.56 : 1,
+    display: 'grid',
+    gap: 8,
+  });
+
+  const selectorPillStyle = (accent, selected, locked = false) => ({
+    padding: '10px 12px',
+    borderRadius: 999,
+    border: `1px solid ${selected ? `${accent}88` : `${accent}28`}`,
+    background: selected ? `${accent}18` : 'rgba(255,255,255,0.03)',
+    color: locked ? C.textDim : selected ? accent : C.text,
+    fontFamily: UI_MONO,
+    fontSize: 11,
+    fontWeight: 700,
+    letterSpacing: '0.08em',
+    textTransform: 'uppercase',
+    cursor: locked ? 'default' : 'pointer',
+  });
+
   return (
     <ScreenShell extraStyle={{ alignItems: 'center', justifyContent: 'center', padding: 20 }}>
       <div style={{ width: 'min(560px, 100%)', display: 'flex', flexDirection: 'column', gap: 18 }}>
@@ -4306,6 +4631,323 @@ function MainMenuScreen({
           </div>
           <div style={{ fontFamily: UI_MONO, fontSize: 13, lineHeight: 1.7, color: C.textDim }}>
             Start a fresh run, jump into one of the guided training lessons, or open settings before you begin.
+          </div>
+        </div>
+
+        <div
+          style={{
+            padding: '16px 18px 18px',
+            borderRadius: 20,
+            border: `1px solid ${C.yellow}24`,
+            background: 'linear-gradient(180deg, rgba(8,12,20,0.95) 0%, rgba(6,8,14,0.98) 100%)',
+            display: 'grid',
+            gap: 14,
+          }}
+        >
+          <div style={{ display: 'grid', gap: 6 }}>
+            <div style={{ fontFamily: UI_MONO, fontSize: 11, letterSpacing: '0.18em', color: C.yellow }}>
+              META PROGRESSION
+            </div>
+            <div style={{ fontFamily: UI_MONO, fontSize: 12, lineHeight: 1.6, color: C.textDim }}>
+              Permanent unlocks now carry between runs. Clear runs, discover mutations, and push deeper acts to expand your loadouts and modes.
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 8 }}>
+            {[
+              { label: 'Runs', value: metaProgress?.totalRuns ?? 0, color: C.text },
+              { label: 'Wins', value: metaProgress?.totalWins ?? 0, color: C.green },
+              { label: 'Best Act', value: metaProgress?.bestActReached ?? 1, color: C.cyan },
+              { label: 'Mutations', value: metaProgress?.totalUniqueMutations ?? 0, color: C.purple },
+            ].map((stat) => (
+              <div
+                key={stat.label}
+                style={{
+                  padding: '10px 8px',
+                  borderRadius: 14,
+                  border: `1px solid ${C.border}`,
+                  background: 'rgba(255,255,255,0.03)',
+                  textAlign: 'center',
+                }}
+              >
+                <div style={{ fontFamily: UI_MONO, fontSize: 10, letterSpacing: '0.12em', color: C.textMuted, marginBottom: 4 }}>
+                  {stat.label}
+                </div>
+                <div style={{ fontFamily: UI_MONO, fontWeight: 700, fontSize: 17, color: stat.color }}>
+                  {stat.value}
+                </div>
+              </div>
+            ))}
+          </div>
+          {recentUnlocks.length > 0 && (
+            <div
+              style={{
+                padding: '12px 14px',
+                borderRadius: 14,
+                border: `1px solid ${C.green}28`,
+                background: `${C.green}10`,
+                display: 'grid',
+                gap: 6,
+              }}
+            >
+              <div style={{ fontFamily: UI_MONO, fontSize: 10, letterSpacing: '0.14em', color: C.green }}>
+                LATEST UNLOCKS
+              </div>
+              <div style={{ fontFamily: UI_MONO, fontSize: 12, lineHeight: 1.55, color: C.text }}>
+                {recentUnlocks.map((unlock) => unlock.name).join(' • ')}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div
+          style={{
+            padding: '16px 18px 18px',
+            borderRadius: 20,
+            border: `1px solid ${C.orange}24`,
+            background: 'linear-gradient(180deg, rgba(8,12,20,0.95) 0%, rgba(6,8,14,0.98) 100%)',
+            display: 'grid',
+            gap: 12,
+          }}
+        >
+          <div style={{ display: 'grid', gap: 6 }}>
+            <div style={{ fontFamily: UI_MONO, fontSize: 11, letterSpacing: '0.18em', color: C.orange }}>
+              STARTER DECKS
+            </div>
+            <div style={{ fontFamily: UI_MONO, fontSize: 12, lineHeight: 1.6, color: C.textDim }}>
+              Pick a runner archetype before launching. Each one starts with its own deck identity, relic, and pressure profile.
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+            {starterProfiles.map((profile) => {
+              const locked = !unlockedStarterSet.has(profile.id);
+              const selected = selectedStarterProfileId === profile.id;
+              return (
+                <button
+                  key={profile.id}
+                  onClick={() => !locked && onSelectStarterProfile?.(profile.id)}
+                  style={optionCardStyle(profile.accent || C.orange, selected, locked)}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                    <div style={{ fontFamily: UI_MONO, fontWeight: 700, fontSize: 14, letterSpacing: '0.08em', color: profile.accent || C.orange }}>
+                      {profile.name}
+                    </div>
+                    <div
+                      style={{
+                        padding: '5px 8px',
+                        borderRadius: 999,
+                        border: `1px solid ${locked ? `${C.textMuted}26` : `${profile.accent || C.orange}28`}`,
+                        background: locked ? 'rgba(255,255,255,0.04)' : `${profile.accent || C.orange}12`,
+                        color: locked ? C.textDim : profile.accent || C.orange,
+                        fontFamily: UI_MONO,
+                        fontSize: 10,
+                        letterSpacing: '0.08em',
+                        textTransform: 'uppercase',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {locked ? 'Locked' : selected ? 'Selected' : 'Ready'}
+                    </div>
+                  </div>
+                  <div style={{ fontFamily: UI_MONO, fontSize: 12, lineHeight: 1.55, color: C.textDim }}>
+                    {profile.description}
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {(profile.identityTags || []).map((tag) => (
+                      <span
+                        key={tag}
+                        style={{
+                          padding: '4px 7px',
+                          borderRadius: 999,
+                          border: `1px solid ${(profile.accent || C.orange)}24`,
+                          background: `${profile.accent || C.orange}10`,
+                          color: profile.accent || C.orange,
+                          fontFamily: UI_MONO,
+                          fontSize: 10,
+                          letterSpacing: '0.08em',
+                          textTransform: 'uppercase',
+                        }}
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                  <div style={{ fontFamily: UI_MONO, fontSize: 11, lineHeight: 1.5, color: locked ? C.textDim : C.text }}>
+                    {locked ? profile.unlockHint : `Starts with ${profile.startingRelicIds?.length || 0} relic and ${profile.deck?.length || 0} cards.`}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+          {selectedProfile && (
+            <div
+              style={{
+                padding: '12px 14px',
+                borderRadius: 14,
+                border: `1px solid ${(selectedProfile.accent || C.orange)}28`,
+                background: `${selectedProfile.accent || C.orange}10`,
+                display: 'grid',
+                gap: 6,
+              }}
+            >
+              <div style={{ fontFamily: UI_MONO, fontSize: 10, letterSpacing: '0.14em', color: selectedProfile.accent || C.orange }}>
+                ACTIVE LOADOUT
+              </div>
+              <div style={{ fontFamily: UI_MONO, fontSize: 12, lineHeight: 1.55, color: C.text }}>
+                {selectedProfile.name}: {selectedProfileRelics.join(', ') || 'No starting relic'}.
+              </div>
+              <div style={{ fontFamily: UI_MONO, fontSize: 11, lineHeight: 1.5, color: C.textDim }}>
+                Deck: {selectedProfileDeckNames.slice(0, 5).join(', ')}{selectedProfileDeckNames.length > 5 ? ', ...' : ''}
+              </div>
+              <div style={{ fontFamily: UI_MONO, fontSize: 11, lineHeight: 1.5, color: C.textDim }}>
+                Run modifiers: {selectedModeSummary.join(' • ') || 'Standard baseline.'}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div
+          style={{
+            padding: '16px 18px 18px',
+            borderRadius: 20,
+            border: `1px solid ${C.purple}24`,
+            background: 'linear-gradient(180deg, rgba(8,12,20,0.95) 0%, rgba(6,8,14,0.98) 100%)',
+            display: 'grid',
+            gap: 12,
+          }}
+        >
+          <div style={{ display: 'grid', gap: 6 }}>
+            <div style={{ fontFamily: UI_MONO, fontSize: 11, letterSpacing: '0.18em', color: C.purple }}>
+              RUN MODES
+            </div>
+            <div style={{ fontFamily: UI_MONO, fontSize: 12, lineHeight: 1.6, color: C.textDim }}>
+              Difficulties and optional challenge runs unlock as you prove the build can survive deeper pressure.
+            </div>
+          </div>
+          <div style={{ display: 'grid', gap: 8 }}>
+            <div style={{ fontFamily: UI_MONO, fontSize: 10, letterSpacing: '0.14em', color: C.textMuted }}>
+              DIFFICULTY
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {difficultyProfiles.map((difficulty) => {
+                const locked = !unlockedDifficultySet.has(difficulty.id);
+                const selected = selectedDifficultyId === difficulty.id;
+                return (
+                  <button
+                    key={difficulty.id}
+                    onClick={() => !locked && onSelectDifficulty?.(difficulty.id)}
+                    style={selectorPillStyle(difficulty.accent || C.purple, selected, locked)}
+                    title={locked ? difficulty.unlockHint : difficulty.description}
+                  >
+                    {difficulty.name}
+                  </button>
+                );
+              })}
+            </div>
+            {selectedDifficulty && (
+              <div style={{ fontFamily: UI_MONO, fontSize: 12, lineHeight: 1.55, color: C.textDim }}>
+                {selectedDifficulty.description}
+              </div>
+            )}
+          </div>
+          <div style={{ display: 'grid', gap: 8 }}>
+            <div style={{ fontFamily: UI_MONO, fontSize: 10, letterSpacing: '0.14em', color: C.textMuted }}>
+              OPTIONAL CHALLENGES
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {challengeModes.map((challenge) => {
+                const locked = !unlockedChallengeSet.has(challenge.id);
+                const selected = selectedChallenges.has(challenge.id);
+                return (
+                  <button
+                    key={challenge.id}
+                    onClick={() => !locked && onToggleChallenge?.(challenge.id)}
+                    style={selectorPillStyle(challenge.accent || C.purple, selected, locked)}
+                    title={locked ? challenge.unlockHint : challenge.description}
+                  >
+                    {challenge.name}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        <div
+          style={{
+            padding: '16px 18px 18px',
+            borderRadius: 20,
+            border: `1px solid ${C.red}24`,
+            background: 'linear-gradient(180deg, rgba(8,12,20,0.95) 0%, rgba(6,8,14,0.98) 100%)',
+            display: 'grid',
+            gap: 12,
+          }}
+        >
+          <div style={{ display: 'grid', gap: 6 }}>
+            <div style={{ fontFamily: UI_MONO, fontSize: 11, letterSpacing: '0.18em', color: C.red }}>
+              BOSS ARCHIVE
+            </div>
+            <div style={{ fontFamily: UI_MONO, fontSize: 12, lineHeight: 1.6, color: C.textDim }}>
+              Bosses are now tracked between runs. Reaching the top of an act should feel like a specific threat, not just another red node.
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8 }}>
+            {[
+              { label: 'Seen', value: seenBossCount, color: C.yellow },
+              { label: 'Defeated', value: defeatedBossCount, color: C.green },
+              { label: 'Pool', value: totalBossCount, color: C.red },
+            ].map((stat) => (
+              <div
+                key={stat.label}
+                style={{
+                  padding: '10px 8px',
+                  borderRadius: 14,
+                  border: `1px solid ${C.border}`,
+                  background: 'rgba(255,255,255,0.03)',
+                  textAlign: 'center',
+                }}
+              >
+                <div style={{ fontFamily: UI_MONO, fontSize: 10, letterSpacing: '0.12em', color: C.textMuted, marginBottom: 4 }}>
+                  {stat.label}
+                </div>
+                <div style={{ fontFamily: UI_MONO, fontWeight: 700, fontSize: 17, color: stat.color }}>
+                  {stat.value}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 }}>
+            {bossArchiveEntries.map((boss) => {
+              const statusColor = boss.defeated ? C.green : boss.seen ? C.yellow : C.red;
+              const statusLabel = boss.defeated ? 'Defeated' : boss.seen ? 'Seen' : 'Unknown';
+              return (
+                <div
+                  key={boss.id}
+                  style={{
+                    padding: '12px 14px',
+                    borderRadius: 16,
+                    border: `1px solid ${statusColor}24`,
+                    background: `${statusColor}0d`,
+                    display: 'grid',
+                    gap: 6,
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                    <div style={{ fontFamily: UI_MONO, fontWeight: 700, fontSize: 12, color: statusColor }}>
+                      {boss.name}
+                    </div>
+                    <div style={{ fontFamily: UI_MONO, fontSize: 10, letterSpacing: '0.08em', color: statusColor, textTransform: 'uppercase' }}>
+                      {statusLabel}
+                    </div>
+                  </div>
+                  <div style={{ fontFamily: UI_MONO, fontSize: 11, color: C.textDim, lineHeight: 1.5 }}>
+                    Act {boss.act} • {boss.enemyCount} enemy{boss.enemyCount === 1 ? '' : 'ies'} • {boss.totalHp || '?'} total HP
+                  </div>
+                  <div style={{ fontFamily: UI_MONO, fontSize: 11, color: C.text, lineHeight: 1.5 }}>
+                    {(boss.enemies || []).map((enemy) => enemy.name).slice(0, 3).join(', ') || 'Unknown composition'}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -4409,8 +5051,8 @@ function MainMenuScreen({
               })}
             </div>
           </div>
-          <button onClick={onNewGame} style={menuActionStyle(C.yellow)}>
-            New Game
+          <button onClick={onNewGame} style={menuActionStyle(C.yellow, true)}>
+            {selectedProfile ? `Deploy ${selectedProfile.shortLabel || selectedProfile.name}` : 'New Game'}
           </button>
           <button onClick={onSettings} style={menuActionStyle(C.purple)}>
             Settings
@@ -4911,11 +5553,25 @@ function App() {
   const [menuAutosave, setMenuAutosave] = useState(null);
   const [debugSaveSlots, setDebugSaveSlots] = useState(() => readDebugSaveSlots());
   const [playtestMode, setPlaytestMode] = useState(() => readPlaytestModeEnabled());
+  const [metaProgress, setMetaProgress] = useState(() => readMetaProgress());
+  const [recentUnlocks, setRecentUnlocks] = useState(() => readMetaProgress().lastUnlocks || []);
+  const [selectedStarterProfileId, setSelectedStarterProfileId] = useState(() => {
+    const unlocked = getUnlockedStarterProfiles(readMetaProgress());
+    return readStoredString(STARTER_PROFILE_STORAGE_KEY, unlocked[0]?.id || 'kernel');
+  });
+  const [selectedDifficultyId, setSelectedDifficultyId] = useState(() => {
+    const unlocked = getUnlockedDifficulties(readMetaProgress());
+    return readStoredString(DIFFICULTY_STORAGE_KEY, unlocked[0]?.id || 'standard');
+  });
+  const [selectedChallengeIds, setSelectedChallengeIds] = useState(() => readStoredArray(CHALLENGES_STORAGE_KEY));
   const [tutorialNudge, setTutorialNudge] = useState('');
   const [completedTutorialIds, setCompletedTutorialIds] = useState(() => {
     if (typeof window === 'undefined') return [];
     return parseCompletedTutorialIds(window.localStorage.getItem(TUTORIAL_COMPLETED_STORAGE_KEY));
   });
+  const unlockedStarterProfiles = getUnlockedStarterProfiles(metaProgress);
+  const unlockedDifficulties = getUnlockedDifficulties(metaProgress);
+  const unlockedChallenges = getUnlockedChallenges(metaProgress);
 
   // ── Sound mute toggle (persisted to localStorage) ────────────────────────
   const [soundMuted, setSoundMuted] = useState(() => {
@@ -4931,6 +5587,38 @@ function App() {
       return next;
     });
   }
+
+  useEffect(() => {
+    if (!unlockedStarterProfiles.some((profile) => profile.id === selectedStarterProfileId)) {
+      setSelectedStarterProfileId(unlockedStarterProfiles[0]?.id || 'kernel');
+    }
+  }, [selectedStarterProfileId, unlockedStarterProfiles]);
+
+  useEffect(() => {
+    if (!unlockedDifficulties.some((difficulty) => difficulty.id === selectedDifficultyId)) {
+      setSelectedDifficultyId(unlockedDifficulties[0]?.id || 'standard');
+    }
+  }, [selectedDifficultyId, unlockedDifficulties]);
+
+  useEffect(() => {
+    const unlockedIds = new Set(unlockedChallenges.map((challenge) => challenge.id));
+    setSelectedChallengeIds((prev) => prev.filter((challengeId) => unlockedIds.has(challengeId)));
+  }, [unlockedChallenges]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(STARTER_PROFILE_STORAGE_KEY, selectedStarterProfileId || 'kernel');
+  }, [selectedStarterProfileId]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(DIFFICULTY_STORAGE_KEY, selectedDifficultyId || 'standard');
+  }, [selectedDifficultyId]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(CHALLENGES_STORAGE_KEY, JSON.stringify(selectedChallengeIds || []));
+  }, [selectedChallengeIds]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined;
@@ -5020,7 +5708,9 @@ function App() {
   function buildCustomOverrides(cfg) {
     const out = {};
     for (const [k, v] of Object.entries(cfg)) {
-      if (v !== null && v !== undefined && !(Array.isArray(v) && v.length === 0)) out[k] = v;
+      if (v === null || v === undefined || (Array.isArray(v) && v.length === 0)) continue;
+      if (Object.prototype.hasOwnProperty.call(RUN_BASELINE, k) && RUN_BASELINE[k] === v) continue;
+      out[k] = v;
     }
     return Object.keys(out).length > 0 ? out : undefined;
   }
@@ -5044,6 +5734,7 @@ function App() {
   const stateRef     = useRef(state);
   const dataRef      = useRef(data);
   const contentFingerprintRef = useRef('unknown');
+  const metaProgressAwardRef = useRef(null);
   const exportCurrentGameDataRef = useRef(async () => false);
   const startNewRunRef = useRef(() => {});
   const autosaveTokenRef = useRef(null);
@@ -5068,23 +5759,43 @@ function App() {
     return Number.isNaN(parsed) ? null : parsed;
   }
 
-  function createRunStateFromSettings({
+  const createRunStateFromSettings = useCallback(function createRunStateFromSettings({
     overrideDebugSeed = undefined,
     sourceSeedMode = seedMode,
     sourceCustomConfig = customConfig,
     sourceLockedFields = lockedFields,
+    starterProfileId = selectedStarterProfileId,
+    difficultyId = selectedDifficultyId,
+    challengeIds = selectedChallengeIds,
   } = {}) {
     if (!data) return null;
+    const effectiveCustomConfig = composeRunConfig(
+      sourceCustomConfig,
+      starterProfileId,
+      difficultyId,
+      challengeIds,
+    );
     const initial = createInitialState();
     return dispatchWithJournal(initial, data, {
       type: 'NewRun',
       seed: Date.now(),
       debugSeed: resolveRequestedDebugSeed(overrideDebugSeed),
       debugSeedMode: sourceSeedMode,
-      customOverrides: buildCustomOverrides(sourceCustomConfig),
+      customOverrides: buildCustomOverrides(effectiveCustomConfig),
       lockedKeys: [...sourceLockedFields],
+      starterProfileId,
+      difficultyId,
+      challengeIds,
     });
-  }
+  }, [
+    customConfig,
+    data,
+    lockedFields,
+    seedMode,
+    selectedChallengeIds,
+    selectedDifficultyId,
+    selectedStarterProfileId,
+  ]);
 
   function showTutorialHint(message) {
     if (!message) return;
@@ -5254,6 +5965,9 @@ function App() {
       seedMode,
       customConfig,
       lockedFields: [...lockedFields],
+      starterProfileId: selectedStarterProfileId,
+      difficultyId: selectedDifficultyId,
+      challengeIds: [...selectedChallengeIds],
     });
     clearNodeAutosave();
     resetRunTransientState();
@@ -5387,18 +6101,29 @@ function App() {
           ...(forcedRun.customConfig && typeof forcedRun.customConfig === 'object' ? forcedRun.customConfig : {}),
         };
         const nextLockedFields = new Set(Array.isArray(forcedRun.lockedFields) ? forcedRun.lockedFields : []);
+        const nextStarterProfileId = STARTER_PROFILES[forcedRun.starterProfileId] ? forcedRun.starterProfileId : 'kernel';
+        const nextDifficultyId = DIFFICULTY_PROFILES[forcedRun.difficultyId] ? forcedRun.difficultyId : 'standard';
+        const nextChallengeIds = Array.isArray(forcedRun.challengeIds)
+          ? forcedRun.challengeIds.filter((challengeId) => CHALLENGE_MODES[challengeId])
+          : [];
         const forcedDebugSeed = forcedRun.overrideDebugSeed ?? null;
         clearNodeAutosave();
         autosaveTokenRef.current = null;
         setSeedMode(nextSeedMode);
         setCustomConfig(nextCustomConfig);
         setLockedFields(nextLockedFields);
+        setSelectedStarterProfileId(nextStarterProfileId);
+        setSelectedDifficultyId(nextDifficultyId);
+        setSelectedChallengeIds(nextChallengeIds);
         setDebugSeedInput(forcedDebugSeed == null ? '' : String(forcedDebugSeed));
         const newState = createRunStateFromSettings({
           overrideDebugSeed: forcedDebugSeed,
           sourceSeedMode: nextSeedMode,
           sourceCustomConfig: nextCustomConfig,
           sourceLockedFields: nextLockedFields,
+          starterProfileId: nextStarterProfileId,
+          difficultyId: nextDifficultyId,
+          challengeIds: nextChallengeIds,
         });
         setMenuAutosave(null);
         aiPausedRef.current = false;
@@ -5456,6 +6181,24 @@ function App() {
       return next;
     });
   }, [state?.mode, state?.run?.tutorial?.id]);
+
+  useEffect(() => {
+    if (state?.mode !== 'GameOver' || !state?.run || state.run?.tutorial?.active) return;
+    const signature = [
+      state.run.seed ?? 'seed',
+      state.run.victory ? 'win' : 'loss',
+      state.run.act ?? 'act',
+      state.run.floor ?? 'floor',
+    ].join(':');
+    if (metaProgressAwardRef.current === signature) return;
+    metaProgressAwardRef.current = signature;
+    setMetaProgress((prev) => {
+      const { nextMetaProgress, newUnlocks } = applyRunResultToMetaProgress(prev, state.run);
+      writeMetaProgress(nextMetaProgress);
+      setRecentUnlocks(newUnlocks);
+      return nextMetaProgress;
+    });
+  }, [state?.mode, state?.run]);
 
   useEffect(() => () => {
     if (tutorialNudgeTimerRef.current) {
@@ -5762,18 +6505,13 @@ function App() {
         if (!isNaN(parsed)) nextDebugSeed = parsed;
       }
 
-      const initial = createInitialState();
-      const seed = Date.now();
       clearNodeAutosave();
       autosaveTokenRef.current = null;
-      const next = dispatchWithJournal(initial, currentData, {
-        type: 'NewRun',
-        seed,
-        debugSeed: nextDebugSeed,
-        debugSeedMode: seedMode,
-        customOverrides: buildCustomOverrides(customConfig),
-        lockedKeys: [...lockedFields],
-      });
+      const next = createRunStateFromSettings({ overrideDebugSeed: nextDebugSeed });
+      if (!next) {
+        scheduleAiTick(Math.min(220, aiSpeed));
+        return;
+      }
       setState(next);
       resetAiStallTracker(getAiStateSignature(next));
       prevModeRef.current = null;
@@ -5930,6 +6668,7 @@ function App() {
     debugSeedInput,
     lockedFields,
     randomizeDebugSeed,
+    createRunStateFromSettings,
     resetAiStallTracker,
     scheduleAiTick,
     seedMode,
@@ -6222,6 +6961,7 @@ function App() {
     case 'MainMenu':
       content = (
         <MainMenuScreen
+          data={data}
           canContinue={Boolean(menuAutosave?.state)}
           onContinue={resumeAutosavedRun}
           onStartTutorial={startTutorialRun}
@@ -6231,6 +6971,26 @@ function App() {
           onLoadDebugSave={loadDebugSlot}
           tutorialCatalog={TUTORIAL_CATALOG}
           completedTutorialIds={completedTutorialIds}
+          metaProgress={metaProgress}
+          recentUnlocks={recentUnlocks}
+          starterProfiles={Object.values(STARTER_PROFILES)}
+          unlockedStarterProfileIds={unlockedStarterProfiles.map((profile) => profile.id)}
+          selectedStarterProfileId={selectedStarterProfileId}
+          onSelectStarterProfile={setSelectedStarterProfileId}
+          difficultyProfiles={Object.values(DIFFICULTY_PROFILES)}
+          unlockedDifficultyIds={unlockedDifficulties.map((difficulty) => difficulty.id)}
+          selectedDifficultyId={selectedDifficultyId}
+          onSelectDifficulty={setSelectedDifficultyId}
+          challengeModes={Object.values(CHALLENGE_MODES)}
+          unlockedChallengeIds={unlockedChallenges.map((challenge) => challenge.id)}
+          selectedChallengeIds={selectedChallengeIds}
+          onToggleChallenge={(challengeId) => {
+            setSelectedChallengeIds((prev) => (
+              prev.includes(challengeId)
+                ? prev.filter((id) => id !== challengeId)
+                : [...prev, challengeId]
+            ));
+          }}
         />
       );
       break;
@@ -6255,7 +7015,7 @@ function App() {
       );
       break;
     case 'Map':
-      content = <MapScreen state={state} data={data} onAction={handleAction} />;
+      content = <MapScreen state={state} data={data} onAction={handleAction} metaProgress={metaProgress} />;
       break;
     case 'Reward':
       content = <RewardScreen state={state} data={data} onAction={handleAction} />;
@@ -6267,7 +7027,7 @@ function App() {
       content = <EventScreen state={state} data={data} onAction={handleAction} />;
       break;
     case 'GameOver':
-      content = <GameOverScreen state={state} onNewRun={hardReloadIntoFreshRun} />;
+      content = <GameOverScreen state={state} onNewRun={hardReloadIntoFreshRun} recentUnlocks={recentUnlocks} />;
       break;
     case 'TutorialComplete':
       content = <TutorialCompleteScreen state={state} onNewGame={() => startNewRun()} onReturnToMenu={returnToMainMenu} />;

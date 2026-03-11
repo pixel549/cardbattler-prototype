@@ -25,7 +25,12 @@ import {
 } from './playtest/config';
 import {
   TUTORIAL_COMPLETED_STORAGE_KEY,
+  acknowledgeTutorialStep,
+  parseCompletedTutorialIds,
+  serializeCompletedTutorialIds,
   createTutorialRunState,
+  getTutorialCatalog,
+  getTutorialDefinition,
   getTutorialStep,
   canUseTutorialAction,
   advanceTutorialState,
@@ -105,6 +110,7 @@ const NODE_AUTOSAVE_KEY = 'cb_node_autosave_v1';
 const DEBUG_SAVE_SLOTS_KEY = 'cb_debug_save_slots_v1';
 const DEBUG_SAVE_SLOT_IDS = ['slot_1', 'slot_2', 'slot_3'];
 const FORCE_NEW_RUN_KEY = 'cb_force_new_run_v1';
+const TUTORIAL_CATALOG = getTutorialCatalog();
 const AI_WATCHDOG_IDLE = {
   active: false,
   stagnantMs: 0,
@@ -3972,13 +3978,15 @@ function LoadingScreen() {
 function MainMenuScreen({
   canContinue = false,
   onContinue,
-  onFirstTime,
+  onStartTutorial,
   onNewGame,
   onSettings,
   debugSaveSlots = {},
   onLoadDebugSave,
-  tutorialCompleted = false,
+  tutorialCatalog = [],
+  completedTutorialIds = [],
 }) {
+  const completedSet = new Set(completedTutorialIds);
   const menuActionStyle = (accent, solid = false) => ({
     width: '100%',
     padding: '18px 18px',
@@ -4000,6 +4008,24 @@ function MainMenuScreen({
     textAlign: 'left',
   });
 
+  const tutorialActionStyle = (accent, solid = false) => ({
+    width: '100%',
+    padding: '16px 16px 14px',
+    borderRadius: 18,
+    border: `1px solid ${accent}${solid ? '00' : '44'}`,
+    background: solid
+      ? `linear-gradient(135deg, ${accent} 0%, ${accent}d6 100%)`
+      : `linear-gradient(180deg, ${accent}12 0%, rgba(8, 10, 16, 0.96) 100%)`,
+    color: solid ? '#031014' : C.text,
+    boxShadow: solid
+      ? `0 18px 34px ${accent}26`
+      : `0 12px 26px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.04)`,
+    cursor: 'pointer',
+    textAlign: 'left',
+    display: 'grid',
+    gap: 10,
+  });
+
   return (
     <ScreenShell extraStyle={{ alignItems: 'center', justifyContent: 'center', padding: 20 }}>
       <div style={{ width: 'min(560px, 100%)', display: 'flex', flexDirection: 'column', gap: 18 }}>
@@ -4019,7 +4045,7 @@ function MainMenuScreen({
             Boot Sequence
           </div>
           <div style={{ fontFamily: UI_MONO, fontSize: 13, lineHeight: 1.7, color: C.textDim }}>
-            Start a fresh run, jump into the guided first-time encounter, or open settings before you begin.
+            Start a fresh run, jump into one of the guided training lessons, or open settings before you begin.
           </div>
         </div>
 
@@ -4029,9 +4055,100 @@ function MainMenuScreen({
               Continue Run
             </button>
           )}
-          <button onClick={onFirstTime} style={menuActionStyle(C.cyan, !tutorialCompleted)}>
-            {tutorialCompleted ? 'First Time Playing (Replay)' : 'First Time Playing'}
-          </button>
+          <div
+            style={{
+              padding: '16px 18px 18px',
+              borderRadius: 20,
+              border: `1px solid ${C.cyan}24`,
+              background: 'linear-gradient(180deg, rgba(8,12,20,0.95) 0%, rgba(6,8,14,0.98) 100%)',
+              display: 'grid',
+              gap: 12,
+            }}
+          >
+            <div style={{ display: 'grid', gap: 6 }}>
+              <div style={{ fontFamily: UI_MONO, fontSize: 11, letterSpacing: '0.18em', color: C.cyan }}>
+                FIRST TIME PLAYING
+              </div>
+              <div style={{ fontFamily: UI_MONO, fontSize: 12, lineHeight: 1.6, color: C.textDim }}>
+                Pick the guided lesson you want. Combat Basics is the recommended starting point, and both tutorials can be replayed whenever you want a refresher.
+              </div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+              {tutorialCatalog.map((tutorial) => {
+                const completed = completedSet.has(tutorial.id);
+                const accent = tutorial.accent || C.cyan;
+                const solid = tutorial.recommended && !completed;
+                return (
+                  <button
+                    key={tutorial.id}
+                    onClick={() => onStartTutorial?.(tutorial.id)}
+                    style={tutorialActionStyle(accent, solid)}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                      <div
+                        style={{
+                          fontFamily: UI_MONO,
+                          fontWeight: 700,
+                          fontSize: 14,
+                          letterSpacing: '0.08em',
+                          textTransform: 'uppercase',
+                          color: solid ? '#031014' : accent,
+                        }}
+                      >
+                        {tutorial.title}
+                      </div>
+                      <div
+                        style={{
+                          padding: '5px 8px',
+                          borderRadius: 999,
+                          border: `1px solid ${solid ? '#03101433' : `${accent}30`}`,
+                          background: solid ? 'rgba(3,16,20,0.12)' : `${accent}14`,
+                          color: solid ? '#031014' : accent,
+                          fontFamily: UI_MONO,
+                          fontSize: 10,
+                          letterSpacing: '0.08em',
+                          textTransform: 'uppercase',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {completed ? 'Replay' : tutorial.recommended ? 'Recommended' : 'New'}
+                      </div>
+                    </div>
+                    <div
+                      style={{
+                        fontFamily: UI_MONO,
+                        fontSize: 12,
+                        lineHeight: 1.6,
+                        color: solid ? '#052027' : C.textDim,
+                      }}
+                    >
+                      {tutorial.menuDescription}
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {tutorial.concepts.slice(0, 4).map((concept) => (
+                        <span
+                          key={concept}
+                          style={{
+                            padding: '5px 8px',
+                            borderRadius: 999,
+                            border: `1px solid ${solid ? '#03101422' : `${accent}24`}`,
+                            background: solid ? 'rgba(3,16,20,0.1)' : `${accent}10`,
+                            color: solid ? '#04161d' : accent,
+                            fontFamily: UI_MONO,
+                            fontSize: 10,
+                            letterSpacing: '0.08em',
+                            textTransform: 'uppercase',
+                          }}
+                        >
+                          {concept}
+                        </span>
+                      ))}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
           <button onClick={onNewGame} style={menuActionStyle(C.yellow)}>
             New Game
           </button>
@@ -4086,7 +4203,7 @@ function MainMenuScreen({
             lineHeight: 1.6,
           }}
         >
-          The tutorial covers Firewall, HP, RAM, enemy intents, status effects, mutations, enemy turns, and the basic combat rhythm.
+          Combat Basics covers the core loop through the reward screen. Advanced Mechanics focuses on effect timing, mutations, statuses, and how relics differ from cards.
         </div>
       </div>
     </ScreenShell>
@@ -4208,13 +4325,15 @@ function TutorialOverlay({ step, nudge = '', onAdvance, onExit }) {
 }
 
 function TutorialCompleteScreen({ state, onNewGame, onReturnToMenu }) {
+  const tutorialId = state?.run?.tutorial?.id;
+  const tutorialDef = getTutorialDefinition(tutorialId);
   const outcome = state?.run?.tutorial?.outcome ?? 'complete';
   const victory = outcome === 'victory';
   const accent = victory ? C.green : C.cyan;
-  const title = victory ? 'Tutorial Complete' : 'Tutorial Reviewed';
+  const title = victory ? `${tutorialDef.title} Complete` : `${tutorialDef.title} Reviewed`;
   const body = victory
-    ? 'You cleared the training encounter and saw the main combat systems in sequence.'
-    : 'You reached the end of the guided lesson. The important systems have been introduced, even if the proxy fight got messy.';
+    ? tutorialDef.completionVictoryBody
+    : tutorialDef.completionReviewBody;
 
   return (
     <ScreenShell extraStyle={{ alignItems: 'center', justifyContent: 'center', padding: 20 }}>
@@ -4241,7 +4360,7 @@ function TutorialCompleteScreen({ state, onNewGame, onReturnToMenu }) {
           {body}
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          {['Firewall', 'HP', 'RAM', 'Enemy Intents', 'Status Effects', 'Mutations', 'Enemy Turns'].map((label) => (
+          {tutorialDef.concepts.map((label) => (
             <span
               key={label}
               style={{
@@ -4533,9 +4652,9 @@ function App() {
   const [debugSaveSlots, setDebugSaveSlots] = useState(() => readDebugSaveSlots());
   const [playtestMode, setPlaytestMode] = useState(() => readPlaytestModeEnabled());
   const [tutorialNudge, setTutorialNudge] = useState('');
-  const [tutorialCompleted, setTutorialCompleted] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    return window.localStorage.getItem(TUTORIAL_COMPLETED_STORAGE_KEY) === 'true';
+  const [completedTutorialIds, setCompletedTutorialIds] = useState(() => {
+    if (typeof window === 'undefined') return [];
+    return parseCompletedTutorialIds(window.localStorage.getItem(TUTORIAL_COMPLETED_STORAGE_KEY));
   });
 
   // ── Sound mute toggle (persisted to localStorage) ────────────────────────
@@ -4762,11 +4881,12 @@ function App() {
     });
   }
 
-  function startTutorialRun() {
+  function startTutorialRun(tutorialId = TUTORIAL_CATALOG[0]?.id) {
     if (!data) return;
     setMenuAutosave(null);
-    adoptState(createTutorialRunState(data), {
-      handoffReason: 'Tutorial active',
+    const tutorialDef = getTutorialDefinition(tutorialId);
+    adoptState(createTutorialRunState(data, tutorialId), {
+      handoffReason: `${tutorialDef.title} active`,
       pauseAi: true,
       clearAutosave: true,
     });
@@ -5052,11 +5172,17 @@ function App() {
 
   useEffect(() => {
     if (state?.mode !== 'TutorialComplete') return;
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem(TUTORIAL_COMPLETED_STORAGE_KEY, 'true');
-    }
-    setTutorialCompleted(true);
-  }, [state?.mode]);
+    const tutorialId = state?.run?.tutorial?.id;
+    if (!tutorialId) return;
+    setCompletedTutorialIds((prev) => {
+      if (prev.includes(tutorialId)) return prev;
+      const next = [...prev, tutorialId];
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(TUTORIAL_COMPLETED_STORAGE_KEY, serializeCompletedTutorialIds(next));
+      }
+      return next;
+    });
+  }, [state?.mode, state?.run?.tutorial?.id]);
 
   useEffect(() => () => {
     if (tutorialNudgeTimerRef.current) {
@@ -5825,12 +5951,13 @@ function App() {
         <MainMenuScreen
           canContinue={Boolean(menuAutosave?.state)}
           onContinue={resumeAutosavedRun}
-          onFirstTime={startTutorialRun}
+          onStartTutorial={startTutorialRun}
           onNewGame={() => startNewRun()}
           onSettings={openPauseMenu}
           debugSaveSlots={debugSaveSlots}
           onLoadDebugSave={loadDebugSlot}
-          tutorialCompleted={tutorialCompleted}
+          tutorialCatalog={TUTORIAL_CATALOG}
+          completedTutorialIds={completedTutorialIds}
         />
       );
       break;
@@ -5904,6 +6031,8 @@ function App() {
   );
 
   const tutorialStep = getTutorialStep(state);
+  const tutorialStepMode = tutorialStep?.mode || 'Combat';
+  const showTutorialOverlay = Boolean(tutorialStep) && state.mode === tutorialStepMode;
   const hasActiveRun = Boolean(state?.run) && !['GameOver', 'TutorialComplete'].includes(state?.mode);
   const showFloatingMenuButton = !['Combat', 'MainMenu', 'TutorialComplete'].includes(state.mode);
 
@@ -5936,25 +6065,13 @@ function App() {
         playtestMode={playtestMode}
         onTogglePlaytestMode={togglePlaytestMode}
       />
-      {state.mode === 'Combat' && tutorialStep && (
+      {showTutorialOverlay && (
         <TutorialOverlay
           step={tutorialStep}
           nudge={tutorialNudge}
           onAdvance={() => {
             setTutorialNudge('');
-            setState(prev => {
-              if (!prev?.run?.tutorial?.active) return prev;
-              return {
-                ...prev,
-                run: {
-                  ...prev.run,
-                  tutorial: {
-                    ...prev.run.tutorial,
-                    stepIndex: Math.min((prev.run.tutorial.stepIndex ?? 0) + 1, 1),
-                  },
-                },
-              };
-            });
+            setState((prev) => acknowledgeTutorialStep(prev));
           }}
           onExit={returnToMainMenu}
         />

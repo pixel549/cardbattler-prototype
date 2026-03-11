@@ -1,4 +1,5 @@
 import { RNG } from "./rng";
+import { isRelicUnlockedByAchievements } from "./achievements";
 
 function pickDistinct(rng, pool, n) {
   const out = [];
@@ -11,13 +12,15 @@ function pickDistinct(rng, pool, n) {
   return out;
 }
 
-export function makeRelicChoices(data, seed, kind) {
+export function makeRelicChoices(data, seed, kind, options = {}) {
   const salt = kind === "boss" ? 0xB055E5 : 0xE11E7E;
   const rng = new RNG((seed ^ salt) >>> 0);
+  const unlockedRelicIds = Array.isArray(options?.unlockedRelicIds) ? options.unlockedRelicIds : [];
 
-  const pool = kind === "boss"
+  const pool = (kind === "boss"
     ? (data.relicRewardPools?.boss || [])
-    : [...(data.relicRewardPools?.uncommon || []), ...(data.relicRewardPools?.rare || [])];
+    : [...(data.relicRewardPools?.uncommon || []), ...(data.relicRewardPools?.rare || [])]
+  ).filter((relicId) => isRelicUnlockedByAchievements(relicId, unlockedRelicIds));
 
   return pickDistinct(rng, pool, 3);
 }

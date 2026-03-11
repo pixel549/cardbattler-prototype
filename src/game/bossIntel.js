@@ -36,7 +36,8 @@ export function getProjectedBossEncounter(data, run) {
     };
   }
 
-  const act = Number(run?.debugOverrides?.actOverride ?? run?.act ?? 1);
+  const rawAct = Number(run?.debugOverrides?.actOverride ?? run?.act ?? 1);
+  const act = Math.max(1, Math.min(3, rawAct));
   const floor = Math.max(1, Number(run?.floor ?? 0) + 1);
   try {
     return pickEncounter(data, (run.seed ^ floor) >>> 0, act, "boss", {

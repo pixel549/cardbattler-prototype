@@ -6,6 +6,16 @@ import {
   isDifficultyUnlocked,
   isChallengeUnlocked,
 } from "./runProfiles";
+import {
+  getDefaultCallsignId,
+  normalizeAchievementIds,
+  normalizeCallsignIds,
+  evaluateRunAchievements,
+  getAchievementUnlockEntries,
+  getUnlockedAchievementRewardState,
+  getHighestActReached,
+} from "./achievements";
+import { scoreRunForDaily } from "./dailyRun";
 
 export const META_PROGRESSION_STORAGE_KEY = "cb_meta_progress_v1";
 
@@ -24,9 +34,46 @@ export function createDefaultMetaProgress() {
     mutationIdsSeen: [],
     totalUniqueMutations: 0,
     runHistory: [],
+    achievementIdsUnlocked: [],
+    unlockedCallsignIds: [getDefaultCallsignId()],
+    dailyRunRecords: [],
     lastUnlocks: [],
     lastRunSummary: null,
   };
+}
+
+function normalizeDailyRunRecords(rawRecords) {
+  return Array.isArray(rawRecords)
+    ? rawRecords
+        .filter((record) => record && typeof record === "object" && record.id)
+        .map((record) => ({
+          id: String(record.id),
+          seed: Number(record.seed || 0),
+          starterProfileId: record.starterProfileId || "kernel",
+          starterProfileName: record.starterProfileName || STARTER_PROFILES.kernel.name,
+          difficultyId: record.difficultyId || "standard",
+          difficultyName: record.difficultyName || DIFFICULTY_PROFILES.standard.name,
+          challengeIds: Array.isArray(record.challengeIds) ? record.challengeIds.filter(Boolean) : [],
+          summary: record.summary || "",
+          attempts: Math.max(0, Number(record.attempts || 0)),
+          victories: Math.max(0, Number(record.victories || 0)),
+          bestScore: Math.max(0, Number(record.bestScore || 0)),
+          bestActReached: Math.max(1, Number(record.bestActReached || 1)),
+          bestFloorReached: Math.max(1, Number(record.bestFloorReached || 1)),
+          lastPlayedAt: Math.max(0, Number(record.lastPlayedAt || 0)),
+          bestVictory: Boolean(record.bestVictory),
+          recentResults: Array.isArray(record.recentResults)
+            ? record.recentResults.slice(0, 5).map((result) => ({
+                playedAt: Math.max(0, Number(result?.playedAt || 0)),
+                score: Math.max(0, Number(result?.score || 0)),
+                victory: Boolean(result?.victory),
+                actReached: Math.max(1, Number(result?.actReached || 1)),
+                floorReached: Math.max(1, Number(result?.floorReached || 1)),
+              }))
+            : [],
+        }))
+        .slice(0, 30)
+    : [];
 }
 
 function normalizeMetaProgress(raw) {
@@ -41,6 +88,8 @@ function normalizeMetaProgress(raw) {
   const mutationIdsSeen = Array.isArray(raw.mutationIdsSeen)
     ? [...new Set(raw.mutationIdsSeen.filter(Boolean))]
     : [];
+  const achievementIdsUnlocked = normalizeAchievementIds(raw.achievementIdsUnlocked);
+  const unlockedAchievementRewards = getUnlockedAchievementRewardState(achievementIdsUnlocked);
   return {
     ...base,
     ...raw,
@@ -56,6 +105,12 @@ function normalizeMetaProgress(raw) {
     totalBossesDefeated: Math.max(0, Number(raw.totalBossesDefeated ?? base.totalBossesDefeated)),
     totalUniqueMutations: mutationIdsSeen.length,
     runHistory: Array.isArray(raw.runHistory) ? raw.runHistory.slice(0, 12) : [],
+    achievementIdsUnlocked,
+    unlockedCallsignIds: normalizeCallsignIds([
+      ...(Array.isArray(raw.unlockedCallsignIds) ? raw.unlockedCallsignIds : []),
+      ...unlockedAchievementRewards.unlockedCallsignIds,
+    ]),
+    dailyRunRecords: normalizeDailyRunRecords(raw.dailyRunRecords),
     lastUnlocks: Array.isArray(raw.lastUnlocks) ? raw.lastUnlocks : [],
   };
 }
@@ -108,11 +163,18 @@ function summarizeRunForMeta(run) {
     ? [...new Set(run.seenMutationIds.filter(Boolean))]
     : [];
   const bossProgress = getBossProgressFromRun(run);
-  const bossesDefeated = bossProgress.defeatedBossIds.length;
+  const bossesDefeated = Math.max(
+    bossProgress.defeatedBossIds.length,
+    Math.max(0, Number(run?.telemetry?.bossesDefeated || 0)),
+  );
+  const highestActReached = getHighestActReached(run);
+  const dailyScore = String(run?.runMode || "standard") === "daily"
+    ? scoreRunForDaily(run)
+    : null;
   return {
     seed: run.seed ?? Date.now(),
     victory: Boolean(run.victory),
-    actReached: Math.max(1, Number(run.act || 1)),
+    actReached: highestActReached,
     floorReached: Math.max(1, Number(run.floor || 1)),
     bossesDefeated,
     bossEncounterIdsSeen: bossProgress.seenBossIds,
@@ -123,8 +185,57 @@ function summarizeRunForMeta(run) {
     difficultyName: DIFFICULTY_PROFILES[run.difficultyId || "standard"]?.name || "Standard",
     difficultyRank: Math.max(0, Number(DIFFICULTY_PROFILES[run.difficultyId || "standard"]?.rank || 0)),
     challengeIds: Array.isArray(run.challengeIds) ? run.challengeIds : [],
+    runMode: run.runMode || "standard",
+    dailyRunId: run.dailyRunId || null,
+    dailyRunLabel: run.dailyRunLabel || null,
+    dailyScore,
+    repairsUsed: Math.max(0, Number(run?.telemetry?.repairsUsed || 0)),
+    compileCount: Math.max(0, Number(run?.telemetry?.compileCount || 0)),
+    bricksTriggered: Math.max(0, Number(run?.telemetry?.bricksTriggered || 0)),
+    curseCount: Math.max(0, Number(run?.telemetry?.currentCurseCount || 0)),
+    endlessDepthReached: Math.max(0, highestActReached - 3),
     seenMutationIds,
   };
+}
+
+function upsertDailyRunRecord(records, summary) {
+  if (!summary?.dailyRunId) return normalizeDailyRunRecords(records);
+  const normalized = normalizeDailyRunRecords(records);
+  const next = [...normalized];
+  const index = next.findIndex((record) => record.id === summary.dailyRunId);
+  const existing = index >= 0 ? next[index] : null;
+  const recentResults = [
+    {
+      playedAt: Date.now(),
+      score: Math.max(0, Number(summary.dailyScore || 0)),
+      victory: Boolean(summary.victory),
+      actReached: summary.actReached,
+      floorReached: summary.floorReached,
+    },
+    ...((existing?.recentResults || []).slice(0, 4)),
+  ];
+  const updated = {
+    id: summary.dailyRunId,
+    seed: summary.seed,
+    starterProfileId: summary.starterProfileId,
+    starterProfileName: summary.starterProfileName,
+    difficultyId: summary.difficultyId,
+    difficultyName: summary.difficultyName,
+    challengeIds: Array.isArray(summary.challengeIds) ? summary.challengeIds : [],
+    summary: summary.dailyRunLabel || "",
+    attempts: (existing?.attempts || 0) + 1,
+    victories: (existing?.victories || 0) + (summary.victory ? 1 : 0),
+    bestScore: Math.max(existing?.bestScore || 0, Number(summary.dailyScore || 0)),
+    bestActReached: Math.max(existing?.bestActReached || 1, summary.actReached || 1),
+    bestFloorReached: Math.max(existing?.bestFloorReached || 1, summary.floorReached || 1),
+    lastPlayedAt: Date.now(),
+    bestVictory: Boolean(existing?.bestVictory || summary.victory),
+    recentResults,
+  };
+
+  if (index >= 0) next[index] = updated;
+  else next.unshift(updated);
+  return next.slice(0, 30);
 }
 
 export function applyRunResultToMetaProgress(currentMetaProgress, run) {
@@ -139,6 +250,12 @@ export function applyRunResultToMetaProgress(currentMetaProgress, run) {
   const bossEncounterIdsSeen = [...new Set([...current.bossEncounterIdsSeen, ...summary.bossEncounterIdsSeen])];
   const bossEncounterIdsDefeated = [...new Set([...current.bossEncounterIdsDefeated, ...summary.bossEncounterIdsDefeated])];
   const mutationIdsSeen = [...new Set([...current.mutationIdsSeen, ...summary.seenMutationIds])];
+  const newlyUnlockedAchievementIds = evaluateRunAchievements(run, current.achievementIdsUnlocked);
+  const achievementIdsUnlocked = normalizeAchievementIds([
+    ...current.achievementIdsUnlocked,
+    ...newlyUnlockedAchievementIds,
+  ]);
+  const achievementRewardState = getUnlockedAchievementRewardState(achievementIdsUnlocked);
   const nextMetaProgress = normalizeMetaProgress({
     ...current,
     totalRuns: current.totalRuns + 1,
@@ -154,6 +271,11 @@ export function applyRunResultToMetaProgress(currentMetaProgress, run) {
     bossEncounterIdsDefeated,
     mutationIdsSeen,
     totalUniqueMutations: mutationIdsSeen.length,
+    achievementIdsUnlocked,
+    unlockedCallsignIds: achievementRewardState.unlockedCallsignIds,
+    dailyRunRecords: summary.runMode === "daily"
+      ? upsertDailyRunRecord(current.dailyRunRecords, summary)
+      : current.dailyRunRecords,
     runHistory: [
       {
         seed: summary.seed,
@@ -163,6 +285,9 @@ export function applyRunResultToMetaProgress(currentMetaProgress, run) {
         bossesDefeated: summary.bossesDefeated,
         starterProfileId: summary.starterProfileId,
         difficultyId: summary.difficultyId,
+        runMode: summary.runMode,
+        dailyRunId: summary.dailyRunId,
+        dailyScore: summary.dailyScore,
       },
       ...(current.runHistory || []),
     ].slice(0, 12),
@@ -189,6 +314,7 @@ export function applyRunResultToMetaProgress(currentMetaProgress, run) {
       newUnlocks.push({ type: "challenge", id: challengeId, name: challenge.name });
     }
   }
+  newUnlocks.push(...getAchievementUnlockEntries(newlyUnlockedAchievementIds));
 
   nextMetaProgress.lastUnlocks = newUnlocks;
   return { nextMetaProgress, newUnlocks, summary };

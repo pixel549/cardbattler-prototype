@@ -28,6 +28,8 @@ const CARD_OVERRIDES = {
   "NC-096": { rarity: "uncommon", rewardWeight: 0.4, shopPrice: 80 },
   "NC-097": { rarity: "uncommon", rewardWeight: 0.4, shopPrice: 80 },
   "UC-007": { rarity: "rare", rewardWeight: 0.18, shopPrice: 120 },
+  "P-006": { rarity: "rare", rewardWeight: 0.14, shopPrice: 130 },
+  "P-011": { rarity: "uncommon", rewardWeight: 0.28, shopPrice: 95 },
 };
 
 function getCardPrefix(cardId) {

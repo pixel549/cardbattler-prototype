@@ -280,6 +280,15 @@ export const CHALLENGE_MODES = {
     },
     unlock: { totalWins: 1 },
   },
+  endless_protocol: {
+    id: "endless_protocol",
+    name: "Endless Protocol",
+    accent: "#b44aff",
+    description: "After Act 3 the run no longer ends. The network keeps generating harsher acts forever.",
+    unlockHint: "Unlock by winning a run.",
+    modifiers: {},
+    unlock: { totalWins: 1 },
+  },
 };
 
 export function getStarterProfile(profileId) {

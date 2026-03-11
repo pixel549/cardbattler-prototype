@@ -52,6 +52,17 @@ import {
   applyRunResultToMetaProgress,
 } from './game/metaProgression';
 import {
+  getAchievementCatalog,
+  getUnlockedAchievementRewardState,
+  getCallsignCatalog,
+  getCallsignTheme,
+  getDefaultCallsignId,
+} from './game/achievements';
+import {
+  getDailyRunConfig,
+  scoreRunForDaily,
+} from './game/dailyRun';
+import {
   getBossArchiveEntries,
   getProjectedBossEncounter,
   summarizeBossEncounter,
@@ -131,6 +142,7 @@ const AI_EXPORT_OPTIONS_DEFAULTS = {
 const STARTER_PROFILE_STORAGE_KEY = 'cb_selected_starter_profile_v1';
 const DIFFICULTY_STORAGE_KEY = 'cb_selected_difficulty_v1';
 const CHALLENGES_STORAGE_KEY = 'cb_selected_challenges_v1';
+const CALLSIGN_STORAGE_KEY = 'cb_selected_callsign_v1';
 const AI_STALL_EXPORT_MS = 15000;
 const AI_STALL_RECOVER_MS = 28000;
 const NODE_AUTOSAVE_KEY = 'cb_node_autosave_v1';
@@ -4315,6 +4327,9 @@ function GameOverScreen({ state, onNewRun, recentUnlocks = [] }) {
   const hpPct  = run.maxHP ? Math.round(((run.hp ?? 0) / run.maxHP) * 100) : 0;
   const isVictory = !!run.victory;
   const causeOfDeath = deriveCauseOfDeath(state);
+  const highestActReached = Math.max(run.act ?? 1, run.telemetry?.highestActReached ?? 1);
+  const endlessActive = Array.isArray(run.challengeIds) && run.challengeIds.includes('endless_protocol');
+  const dailyScore = run.runMode === 'daily' ? scoreRunForDaily(run) : null;
 
   const stats = [
     { label: 'ACT',       value: run.act   ?? 1 },
@@ -4385,6 +4400,29 @@ function GameOverScreen({ state, onNewRun, recentUnlocks = [] }) {
         <div style={{ fontFamily: MONO, fontSize: 11, color: C.textDim, marginBottom: 12 }}>
           {(run.starterProfileName || 'Kernel Runner')} • {(DIFFICULTY_PROFILES[run.difficultyId || 'standard']?.name || 'Standard')}
         </div>
+        {(run.runMode === 'daily' || endlessActive) && (
+          <div
+            style={{
+              marginBottom: 20,
+              padding: '12px 14px',
+              borderRadius: 12,
+              border: `1px solid ${(run.runMode === 'daily' ? C.cyan : C.purple)}35`,
+              background: `${run.runMode === 'daily' ? C.cyan : C.purple}10`,
+              textAlign: 'left',
+            }}
+          >
+            {run.runMode === 'daily' && (
+              <div style={{ fontFamily: MONO, fontSize: 11, lineHeight: 1.55, color: C.text, marginBottom: endlessActive ? 8 : 0 }}>
+                Daily Run {run.dailyRunId || ''} • score {dailyScore ?? 0}
+              </div>
+            )}
+            {endlessActive && (
+              <div style={{ fontFamily: MONO, fontSize: 11, lineHeight: 1.55, color: C.text }}>
+                Endless Protocol depth reached: Act {highestActReached}
+              </div>
+            )}
+          </div>
+        )}
         <div style={{
           display: 'grid', gridTemplateColumns: '1fr 1fr 1fr',
           gap: 8, marginBottom: 32,
@@ -4486,6 +4524,7 @@ function MainMenuScreen({
   canContinue = false,
   onContinue,
   onStartTutorial,
+  onStartDailyRun,
   onNewGame,
   onSettings,
   debugSaveSlots = {},
@@ -4494,6 +4533,14 @@ function MainMenuScreen({
   completedTutorialIds = [],
   metaProgress = null,
   recentUnlocks = [],
+  achievements = [],
+  dailyRunConfig = null,
+  dailyRunRecord = null,
+  recentDailyRecords = [],
+  callsignCatalog = [],
+  unlockedCallsignIds = [],
+  selectedCallsignId = getDefaultCallsignId(),
+  onSelectCallsign,
   starterProfiles = [],
   unlockedStarterProfileIds = [],
   selectedStarterProfileId = 'kernel',
@@ -4511,9 +4558,12 @@ function MainMenuScreen({
   const unlockedStarterSet = new Set(unlockedStarterProfileIds);
   const unlockedDifficultySet = new Set(unlockedDifficultyIds);
   const unlockedChallengeSet = new Set(unlockedChallengeIds);
+  const unlockedAchievementSet = new Set(metaProgress?.achievementIdsUnlocked || []);
+  const unlockedCallsignSet = new Set(unlockedCallsignIds);
   const selectedChallenges = new Set(selectedChallengeIds);
   const selectedProfile = starterProfiles.find((profile) => profile.id === selectedStarterProfileId) || starterProfiles[0];
   const selectedDifficulty = difficultyProfiles.find((difficulty) => difficulty.id === selectedDifficultyId) || difficultyProfiles[0];
+  const activeCallsign = callsignCatalog.find((theme) => theme.id === selectedCallsignId) || getCallsignTheme(selectedCallsignId);
   const selectedProfileRelics = (selectedProfile?.startingRelicIds || []).map((relicId) => data?.relics?.[relicId]?.name || relicId);
   const selectedProfileDeckNames = (selectedProfile?.deck || []).map((cardId) => data?.cards?.[cardId]?.name || cardId);
   const selectedRunConfig = composeRunConfig({}, selectedStarterProfileId, selectedDifficultyId, selectedChallengeIds);
@@ -4626,11 +4676,188 @@ function MainMenuScreen({
           <div style={{ fontFamily: UI_MONO, fontSize: 12, letterSpacing: '0.22em', color: C.textDim, marginBottom: 10 }}>
             CARD BATTLER
           </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+            <div style={{ fontFamily: UI_MONO, fontSize: 10, letterSpacing: '0.16em', color: C.textMuted }}>
+              ACTIVE CALLSIGN
+            </div>
+            <div
+              style={{
+                padding: '6px 10px',
+                borderRadius: 999,
+                border: `1px solid ${(activeCallsign?.accent || C.cyan)}44`,
+                background: `${activeCallsign?.accent || C.cyan}12`,
+                color: activeCallsign?.accent || C.cyan,
+                fontFamily: UI_MONO,
+                fontSize: 11,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+              }}
+            >
+              {activeCallsign?.name || 'Kernel Runner'}
+            </div>
+          </div>
           <div style={{ fontFamily: UI_MONO, fontWeight: 700, fontSize: 28, color: C.text, marginBottom: 10 }}>
             Boot Sequence
           </div>
           <div style={{ fontFamily: UI_MONO, fontSize: 13, lineHeight: 1.7, color: C.textDim }}>
             Start a fresh run, jump into one of the guided training lessons, or open settings before you begin.
+          </div>
+        </div>
+
+        <div
+          style={{
+            padding: '16px 18px 18px',
+            borderRadius: 20,
+            border: `1px solid ${C.cyan}24`,
+            background: 'linear-gradient(180deg, rgba(8,12,20,0.95) 0%, rgba(6,8,14,0.98) 100%)',
+            display: 'grid',
+            gap: 12,
+          }}
+        >
+          <div style={{ display: 'grid', gap: 6 }}>
+            <div style={{ fontFamily: UI_MONO, fontSize: 11, letterSpacing: '0.18em', color: C.cyan }}>
+              DAILY RUN
+            </div>
+            <div style={{ fontFamily: UI_MONO, fontSize: 12, lineHeight: 1.6, color: C.textDim }}>
+              Fixed seed, fixed loadout, same breach for everyone on the same UTC day. Local standings are stored on this device until a backend leaderboard exists.
+            </div>
+          </div>
+          <div
+            style={{
+              padding: '12px 14px',
+              borderRadius: 14,
+              border: `1px solid ${C.cyan}28`,
+              background: `${C.cyan}10`,
+              display: 'grid',
+              gap: 6,
+            }}
+          >
+            <div style={{ fontFamily: UI_MONO, fontSize: 10, letterSpacing: '0.14em', color: C.cyan }}>
+              TODAY
+            </div>
+            <div style={{ fontFamily: UI_MONO, fontSize: 13, color: C.text }}>
+              {dailyRunConfig?.id} • {dailyRunConfig?.summary}
+            </div>
+            <div style={{ fontFamily: UI_MONO, fontSize: 11, color: C.textDim, lineHeight: 1.5 }}>
+              Seed {dailyRunConfig?.seed ?? 0} • {dailyRunConfig?.resetLabel || 'Resets daily'}
+            </div>
+            {dailyRunRecord && (
+              <div style={{ fontFamily: UI_MONO, fontSize: 11, color: C.textDim, lineHeight: 1.55 }}>
+                Attempts {dailyRunRecord.attempts} • Best score {dailyRunRecord.bestScore} • Best floor {dailyRunRecord.bestFloorReached}
+              </div>
+            )}
+          </div>
+          <button onClick={onStartDailyRun} style={menuActionStyle(C.cyan)}>
+            Launch Daily Run
+          </button>
+          {recentDailyRecords.length > 0 && (
+            <div style={{ display: 'grid', gap: 8 }}>
+              <div style={{ fontFamily: UI_MONO, fontSize: 10, letterSpacing: '0.14em', color: C.textMuted }}>
+                LOCAL STANDINGS
+              </div>
+              {recentDailyRecords.slice(0, 3).map((record) => (
+                <div
+                  key={record.id}
+                  style={{
+                    padding: '10px 12px',
+                    borderRadius: 12,
+                    border: `1px solid ${C.border}`,
+                    background: 'rgba(255,255,255,0.03)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 12,
+                  }}
+                >
+                  <div style={{ display: 'grid', gap: 4 }}>
+                    <div style={{ fontFamily: UI_MONO, fontSize: 11, color: C.text }}>
+                      {record.id}
+                    </div>
+                    <div style={{ fontFamily: UI_MONO, fontSize: 10, color: C.textDim }}>
+                      {record.starterProfileName} • {record.difficultyName}
+                    </div>
+                  </div>
+                  <div style={{ fontFamily: UI_MONO, fontWeight: 700, fontSize: 12, color: record.bestVictory ? C.green : C.yellow }}>
+                    {record.bestScore}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div
+          style={{
+            padding: '16px 18px 18px',
+            borderRadius: 20,
+            border: `1px solid ${C.green}24`,
+            background: 'linear-gradient(180deg, rgba(8,12,20,0.95) 0%, rgba(6,8,14,0.98) 100%)',
+            display: 'grid',
+            gap: 12,
+          }}
+        >
+          <div style={{ display: 'grid', gap: 6 }}>
+            <div style={{ fontFamily: UI_MONO, fontSize: 11, letterSpacing: '0.18em', color: C.green }}>
+              ACHIEVEMENTS
+            </div>
+            <div style={{ fontFamily: UI_MONO, fontSize: 12, lineHeight: 1.6, color: C.textDim }}>
+              In-run challenges now unlock extra reward pool cards, relics, and cosmetic callsigns. The callsign selector below lets you equip any cosmetic you have earned.
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 }}>
+            {achievements.map((achievement) => {
+              const unlocked = unlockedAchievementSet.has(achievement.id);
+              return (
+                <div
+                  key={achievement.id}
+                  style={{
+                    padding: '12px 14px',
+                    borderRadius: 16,
+                    border: `1px solid ${unlocked ? `${C.green}30` : `${C.border}`}`,
+                    background: unlocked ? `${C.green}0d` : 'rgba(255,255,255,0.03)',
+                    display: 'grid',
+                    gap: 6,
+                    opacity: unlocked ? 1 : 0.84,
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                    <div style={{ fontFamily: UI_MONO, fontSize: 12, fontWeight: 700, color: unlocked ? C.green : C.text }}>
+                      {achievement.name}
+                    </div>
+                    <div style={{ fontFamily: UI_MONO, fontSize: 10, color: unlocked ? C.green : C.textDim, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                      {unlocked ? 'Unlocked' : 'Locked'}
+                    </div>
+                  </div>
+                  <div style={{ fontFamily: UI_MONO, fontSize: 11, lineHeight: 1.5, color: C.textDim }}>
+                    {achievement.description}
+                  </div>
+                  <div style={{ fontFamily: UI_MONO, fontSize: 10, lineHeight: 1.5, color: unlocked ? C.text : C.textMuted }}>
+                    Reward: {achievement.reward?.label || 'None'}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div style={{ display: 'grid', gap: 8 }}>
+            <div style={{ fontFamily: UI_MONO, fontSize: 10, letterSpacing: '0.14em', color: C.textMuted }}>
+              CALLSIGN COSMETICS
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {callsignCatalog.map((theme) => {
+                const unlocked = unlockedCallsignSet.has(theme.id);
+                const selected = theme.id === selectedCallsignId;
+                return (
+                  <button
+                    key={theme.id}
+                    onClick={() => unlocked && onSelectCallsign?.(theme.id)}
+                    style={selectorPillStyle(theme.accent || C.cyan, selected, !unlocked)}
+                    title={unlocked ? theme.description : 'Unlock through achievements'}
+                  >
+                    {theme.name}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
 
@@ -5555,6 +5782,9 @@ function App() {
   const [playtestMode, setPlaytestMode] = useState(() => readPlaytestModeEnabled());
   const [metaProgress, setMetaProgress] = useState(() => readMetaProgress());
   const [recentUnlocks, setRecentUnlocks] = useState(() => readMetaProgress().lastUnlocks || []);
+  const [selectedCallsignId, setSelectedCallsignId] = useState(() => (
+    readStoredString(CALLSIGN_STORAGE_KEY, getDefaultCallsignId())
+  ));
   const [selectedStarterProfileId, setSelectedStarterProfileId] = useState(() => {
     const unlocked = getUnlockedStarterProfiles(readMetaProgress());
     return readStoredString(STARTER_PROFILE_STORAGE_KEY, unlocked[0]?.id || 'kernel');
@@ -5569,9 +5799,15 @@ function App() {
     if (typeof window === 'undefined') return [];
     return parseCompletedTutorialIds(window.localStorage.getItem(TUTORIAL_COMPLETED_STORAGE_KEY));
   });
+  const achievementCatalog = getAchievementCatalog();
+  const callsignCatalog = getCallsignCatalog();
+  const dailyRunConfig = getDailyRunConfig(new Date());
+  const unlockedAchievementRewardState = getUnlockedAchievementRewardState(metaProgress?.achievementIdsUnlocked || []);
   const unlockedStarterProfiles = getUnlockedStarterProfiles(metaProgress);
   const unlockedDifficulties = getUnlockedDifficulties(metaProgress);
   const unlockedChallenges = getUnlockedChallenges(metaProgress);
+  const todaysDailyRecord = (metaProgress?.dailyRunRecords || []).find((record) => record.id === dailyRunConfig.id) || null;
+  const recentDailyRecords = metaProgress?.dailyRunRecords || [];
 
   // ── Sound mute toggle (persisted to localStorage) ────────────────────────
   const [soundMuted, setSoundMuted] = useState(() => {
@@ -5606,6 +5842,13 @@ function App() {
   }, [unlockedChallenges]);
 
   useEffect(() => {
+    const unlockedCallsigns = new Set(unlockedAchievementRewardState.unlockedCallsignIds || []);
+    if (!unlockedCallsigns.has(selectedCallsignId)) {
+      setSelectedCallsignId(unlockedAchievementRewardState.unlockedCallsignIds?.[0] || getDefaultCallsignId());
+    }
+  }, [selectedCallsignId, unlockedAchievementRewardState]);
+
+  useEffect(() => {
     if (typeof window === 'undefined') return;
     window.localStorage.setItem(STARTER_PROFILE_STORAGE_KEY, selectedStarterProfileId || 'kernel');
   }, [selectedStarterProfileId]);
@@ -5619,6 +5862,11 @@ function App() {
     if (typeof window === 'undefined') return;
     window.localStorage.setItem(CHALLENGES_STORAGE_KEY, JSON.stringify(selectedChallengeIds || []));
   }, [selectedChallengeIds]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(CALLSIGN_STORAGE_KEY, selectedCallsignId || getDefaultCallsignId());
+  }, [selectedCallsignId]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined;
@@ -5767,6 +6015,10 @@ function App() {
     starterProfileId = selectedStarterProfileId,
     difficultyId = selectedDifficultyId,
     challengeIds = selectedChallengeIds,
+    fixedSeed = null,
+    runMode = 'standard',
+    dailyRunId = null,
+    dailyRunLabel = null,
   } = {}) {
     if (!data) return null;
     const effectiveCustomConfig = composeRunConfig(
@@ -5778,7 +6030,7 @@ function App() {
     const initial = createInitialState();
     return dispatchWithJournal(initial, data, {
       type: 'NewRun',
-      seed: Date.now(),
+      seed: fixedSeed ?? Date.now(),
       debugSeed: resolveRequestedDebugSeed(overrideDebugSeed),
       debugSeedMode: sourceSeedMode,
       customOverrides: buildCustomOverrides(effectiveCustomConfig),
@@ -5786,12 +6038,20 @@ function App() {
       starterProfileId,
       difficultyId,
       challengeIds,
+      runMode,
+      dailyRunId,
+      dailyRunLabel,
+      unlockedAchievementIds: unlockedAchievementRewardState.unlockedAchievementIds,
+      unlockedCardIds: unlockedAchievementRewardState.unlockedCardIds,
+      unlockedRelicIds: unlockedAchievementRewardState.unlockedRelicIds,
+      unlockedCallsignIds: unlockedAchievementRewardState.unlockedCallsignIds,
     });
   }, [
     customConfig,
     data,
     lockedFields,
     seedMode,
+    unlockedAchievementRewardState,
     selectedChallengeIds,
     selectedDifficultyId,
     selectedStarterProfileId,
@@ -5866,6 +6126,30 @@ function App() {
     adoptState(createTutorialRunState(data, tutorialId), {
       handoffReason: `${tutorialDef.title} active`,
       pauseAi: true,
+      clearAutosave: true,
+    });
+  }
+
+  function startDailyRun() {
+    if (!data) return;
+    const newState = createRunStateFromSettings({
+      starterProfileId: dailyRunConfig.starterProfileId,
+      difficultyId: dailyRunConfig.difficultyId,
+      challengeIds: dailyRunConfig.challengeIds,
+      sourceCustomConfig: {},
+      sourceLockedFields: [],
+      sourceSeedMode: 'wild',
+      overrideDebugSeed: null,
+      fixedSeed: dailyRunConfig.seed,
+      runMode: 'daily',
+      dailyRunId: dailyRunConfig.id,
+      dailyRunLabel: dailyRunConfig.summary,
+    });
+    if (!newState) return;
+    setMenuAutosave(null);
+    adoptState(newState, {
+      handoffReason: `Daily Run ${dailyRunConfig.id}`,
+      pauseAi: false,
       clearAutosave: true,
     });
   }
@@ -6965,6 +7249,7 @@ function App() {
           canContinue={Boolean(menuAutosave?.state)}
           onContinue={resumeAutosavedRun}
           onStartTutorial={startTutorialRun}
+          onStartDailyRun={startDailyRun}
           onNewGame={() => startNewRun()}
           onSettings={openPauseMenu}
           debugSaveSlots={debugSaveSlots}
@@ -6973,6 +7258,14 @@ function App() {
           completedTutorialIds={completedTutorialIds}
           metaProgress={metaProgress}
           recentUnlocks={recentUnlocks}
+          achievements={achievementCatalog}
+          dailyRunConfig={dailyRunConfig}
+          dailyRunRecord={todaysDailyRecord}
+          recentDailyRecords={recentDailyRecords}
+          callsignCatalog={callsignCatalog}
+          unlockedCallsignIds={unlockedAchievementRewardState.unlockedCallsignIds}
+          selectedCallsignId={selectedCallsignId}
+          onSelectCallsign={setSelectedCallsignId}
           starterProfiles={Object.values(STARTER_PROFILES)}
           unlockedStarterProfileIds={unlockedStarterProfiles.map((profile) => profile.id)}
           selectedStarterProfileId={selectedStarterProfileId}

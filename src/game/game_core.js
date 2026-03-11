@@ -12,6 +12,11 @@ import { decodeDebugSeed, decodeSensibleDebugSeed } from "./debugSeed";
 import { getCardBalanceMeta } from "./card_balance";
 import { getStarterProfile } from "./runProfiles";
 import { getCompilePreview, applyCompileToCardInstance } from "./cardCompile";
+import { analyzeDeckState } from "./runInsights";
+import {
+  isCardUnlockedByAchievements,
+  isRelicUnlockedByAchievements,
+} from "./achievements";
 
 const EVENT_REG = createBasicEventRegistry();
 
@@ -152,6 +157,99 @@ function previewRepairMutationRemoval(data, ci) {
 
 function getShopOfferPrice(offer) {
   return Math.max(0, Number(offer?.price ?? 0));
+}
+
+function createRunTelemetry() {
+  return {
+    repairsUsed: 0,
+    compileCount: 0,
+    bricksTriggered: 0,
+    bossesDefeated: 0,
+    highestActReached: 1,
+    currentCurseCount: 0,
+    peakCurseCount: 0,
+    currentCompiledCount: 0,
+    peakCompiledCount: 0,
+    currentBrickedCount: 0,
+    peakBrickedCount: 0,
+  };
+}
+
+function ensureRunTelemetry(run) {
+  if (!run) return createRunTelemetry();
+  if (!run.telemetry || typeof run.telemetry !== "object") {
+    run.telemetry = createRunTelemetry();
+    return run.telemetry;
+  }
+  run.telemetry = {
+    ...createRunTelemetry(),
+    ...run.telemetry,
+  };
+  return run.telemetry;
+}
+
+function incrementRunTelemetry(run, key, amount = 1) {
+  const telemetry = ensureRunTelemetry(run);
+  telemetry[key] = Math.max(0, Number(telemetry[key] || 0) + Number(amount || 0));
+}
+
+function syncRunDeckTelemetry(state, data) {
+  if (!state?.run || !state?.deck || !data) return null;
+  const telemetry = ensureRunTelemetry(state.run);
+  const analysis = analyzeDeckState(data, state);
+  telemetry.currentCurseCount = analysis.curseCount;
+  telemetry.peakCurseCount = Math.max(Number(telemetry.peakCurseCount || 0), analysis.curseCount);
+  telemetry.currentCompiledCount = analysis.compiledCount;
+  telemetry.peakCompiledCount = Math.max(Number(telemetry.peakCompiledCount || 0), analysis.compiledCount);
+  telemetry.currentBrickedCount = analysis.brickedCount;
+  telemetry.peakBrickedCount = Math.max(Number(telemetry.peakBrickedCount || 0), analysis.brickedCount);
+  telemetry.highestActReached = Math.max(
+    Number(telemetry.highestActReached || 1),
+    Number(state.run.act || 1),
+  );
+  return analysis;
+}
+
+function getRunUnlockedCardIds(run) {
+  return Array.isArray(run?.metaUnlocks?.cardIds) ? run.metaUnlocks.cardIds : [];
+}
+
+function getRunUnlockedRelicIds(run) {
+  return Array.isArray(run?.metaUnlocks?.relicIds) ? run.metaUnlocks.relicIds : [];
+}
+
+function isEndlessRun(run) {
+  return Array.isArray(run?.challengeIds) && run.challengeIds.includes("endless_protocol");
+}
+
+function getContentActForRun(run) {
+  return Math.max(1, Math.min(MAX_ACTS, Number(run?.debugOverrides?.actOverride ?? run?.act ?? 1)));
+}
+
+function getEndlessDepth(run) {
+  return Math.max(0, Number(run?.act ?? 1) - MAX_ACTS);
+}
+
+function buildCombatDebugOverrides(run) {
+  const base = run?.debugOverrides ? { ...run.debugOverrides } : {};
+  if (!isEndlessRun(run)) return Object.keys(base).length > 0 ? base : null;
+
+  const depth = getEndlessDepth(run);
+  if (depth <= 0) return Object.keys(base).length > 0 ? base : null;
+
+  const hpMult = Number(base.enemyHpMult ?? 1);
+  const dmgMult = Number(base.enemyDmgMult ?? 1);
+  const drawDelta = Number(base.drawPerTurnDelta ?? 0);
+  const finalDelta = Number(base.finalCountdownTickDelta ?? 0);
+  const mutationMult = Number(base.mutationTriggerChanceMult ?? 1);
+
+  base.enemyHpMult = Number((hpMult * (1 + depth * 0.14)).toFixed(2));
+  base.enemyDmgMult = Number((dmgMult * (1 + depth * 0.1)).toFixed(2));
+  base.drawPerTurnDelta = drawDelta - Math.floor(depth / 3);
+  base.finalCountdownTickDelta = finalDelta + Math.floor((depth + 1) / 2);
+  base.mutationTriggerChanceMult = Number((mutationMult * (1 + depth * 0.08)).toFixed(2));
+
+  return base;
 }
 
 function markShopCardOfferSold(shop, defId) {
@@ -444,12 +542,13 @@ function getCardPoolEntry(id, card) {
   return { id, card, meta };
 }
 
-function getRewardCardPool(data) {
+function getRewardCardPool(data, unlockedCardIds = []) {
   return Object.entries(data?.cards || {})
     .map(([id, card]) => getCardPoolEntry(id, card))
     .filter(({ id, card, meta }) => {
       const tags = card?.tags || [];
-      return meta.rewardEligible
+      return isCardUnlockedByAchievements(id, unlockedCardIds)
+        && meta.rewardEligible
         && !String(id || "").startsWith("EC-")
         && !tags.includes("EnemyAbility")
         && !tags.includes("Status")
@@ -457,12 +556,13 @@ function getRewardCardPool(data) {
     });
 }
 
-function getShopCardPool(data) {
+function getShopCardPool(data, unlockedCardIds = []) {
   return Object.entries(data?.cards || {})
     .map(([id, card]) => getCardPoolEntry(id, card))
     .filter(({ id, card, meta }) => {
       const tags = card?.tags || [];
-      return meta.shopEligible
+      return isCardUnlockedByAchievements(id, unlockedCardIds)
+        && meta.shopEligible
         && !String(id || "").startsWith("EC-")
         && !tags.includes("EnemyAbility")
         && !tags.includes("Status")
@@ -822,16 +922,16 @@ export function generateMap(seed) {
   };
 }
 
-function makeCardRewards(data, seed, act = 1, nodeType = 'Combat') {
+function makeCardRewards(data, seed, act = 1, nodeType = 'Combat', options = {}) {
   const rng = new RNG(seed ^ 0x55CCAA11);
-  const pool = getRewardCardPool(data);
+  const pool = getRewardCardPool(data, options?.unlockedCardIds || []);
   const cardChoices = makeDistinctCardSelection(rng, pool, getCombatRewardRarityTables(nodeType, act), act);
   return { cardChoices, canSkip: true };
 }
 
-function makeShop(data, seed, relicIds = [], act = 1) {
+function makeShop(data, seed, relicIds = [], act = 1, options = {}) {
   const rng = new RNG(seed ^ 0x0F0F0F0F);
-  const pool = getShopCardPool(data);
+  const pool = getShopCardPool(data, options?.unlockedCardIds || []);
   // TheArchitect: all shop prices reduced by 15g
   const disc = relicIds.includes('TheArchitect') ? 15 : 0;
   const p = (base) => Math.max(5, base - disc);
@@ -841,7 +941,9 @@ function makeShop(data, seed, relicIds = [], act = 1) {
   const relicPool = act <= 1
     ? (data.relicRewardPools?.common || [])
     : [...(data.relicRewardPools?.common || []), ...(data.relicRewardPools?.uncommon || [])];
-  const availableRelics = relicPool.filter(rid => !relicIds.includes(rid));
+  const availableRelics = relicPool.filter(
+    (rid) => !relicIds.includes(rid) && isRelicUnlockedByAchievements(rid, options?.unlockedRelicIds || []),
+  );
   let relicOffer = null;
   if (availableRelics.length > 0) {
     const rid = rng.pick(availableRelics);
@@ -879,9 +981,11 @@ function maybeAdvanceAct(state, data, log) {
   if (state.map.selectableNext && state.map.selectableNext.length > 0) return;
 
   const prevAct = state.run.act;
+  const telemetry = ensureRunTelemetry(state.run);
+  const endless = isEndlessRun(state.run);
 
   // Win condition: cleared the final act
-  if (prevAct >= MAX_ACTS) {
+  if (prevAct >= MAX_ACTS && !endless) {
     state.run.victory = true;
     state.mode = "GameOver";
     log({ t: "Info", msg: `RUN COMPLETE — all ${MAX_ACTS} acts cleared!` });
@@ -889,8 +993,13 @@ function maybeAdvanceAct(state, data, log) {
   }
 
   state.run.act += 1;
+  telemetry.highestActReached = Math.max(Number(telemetry.highestActReached || 1), Number(state.run.act || 1));
   // Generate a new map seeded differently per act so layouts vary
   state.map = generateMap((state.run.seed ^ (state.run.act * 0x9E3779B9)) >>> 0);
+  if (endless && prevAct >= MAX_ACTS) {
+    log({ t: "Info", msg: `Endless Protocol stabilised â€” entering Act ${state.run.act}` });
+    return;
+  }
   log({ t: "Info", msg: `Act ${prevAct} complete — entering Act ${state.run.act}` });
 }
 
@@ -920,7 +1029,7 @@ function service_RemoveCard(state, data, source = 'shop', log = null) {
   }
   return true;
 }
-function service_RepairCard(state, data) {
+function service_RepairCard(state, data, source = "manual") {
   const sel = state.deckView?.selectedInstanceId;
   if (!state.deck || !sel) return false;
   const preview = getServiceTargetPreview("Repair", state, data, sel);
@@ -931,6 +1040,7 @@ function service_RepairCard(state, data) {
   ci.ramCostDelta = Number(preview.nextRamCostDelta ?? ci.ramCostDelta ?? 0);
   ci.useCounter = preview.nextUseCounter;
   ci.finalMutationCountdown = preview.nextFinalCountdown;
+  if (source !== "auto") incrementRunTelemetry(state.run, "repairsUsed", 1);
   return true;
 }
 function service_StabiliseCard(state, data) {
@@ -961,7 +1071,9 @@ function service_CompileCard(state, data) {
   const ci = state.deck.cardInstances[sel];
   const def = data?.cards?.[ci?.defId];
   if (!ci || !def) return false;
-  return applyCompileToCardInstance(def, ci);
+  const applied = applyCompileToCardInstance(def, ci);
+  if (applied) incrementRunTelemetry(state.run, "compileCount", 1);
+  return applied;
 }
 function service_DuplicateCard(state, rng) {
   const sel = state.deckView?.selectedInstanceId;
@@ -997,10 +1109,10 @@ function resolveCurrentNodeInternal(state, data, log) {
   log({ t: "Info", msg: `Resolving node (${node.type})` });
 
   if (node.type === "Combat" || node.type === "Elite" || node.type === "Boss") {
-    const dbg = state.run.debugOverrides;
+    const dbg = buildCombatDebugOverrides(state.run);
     const naturalKind = node.type === "Elite" ? "elite" : node.type === "Boss" ? "boss" : "normal";
     const effectiveKind = dbg?.encounterKind ?? naturalKind;
-    const effectiveAct  = dbg?.actOverride   ?? state.run.act;
+    const effectiveAct  = dbg?.actOverride ?? getContentActForRun(state.run);
 
     const mods = getRunMods(data, state.run.relicIds);
 
@@ -1043,7 +1155,7 @@ function resolveCurrentNodeInternal(state, data, log) {
           id: encounterId ?? encounterName,
           name: encounterName,
           signature: [...enemyIds].sort().join('|'),
-          act: effectiveAct,
+          act: state.run.act,
           kind: effectiveKind,
           floor: resolvedFloor,
         },
@@ -1079,7 +1191,16 @@ function resolveCurrentNodeInternal(state, data, log) {
   if (node.type === "Shop") {
     markNodeResolved();
     state.mode = "Shop";
-    state.shop = makeShop(data, state.run.seed ^ resolvedFloor, state.run.relicIds || [], state.run.act || 1);
+    state.shop = makeShop(
+      data,
+      state.run.seed ^ resolvedFloor,
+      state.run.relicIds || [],
+      getContentActForRun(state.run),
+      {
+        unlockedCardIds: getRunUnlockedCardIds(state.run),
+        unlockedRelicIds: getRunUnlockedRelicIds(state.run),
+      },
+    );
     log({ t: "Info", msg: "Entered shop" });
     return state;
   }
@@ -1103,7 +1224,7 @@ function resolveCurrentNodeInternal(state, data, log) {
   if (node.type === "Event") {
     markNodeResolved();
     state.mode = "Event";
-    const minigameIds = getMinigamePoolForAct(state.run.act);
+    const minigameIds = getMinigamePoolForAct(getContentActForRun(state.run));
     const eid = pickContextualEventId(
       EVENT_REG,
       data,
@@ -1183,6 +1304,16 @@ export function dispatchGame(stateIn, data, action) {
         starterProfileName: starterProfile.name,
         difficultyId: action.difficultyId || "standard",
         challengeIds: Array.isArray(action.challengeIds) ? action.challengeIds : [],
+        runMode: action.runMode || "standard",
+        dailyRunId: action.dailyRunId || null,
+        dailyRunLabel: action.dailyRunLabel || null,
+        metaUnlocks: {
+          achievementIds: Array.isArray(action.unlockedAchievementIds) ? action.unlockedAchievementIds : [],
+          cardIds: Array.isArray(action.unlockedCardIds) ? action.unlockedCardIds : [],
+          relicIds: Array.isArray(action.unlockedRelicIds) ? action.unlockedRelicIds : [],
+          callsignIds: Array.isArray(action.unlockedCallsignIds) ? action.unlockedCallsignIds : [],
+        },
+        telemetry: createRunTelemetry(),
       };
 
       // Starter deck: explicit debug list > default 9-card starter
@@ -1204,6 +1335,7 @@ export function dispatchGame(stateIn, data, action) {
       state.event = null;
       state.deckView = null;
       state.journal = { seed: action.seed, debugSeed, actions: [] };
+      syncRunDeckTelemetry(state, data);
 
       log({
         t: "Info",
@@ -1323,6 +1455,9 @@ export function dispatchGame(stateIn, data, action) {
           });
           continue;
         }
+        if (e.t === "FinalMutation" && e.data?.outcome === "brick") {
+          incrementRunTelemetry(state.run, "bricksTriggered", 1);
+        }
         push(state.log, e);
       }
       state.run.seenMutationIds = [...seenMutationIds];
@@ -1330,6 +1465,7 @@ export function dispatchGame(stateIn, data, action) {
 
       // sync run HP
       state.run.hp = Math.max(0, state.combat.player.hp);
+      syncRunDeckTelemetry(state, data);
 
       if (state.combat.combatOver) {
         if (!state.combat.victory) {
@@ -1356,14 +1492,23 @@ export function dispatchGame(stateIn, data, action) {
           nodeType === "Elite" ? (bal?.goldElite ?? 50) :
           (bal?.goldNormal ?? 25);
         state.run.gold += gold;
+        if (nodeType === "Boss") incrementRunTelemetry(state.run, "bossesDefeated", 1);
 
         state.mode = "Reward";
-        state.reward = makeCardRewards(data, state.run.seed ^ (state.run.floor * 777), state.run.act, nodeType);
+        state.reward = makeCardRewards(
+          data,
+          state.run.seed ^ (state.run.floor * 777),
+          getContentActForRun(state.run),
+          nodeType,
+          { unlockedCardIds: getRunUnlockedCardIds(state.run) },
+        );
 
         // relic rewards
         if (nodeType === "Elite" || nodeType === "Boss") {
           const kind = nodeType === "Boss" ? "boss" : "elite";
-          state.reward.relicChoices = makeRelicChoices(data, state.run.seed ^ state.run.floor, kind);
+          state.reward.relicChoices = makeRelicChoices(data, state.run.seed ^ state.run.floor, kind, {
+            unlockedRelicIds: getRunUnlockedRelicIds(state.run),
+          });
         }
 
         // Drain gold earned via mutation patches during combat (GainGold / DecompileRandom ops)
@@ -1390,6 +1535,7 @@ export function dispatchGame(stateIn, data, action) {
         }
 
         state.combat = null;
+        syncRunDeckTelemetry(state, data);
         log({ t: "Info", msg: "Combat victory -> rewards" });
       }
       return state;
@@ -1402,6 +1548,7 @@ export function dispatchGame(stateIn, data, action) {
 
       const rng = new RNG((state.run.seed ^ state.run.floor ^ 0xBEEF1234) >>> 0);
       addCardToRunDeck(data, state.deck, rng, action.defId);
+      syncRunDeckTelemetry(state, data);
 
       log({ t: "Info", msg: `Reward picked: ${action.defId}` });
       state.mode = "Map";
@@ -1477,6 +1624,7 @@ export function dispatchGame(stateIn, data, action) {
         const rng = new RNG((state.run.seed ^ state.run.floor ^ 0xC0FFEE) >>> 0);
         addCardToRunDeck(data, state.deck, rng, offer.defId);
         markShopCardOfferSold(state.shop, offer.defId);
+        syncRunDeckTelemetry(state, data);
         log({ t: "Info", msg: `Bought card: ${offer.defId}` });
         return state;
       }
@@ -1544,7 +1692,16 @@ export function dispatchGame(stateIn, data, action) {
       state.run.gold -= rerollCost;
       // Regenerate shop with a shifted seed so we get different items
       const newSeed = (state.run.seed ^ state.run.floor ^ (0x4E11 * (rerollsUsed + 1))) >>> 0;
-      const newShop = makeShop(data, newSeed, state.run.relicIds || [], state.run.act || 1);
+      const newShop = makeShop(
+        data,
+        newSeed,
+        state.run.relicIds || [],
+        getContentActForRun(state.run),
+        {
+          unlockedCardIds: getRunUnlockedCardIds(state.run),
+          unlockedRelicIds: getRunUnlockedRelicIds(state.run),
+        },
+      );
       newShop.rerollsUsed = rerollsUsed + 1;
       newShop.rerollCostNext = hasSysKey && rerollsUsed === 0 ? 30 : 30 + (rerollsUsed + 1) * 10;
       state.shop = newShop;
@@ -1590,6 +1747,7 @@ export function dispatchGame(stateIn, data, action) {
       }
 
       const res = applyEventChoiceImmediate(state, data, EVENT_REG, action.choiceId);
+      syncRunDeckTelemetry(state, data);
       log({ t: "Info", msg: `Event choice: ${action.choiceId}` });
 
       if (state.run.hp <= 0) {
@@ -1638,6 +1796,7 @@ export function dispatchGame(stateIn, data, action) {
           return state;
         }
       }
+      syncRunDeckTelemetry(state, data);
 
       if (state.run.hp <= 0) {
         state.mode = "GameOver";
@@ -1685,13 +1844,14 @@ export function dispatchGame(stateIn, data, action) {
         }
         let ok = false;
         if (serviceId === "RemoveCard") ok = service_RemoveCard(state, data, 'shop', log);
-        if (serviceId === "Repair") ok = service_RepairCard(state, data);
+        if (serviceId === "Repair") ok = service_RepairCard(state, data, "shop");
         if (serviceId === "Stabilise") ok = service_StabiliseCard(state, data);
         if (serviceId === "Accelerate") ok = service_AccelerateCard(state, data);
         if (serviceId === "Compile") ok = service_CompileCard(state, data);
         if (!ok) { log({ t: "Info", msg: `Service failed: ${serviceId}` }); return state; }
         state.run.gold -= servicePrice;
         advanceRepeatableShopServiceOffer(state.shop, serviceId, serviceOfferIndex, servicePrice);
+        syncRunDeckTelemetry(state, data);
         log({ t: "Info", msg: `Applied service: ${serviceId}` });
         delete state.shop.pendingService;
         delete state.shop.pendingPrice;
@@ -1704,7 +1864,7 @@ export function dispatchGame(stateIn, data, action) {
         const op = state.event.pendingSelectOp;
         let ok = false;
         if (op === "RemoveSelectedCard") ok = service_RemoveCard(state, data, 'event', log);
-        if (op === "RepairSelectedCard") ok = service_RepairCard(state, data);
+        if (op === "RepairSelectedCard") ok = service_RepairCard(state, data, "event");
         if (op === "StabiliseSelectedCard") ok = service_StabiliseCard(state, data);
         if (op === "AccelerateSelectedCard") ok = service_AccelerateCard(state, data);
         if (op === "CompileSelectedCard") ok = service_CompileCard(state, data);
@@ -1713,6 +1873,7 @@ export function dispatchGame(stateIn, data, action) {
           ok = service_DuplicateCard(state, dupRng);
         }
         if (!ok) { log({ t: "Info", msg: `Event card op failed: ${op}` }); return state; }
+        syncRunDeckTelemetry(state, data);
         log({ t: "Info", msg: `Event: applied card op ${op}` });
         state.event.pendingSelectOp = undefined;
         state.deckView = null;

@@ -1,9 +1,11 @@
 /**
  * Card artwork lookup — Action Cards folder.
  * Files are named <CARD_ID>-01.png and <CARD_ID>-02.png (two variants per card).
+ *
+ * These are live runtime assets and should stay in src/assets/runtime-art.
  */
 const modules = import.meta.glob(
-  '/Concept_art/Action Cards/*.png',
+  '/src/assets/runtime-art/cards/*.png',
   { eager: true, as: 'url' }
 );
 

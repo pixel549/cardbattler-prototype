@@ -1,7 +1,7 @@
 // Enemy artwork loaded via Vite static glob import.
-// Pattern resolves from project root — all images in Concept_art are bundled.
+// Keep the glob narrow so we only bundle the runtime enemy art set.
 const imageModules = import.meta.glob(
-  '/Concept_art/**/*.{png,jpg,jpeg}',
+  '/src/assets/runtime-art/enemies/*.{png,jpg,jpeg}',
   { eager: true, as: 'url' }
 );
 

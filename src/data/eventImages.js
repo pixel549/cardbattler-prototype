@@ -22,7 +22,7 @@
  */
 
 const modules = import.meta.glob(
-  '/Concept_art/Cyberpunk Back-Alley Clinic Scene - Grok/*.{png,jpg,jpeg}',
+  '/src/assets/runtime-art/events/*.{png,jpg,jpeg}',
   { eager: true, as: 'url' }
 );
 

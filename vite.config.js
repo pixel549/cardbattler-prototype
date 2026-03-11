@@ -149,13 +149,29 @@ export default defineConfig({
 
       // ── Workbox service-worker config ──────────────────────────────────────
       workbox: {
-        // Precache the full app shell + all card art.
-        // Images were resized to ~60 KB JPEGs (total ~31 MB), so they are
-        // small enough to fully precache — the game is then playable offline
-        // after the very first load, even on a slow connection.
-        globPatterns: ['**/*.{js,css,html,svg,ico,json,woff,woff2,jpg,jpeg,png}'],
-        // 50 MB limit to accommodate the image set (~31 MB) + JS bundle
-        maximumFileSizeToCacheInBytes: 50 * 1024 * 1024,
+        clientsClaim: true,
+        skipWaiting: true,
+        cleanupOutdatedCaches: true,
+        // Precache the app shell only. Artwork is runtime-cached so deploys
+        // stay lightweight and installed PWAs update promptly on phones.
+        globPatterns: ['**/*.{js,css,html,svg,ico,json,woff,woff2,webmanifest}'],
+        maximumFileSizeToCacheInBytes: 10 * 1024 * 1024,
+        runtimeCaching: [
+          {
+            urlPattern: ({ request }) => request.destination === 'image',
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'cardbattler-images-v1',
+              expiration: {
+                maxEntries: 600,
+                maxAgeSeconds: 60 * 60 * 24 * 30,
+              },
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+            },
+          },
+        ],
       },
     }),
   ],

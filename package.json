@@ -4,14 +4,15 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "npm run build:content && npm run validate:content && vite",
-    "playtest:dev": "npm run build:content && npm run validate:content && vite --host 0.0.0.0 --strictPort",
-    "build": "npm run build:content && npm run validate:content && vite build",
+    "dev": "npm run build:content && npm run validate:content && npm run validate:art && vite",
+    "playtest:dev": "npm run build:content && npm run validate:content && npm run validate:art && vite --host 0.0.0.0 --strictPort",
+    "build": "npm run build:content && npm run validate:content && npm run validate:art && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "playtest:preview": "npm run build && vite preview --host 0.0.0.0 --strictPort --port 4173",
     "build:content": "node tools/build_content.cjs",
     "validate:content": "node tools/validate_content.cjs",
+    "validate:art": "node tools/validate_runtime_art.cjs",
     "analyze:runs": "node tools/analyze_ai_runs.cjs"
   },
   "dependencies": {

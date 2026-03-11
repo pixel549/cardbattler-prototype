@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useRegisterSW } from 'virtual:pwa-register/react';
 import { loadGameData } from './data/loadData';
 import {
   createInitialState,
@@ -1267,7 +1268,10 @@ function PauseMenuOverlay({
   onClose,
   soundMuted,
   onToggleMute,
+  updateReady = false,
+  onApplyDownloadedUpdate,
   onReloadApp,
+  onForceRefreshApp,
   onAbandonRun,
   onSaveDebugSlot,
   onLoadDebugSlot,
@@ -1528,6 +1532,42 @@ function PauseMenuOverlay({
               >
                 Reload app
               </button>
+              {updateReady && (
+                <button
+                  onClick={onApplyDownloadedUpdate}
+                  style={{
+                    padding: '8px 10px',
+                    borderRadius: 10,
+                    border: `1px solid ${C.cyan}55`,
+                    background: `${C.cyan}14`,
+                    color: C.cyan,
+                    fontFamily: UI_MONO,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Apply downloaded update
+                </button>
+              )}
+              <button
+                onClick={onForceRefreshApp}
+                style={{
+                  padding: '8px 10px',
+                  borderRadius: 10,
+                  border: `1px solid ${C.orange}55`,
+                  background: `${C.orange}14`,
+                  color: C.orange,
+                  fontFamily: UI_MONO,
+                  fontSize: 11,
+                  fontWeight: 700,
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                }}
+              >
+                Force refresh app assets
+              </button>
               <button
                 onClick={onTogglePlaytestMode}
                 style={{
@@ -1547,6 +1587,14 @@ function PauseMenuOverlay({
               </button>
               <div style={{ fontFamily: UI_MONO, fontSize: 10, lineHeight: 1.5, color: C.textMuted }}>
                 Playtest mode captures real phone sessions from the LAN dev or preview server and stores them in `playtest_sessions/`.
+              </div>
+              {updateReady && (
+                <div style={{ fontFamily: UI_MONO, fontSize: 10, lineHeight: 1.5, color: C.cyan }}>
+                  A newer build is already downloaded. Apply it here before using the heavier force refresh option.
+                </div>
+              )}
+              <div style={{ fontFamily: UI_MONO, fontSize: 10, lineHeight: 1.5, color: C.textMuted }}>
+                Force refresh clears cached app files and reopens the latest deployed build without touching saves.
               </div>
             </HelpCard>
 
@@ -4468,6 +4516,14 @@ const CUSTOM_CONFIG_DEFAULTS = {
 // MAIN APP
 // ============================================================
 function App() {
+  const {
+    needRefresh: [updateReady],
+    updateServiceWorker,
+  } = useRegisterSW({
+    onRegisterError(error) {
+      console.warn('PWA registration failed.', error);
+    },
+  });
   const [data, setData] = useState(null);
   const [state, setState] = useState(null);
   const [error, setError] = useState(null);
@@ -4530,6 +4586,14 @@ function App() {
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
   }, [showPauseMenu, state?.mode, state?.run]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const currentUrl = new URL(window.location.href);
+    if (!currentUrl.searchParams.has('refresh')) return;
+    currentUrl.searchParams.delete('refresh');
+    window.history.replaceState(window.history.state, '', currentUrl.toString());
+  }, []);
 
   // ── URL params: read from global captured in index.html before React loaded ──
   const _up = (key) => window.__launchParams?.[key] ?? null;
@@ -4754,6 +4818,37 @@ function App() {
   function reloadApp() {
     setShowPauseMenu(false);
     window.location.reload();
+  }
+
+  async function applyDownloadedUpdate() {
+    setShowPauseMenu(false);
+    if (!updateServiceWorker) return;
+    try {
+      await updateServiceWorker(true);
+    } catch (error) {
+      console.warn('Unable to apply downloaded update.', error);
+    }
+  }
+
+  async function forceRefreshApp() {
+    setShowPauseMenu(false);
+    const refreshUrl = new URL(window.location.href);
+    refreshUrl.searchParams.set('refresh', String(Date.now()));
+
+    try {
+      if (typeof navigator !== 'undefined' && navigator.serviceWorker?.getRegistrations) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        await Promise.allSettled(registrations.map((registration) => registration.unregister()));
+      }
+      if (typeof window !== 'undefined' && window.caches?.keys) {
+        const cacheKeys = await window.caches.keys();
+        await Promise.allSettled(cacheKeys.map((cacheKey) => window.caches.delete(cacheKey)));
+      }
+    } catch (error) {
+      console.warn('Force refresh could not fully clear cached assets.', error);
+    }
+
+    window.location.replace(refreshUrl.toString());
   }
 
   const togglePlaytestMode = useCallback(() => {
@@ -5823,7 +5918,10 @@ function App() {
         onClose={closePauseMenu}
         soundMuted={soundMuted}
         onToggleMute={toggleMute}
+        updateReady={updateReady}
+        onApplyDownloadedUpdate={applyDownloadedUpdate}
         onReloadApp={reloadApp}
+        onForceRefreshApp={forceRefreshApp}
         onAbandonRun={abandonRun}
         onSaveDebugSlot={saveDebugSlot}
         onLoadDebugSlot={loadDebugSlot}

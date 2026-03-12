@@ -5968,7 +5968,16 @@ function App() {
       return { ...AI_EXPORT_OPTIONS_DEFAULTS };
     }
   });
-
+  const [debugSeedInput, setDebugSeedInput] = useState(() => _up('seed') ?? '');
+  const [randomizeDebugSeed, setRandomizeDebugSeed] = useState(() => _up('randomize') === 'true');
+  const [seedMode, setSeedMode] = useState(() => {
+    const sm = _up('seedMode');
+    return (sm === 'wild' || sm === 'sensible') ? sm : 'wild';
+  });
+  const [aiPlaystyle, setAiPlaystyle] = useState(() => {
+    const ps = _up('playstyle');
+    return (ps && AI_PLAYSTYLES[ps]) ? ps : 'balanced';
+  });
   useEffect(() => {
     if (showPauseMenu && aiEnabled && !aiPaused) {
       if (aiTimerRef.current) {
@@ -6356,20 +6365,8 @@ function App() {
   }
 
   // ── Debug seed state ─────────────────────────────────────────────────────
-  const [debugSeedInput, setDebugSeedInput]         = useState(() => _up('seed') ?? '');
-  const [randomizeDebugSeed, setRandomizeDebugSeed] = useState(() => _up('randomize') === 'true');
   // 'wild' | 'sensible' — which decoder to use for the current seed / each-run randomise
-  const [seedMode, setSeedMode] = useState(() => {
-    const sm = _up('seedMode');
-    return (sm === 'wild' || sm === 'sensible') ? sm : 'wild';
-  });
-
   // ── AI Playstyle ──────────────────────────────────────────────────────────
-  const [aiPlaystyle, setAiPlaystyle] = useState(() => {
-    const ps = _up('playstyle');
-    return (ps && AI_PLAYSTYLES[ps]) ? ps : 'balanced';
-  });
-
   useEffect(() => {
     localStorage.setItem('cb_ai_export_options', JSON.stringify(aiExportOptions));
   }, [aiExportOptions]);

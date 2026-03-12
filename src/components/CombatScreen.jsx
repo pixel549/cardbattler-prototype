@@ -3786,9 +3786,6 @@ function CenterCardDisplay({
   const shellDivider = isPlayable ? `${color}20` : '#40495a';
   const shellTypeColor = shellAccent;
 
-  const leftMutations = mutations.filter((_, i) => i % 2 === 0);
-  const rightMutations = mutations.filter((_, i) => i % 2 === 1);
-
   if (isMobileLayout) {
     const isPhonePortrait = layoutMode === 'phone-portrait';
     const mobileCardWidth = isPhonePortrait
@@ -4030,7 +4027,7 @@ function CenterCardDisplay({
           width: '100%',
           display: 'flex',
           flexDirection: 'column',
-          alignItems: 'center',
+          alignItems: isPhonePortrait ? 'stretch' : 'flex-end',
           gap: 6,
           padding: isPhonePortrait ? '0' : '4px 0',
           marginTop: isPhonePortrait ? -22 : 0,
@@ -4041,13 +4038,13 @@ function CenterCardDisplay({
             style={{
               width: '100%',
               display: 'grid',
-              gridTemplateColumns: `${utilityRailWidth}px auto ${utilityRailWidth}px`,
+              gridTemplateColumns: `minmax(0, 1fr) auto ${utilityRailWidth}px`,
               columnGap: 10,
-              justifyContent: 'center',
+              justifyContent: 'flex-end',
               alignItems: 'start',
             }}
           >
-            <div style={{ width: utilityRailWidth }} />
+            <div />
             {mobileCard}
             <div
               style={{
@@ -4128,21 +4125,23 @@ function CenterCardDisplay({
         inset: 0,
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'center',
+        justifyContent: 'flex-end',
         zIndex: 700,
         pointerEvents: 'auto',
-        padding: '0 clamp(12px, 4vw, 32px)',
+        padding: '0 clamp(12px, 4vw, 32px) 0 clamp(24px, 6vw, 72px)',
       }}
     >
       <div
         onClick={(event) => event.stopPropagation()}
-        style={{ position: 'relative', display: 'flex', alignItems: 'stretch', justifyContent: 'center', gap: 12, width: 'min(100%, 660px)', minHeight: 180, pointerEvents: 'auto' }}
+        style={{ position: 'relative', display: 'flex', alignItems: 'stretch', justifyContent: 'flex-end', gap: 12, width: 'min(100%, 760px)', minHeight: 180, pointerEvents: 'auto' }}
       >
-        <div style={{ flex: '1 1 0', minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 8, maxHeight: 'min(62vh, 460px)', overflowY: 'auto', padding: '4px 0 4px 2px' }}>
-          {leftMutations.map((mid, i) => (
-            <MutationDetailPanel key={`left-${mid}-${i}`} mid={mid} data={data} align="right" />
-          ))}
-        </div>
+        {mutations.length > 0 ? (
+          <div style={{ flex: '1 1 280px', minWidth: 0, maxWidth: 'min(38vw, 320px)', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 8, maxHeight: 'min(62vh, 460px)', overflowY: 'auto', padding: '4px 4px 4px 0' }}>
+            {mutations.map((mid, i) => (
+              <MutationDetailPanel key={`left-${mid}-${i}`} mid={mid} data={data} align="left" />
+            ))}
+          </div>
+        ) : null}
 
         <div
         role="button"
@@ -4322,11 +4321,6 @@ function CenterCardDisplay({
           </div>
         </div>
 
-        <div style={{ flex: '1 1 0', minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 8, maxHeight: 'min(62vh, 460px)', overflowY: 'auto', padding: '4px 2px 4px 0' }}>
-          {rightMutations.map((mid, i) => (
-            <MutationDetailPanel key={`right-${mid}-${i}`} mid={mid} data={data} align="left" />
-          ))}
-        </div>
       </div>
 
     </div>
@@ -4846,9 +4840,9 @@ function getActionZoneLayout(targetZone) {
       };
     case 'enemy':
       return {
-        left: '50%',
+        left: '69%',
         top: '19%',
-        width: 'min(70vw, 520px)',
+        width: 'min(48vw, 360px)',
         height: 'min(22vh, 180px)',
       };
     default:
@@ -4870,7 +4864,7 @@ function getActionCaptionLayout(targetZone) {
       };
     case 'enemy':
       return {
-        left: '50%',
+        left: '69%',
         top: '27%',
       };
     default:
@@ -4884,7 +4878,7 @@ function getActionCaptionLayout(targetZone) {
 function getEnemyAnimationAnchor(enemyId, enemies) {
   const count = Math.max(1, enemies?.length || 0);
   const index = Math.max(0, enemies?.findIndex((enemy) => enemy.id === enemyId) ?? 0);
-  const pct = 24 + (((index + 0.5) / count) * 52);
+  const pct = 54 + (((index + 0.5) / count) * 30);
   return { left: `${pct}%`, top: '18%' };
 }
 
@@ -7602,13 +7596,13 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
               style={{
                 width: 'min(100%, 1120px)',
                 display: 'grid',
-                gridTemplateColumns: 'minmax(0, 1fr) clamp(220px, 24vw, 268px)',
+                gridTemplateColumns: 'clamp(220px, 24vw, 268px) minmax(0, 1fr)',
                 alignItems: 'start',
                 gap: 12,
               }}
             >
-              {enemyCardsStrip}
               {enemyFocusPanel}
+              {enemyCardsStrip}
             </div>
           </div>
 
@@ -7622,7 +7616,7 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
             minHeight: 0,
             overflow: 'hidden',
           }}>
-            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-start', minHeight: 0, overflow: 'auto', width: '100%', paddingBottom: desktopCenterCardBottomPad }}>
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', minHeight: 0, overflow: 'auto', width: '100%', paddingBottom: desktopCenterCardBottomPad }}>
               {centeredCardPanel}
             </div>
           </div>
@@ -7647,13 +7641,13 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
               style={{
                 width: '100%',
                 display: 'grid',
-                gridTemplateColumns: 'minmax(0, 1fr) minmax(118px, 34vw)',
+                gridTemplateColumns: 'minmax(118px, 34vw) minmax(0, 1fr)',
                 gap: 6,
                 alignItems: 'start',
               }}
             >
-              {enemyCardsStrip}
               {enemyFocusPanel}
+              {enemyCardsStrip}
             </div>
           </div>
 
@@ -7663,7 +7657,7 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
               padding: compactTutorialPortrait ? '0 8px 4px' : '0 8px 0',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
+              justifyContent: 'flex-end',
               minHeight: 0,
             }}
           >
@@ -7696,13 +7690,13 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
               style={{
                 width: '100%',
                 display: 'grid',
-                gridTemplateColumns: `minmax(0, 1fr) ${landscapeFocusWidth}px`,
+                gridTemplateColumns: `${landscapeFocusWidth}px minmax(0, 1fr)`,
                 gap: 10,
                 alignItems: 'start',
               }}
             >
-              {enemyCardsStrip}
               {enemyFocusPanel}
+              {enemyCardsStrip}
             </div>
           </div>
 
@@ -7711,22 +7705,22 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
               flex: 1,
               minHeight: 0,
               display: 'grid',
-              gridTemplateColumns: `minmax(0, 1fr) ${landscapeSidebarWidth}px`,
+              gridTemplateColumns: `${landscapeSidebarWidth}px minmax(0, 1fr)`,
               gap: 10,
               padding: '0 10px 10px',
             }}
           >
+            <div className="safe-area-bottom" style={{ minWidth: 0, display: 'flex', alignItems: 'stretch' }}>
+              {mobileBottomPanels}
+            </div>
+
             <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 10, justifyContent: 'space-between' }}>
-              <div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
                 {centeredCardPanel}
               </div>
               <div style={{ flex: '0 0 auto' }}>
                 {handFan}
               </div>
-            </div>
-
-            <div className="safe-area-bottom" style={{ minWidth: 0, display: 'flex', alignItems: 'stretch' }}>
-              {mobileBottomPanels}
             </div>
           </div>
         </>

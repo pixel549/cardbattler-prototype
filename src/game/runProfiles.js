@@ -1,3 +1,5 @@
+import { RNG } from "./rng.js";
+
 export const RUN_BASELINE = {
   playerMaxHP: 75,
   startingGold: 99,
@@ -12,6 +14,47 @@ export const RUN_BASELINE = {
   mutationTriggerChanceMult: 1,
 };
 
+const STARTER_LOADOUT_POOLS = {
+  attack: {
+    id: "attack",
+    name: "Random Attack",
+    accent: "#ff6b00",
+    description: "Resolves into a non-core attack card at run start.",
+  },
+  defense: {
+    id: "defense",
+    name: "Random Defense",
+    accent: "#7df37d",
+    description: "Resolves into a non-core defense card at run start.",
+  },
+  support: {
+    id: "support",
+    name: "Random Support",
+    accent: "#00ff6b",
+    description: "Resolves into a non-core support card at run start.",
+  },
+  utility: {
+    id: "utility",
+    name: "Random Utility",
+    accent: "#00f0ff",
+    description: "Resolves into a non-core utility card at run start.",
+  },
+  firewall: {
+    id: "firewall",
+    name: "Random Firewall",
+    accent: "#7df37d",
+    description: "Resolves into a defense card from the firewall pool at run start.",
+  },
+};
+
+function fixedCard(defId) {
+  return { kind: "card", defId };
+}
+
+function randomCard(poolId, overrides = {}) {
+  return { kind: "random", poolId, ...overrides };
+}
+
 export const STARTER_PROFILES = {
   kernel: {
     id: "kernel",
@@ -21,6 +64,17 @@ export const STARTER_PROFILES = {
     description: "Balanced intrusion kit with a little damage, a little defense, and enough utility to learn the lane you're drafting into.",
     unlockHint: "Available from the start.",
     deck: ["C-001", "C-002", "C-003", "C-004", "C-006", "NC-001", "NC-003", "NC-019", "NC-020"],
+    loadoutSlots: [
+      fixedCard("C-001"),
+      fixedCard("C-002"),
+      fixedCard("C-003"),
+      fixedCard("C-004"),
+      fixedCard("C-006"),
+      fixedCard("NC-001"),
+      fixedCard("NC-003"),
+      randomCard("support"),
+      randomCard("utility"),
+    ],
     startingRelicIds: ["NeuralCache"],
     modifiers: {},
     identityTags: ["Balanced", "Learn", "Adapt"],
@@ -34,6 +88,17 @@ export const STARTER_PROFILES = {
     description: "Aggressive opener built around cheap hits, explosive finishers, and RAM spikes that reward ending fights fast.",
     unlockHint: "Unlock by finishing 1 run.",
     deck: ["C-001", "C-001", "C-002", "C-006", "NC-001", "NC-002", "NC-025", "NC-027", "NC-035"],
+    loadoutSlots: [
+      fixedCard("C-001"),
+      fixedCard("C-001"),
+      fixedCard("C-002"),
+      fixedCard("C-006"),
+      fixedCard("NC-001"),
+      fixedCard("NC-002"),
+      fixedCard("NC-025"),
+      randomCard("attack"),
+      randomCard("attack"),
+    ],
     startingRelicIds: ["Overclock"],
     modifiers: { playerMaxHPDelta: -4, startingGoldDelta: -12 },
     identityTags: ["Aggro", "Exploit", "Burst"],
@@ -47,6 +112,17 @@ export const STARTER_PROFILES = {
     description: "Skittish control shell that leans on Scry, hand shaping, and evasive tempo instead of raw damage racing.",
     unlockHint: "Unlock by reaching Act 2.",
     deck: ["C-001", "C-002", "C-004", "C-006", "NC-040", "NC-041", "NC-043", "NC-045", "NC-057"],
+    loadoutSlots: [
+      fixedCard("C-001"),
+      fixedCard("C-002"),
+      fixedCard("C-004"),
+      fixedCard("C-006"),
+      fixedCard("NC-040"),
+      fixedCard("NC-041"),
+      fixedCard("NC-043"),
+      randomCard("utility"),
+      randomCard("support"),
+    ],
     startingRelicIds: ["LatencyChip"],
     modifiers: { playerMaxHPDelta: -2, startingGoldDelta: 6 },
     identityTags: ["Control", "Tempo", "Scry"],
@@ -60,6 +136,17 @@ export const STARTER_PROFILES = {
     description: "Firewall-first control deck that snowballs stable turns into impossible board states and safe scaling.",
     unlockHint: "Unlock by winning a run.",
     deck: ["C-001", "C-002", "C-002", "C-004", "C-006", "NC-003", "NC-014", "NC-016", "NC-059"],
+    loadoutSlots: [
+      fixedCard("C-001"),
+      fixedCard("C-002"),
+      fixedCard("C-002"),
+      fixedCard("C-004"),
+      fixedCard("C-006"),
+      fixedCard("NC-003"),
+      fixedCard("NC-014"),
+      randomCard("defense"),
+      randomCard("firewall"),
+    ],
     startingRelicIds: ["SignalJammer"],
     modifiers: { playerMaxHPDelta: 4, startingGoldDelta: -18 },
     identityTags: ["Firewall", "Power", "Control"],
@@ -73,6 +160,17 @@ export const STARTER_PROFILES = {
     description: "Mutation-hunting junk diver with cleanup tools, weird sequencing, and the highest ceiling once cards start warping.",
     unlockHint: "Unlock by discovering 10 mutations across runs.",
     deck: ["C-001", "C-003", "C-006", "NC-005", "NC-021", "NC-044", "NC-048", "NC-053", "NC-099"],
+    loadoutSlots: [
+      fixedCard("C-001"),
+      fixedCard("C-003"),
+      fixedCard("C-006"),
+      fixedCard("NC-005"),
+      fixedCard("NC-021"),
+      fixedCard("NC-044"),
+      fixedCard("NC-048"),
+      randomCard("utility"),
+      randomCard("support"),
+    ],
     startingRelicIds: ["WornToolkit"],
     modifiers: { startingGoldDelta: 10 },
     identityTags: ["Mutation", "Salvage", "Cleanup"],
@@ -343,6 +441,94 @@ export function getUnlockedChallenges(metaProgress) {
 
 export function getProfileRelicChips(profile) {
   return [...(profile?.startingRelicIds || [])];
+}
+
+function normalizeCardType(type = "") {
+  return String(type || "").trim().toLowerCase();
+}
+
+function hasCardTag(cardDef, tag) {
+  return (cardDef?.tags || []).some((entry) => String(entry || "").trim().toLowerCase() === String(tag || "").trim().toLowerCase());
+}
+
+function isStarterPoolCandidate(cardDef, poolId) {
+  if (!cardDef || hasCardTag(cardDef, "EnemyCard")) return false;
+  const type = normalizeCardType(cardDef.type);
+  const isCore = hasCardTag(cardDef, "Core");
+  switch (poolId) {
+    case "attack":
+      return type === "attack" && !isCore;
+    case "defense":
+      return type === "defense" && !isCore;
+    case "support":
+      return type === "support" && !isCore;
+    case "utility":
+      return type === "utility" && !isCore;
+    case "firewall":
+      return type === "defense" && hasCardTag(cardDef, "Firewall") && !isCore;
+    default:
+      return false;
+  }
+}
+
+export function getStarterProfileLoadoutSlots(profileIdOrProfile = "kernel") {
+  const profile = typeof profileIdOrProfile === "string"
+    ? getStarterProfile(profileIdOrProfile)
+    : profileIdOrProfile;
+  if (!profile) return [];
+  if (Array.isArray(profile.loadoutSlots) && profile.loadoutSlots.length) {
+    return profile.loadoutSlots.map((slot) => ({ ...slot }));
+  }
+  return (profile.deck || []).map((defId) => fixedCard(defId));
+}
+
+export function getStarterProfileDeckSize(profileIdOrProfile = "kernel") {
+  return getStarterProfileLoadoutSlots(profileIdOrProfile).length;
+}
+
+export function getStarterLoadoutPool(poolId) {
+  return STARTER_LOADOUT_POOLS[poolId] || null;
+}
+
+export function getStarterLoadoutPoolCandidates(data, poolId, excludeIds = []) {
+  if (!data?.cards || !STARTER_LOADOUT_POOLS[poolId]) return [];
+  const excluded = new Set(excludeIds || []);
+  return Object.values(data.cards)
+    .filter((cardDef) => isStarterPoolCandidate(cardDef, poolId))
+    .filter((cardDef) => !excluded.has(cardDef.id))
+    .map((cardDef) => cardDef.id)
+    .sort();
+}
+
+export function resolveStarterProfileDeck(data, seed, profileIdOrProfile = "kernel") {
+  const profile = typeof profileIdOrProfile === "string"
+    ? getStarterProfile(profileIdOrProfile)
+    : profileIdOrProfile;
+  const loadoutSlots = getStarterProfileLoadoutSlots(profile);
+  const starter = [];
+  const used = new Set();
+  const rng = new RNG((seed >>> 0) || 1);
+
+  for (const slot of loadoutSlots) {
+    if (slot?.kind === "card" && slot.defId) {
+      starter.push(slot.defId);
+      used.add(slot.defId);
+      continue;
+    }
+    if (slot?.kind !== "random") continue;
+
+    const candidates = getStarterLoadoutPoolCandidates(data, slot.poolId, [...used, ...(slot.excludeIds || [])]);
+    const fallbackCandidates = candidates.length
+      ? candidates
+      : getStarterLoadoutPoolCandidates(data, slot.poolId, slot.excludeIds || []);
+    const chosenId = fallbackCandidates.length ? fallbackCandidates[rng.int(fallbackCandidates.length)] : null;
+    if (!chosenId) continue;
+    starter.push(chosenId);
+    used.add(chosenId);
+  }
+
+  if (starter.length) return starter;
+  return (profile?.deck || []).slice();
 }
 
 export function composeRunConfig(customConfig = {}, profileId = "kernel", difficultyId = "standard", challengeIds = []) {

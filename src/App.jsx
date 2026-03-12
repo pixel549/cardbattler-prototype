@@ -1617,6 +1617,7 @@ function PauseMenuOverlay({
   onApplyDownloadedUpdate,
   onReloadApp,
   onForceRefreshApp,
+  onReturnToLaunchMenu,
   onAbandonRun,
   onSaveDebugSlot,
   onLoadDebugSlot,
@@ -1841,6 +1842,25 @@ function PauseMenuOverlay({
               >
                 {showLog ? 'Hide log overlay' : 'Show log overlay'}
               </button>
+              {hasActiveRun && (
+                <button
+                  onClick={onReturnToLaunchMenu}
+                  style={{
+                    padding: '8px 10px',
+                    borderRadius: 10,
+                    border: `1px solid ${C.yellow}55`,
+                    background: `${C.yellow}14`,
+                    color: C.yellow,
+                    fontFamily: UI_MONO,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Return to launch menu
+                </button>
+              )}
               {hasActiveRun && (
                 <button
                   onClick={onAbandonRun}
@@ -6850,6 +6870,13 @@ function App() {
     hardReloadIntoFreshRun();
   }
 
+  function returnToLaunchMenuFromPause() {
+    if (!stateRef.current?.run) returnToMainMenu();
+    const confirmed = window.confirm('Return to the launch menu and clear this run?');
+    if (!confirmed) return;
+    returnToMainMenu();
+  }
+
   // ── Save directory (File System Access API, persisted via IndexedDB) ─────
   const saveDirHandle = useRef(null);
   const [saveDirName, setSaveDirName] = useState(null);
@@ -8080,6 +8107,7 @@ function App() {
         onApplyDownloadedUpdate={applyDownloadedUpdate}
         onReloadApp={reloadApp}
         onForceRefreshApp={forceRefreshApp}
+        onReturnToLaunchMenu={returnToLaunchMenuFromPause}
         onAbandonRun={abandonRun}
         onSaveDebugSlot={saveDebugSlot}
         onLoadDebugSlot={loadDebugSlot}

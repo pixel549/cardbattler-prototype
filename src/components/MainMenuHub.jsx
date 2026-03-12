@@ -1,7 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import RuntimeArt from './RuntimeArt.jsx';
 import { getCardImage } from '../data/cardImages.js';
-import { composeRunConfig, RUN_BASELINE } from '../game/runProfiles.js';
+import {
+  composeRunConfig,
+  getStarterLoadoutPool,
+  getStarterLoadoutPoolCandidates,
+  getStarterProfileDeckSize,
+  getStarterProfileLoadoutSlots,
+  RUN_BASELINE,
+} from '../game/runProfiles.js';
 import { getBossArchiveEntries } from '../game/bossIntel.js';
 import {
   getCallsignTheme,
@@ -29,6 +36,7 @@ const C = {
 
 const UI_MONO = "'JetBrains Mono', 'Fira Code', 'Consolas', monospace";
 const DISPLAY_FONT = "'Rajdhani', 'JetBrains Mono', 'Fira Code', 'Consolas', monospace";
+const EMPTY_ARRAY = [];
 
 const CARD_TYPE_COLORS = {
   Attack: C.red,
@@ -209,6 +217,11 @@ function formatCardDescription(cardDef = {}) {
     return effect?.op || '';
   }).filter(Boolean);
   return lines.join(' ') || 'No card text available.';
+}
+
+function buildLoadoutSlotKey(slot, index) {
+  if (slot?.kind === 'random') return `random:${slot.poolId}:${index}`;
+  return `card:${slot?.defId || 'unknown'}:${index}`;
 }
 
 function formatConfigFieldValue(field, value) {
@@ -499,11 +512,41 @@ export default function MainMenuHub({
     : 'No optional challenges active.';
 
   const selectedProfileRelics = (selectedProfile?.startingRelicIds || []).map((relicId) => data?.relics?.[relicId]?.name || relicId);
-  const selectedProfileDeckNames = (selectedProfile?.deck || []).map((cardId) => data?.cards?.[cardId]?.name || cardId);
-  const previewDeckCards = (selectedProfile?.deck || [])
-    .map((cardId) => ({ cardId, cardDef: data?.cards?.[cardId] }))
-    .filter(({ cardDef }) => cardDef)
-    .slice(0, 6);
+  const selectedProfileLoadoutSlots = getStarterProfileLoadoutSlots(selectedProfile);
+  const selectedProfileDeckSize = getStarterProfileDeckSize(selectedProfile);
+  const loadoutPreviewEntries = selectedProfileLoadoutSlots.map((slot, index) => {
+    const key = buildLoadoutSlotKey(slot, index);
+    if (slot?.kind === 'random') {
+      const pool = getStarterLoadoutPool(slot.poolId);
+      const candidateIds = getStarterLoadoutPoolCandidates(data, slot.poolId, slot.excludeIds || []);
+      const candidateNames = candidateIds.map((cardId) => data?.cards?.[cardId]?.name || cardId);
+      return {
+        key,
+        kind: 'random',
+        accent: slot.accent || pool?.accent || C.orange,
+        title: slot.label || pool?.name || 'Random Slot',
+        summary: `${candidateNames.length || 0} candidate${candidateNames.length === 1 ? '' : 's'}`,
+        body: slot.description || pool?.description || 'Resolves at run start.',
+        candidateNames,
+        candidateIds,
+        poolName: pool?.name || slot.poolId || 'Random pool',
+      };
+    }
+    const cardDef = data?.cards?.[slot?.defId] || null;
+    const accent = getCardColor(cardDef?.type);
+    return {
+      key,
+      kind: 'card',
+      accent,
+      cardId: slot?.defId,
+      cardDef,
+      title: cardDef?.name || slot?.defId || 'Unknown card',
+      summary: `${cardDef?.type || 'Card'}${cardDef?.costRAM != null ? ` • ${cardDef.costRAM} RAM` : ''}`,
+      body: formatCardDescription(cardDef),
+      tags: cardDef?.tags || EMPTY_ARRAY,
+    };
+  });
+  const selectedProfileDeckNames = loadoutPreviewEntries.map((entry) => entry.title);
 
   const featuredTutorial = tutorialCatalog.find((tutorial) => tutorial.recommended && !completedSet.has(tutorial.id)) || tutorialCatalog[0] || null;
   const beginnerTutorials = tutorialCatalog.filter((tutorial) => isBeginnerTutorial(tutorial));
@@ -521,6 +564,8 @@ export default function MainMenuHub({
   const activeOverrideSummary = activeOverrideFields.length
     ? activeOverrideFields.map((field) => `${field.label}: ${formatConfigFieldValue(field, customConfig[field.key])}`).join(' | ')
     : 'No direct overrides active.';
+  const [selectedLoadoutSlotKey, setSelectedLoadoutSlotKey] = useState(loadoutPreviewEntries[0]?.key || null);
+  const activeLoadoutEntry = loadoutPreviewEntries.find((entry) => entry.key === selectedLoadoutSlotKey) || loadoutPreviewEntries[0] || null;
 
   const bossArchiveEntries = data ? getBossArchiveEntries(data, metaProgress, 6) : [];
   const totalBossCount = Object.values(data?.encounters || {}).filter((encounter) => encounter?.kind === 'boss').length;
@@ -578,6 +623,15 @@ export default function MainMenuHub({
     setTutorialView(nextPath.tutorialView);
     setIntelView(nextPath.intelView);
   }, [forcedPath, initialMenuView, initialIntelView]);
+
+  useEffect(() => {
+    if (loadoutPreviewEntries.some((entry) => entry.key === selectedLoadoutSlotKey)) return;
+    setSelectedLoadoutSlotKey(loadoutPreviewEntries[0]?.key || null);
+  }, [loadoutPreviewEntries, selectedLoadoutSlotKey]);
+
+  useEffect(() => {
+    setSelectedLoadoutSlotKey(loadoutPreviewEntries[0]?.key || null);
+  }, [selectedProfile?.id]);
 
   const handleMenuViewChange = (nextView) => {
     if (forcedPath && nextView !== forcedPath.menuView) {
@@ -854,53 +908,139 @@ export default function MainMenuHub({
               {selectedModeSummary.join(' | ') || 'Standard baseline'}
             </div>
           </div>
+
+          <div style={{ ...panelStyle(C.border, 'soft', '14px'), display: 'grid', gap: 6 }}>
+            <div style={{ fontFamily: UI_MONO, fontSize: 10, letterSpacing: '0.14em', color: C.textMuted }}>
+              LOADOUT SIZE
+            </div>
+            <div style={{ fontFamily: UI_MONO, fontSize: 12, lineHeight: 1.6, color: C.text }}>
+              {selectedProfileDeckSize} cards, including {loadoutPreviewEntries.filter((entry) => entry.kind === 'random').length} random slot{loadoutPreviewEntries.filter((entry) => entry.kind === 'random').length === 1 ? '' : 's'}
+            </div>
+          </div>
         </div>
 
-        <div style={{ display: 'grid', gap: 8 }}>
+        <div style={{ display: 'grid', gap: 12 }}>
           <div style={{ fontFamily: UI_MONO, fontSize: 10, letterSpacing: '0.14em', color: C.textMuted }}>
-            DECK PREVIEW
+            LOADOUT CARDS
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(82px, 1fr))', gap: 10 }}>
-            {previewDeckCards.map(({ cardId, cardDef }) => {
-              const accent = getCardColor(cardDef.type);
+            {loadoutPreviewEntries.map((entry) => {
+              const selected = activeLoadoutEntry?.key === entry.key;
               return (
-                <div key={cardId} style={{ display: 'grid', gap: 6 }}>
-                  <RuntimeArt
-                    src={getCardImage(cardId)}
-                    alt={cardDef.name}
-                    accent={accent}
-                    label={cardDef.name}
-                    style={{
-                      width: '100%',
-                      aspectRatio: '0.72',
-                      borderRadius: 14,
-                      overflow: 'hidden',
-                      border: `1px solid ${accent}24`,
-                      background: C.bgCard,
-                      display: 'block',
-                    }}
-                    imageStyle={{
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'cover',
-                      filter: 'saturate(1.03) contrast(1.02) brightness(0.94)',
-                    }}
-                    fallbackStyle={{
-                      borderRadius: 14,
-                      border: `1px solid ${accent}24`,
-                    }}
-                  />
-                  <div style={{ fontFamily: UI_MONO, fontSize: 10, lineHeight: 1.45, color: C.text }}>
-                    {cardDef.name}
+                <button
+                  key={entry.key}
+                  onClick={() => setSelectedLoadoutSlotKey(entry.key)}
+                  style={{
+                    appearance: 'none',
+                    display: 'grid',
+                    gap: 6,
+                    textAlign: 'left',
+                    background: 'transparent',
+                    border: 'none',
+                    padding: 0,
+                    cursor: 'pointer',
+                  }}
+                >
+                  {entry.kind === 'card' && entry.cardDef ? (
+                    <RuntimeArt
+                      src={getCardImage(entry.cardId)}
+                      alt={entry.title}
+                      accent={entry.accent}
+                      label={entry.title}
+                      style={{
+                        width: '100%',
+                        aspectRatio: '0.72',
+                        borderRadius: 14,
+                        overflow: 'hidden',
+                        border: `2px solid ${selected ? `${entry.accent}88` : `${entry.accent}24`}`,
+                        background: C.bgCard,
+                        boxShadow: selected ? `0 0 20px ${entry.accent}26` : 'none',
+                        display: 'block',
+                      }}
+                      imageStyle={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                        filter: 'saturate(1.03) contrast(1.02) brightness(0.94)',
+                      }}
+                      fallbackStyle={{
+                        borderRadius: 14,
+                        border: `2px solid ${selected ? `${entry.accent}88` : `${entry.accent}24`}`,
+                      }}
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        width: '100%',
+                        aspectRatio: '0.72',
+                        borderRadius: 14,
+                        border: `2px solid ${selected ? `${entry.accent}88` : `${entry.accent}24`}`,
+                        background: `linear-gradient(145deg, ${entry.accent}14 0%, ${C.bgCard} 56%, rgba(8,10,16,0.98) 100%)`,
+                        boxShadow: selected ? `0 0 20px ${entry.accent}26` : 'none',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 6,
+                        color: entry.accent,
+                      }}
+                    >
+                      <div style={{ fontFamily: DISPLAY_FONT, fontSize: 40, fontWeight: 700, lineHeight: 1 }}>
+                        ?
+                      </div>
+                      <div style={{ fontFamily: UI_MONO, fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', textAlign: 'center', padding: '0 6px' }}>
+                        {entry.poolName}
+                      </div>
+                    </div>
+                  )}
+                  <div style={{ fontFamily: UI_MONO, fontSize: 10, lineHeight: 1.45, color: selected ? entry.accent : C.text }}>
+                    {entry.title}
                   </div>
-                </div>
+                </button>
               );
             })}
           </div>
 
+          <div style={{ ...panelStyle(activeLoadoutEntry?.accent || selectedProfileAccent, 'soft', '16px'), display: 'grid', gap: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+              <div style={{ fontFamily: DISPLAY_FONT, fontSize: 24, fontWeight: 700, color: activeLoadoutEntry?.accent || selectedProfileAccent }}>
+                {activeLoadoutEntry?.title || 'Loadout slot'}
+              </div>
+              <DataChip accent={activeLoadoutEntry?.accent || selectedProfileAccent} selected>
+                {activeLoadoutEntry?.summary || 'Preview'}
+              </DataChip>
+            </div>
+
+            <div style={{ fontFamily: UI_MONO, fontSize: 12, lineHeight: 1.65, color: C.text }}>
+              {activeLoadoutEntry?.body || 'Select a loadout card to inspect it.'}
+            </div>
+
+            {activeLoadoutEntry?.kind === 'card' && activeLoadoutEntry.cardDef ? (
+              <>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  <DataChip accent={activeLoadoutEntry.accent}>{activeLoadoutEntry.cardDef.type || 'Card'}</DataChip>
+                  {activeLoadoutEntry.cardDef.costRAM != null ? <DataChip accent={C.cyan}>{activeLoadoutEntry.cardDef.costRAM} RAM</DataChip> : null}
+                  {(activeLoadoutEntry.tags || []).map((tag) => (
+                    <DataChip key={tag} accent={activeLoadoutEntry.accent}>{tag}</DataChip>
+                  ))}
+                </div>
+              </>
+            ) : activeLoadoutEntry?.kind === 'random' ? (
+              <>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  <DataChip accent={activeLoadoutEntry.accent}>{activeLoadoutEntry.poolName}</DataChip>
+                  <DataChip accent={C.cyan}>{activeLoadoutEntry.candidateIds?.length || 0} candidates</DataChip>
+                </div>
+                <div style={{ fontFamily: UI_MONO, fontSize: 11, lineHeight: 1.65, color: C.textDim }}>
+                  Possible cards: {activeLoadoutEntry.candidateNames?.join(', ') || 'No candidates available in the current data build.'}
+                </div>
+              </>
+            ) : null}
+          </div>
+
           <div style={{ fontFamily: UI_MONO, fontSize: 11, lineHeight: 1.6, color: C.textDim }}>
-            Full deck: {selectedProfileDeckNames.join(', ')}
+            Full loadout: {selectedProfileDeckNames.join(', ')}
           </div>
         </div>
       </div>
@@ -1075,7 +1215,7 @@ export default function MainMenuHub({
                 {profile.description}
               </div>
               <div style={{ fontFamily: UI_MONO, fontSize: 11, lineHeight: 1.55, color: locked ? C.textDim : C.text }}>
-                {locked ? profile.unlockHint : `Starts with ${profile.startingRelicIds?.length || 0} relic and ${profile.deck?.length || 0} cards.`}
+                {locked ? profile.unlockHint : `Starts with ${profile.startingRelicIds?.length || 0} relic and ${getStarterProfileDeckSize(profile)} cards.`}
               </div>
             </button>
           );

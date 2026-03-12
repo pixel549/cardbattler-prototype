@@ -10,7 +10,7 @@ import { createBasicEventRegistry, applyEventChoiceImmediate, pickContextualEven
 import { getMinigameRewards, getMinigamePoolForAct } from "./minigames.js";
 import { decodeDebugSeed, decodeSensibleDebugSeed } from "./debugSeed.js";
 import { getCardBalanceMeta } from "./card_balance.js";
-import { getStarterProfile } from "./runProfiles.js";
+import { getStarterProfile, resolveStarterProfileDeck } from "./runProfiles.js";
 import { getCompilePreview, applyCompileToCardInstance } from "./cardCompile.js";
 import { analyzeDeckState } from "./runInsights.js";
 import {
@@ -1441,8 +1441,8 @@ export function dispatchGame(stateIn, data, action) {
         starter = dbg.startingCardIds;
       } else if (dbg?.startingCardCount != null) {
         starter = Object.keys(data.cards).slice(0, dbg.startingCardCount);
-      } else if (starterProfile?.deck?.length) {
-        starter = starterProfile.deck;
+      } else if (starterProfile?.deck?.length || starterProfile?.loadoutSlots?.length) {
+        starter = resolveStarterProfileDeck(data, action.seed, starterProfile);
       } else {
         starter = buildDefaultStarterDeck(data, action.seed);
       }

@@ -5748,6 +5748,9 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
   const isPhoneLayout = layoutMode !== 'desktop';
   const isPhonePortrait = layoutMode === 'phone-portrait';
   const isPhoneLandscape = layoutMode === 'phone-landscape';
+  const tutorialActive = Boolean(state?.run?.tutorial?.active);
+  const tallTutorialLayout = tutorialActive && viewport.height >= 1400;
+  const compactTutorialPortrait = tutorialActive && isPhonePortrait;
   const landscapeFocusWidth = viewport.width < 720 ? 156 : 168;
   const landscapeSidebarWidth = viewport.width < 720 ? 224 : 244;
 
@@ -6976,11 +6979,11 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
             className="safe-area-top"
             style={{
               flex: '0 0 auto',
-              minHeight: 'clamp(248px, 31vh, 330px)',
+              minHeight: tallTutorialLayout ? 'clamp(214px, 25vh, 286px)' : 'clamp(248px, 31vh, 330px)',
               display: 'flex',
               alignItems: 'flex-start',
               justifyContent: 'center',
-              padding: '18px 10px 12px',
+              padding: tallTutorialLayout ? '14px 10px 10px' : '18px 10px 12px',
               overflow: 'visible',
             }}
           >
@@ -7002,13 +7005,13 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
             flex: 1,
             display: 'flex',
             flexDirection: 'column',
-            justifyContent: 'center',
+            justifyContent: tallTutorialLayout ? 'flex-end' : 'center',
             alignItems: 'center',
-            padding: '0 8px',
+            padding: tallTutorialLayout ? '0 8px 18px' : '0 8px',
             minHeight: 0,
             overflow: 'hidden',
           }}>
-            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 0, overflow: 'auto', width: '100%' }}>
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: tallTutorialLayout ? 'flex-end' : 'center', minHeight: 0, overflow: 'auto', width: '100%', paddingBottom: tallTutorialLayout ? 18 : 0 }}>
               {centeredCardPanel}
             </div>
           </div>
@@ -7024,7 +7027,7 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
             className="safe-area-top"
             style={{
               flex: '0 0 auto',
-              padding: '8px 8px 4px',
+              padding: compactTutorialPortrait ? '6px 8px 2px' : '8px 8px 4px',
               display: 'flex',
               justifyContent: 'center',
             }}
@@ -7046,7 +7049,7 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
           <div
             style={{
               flex: '0 0 auto',
-              padding: '0 8px 0',
+              padding: compactTutorialPortrait ? '0 8px 4px' : '0 8px 0',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -7056,11 +7059,11 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
             {centeredCardPanel}
           </div>
 
-          <div className="safe-area-bottom" style={{ flex: '0 0 auto', padding: '0 8px 0' }}>
+          <div className="safe-area-bottom" style={{ flex: '0 0 auto', padding: compactTutorialPortrait ? '0 8px 2px' : '0 8px 0' }}>
             {handFan}
           </div>
 
-          <div className="safe-area-bottom" style={{ flex: '0 0 auto', padding: '0 8px 6px' }}>
+          <div className="safe-area-bottom" style={{ flex: '0 0 auto', padding: compactTutorialPortrait ? '0 8px 10px' : '0 8px 6px' }}>
             {mobileBottomPanels}
             <div ref={portraitPileAnchorRef} style={{ height: 1 }} />
           </div>

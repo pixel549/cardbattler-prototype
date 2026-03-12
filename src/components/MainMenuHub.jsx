@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import RuntimeArt from './RuntimeArt.jsx';
 import { getCardImage } from '../data/cardImages.js';
 import { composeRunConfig, RUN_BASELINE } from '../game/runProfiles.js';
@@ -218,6 +218,11 @@ function StatTile({ accent, label, value }) {
 export default function MainMenuHub({
   ScreenShell,
   data = null,
+  initialMenuView = 'home',
+  initialIntelView = 'progress',
+  forcedMenuView = null,
+  forcedIntelView = null,
+  onBlockedNavigation = null,
   canContinue = false,
   onContinue,
   onStartTutorial,
@@ -252,8 +257,10 @@ export default function MainMenuHub({
   selectedChallengeIds = [],
   onToggleChallenge,
 }) {
-  const [menuView, setMenuView] = useState('home');
-  const [intelView, setIntelView] = useState('progress');
+  const [menuView, setMenuView] = useState(initialMenuView);
+  const [intelView, setIntelView] = useState(initialIntelView);
+  const activeMenuView = forcedMenuView ?? menuView;
+  const activeIntelView = forcedIntelView ?? intelView;
   const completedSet = new Set(completedTutorialIds);
   const unlockedStarterSet = new Set(unlockedStarterProfileIds);
   const unlockedDifficultySet = new Set(unlockedDifficultyIds);
@@ -384,8 +391,34 @@ export default function MainMenuHub({
     cursor: 'pointer',
   };
 
+  useEffect(() => {
+    if (forcedMenuView != null) return;
+    setMenuView(initialMenuView);
+  }, [forcedMenuView, initialMenuView]);
+
+  useEffect(() => {
+    if (forcedIntelView != null) return;
+    setIntelView(initialIntelView);
+  }, [forcedIntelView, initialIntelView]);
+
+  const handleMenuViewChange = (nextView) => {
+    if (forcedMenuView != null && nextView !== forcedMenuView) {
+      onBlockedNavigation?.();
+      return;
+    }
+    setMenuView(nextView);
+  };
+
+  const handleIntelViewChange = (nextView) => {
+    if (forcedIntelView != null && nextView !== forcedIntelView) {
+      onBlockedNavigation?.();
+      return;
+    }
+    setIntelView(nextView);
+  };
+
   const renderHeader = () => {
-    const meta = pageMeta[menuView];
+    const meta = pageMeta[activeMenuView];
     return (
       <div style={{ ...panelStyle(meta.accent, 'bright', '22px'), display: 'grid', gap: 18 }}>
         <div
@@ -426,8 +459,8 @@ export default function MainMenuHub({
               <div style={{ fontFamily: UI_MONO, fontSize: 10, letterSpacing: '0.16em', color: activeCallsignAccent }}>
                 ACTIVE CALLSIGN
               </div>
-              {menuView !== 'home' ? (
-                <button onClick={() => setMenuView('home')} style={ghostButtonStyle}>
+              {activeMenuView !== 'home' ? (
+                <button onClick={() => handleMenuViewChange('home')} style={ghostButtonStyle}>
                   Back
                 </button>
               ) : null}
@@ -452,8 +485,8 @@ export default function MainMenuHub({
           {navItems.map((item) => (
             <button
               key={item.id}
-              onClick={() => setMenuView(item.id)}
-              style={pillButtonStyle(item.accent, item.id === menuView)}
+              onClick={() => handleMenuViewChange(item.id)}
+              style={pillButtonStyle(item.accent, item.id === activeMenuView)}
             >
               {item.label}
             </button>
@@ -595,7 +628,7 @@ export default function MainMenuHub({
               accent={C.cyan}
               title="Daily Run"
               body="Shared seed, shared breach, separate lane. This keeps the landing page from turning back into a wall of details."
-              onClick={() => setMenuView('daily')}
+              onClick={() => handleMenuViewChange('daily')}
               meta="Shared"
               status={dailyRunConfig?.id || 'Offline'}
             />
@@ -611,10 +644,10 @@ export default function MainMenuHub({
           />
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
-            <MainAction accent={selectedProfileAccent} title="Run Setup" body="Profiles, difficulty, and challenge layers." onClick={() => setMenuView('setup')} meta="Configure" />
-            <MainAction accent={C.cyan} title="Tutorials" body="Recommended onboarding and replayable lessons." onClick={() => setMenuView('tutorials')} meta="Learn" status={featuredTutorial?.title || 'Ready'} />
-            <MainAction accent={C.green} title="Intel" body="Progress, unlocks, bosses, and callsigns." onClick={() => { setIntelView('progress'); setMenuView('intel'); }} meta="Archive" />
-            {hasRecovery ? <MainAction accent={C.orange} title="Recovery" body="Internal save slots and debug recovery tools." onClick={() => setMenuView('recovery')} meta="Utility" status={`${availableDebugSlots.length} slot${availableDebugSlots.length === 1 ? '' : 's'}`} /> : null}
+            <MainAction accent={selectedProfileAccent} title="Run Setup" body="Profiles, difficulty, and challenge layers." onClick={() => handleMenuViewChange('setup')} meta="Configure" />
+            <MainAction accent={C.cyan} title="Tutorials" body="Recommended onboarding and replayable lessons." onClick={() => handleMenuViewChange('tutorials')} meta="Learn" status={featuredTutorial?.title || 'Ready'} />
+            <MainAction accent={C.green} title="Intel" body="Progress, unlocks, bosses, and callsigns." onClick={() => { handleIntelViewChange('progress'); handleMenuViewChange('intel'); }} meta="Archive" />
+            {hasRecovery ? <MainAction accent={C.orange} title="Recovery" body="Internal save slots and debug recovery tools." onClick={() => handleMenuViewChange('recovery')} meta="Utility" status={`${availableDebugSlots.length} slot${availableDebugSlots.length === 1 ? '' : 's'}`} /> : null}
           </div>
         </div>
       </div>
@@ -1035,7 +1068,7 @@ export default function MainMenuHub({
       </div>
     );
 
-    if (intelView === 'achievements') {
+    if (activeIntelView === 'achievements') {
       panel = (
         <div style={{ ...panelStyle(C.green, 'default', '18px'), display: 'grid', gap: 14 }}>
           <SectionIntro
@@ -1080,7 +1113,7 @@ export default function MainMenuHub({
       );
     }
 
-    if (intelView === 'bosses') {
+    if (activeIntelView === 'bosses') {
       panel = (
         <div style={{ ...panelStyle(C.red, 'default', '18px'), display: 'grid', gap: 14 }}>
           <SectionIntro
@@ -1124,7 +1157,7 @@ export default function MainMenuHub({
       );
     }
 
-    if (intelView === 'callsigns') {
+    if (activeIntelView === 'callsigns') {
       panel = (
         <div style={{ ...panelStyle(activeCallsignAccent, 'default', '18px'), display: 'grid', gap: 14 }}>
           <SectionIntro
@@ -1160,8 +1193,8 @@ export default function MainMenuHub({
           {intelTabs.map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setIntelView(tab.id)}
-              style={pillButtonStyle(tab.accent, intelView === tab.id)}
+              onClick={() => handleIntelViewChange(tab.id)}
+              style={pillButtonStyle(tab.accent, activeIntelView === tab.id)}
             >
               {tab.label}
             </button>
@@ -1204,11 +1237,11 @@ export default function MainMenuHub({
   );
 
   let content = renderHomeView();
-  if (menuView === 'setup') content = renderSetupView();
-  if (menuView === 'tutorials') content = renderTutorialsView();
-  if (menuView === 'daily') content = renderDailyView();
-  if (menuView === 'intel') content = renderIntelView();
-  if (menuView === 'recovery') content = renderRecoveryView();
+  if (activeMenuView === 'setup') content = renderSetupView();
+  if (activeMenuView === 'tutorials') content = renderTutorialsView();
+  if (activeMenuView === 'daily') content = renderDailyView();
+  if (activeMenuView === 'intel') content = renderIntelView();
+  if (activeMenuView === 'recovery') content = renderRecoveryView();
 
   return (
     <ScreenShell extraStyle={{ alignItems: 'center', justifyContent: 'center', padding: 20 }}>

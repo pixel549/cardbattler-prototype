@@ -15,6 +15,7 @@ dist-ssr
 # AI run output files (local analysis data, not source)
 AI runs/
 playtest_sessions/
+artifacts/visual-smoke/
 
 # Zip archives
 *.zip

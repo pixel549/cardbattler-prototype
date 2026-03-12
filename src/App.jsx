@@ -34,9 +34,14 @@ import {
   getTutorialCatalog,
   getTutorialDefinition,
   getTutorialStep,
+  getTutorialMenuState,
   canUseTutorialAction,
   advanceTutorialState,
 } from './game/tutorial.js';
+import {
+  createVisualSceneState,
+  getVisualSceneMenuState,
+} from './playtest/visualScenes.js';
 import {
   STARTER_PROFILES,
   DIFFICULTY_PROFILES,
@@ -5375,8 +5380,14 @@ function MainMenuScreen({
   );
 }
 
-function TutorialOverlay({ step, nudge = '', onAdvance, onExit }) {
+function TutorialOverlay({ step, nudge = '', onAdvance, onExit, presentationMode = 'Combat' }) {
   if (!step) return null;
+
+  const overlayBottom = presentationMode === 'Combat'
+    ? 'clamp(92px, 16vh, 164px)'
+    : presentationMode === 'DeckView'
+      ? 18
+      : 0;
 
   return (
     <div
@@ -5385,8 +5396,8 @@ function TutorialOverlay({ step, nudge = '', onAdvance, onExit }) {
         position: 'fixed',
         left: 12,
         right: 12,
-        bottom: 0,
-        zIndex: 90,
+        bottom: overlayBottom,
+        zIndex: 980,
         display: 'flex',
         justifyContent: 'center',
         pointerEvents: 'none',
@@ -5963,7 +5974,7 @@ function App() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined;
-    const hasActiveRun = Boolean(state?.run) && !['GameOver', 'TutorialComplete'].includes(state?.mode);
+    const hasActiveRun = Boolean(state?.run) && !state?.run?.tutorialShell && !['GameOver', 'TutorialComplete'].includes(state?.mode);
     if (!hasActiveRun) {
       backGuardPrimedRef.current = false;
       return undefined;
@@ -6005,6 +6016,8 @@ function App() {
 
   // ── URL params: read from global captured in index.html before React loaded ──
   const _up = (key) => window.__launchParams?.[key] ?? null;
+  const visualSceneId = _up('scene');
+  const visualMenuState = getVisualSceneMenuState(visualSceneId);
 
   // ── AI auto-play debug state ──────────────────────────────────────────────
   const [aiEnabled, setAiEnabled]       = useState(() => _up('ai') === 'true');
@@ -6507,6 +6520,29 @@ function App() {
         return;
       }
 
+      if (visualMenuState) {
+        clearNodeAutosave();
+        autosaveTokenRef.current = null;
+        setMenuAutosave(null);
+        aiPausedRef.current = true;
+        setAiPaused(true);
+        setAiHandoffReason('Visual QA scene');
+        setState(createInitialState());
+        return;
+      }
+
+      const visualSceneState = createVisualSceneState(data, visualSceneId);
+      if (visualSceneState) {
+        clearNodeAutosave();
+        autosaveTokenRef.current = null;
+        setMenuAutosave(null);
+        aiPausedRef.current = true;
+        setAiPaused(true);
+        setAiHandoffReason('Visual QA scene');
+        setState(visualSceneState);
+        return;
+      }
+
       const autosave = readNodeAutosave(contentFingerprint);
       if (autosave?.state) {
         autosaveTokenRef.current = autosave.token || buildNodeAutosaveToken(autosave.state);
@@ -6521,7 +6557,7 @@ function App() {
       setAiHandoffReason('');
       setState(createInitialState());
     }
-  }, [data, state, debugSeedInput, seedMode, customConfig, lockedFields]);
+  }, [data, state, debugSeedInput, seedMode, customConfig, lockedFields, visualSceneId]);
 
   const clearAiTimer = useCallback(() => {
     if (aiTimerRef.current) {
@@ -7287,8 +7323,7 @@ function App() {
     setState(prev => {
       try {
         const next = dispatchWithJournal(prev, data, action);
-        advanceTutorialState(next, action);
-        return next;
+        return advanceTutorialState(next, action, data);
       } catch (err) {
         console.error('Action failed:', action, err);
         return prev;
@@ -7332,6 +7367,10 @@ function App() {
     return <LoadingScreen />;
   }
 
+  const tutorialStep = getTutorialStep(state);
+  const tutorialMenuState = getTutorialMenuState(state);
+  const blockMenuTutorialAction = () => showTutorialHint('Finish or leave the briefing first.');
+
   let content;
   switch (state.mode) {
     case 'MainMenu':
@@ -7339,15 +7378,20 @@ function App() {
         <MainMenuHub
           ScreenShell={ScreenShell}
           data={data}
+          initialMenuView={tutorialMenuState?.menuView ?? visualMenuState?.menuView ?? 'home'}
+          initialIntelView={tutorialMenuState?.intelView ?? visualMenuState?.intelView ?? 'progress'}
+          forcedMenuView={tutorialMenuState?.menuView ?? null}
+          forcedIntelView={tutorialMenuState?.intelView ?? null}
+          onBlockedNavigation={tutorialMenuState ? blockMenuTutorialAction : null}
           canContinue={Boolean(menuAutosave?.state)}
-          onContinue={resumeAutosavedRun}
-          onStartTutorial={startTutorialRun}
-          onStartDailyRun={startDailyRun}
-          onNewGame={() => startNewRun()}
-          onSettings={openPauseMenu}
+          onContinue={tutorialMenuState ? blockMenuTutorialAction : resumeAutosavedRun}
+          onStartTutorial={tutorialMenuState ? blockMenuTutorialAction : startTutorialRun}
+          onStartDailyRun={tutorialMenuState ? blockMenuTutorialAction : startDailyRun}
+          onNewGame={tutorialMenuState ? blockMenuTutorialAction : (() => startNewRun())}
+          onSettings={tutorialMenuState ? blockMenuTutorialAction : openPauseMenu}
           debugSaveSlots={debugSaveSlots}
           debugSaveSlotIds={DEBUG_SAVE_SLOT_IDS}
-          onLoadDebugSave={loadDebugSlot}
+          onLoadDebugSave={tutorialMenuState ? blockMenuTutorialAction : loadDebugSlot}
           tutorialCatalog={TUTORIAL_CATALOG}
           completedTutorialIds={completedTutorialIds}
           metaProgress={metaProgress}
@@ -7359,25 +7403,25 @@ function App() {
           callsignCatalog={callsignCatalog}
           unlockedCallsignIds={unlockedAchievementRewardState.unlockedCallsignIds}
           selectedCallsignId={selectedCallsignId}
-          onSelectCallsign={setSelectedCallsignId}
+          onSelectCallsign={tutorialMenuState ? blockMenuTutorialAction : setSelectedCallsignId}
           starterProfiles={Object.values(STARTER_PROFILES)}
           unlockedStarterProfileIds={unlockedStarterProfiles.map((profile) => profile.id)}
           selectedStarterProfileId={selectedStarterProfileId}
-          onSelectStarterProfile={setSelectedStarterProfileId}
+          onSelectStarterProfile={tutorialMenuState ? blockMenuTutorialAction : setSelectedStarterProfileId}
           difficultyProfiles={Object.values(DIFFICULTY_PROFILES)}
           unlockedDifficultyIds={unlockedDifficulties.map((difficulty) => difficulty.id)}
           selectedDifficultyId={selectedDifficultyId}
-          onSelectDifficulty={setSelectedDifficultyId}
+          onSelectDifficulty={tutorialMenuState ? blockMenuTutorialAction : setSelectedDifficultyId}
           challengeModes={Object.values(CHALLENGE_MODES)}
           unlockedChallengeIds={unlockedChallenges.map((challenge) => challenge.id)}
           selectedChallengeIds={selectedChallengeIds}
-          onToggleChallenge={(challengeId) => {
+          onToggleChallenge={tutorialMenuState ? blockMenuTutorialAction : ((challengeId) => {
             setSelectedChallengeIds((prev) => (
               prev.includes(challengeId)
                 ? prev.filter((id) => id !== challengeId)
                 : [...prev, challengeId]
             ));
-          }}
+          })}
         />
       );
       break;
@@ -7467,10 +7511,13 @@ function App() {
     />
   );
 
-  const tutorialStep = getTutorialStep(state);
   const tutorialStepMode = tutorialStep?.mode || 'Combat';
-  const showTutorialOverlay = Boolean(tutorialStep) && state.mode === tutorialStepMode;
-  const hasActiveRun = Boolean(state?.run) && !['GameOver', 'TutorialComplete'].includes(state?.mode);
+  const showTutorialOverlay = Boolean(tutorialStep) && (
+    tutorialStepMode === 'DeckView'
+      ? Boolean(state?.deckView)
+      : state.mode === tutorialStepMode
+  );
+  const hasActiveRun = Boolean(state?.run) && !state?.run?.tutorialShell && !['GameOver', 'TutorialComplete'].includes(state?.mode);
   const showFloatingMenuButton = !['Combat', 'MainMenu', 'TutorialComplete'].includes(state.mode);
 
   return (
@@ -7502,20 +7549,21 @@ function App() {
         playtestMode={playtestMode}
         onTogglePlaytestMode={togglePlaytestMode}
       />
+      {/* Deck picker overlay — appears on top of any screen when card selection is needed */}
+      {state?.deckView && (
+        <DeckPickerOverlay state={state} data={data} onAction={handleAction} />
+      )}
       {showTutorialOverlay && (
         <TutorialOverlay
           step={tutorialStep}
           nudge={tutorialNudge}
+          presentationMode={tutorialStepMode}
           onAdvance={() => {
             setTutorialNudge('');
             setState((prev) => acknowledgeTutorialStep(prev));
           }}
           onExit={returnToMainMenu}
         />
-      )}
-      {/* Deck picker overlay — appears on top of any screen when card selection is needed */}
-      {state?.deckView && (
-        <DeckPickerOverlay state={state} data={data} onAction={handleAction} />
       )}
       {state.run && showLog && !['MainMenu', 'TutorialComplete'].includes(state.mode) && <LogOverlay log={state.log} />}
     </>

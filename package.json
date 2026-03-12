@@ -16,7 +16,8 @@
     "validate:content": "node tools/validate_content.cjs",
     "validate:art": "node tools/validate_runtime_art.cjs",
     "validate:feature-pipeline": "node tools/check_feature_pipeline.cjs",
-    "analyze:runs": "node tools/analyze_ai_runs.cjs"
+    "analyze:runs": "node tools/analyze_ai_runs.cjs",
+    "visual:capture": "npm run build && node tools/capture_visual_scenes.cjs"
   },
   "dependencies": {
     "react": "^19.2.0",

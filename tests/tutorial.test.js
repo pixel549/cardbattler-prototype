@@ -9,6 +9,8 @@ import {
   canUseTutorialAction,
   createTutorialRunState,
   getTutorialCatalog,
+  getTutorialMenuState,
+  getTutorialStep,
 } from "../src/game/tutorial.js";
 
 const require = createRequire(import.meta.url);
@@ -16,7 +18,7 @@ const data = require("../src/data/gamedata.json");
 
 function dispatchTutorialAction(state, action) {
   const next = dispatchGame(state, data, action);
-  return advanceTutorialState(next, action);
+  return advanceTutorialState(next, action, data);
 }
 
 test("pressure systems tutorial appears in the catalog with scripted pressure state", () => {
@@ -102,6 +104,140 @@ test("pressure systems tutorial gates the lesson and transitions into a scripted
     type: "SelectDeckCard",
     instanceId: cardIds.reforgeTarget,
   });
+  assert.equal(state.mode, "TutorialComplete");
+  assert.equal(state.run?.tutorial?.outcome, "victory");
+});
+
+test("run modes briefing walks the menu surfaces and completes from acknowledge steps", () => {
+  const tutorialIds = getTutorialCatalog().map((entry) => entry.id);
+  assert.ok(tutorialIds.includes("run_modes_briefing"));
+
+  let state = createTutorialRunState(data, "run_modes_briefing");
+  assert.equal(state.mode, "MainMenu");
+  assert.deepEqual(getTutorialMenuState(state), {
+    menuView: "home",
+    intelView: "progress",
+  });
+
+  state = acknowledgeTutorialStep(state);
+  assert.equal(getTutorialStep(state)?.id, "starter_profiles");
+  assert.deepEqual(getTutorialMenuState(state), {
+    menuView: "setup",
+    intelView: "progress",
+  });
+
+  state = acknowledgeTutorialStep(state);
+  state = acknowledgeTutorialStep(state);
+  assert.equal(getTutorialStep(state)?.id, "progress_archive");
+  assert.deepEqual(getTutorialMenuState(state), {
+    menuView: "intel",
+    intelView: "progress",
+  });
+
+  state = acknowledgeTutorialStep(state);
+  assert.deepEqual(getTutorialMenuState(state), {
+    menuView: "intel",
+    intelView: "bosses",
+  });
+
+  state = acknowledgeTutorialStep(state);
+  assert.deepEqual(getTutorialMenuState(state), {
+    menuView: "intel",
+    intelView: "callsigns",
+  });
+
+  state = acknowledgeTutorialStep(state);
+  assert.equal(getTutorialStep(state)?.id, "wrap_up");
+
+  state = acknowledgeTutorialStep(state);
+  assert.equal(state.mode, "TutorialComplete");
+  assert.equal(state.run?.tutorial?.outcome, "victory");
+});
+
+test("boss protocols tutorial teaches a phase break and transitions through rewards", () => {
+  let state = createTutorialRunState(data, "boss_protocols");
+  state = acknowledgeTutorialStep(state);
+
+  const cardIds = { ...(state.run?.tutorial?.cardIds || {}) };
+  const enemyId = state.combat?.enemies?.[0]?.id;
+  assert.ok(enemyId);
+
+  state = dispatchTutorialAction(state, {
+    type: "Combat_PlayCard",
+    cardInstanceId: cardIds.shieldbreak,
+    targetEnemyId: enemyId,
+  });
+  assert.equal(state.run?.tutorial?.stepIndex, 2);
+
+  state = acknowledgeTutorialStep(state);
+  assert.equal(state.run?.tutorial?.stepIndex, 3);
+
+  state = dispatchTutorialAction(state, { type: "Combat_EndTurn" });
+  assert.equal(state.run?.tutorial?.stepIndex, 4);
+
+  const rewardState = structuredClone(state);
+  rewardState.mode = "Reward";
+  rewardState.reward = { cardChoices: ["C-001"], relicChoices: ["PatchNotes"] };
+
+  state = advanceTutorialState(rewardState, { type: "Combat_EndTurn" }, data);
+  assert.equal(state.run?.tutorial?.stepIndex, 5);
+  assert.equal(state.mode, "Reward");
+
+  state = dispatchTutorialAction(state, { type: "Reward_Skip" });
+  assert.equal(state.mode, "TutorialComplete");
+  assert.equal(state.run?.tutorial?.outcome, "victory");
+});
+
+test("instability lab tutorial links compile, stabilise, and adaptive combat", () => {
+  let state = createTutorialRunState(data, "instability_lab");
+  state = acknowledgeTutorialStep(state);
+
+  const cardIds = { ...(state.run?.tutorial?.cardIds || {}) };
+  assert.equal(state.mode, "Event");
+  assert.equal(state.event?.eventId, "CompileStation");
+
+  state = dispatchTutorialAction(state, { type: "Compile_Open" });
+  assert.equal(state.run?.tutorial?.stepIndex, 2);
+  assert.equal(state.deckView?.returnMode, "Event");
+
+  state = dispatchTutorialAction(state, {
+    type: "SelectDeckCard",
+    instanceId: cardIds.compileTarget,
+  });
+  assert.equal(state.mode, "Event");
+  assert.equal(state.event?.eventId, "RestSite");
+  assert.equal(state.run?.tutorial?.stepIndex, 3);
+
+  state = acknowledgeTutorialStep(state);
+  assert.equal(state.run?.tutorial?.stepIndex, 4);
+
+  state = dispatchTutorialAction(state, { type: "Rest_Stabilise" });
+  assert.equal(state.run?.tutorial?.stepIndex, 5);
+  assert.equal(state.deckView?.returnMode, "Event");
+
+  state = dispatchTutorialAction(state, {
+    type: "SelectDeckCard",
+    instanceId: cardIds.stabiliseTarget,
+  });
+  assert.equal(state.mode, "Combat");
+  assert.equal(state.run?.tutorial?.stepIndex, 6);
+
+  state = acknowledgeTutorialStep(state);
+  assert.equal(state.run?.tutorial?.stepIndex, 7);
+
+  const enemyId = state.combat?.enemies?.[0]?.id;
+  assert.ok(enemyId);
+  state = dispatchTutorialAction(state, {
+    type: "Combat_PlayCard",
+    cardInstanceId: cardIds.compileTarget,
+    targetEnemyId: enemyId,
+  });
+  assert.equal(state.run?.tutorial?.stepIndex, 8);
+
+  state = dispatchTutorialAction(state, { type: "Combat_EndTurn" });
+  assert.equal(state.run?.tutorial?.stepIndex, 9);
+
+  state = acknowledgeTutorialStep(state);
   assert.equal(state.mode, "TutorialComplete");
   assert.equal(state.run?.tutorial?.outcome, "victory");
 });

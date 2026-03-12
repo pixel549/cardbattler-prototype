@@ -114,7 +114,7 @@
       "id": "tutorial-onboarding",
       "title": "Tutorial onboarding",
       "status": "active",
-      "summary": "Guided tutorial runs for combat basics and advanced mechanics.",
+      "summary": "Guided tutorial runs for combat basics, run modes, boss directives, advanced mechanics, and pressure systems.",
       "files": [
         "src/game/tutorial.js",
         "src/App.jsx",
@@ -178,8 +178,8 @@
       ],
       "touchpoints": {
         "tutorials": {
-          "status": "planned",
-          "notes": "The player still needs onboarding for classes, dailies, and challenge tradeoffs."
+          "status": "done",
+          "notes": "The Run Modes Briefing now onboards starter profiles, difficulty, challenges, dailies, and archive surfaces directly from the menu flow."
         },
         "ui": {
           "status": "done",
@@ -232,8 +232,8 @@
       ],
       "touchpoints": {
         "tutorials": {
-          "status": "planned",
-          "notes": "We should add a guided explanation for directives and phase bosses."
+          "status": "done",
+          "notes": "The Boss Protocols tutorial now walks phase thresholds, directive text, adds, and the archive framing around boss encounters."
         },
         "ui": {
           "status": "done",

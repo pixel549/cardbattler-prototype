@@ -28,6 +28,9 @@
 * {
   box-sizing: border-box;
   -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
   margin: 0;
   padding: 0;
 }
@@ -80,8 +83,8 @@ html {
 
 /* Selection */
 ::selection {
-  background-color: var(--color-neon-cyan);
-  color: #000;
+  background-color: transparent;
+  color: inherit;
 }
 
 /* Focus states - visible only for keyboard nav */

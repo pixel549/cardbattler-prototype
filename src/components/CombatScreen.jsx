@@ -3430,6 +3430,18 @@ function MutationDetailPanel({ mid, data, align = 'left', compact = false }) {
 // ============================================================
 // CENTER CARD with mutation detail side panels
 // ============================================================
+const CENTER_CARD_SWIPE_THRESHOLD = 48;
+const CENTER_CARD_SWIPE_AXIS_RATIO = 1.2;
+const CENTER_CARD_SWIPE_MAX_OFFSET = 72;
+
+function classifyCenterCardSwipe(dx, dy) {
+  const absX = Math.abs(dx);
+  const absY = Math.abs(dy);
+  if (absY < CENTER_CARD_SWIPE_THRESHOLD) return null;
+  if (absY < absX * CENTER_CARD_SWIPE_AXIS_RATIO) return null;
+  return dy < 0 ? 'enemy' : 'self';
+}
+
 function CenterCardDisplay({
   cardInstance,
   cardDef,
@@ -3437,6 +3449,7 @@ function CenterCardDisplay({
   dismissed = false,
   onDismiss,
   onActivate,
+  onSwipeCast = null,
   canActivate = false,
   activateHint = 'Double tap a target to play',
   helperNote = null,
@@ -3444,6 +3457,81 @@ function CenterCardDisplay({
   layoutMode = 'desktop',
 }) {
   const isMobileLayout = layoutMode !== 'desktop';
+  const swipeStartRef = useRef(null);
+  const [swipeOffsetY, setSwipeOffsetY] = useState(0);
+  const [swipeIntent, setSwipeIntent] = useState(null);
+  const [swipeActive, setSwipeActive] = useState(false);
+
+  const resetSwipeGesture = useCallback(() => {
+    swipeStartRef.current = null;
+    setSwipeOffsetY(0);
+    setSwipeIntent(null);
+    setSwipeActive(false);
+  }, []);
+
+  const handleCardPointerDown = useCallback((event) => {
+    if (!canActivate) return;
+    if (event.pointerType !== 'touch' && event.pointerType !== 'pen') return;
+    swipeStartRef.current = {
+      x: event.clientX,
+      y: event.clientY,
+      pointerId: event.pointerId,
+    };
+    setSwipeOffsetY(0);
+    setSwipeIntent(null);
+    setSwipeActive(true);
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+  }, [canActivate]);
+
+  const handleCardPointerMove = useCallback((event) => {
+    const start = swipeStartRef.current;
+    if (!start || start.pointerId !== event.pointerId) return;
+    const dx = event.clientX - start.x;
+    const dy = event.clientY - start.y;
+    const nextIntent = classifyCenterCardSwipe(dx, dy);
+    setSwipeIntent(nextIntent);
+    setSwipeOffsetY(Math.max(-CENTER_CARD_SWIPE_MAX_OFFSET, Math.min(CENTER_CARD_SWIPE_MAX_OFFSET, dy)));
+    if (Math.abs(dy) > 6 || Math.abs(dx) > 6) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  }, []);
+
+  const handleCardPointerUp = useCallback((event) => {
+    const start = swipeStartRef.current;
+    if (!start || start.pointerId !== event.pointerId) return;
+    const dx = event.clientX - start.x;
+    const dy = event.clientY - start.y;
+    const nextIntent = classifyCenterCardSwipe(dx, dy);
+    resetSwipeGesture();
+    if (nextIntent) {
+      event.preventDefault();
+      event.stopPropagation();
+      onSwipeCast?.(nextIntent);
+    }
+  }, [onSwipeCast, resetSwipeGesture]);
+
+  const handleCardPointerCancel = useCallback(() => {
+    resetSwipeGesture();
+  }, [resetSwipeGesture]);
+
+  const swipeAccent = swipeIntent === 'enemy'
+    ? C.neonRed
+    : swipeIntent === 'self'
+      ? C.neonGreen
+      : helperTone;
+  const swipeHintLabel = swipeIntent === 'enemy'
+    ? 'CAST TO SELECTED TARGET'
+    : swipeIntent === 'self'
+      ? 'CAST TO SELF'
+      : null;
+  const sharedCardGestureProps = {
+    onPointerDown: handleCardPointerDown,
+    onPointerMove: handleCardPointerMove,
+    onPointerUp: handleCardPointerUp,
+    onPointerCancel: handleCardPointerCancel,
+    onLostPointerCapture: handleCardPointerCancel,
+  };
 
   if (!cardInstance || !cardDef || dismissed) {
     return (
@@ -3473,7 +3561,7 @@ function CenterCardDisplay({
             ACTIVE CARD
           </div>
           <span style={{ fontFamily: MONO, color: C.textPrimary, fontSize: isMobileLayout ? 10 : 12, textAlign: 'center' }}>
-            {dismissed ? 'Swipe the hand to reopen the active card' : 'Swipe or tap the hand to choose a card, then double tap a target'}
+            {dismissed ? 'Swipe the hand to reopen the active card' : 'Swipe or tap the hand to choose a card, then swipe up or down to cast'}
           </span>
         </div>
       </div>
@@ -3573,6 +3661,7 @@ function CenterCardDisplay({
         aria-disabled={!canActivate}
         aria-label={cardDef?.name ? `${activateHint}: ${cardDef.name}` : activateHint}
         title={activateHint}
+        {...sharedCardGestureProps}
         onKeyDown={canActivate ? (event) => {
           if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault();
@@ -3589,10 +3678,15 @@ function CenterCardDisplay({
           justifyContent: 'flex-end',
           backgroundColor: C.bgCard,
           border: `2px solid ${shellBorder}`,
-          boxShadow: shellShadow,
+          boxShadow: swipeHintLabel
+            ? `0 0 0 1px ${swipeAccent}30, 0 0 28px ${swipeAccent}22, 0 8px 24px rgba(0,0,0,0.55)`
+            : shellShadow,
           overflow: 'hidden',
           cursor: 'default',
           flexShrink: 0,
+          transform: swipeOffsetY ? `translateY(${swipeOffsetY}px)` : 'translateY(0)',
+          transition: swipeActive ? 'none' : 'transform 0.14s ease, box-shadow 0.14s ease',
+          touchAction: 'none',
         }}
       >
         <RuntimeArt
@@ -3637,6 +3731,33 @@ function CenterCardDisplay({
               pointerEvents: 'none',
             }}
           />
+        )}
+
+        {swipeHintLabel && (
+          <div
+            style={{
+              position: 'absolute',
+              top: 42,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              zIndex: 11,
+              padding: '4px 8px',
+              borderRadius: 999,
+              background: 'rgba(4,8,14,0.9)',
+              border: `1px solid ${swipeAccent}55`,
+              color: swipeAccent,
+              fontFamily: MONO,
+              fontSize: 8,
+              fontWeight: 700,
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              whiteSpace: 'nowrap',
+              boxShadow: `0 0 18px ${swipeAccent}18`,
+              pointerEvents: 'none',
+            }}
+          >
+            {swipeHintLabel}
+          </div>
         )}
 
         <div
@@ -3834,16 +3955,17 @@ function CenterCardDisplay({
         </div>
 
         <div
-          role="button"
-          tabIndex={canActivate ? 0 : -1}
-          aria-disabled={!canActivate}
-          aria-label={cardDef?.name ? `${activateHint}: ${cardDef.name}` : activateHint}
-          title={activateHint}
-          onKeyDown={canActivate ? (event) => {
-            if (event.key === 'Enter' || event.key === ' ') {
-              event.preventDefault();
-              onActivate?.();
-            }
+        role="button"
+        tabIndex={canActivate ? 0 : -1}
+        aria-disabled={!canActivate}
+        aria-label={cardDef?.name ? `${activateHint}: ${cardDef.name}` : activateHint}
+        title={activateHint}
+        {...sharedCardGestureProps}
+        onKeyDown={canActivate ? (event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            onActivate?.();
+          }
           } : undefined}
           style={{
             position: 'relative',
@@ -3856,10 +3978,15 @@ function CenterCardDisplay({
             justifyContent: 'flex-end',
             backgroundColor: C.bgCard,
             border: `2px solid ${shellBorder}`,
-            boxShadow: desktopShellShadow,
+            boxShadow: swipeHintLabel
+              ? `0 0 0 1px ${swipeAccent}30, 0 0 40px ${swipeAccent}22, 0 8px 32px rgba(0,0,0,0.7)`
+              : desktopShellShadow,
             overflow: 'hidden',
             cursor: 'default',
             flexShrink: 0,
+            transform: swipeOffsetY ? `translateY(${swipeOffsetY}px)` : 'translateY(0)',
+            transition: swipeActive ? 'none' : 'transform 0.14s ease, box-shadow 0.14s ease',
+            touchAction: 'none',
           }}
         >
           <RuntimeArt
@@ -3904,6 +4031,33 @@ function CenterCardDisplay({
                 pointerEvents: 'none',
               }}
             />
+          )}
+
+          {swipeHintLabel && (
+            <div
+              style={{
+                position: 'absolute',
+                top: 46,
+                left: '50%',
+                transform: 'translateX(-50%)',
+                zIndex: 11,
+                padding: '5px 10px',
+                borderRadius: 999,
+                background: 'rgba(4,8,14,0.9)',
+                border: `1px solid ${swipeAccent}55`,
+                color: swipeAccent,
+                fontFamily: MONO,
+                fontSize: 9,
+                fontWeight: 700,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                whiteSpace: 'nowrap',
+                boxShadow: `0 0 18px ${swipeAccent}18`,
+                pointerEvents: 'none',
+              }}
+            >
+              {swipeHintLabel}
+            </div>
           )}
 
           <div
@@ -5801,6 +5955,7 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
     ? getCardTargetingProfile(state.combat, data, activeCardId)
     : { canTargetEnemy: false, canTargetSelf: false, targetHints: EMPTY_ARRAY };
   const defaultEnemyTargetId = targetedEnemy?.id ?? visibleEnemies[0]?.id ?? enemies.find((enemy) => enemy.hp > 0)?.id ?? null;
+  const selectedEnemyId = targetedEnemy?.id ?? defaultEnemyTargetId;
   const canCastActiveOnSelf = Boolean(
     activeCardId
     && activeTargetingProfile.canTargetSelf
@@ -6036,6 +6191,17 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
       : false;
   }, [data, getPlayabilityForTarget, state?.combat]);
 
+  const getPreferredTargetMode = useCallback((cardId) => {
+    if (!cardId || !state?.combat || !data) return 'enemy';
+    const profile = getCardTargetingProfile(state.combat, data, cardId);
+    const preferred = profile.preferredTargetMode === 'self' ? 'self' : 'enemy';
+    const fallback = preferred === 'self' ? 'enemy' : 'self';
+    const preferredPlayable = getPlayabilityForTarget(cardId, preferred).playable;
+    const fallbackPlayable = getPlayabilityForTarget(cardId, fallback).playable;
+    if (preferredPlayable || !fallbackPlayable) return preferred;
+    return fallback;
+  }, [data, getPlayabilityForTarget, state?.combat]);
+
   const playCardToTarget = useCallback((cardId = activeCardId, targetMode = 'enemy', enemyId = defaultEnemyTargetId) => {
     const playability = getPlayabilityForTarget(cardId, targetMode, enemyId);
     if (interactionLocked || !cardId || !playability.playable) return false;
@@ -6067,8 +6233,11 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
     clearTapTarget();
     if (enemyInfoOpen) setEnemyInfoOpen(false);
     setCenterCardDismissed(false);
+    if (cardId && cardId !== activeCardId) {
+      setSelectedTargetMode(getPreferredTargetMode(cardId));
+    }
     setActiveCardId(cardId);
-  }, [clearTapTarget, enemyInfoOpen]);
+  }, [activeCardId, clearTapTarget, enemyInfoOpen, getPreferredTargetMode]);
 
   const handleEnemyTap = useCallback((enemy, enemyIndex) => {
     if (!enemy || interactionLocked) return;
@@ -6165,6 +6334,14 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
     recordPlaytest,
   ]);
 
+  const handleCenterCardSwipeCast = useCallback((targetMode) => {
+    if (!activeCardId || interactionLocked) return false;
+    if (targetMode === 'self') {
+      return playCardToTarget(activeCardId, 'self', defaultEnemyTargetId);
+    }
+    return playCardToTarget(activeCardId, 'enemy', selectedEnemyId);
+  }, [activeCardId, defaultEnemyTargetId, interactionLocked, playCardToTarget, selectedEnemyId]);
+
   useEffect(() => {
     if (typeof window === 'undefined') return undefined;
 
@@ -6214,17 +6391,18 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
       if (selectedTargetMode !== 'enemy') setSelectedTargetMode('enemy');
       return;
     }
-    if (activeTargetingProfile.canTargetSelf && !activeTargetingProfile.canTargetEnemy) {
-      if (selectedTargetMode !== 'self') setSelectedTargetMode('self');
+    if (selectedTargetMode === 'self' && !activeTargetingProfile.canTargetSelf) {
+      setSelectedTargetMode(getPreferredTargetMode(activeCardId));
       return;
     }
-    if (selectedTargetMode === 'self' && !activeTargetingProfile.canTargetSelf) {
-      setSelectedTargetMode('enemy');
+    if (selectedTargetMode === 'enemy' && !activeTargetingProfile.canTargetEnemy && activeTargetingProfile.canTargetSelf) {
+      setSelectedTargetMode(getPreferredTargetMode(activeCardId));
     }
   }, [
     activeCardId,
     activeTargetingProfile.canTargetEnemy,
     activeTargetingProfile.canTargetSelf,
+    getPreferredTargetMode,
     selectedTargetMode,
   ]);
 
@@ -6242,12 +6420,14 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
     if (!activeCardId || !hand.includes(activeCardId)) {
       const prevIndex = activeCardId ? prevHand.indexOf(activeCardId) : 0;
       const nextIndex = prevIndex >= 0 ? Math.min(prevIndex, hand.length - 1) : 0;
+      const nextCardId = hand[nextIndex] ?? hand[0];
       setCenterCardDismissed(false);
-      setActiveCardId(hand[nextIndex] ?? hand[0]);
+      setSelectedTargetMode(getPreferredTargetMode(nextCardId));
+      setActiveCardId(nextCardId);
     }
 
     prevHandRef.current = hand;
-  }, [activeCardId, centerCardDismissed, hand]);
+  }, [activeCardId, centerCardDismissed, getPreferredTargetMode, hand]);
 
   useEffect(() => {
     if (viewingPile) setDeckMenuOpen(false);
@@ -6477,11 +6657,11 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
       : selfTargetArmed
         ? 'Double tap the player panel now'
         : canCastActiveOnAnyEnemy && canCastActiveOnSelf
-          ? 'Tap once to arm a target, then double tap quickly to cast'
+          ? 'Swipe up for the selected enemy, swipe down for self, or double tap a target'
           : canCastActiveOnSelf
-            ? 'Double tap the player panel to cast'
+            ? 'Swipe down or double tap the player panel to cast'
             : canCastActiveOnAnyEnemy
-              ? 'Tap an enemy once to arm it, then double tap quickly to cast'
+              ? 'Swipe up for the selected enemy, or double tap a target'
               : describeCardPlayabilityReason(fallbackBlockedReason);
   const activeCardHelperNote = !activeCardId
     ? 'A slower second tap on an enemy opens its details page.'
@@ -6489,12 +6669,12 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
       ? 'The armed state is brief. A slower second enemy tap opens intel instead.'
       : enemyBlockedReason && canCastActiveOnAnyEnemy
         ? 'The focused enemy is blocked for this card, but another enemy is still a valid target.'
-        : canCastActiveOnAnyEnemy && canCastActiveOnSelf
-        ? 'Enemy taps can arm or cast. The player panel can also be double tapped for self-target plays.'
+      : canCastActiveOnAnyEnemy && canCastActiveOnSelf
+        ? 'Swipes always use the selected enemy or yourself. Tap enemies only to change the current target.'
         : canCastActiveOnAnyEnemy
-          ? 'A slower second tap on the same enemy opens its dossier.'
+          ? 'Swiping up uses the selected enemy. A slower second tap on that enemy opens its dossier.'
           : canCastActiveOnSelf
-            ? 'This card only resolves on yourself right now.'
+            ? 'Swiping down applies the card to yourself right now.'
             : activeTargetingProfile.canTargetEnemy
               ? describeCardPlayabilityReason(focusedEnemyPlayability.reason, 'that enemy')
               : describeCardPlayabilityReason(fallbackBlockedReason);
@@ -6588,6 +6768,7 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
         dismissed={centerCardDismissed}
         onDismiss={() => setCenterCardDismissed(true)}
         onActivate={() => playCardToTarget(activeCardId, selectedTargetMode, defaultEnemyTargetId)}
+        onSwipeCast={handleCenterCardSwipeCast}
         canActivate={!interactionLocked && !!activeCardId && canPlayCard(activeCardId)}
         activateHint={interactionLocked ? 'Resolving action' : activeCardHint}
         helperNote={interactionLocked ? 'Actions are resolving. Target input will unlock in a moment.' : activeCardHelperNote}

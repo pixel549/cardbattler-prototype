@@ -1591,10 +1591,12 @@ function resolveTargets(state, sourceId, targetHint) {
   }
 
   if (targetHint === "AllEnemies") {
+    if (unifiedPlayerTarget === state.player) return [state.player];
     return state.enemies.filter(e => e.hp > 0);
   }
 
   if (targetHint === "AllPlayers") {
+    if (unifiedPlayerTarget && unifiedPlayerTarget !== state.player) return [unifiedPlayerTarget];
     return [state.player];
   }
 
@@ -2985,6 +2987,9 @@ export function getCardTargetingProfile(state, data, cardInstanceId) {
     return {
       canTargetEnemy: false,
       canTargetSelf: false,
+      preferredTargetMode: "enemy",
+      nativeCanTargetEnemy: false,
+      nativeCanTargetSelf: false,
       targetHints: [],
     };
   }
@@ -2992,16 +2997,16 @@ export function getCardTargetingProfile(state, data, cardInstanceId) {
   const mods = computePassiveMods(state, data, cardInstanceId);
   const workingState = { ...state, _cardMutMods: mods };
   const targetHints = [];
-  let canTargetEnemy = false;
-  let canTargetSelf = false;
+  let nativeCanTargetEnemy = false;
+  let nativeCanTargetSelf = false;
 
   for (const effect of getCardEffectOps(def)) {
     const effective = buildEffectiveEffectOp(workingState, effect, null);
     const targetHint = inferEffectTargetHint(effective);
     if (!targetHint) continue;
     targetHints.push(targetHint);
-    if (isEnemyTargetHint(targetHint)) canTargetEnemy = true;
-    if (isSelfTargetHint(targetHint)) canTargetSelf = true;
+    if (isEnemyTargetHint(targetHint)) nativeCanTargetEnemy = true;
+    if (isSelfTargetHint(targetHint)) nativeCanTargetSelf = true;
   }
 
   for (const mid of (ci.appliedMutations || [])) {
@@ -3011,14 +3016,20 @@ export function getCardTargetingProfile(state, data, cardInstanceId) {
       const targetHint = inferPatchTargetHint(entry);
       if (!targetHint) continue;
       targetHints.push(targetHint);
-      if (isEnemyTargetHint(targetHint)) canTargetEnemy = true;
-      if (isSelfTargetHint(targetHint)) canTargetSelf = true;
+      if (isEnemyTargetHint(targetHint)) nativeCanTargetEnemy = true;
+      if (isSelfTargetHint(targetHint)) nativeCanTargetSelf = true;
     }
   }
 
+  const preferredTargetMode = nativeCanTargetSelf && !nativeCanTargetEnemy ? "self" : "enemy";
+
   return {
-    canTargetEnemy,
-    canTargetSelf,
+    // Player cards are always retargetable; the native hints only steer the default focus.
+    canTargetEnemy: true,
+    canTargetSelf: true,
+    preferredTargetMode,
+    nativeCanTargetEnemy,
+    nativeCanTargetSelf,
     targetHints,
   };
 }

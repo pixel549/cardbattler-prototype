@@ -693,6 +693,68 @@ function formatStatusEffectDescription(statusId, stacks, verb = 'Apply') {
   return detail ? `${baseLine} ${detail}` : baseLine;
 }
 
+function isPlayerEntityId(entityId, playerId = 'player') {
+  return entityId === 'player' || entityId === playerId;
+}
+
+function getEnemyImpactBackground(type = 'damage') {
+  if (type === 'shield') {
+    return 'radial-gradient(circle at 50% 42%, rgba(0,240,255,0.22) 0%, rgba(0,240,255,0.08) 34%, transparent 72%)';
+  }
+  if (type === 'heal') {
+    return 'radial-gradient(circle at 50% 42%, rgba(0,255,107,0.2) 0%, rgba(0,255,107,0.08) 34%, transparent 72%)';
+  }
+  if (type === 'status') {
+    return 'radial-gradient(circle at 50% 42%, rgba(180,74,255,0.22) 0%, rgba(180,74,255,0.08) 34%, transparent 74%)';
+  }
+  if (type === 'defeat') {
+    return 'radial-gradient(circle at 50% 42%, rgba(255,107,0,0.26) 0%, rgba(255,68,51,0.12) 36%, transparent 76%)';
+  }
+  return 'radial-gradient(circle at 50% 42%, rgba(255,68,51,0.24) 0%, rgba(255,68,51,0.1) 34%, transparent 74%)';
+}
+
+function getPlayerImpactBackground(type = 'damage') {
+  if (type === 'heal') {
+    return 'radial-gradient(circle at 50% 78%, rgba(0,255,107,0.18) 0%, rgba(0,255,107,0.08) 28%, transparent 70%)';
+  }
+  if (type === 'shield') {
+    return 'radial-gradient(circle at 50% 78%, rgba(0,240,255,0.18) 0%, rgba(0,240,255,0.08) 30%, transparent 72%)';
+  }
+  if (type === 'status') {
+    return 'radial-gradient(circle at 50% 78%, rgba(180,74,255,0.18) 0%, rgba(180,74,255,0.08) 30%, transparent 72%)';
+  }
+  return 'radial-gradient(circle at 50% 78%, rgba(255,68,51,0.2) 0%, rgba(255,68,51,0.08) 30%, transparent 72%)';
+}
+
+function buildAnimationEffectTokens(effectSummary = null, reactions = EMPTY_ARRAY) {
+  const tokens = [];
+  const seen = new Set();
+  const pushToken = (label, color) => {
+    if (!label || seen.has(label)) return;
+    seen.add(label);
+    tokens.push({ label, color });
+  };
+
+  const summary = effectSummary || {};
+  if (summary.damage > 0) pushToken(`-${summary.damage} DMG`, C.neonRed);
+  if (summary.heal > 0) pushToken(`+${summary.heal} HP`, C.neonGreen);
+  if (summary.defense > 0 || summary.firewallGain > 0) {
+    pushToken(`+${summary.defense || summary.firewallGain} FW`, C.neonCyan);
+  }
+  if (summary.debuff > 0) pushToken('DEBUFF', C.neonPurple);
+  if (summary.buff > 0) pushToken('BUFF', C.neonGreen);
+  if (summary.draw > 0) pushToken(`DRAW ${summary.draw}`, C.neonYellow);
+  if (summary.gainRAM > 0) pushToken(`+${summary.gainRAM} RAM`, C.neonCyan);
+
+  reactions.forEach((reaction) => {
+    if (reaction?.impactType === 'status' && reaction.float?.text) {
+      pushToken(reaction.float.text.toUpperCase(), reaction.float.color || C.neonPurple);
+    }
+  });
+
+  return tokens.slice(0, 4);
+}
+
 // ============================================================
 // EFFECT COLOUR CODING (from player perspective)
 // ============================================================
@@ -1624,11 +1686,7 @@ function EnemyCard({
               position: 'absolute',
               inset: 0,
               pointerEvents: 'none',
-              background: impact.type === 'shield'
-                ? 'radial-gradient(circle at 50% 42%, rgba(0,240,255,0.22) 0%, rgba(0,240,255,0.08) 34%, transparent 72%)'
-                : impact.type === 'defeat'
-                  ? 'radial-gradient(circle at 50% 42%, rgba(255,107,0,0.26) 0%, rgba(255,68,51,0.12) 36%, transparent 76%)'
-                  : 'radial-gradient(circle at 50% 42%, rgba(255,68,51,0.24) 0%, rgba(255,68,51,0.1) 34%, transparent 74%)',
+              background: getEnemyImpactBackground(impact.type),
             }}
           />
         )}
@@ -1792,11 +1850,7 @@ function EnemyCard({
             inset: 0,
             pointerEvents: 'none',
             borderRadius: compact ? '9px' : '10px',
-            background: impact.type === 'shield'
-              ? 'radial-gradient(circle at 50% 42%, rgba(0,240,255,0.22) 0%, rgba(0,240,255,0.08) 34%, transparent 72%)'
-              : impact.type === 'defeat'
-                ? 'radial-gradient(circle at 50% 42%, rgba(255,107,0,0.26) 0%, rgba(255,68,51,0.12) 36%, transparent 76%)'
-                : 'radial-gradient(circle at 50% 42%, rgba(255,68,51,0.24) 0%, rgba(255,68,51,0.1) 34%, transparent 74%)',
+            background: getEnemyImpactBackground(impact.type),
           }}
         />
       )}
@@ -5100,6 +5154,7 @@ function CombatPlayAnimationLayer({ animation, data, enemies = EMPTY_ARRAY, card
   const cue = animation.actor === 'enemy'
     ? getEnemyActionCue(animation.intentType, accent)
     : null;
+  const reactionTokens = buildAnimationEffectTokens(animation.effectSummary, animation.reactions);
   const cueZoneLayout = cue ? getActionZoneLayout(cue.targetZone) : null;
   const cueCaptionLayout = cue ? getActionCaptionLayout(cue.targetZone) : null;
   const playDuration = animation.duration || getPlayAnimationDuration(animation.actor, animation.intentType);
@@ -5364,6 +5419,29 @@ function CombatPlayAnimationLayer({ animation, data, enemies = EMPTY_ARRAY, card
               >
                 {cue.targetLabel}
               </div>
+            </div>
+          )}
+          {reactionTokens.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+              {reactionTokens.map((token) => (
+                <div
+                  key={token.label}
+                  style={{
+                    padding: '4px 7px',
+                    borderRadius: 999,
+                    border: `1px solid ${token.color}42`,
+                    background: `${token.color}16`,
+                    color: token.color,
+                    fontFamily: MONO,
+                    fontSize: 8,
+                    fontWeight: 700,
+                    letterSpacing: '0.08em',
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  {token.label}
+                </div>
+              ))}
             </div>
           )}
           <div
@@ -5981,6 +6059,7 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
   const lastLogLenRef = useRef(0);
   const floatIdRef = useRef(0);
   const playAnimationIdRef = useRef(0);
+  const floatTimeoutsRef = useRef({});
   const prevHandRef = useRef([]);
   const logInitRef = useRef(false);
   const waitingForEndTurnLogsRef = useRef(false);
@@ -6024,7 +6103,7 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
         return next;
       });
       delete enemyImpactTimeoutsRef.current[enemyId];
-    }, type === 'defeat' ? 620 : 360);
+    }, type === 'defeat' ? 620 : type === 'heal' || type === 'status' ? 460 : 360);
   }, []);
 
   const triggerPlayerImpact = useCallback((type = 'damage') => {
@@ -6034,12 +6113,13 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
     playerImpactTimeoutRef.current = setTimeout(() => {
       setPlayerImpact(null);
       playerImpactTimeoutRef.current = null;
-    }, type === 'heal' ? 520 : 420);
+    }, type === 'heal' || type === 'status' ? 520 : 420);
   }, []);
 
   const triggerCombatFlash = useCallback((type = 'damage', zone = 'enemy') => {
     const rgba =
       type === 'heal' ? 'rgba(0, 255, 107, 0.18)'
+      : type === 'status' ? 'rgba(180, 74, 255, 0.18)'
       : type === 'shield' ? 'rgba(0, 240, 255, 0.16)'
       : type === 'defeat' ? 'rgba(255, 107, 0, 0.18)'
       : 'rgba(255, 68, 51, 0.18)';
@@ -6051,6 +6131,38 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
       combatFlashTimeoutRef.current = null;
     }, 320);
   }, []);
+
+  const queueCombatFloat = useCallback((float) => {
+    if (!float) return;
+    const nextFloat = float.id ? float : { ...float, id: ++floatIdRef.current };
+    setFloats((prev) => [...prev.slice(-11), nextFloat]);
+    const timeoutId = setTimeout(() => {
+      setFloats((prev) => prev.filter((entry) => entry.id !== nextFloat.id));
+      delete floatTimeoutsRef.current[nextFloat.id];
+    }, 1400);
+    floatTimeoutsRef.current[nextFloat.id] = timeoutId;
+  }, []);
+
+  const emitCombatReaction = useCallback((reaction) => {
+    if (!reaction) return;
+
+    if (reaction.sound === 'damage') sfx.damage();
+    else if (reaction.sound === 'block') sfx.block();
+    else if (reaction.sound === 'heal') sfx.heal();
+    else if (reaction.sound === 'status') sfx.status();
+
+    if (reaction.zone === 'player') {
+      triggerPlayerImpact(reaction.impactType || 'damage');
+      triggerCombatFlash(reaction.impactType || 'damage', 'player');
+    } else if (reaction.targetId) {
+      triggerEnemyImpact(reaction.targetId, reaction.impactType || 'damage');
+      triggerCombatFlash(reaction.impactType || 'damage', 'enemy');
+    }
+
+    if (reaction.float) {
+      queueCombatFloat(reaction.float);
+    }
+  }, [queueCombatFloat, triggerCombatFlash, triggerEnemyImpact, triggerPlayerImpact]);
 
   const combat = state?.combat;
   const globalLog = state?.log ?? EMPTY_ARRAY;
@@ -6518,6 +6630,7 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
   }, []);
 
   useEffect(() => () => {
+    Object.values(floatTimeoutsRef.current).forEach((timeoutId) => clearTimeout(timeoutId));
     Object.values(enemyImpactTimeoutsRef.current).forEach((timeoutId) => clearTimeout(timeoutId));
     if (playerImpactTimeoutRef.current) clearTimeout(playerImpactTimeoutRef.current);
     if (combatFlashTimeoutRef.current) clearTimeout(combatFlashTimeoutRef.current);
@@ -6628,9 +6741,23 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
       return;
     }
 
-    const newFloats = [];
     const newAnimations = [];
+    const immediateReactions = [];
     let sawEnemyCard = false;
+    let pendingEnemyAnimation = null;
+    const resolvedPlayerId = player?.id ?? state?.run?.playerId ?? 'player';
+
+    const queueReaction = (reaction, { attachToPending = false, sourceId = null } = {}) => {
+      if (
+        attachToPending
+        && pendingEnemyAnimation
+        && (!sourceId || !pendingEnemyAnimation.enemyId || sourceId === pendingEnemyAnimation.enemyId)
+      ) {
+        pendingEnemyAnimation.reactions = [...(pendingEnemyAnimation.reactions || []), reaction];
+        return;
+      }
+      immediateReactions.push(reaction);
+    };
 
     for (const entry of newEntries) {
       if (entry.t === 'CardPlayed') {
@@ -6645,7 +6772,7 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
       } else if (entry.t === 'EnemyCardPlayed') {
         sawEnemyCard = true;
         sfx.enemyAction(entry.data?.intentType || 'Unknown');
-        newAnimations.push({
+        pendingEnemyAnimation = {
           id: ++playAnimationIdRef.current,
           kind: 'cardPlay',
           actor: 'enemy',
@@ -6653,8 +6780,11 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
           enemyName: entry.data?.enemyName,
           defId: entry.data?.defId,
           intentType: entry.data?.intentType || 'Unknown',
+          effectSummary: entry.data?.effectSummary || null,
+          reactions: [],
           duration: getPlayAnimationDuration('enemy', entry.data?.intentType),
-        });
+        };
+        newAnimations.push(pendingEnemyAnimation);
       } else if (entry.t === 'MutationApplied') {
         sfx.mutation();
         const mutationId = entry.data?.mutationId ?? null;
@@ -6677,97 +6807,149 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
       }
 
       if (entry.t === 'DamageDealt') {
-        const { targetId, finalDamage, protectionAbsorbed, firewallAbsorbed, blocked } = entry.data || {};
+        const {
+          sourceId,
+          targetId,
+          finalDamage,
+          protectionAbsorbed,
+          firewallAbsorbed,
+          blocked,
+        } = entry.data || {};
         const absorbed = protectionAbsorbed ?? firewallAbsorbed ?? blocked ?? 0;
-        const isPlayerTarget = targetId === 'player' || targetId === state?.run?.playerId;
+        const isPlayerTarget = isPlayerEntityId(targetId, resolvedPlayerId);
         const targetEnemy = !isPlayerTarget ? enemies.find((enemy) => enemy.id === targetId) : null;
+
         if (finalDamage > 0) {
-          sfx.damage();
-          if (isPlayerTarget) {
-            triggerPlayerImpact('damage');
-            triggerCombatFlash('damage', 'player');
-          } else if (targetId) {
-            const impactType = targetEnemy?.hp <= 0 ? 'defeat' : 'damage';
-            triggerEnemyImpact(targetId, impactType);
-            triggerCombatFlash(impactType, 'enemy');
-          }
-          newFloats.push({
-            id: ++floatIdRef.current,
-            text: `-${finalDamage}`,
-            cssClass: 'float-dmg',
-            color: '#ff4433',
+          const impactType = isPlayerTarget ? 'damage' : targetEnemy?.hp <= 0 ? 'defeat' : 'damage';
+          queueReaction({
             zone: isPlayerTarget ? 'player' : 'enemy',
+            targetId: !isPlayerTarget ? targetId : null,
+            impactType,
+            sound: 'damage',
+            float: {
+              id: ++floatIdRef.current,
+              text: `-${finalDamage}`,
+              cssClass: 'float-dmg',
+              color: '#ff4433',
+              zone: isPlayerTarget ? 'player' : 'enemy',
+            },
+          }, {
+            attachToPending: Boolean(isPlayerTarget || targetId),
+            sourceId,
           });
         }
+
         if (absorbed > 0) {
-          sfx.block();
-          if (isPlayerTarget) {
-            triggerPlayerImpact('shield');
-            triggerCombatFlash('shield', 'player');
-          } else if (targetId) {
-            triggerEnemyImpact(targetId, 'shield');
-          }
-          newFloats.push({
-            id: ++floatIdRef.current,
-            text: `□ ${absorbed}`,
-            cssClass: 'float-block',
-            color: '#00f0ff',
+          queueReaction({
             zone: isPlayerTarget ? 'player' : 'enemy',
+            targetId: !isPlayerTarget ? targetId : null,
+            impactType: 'shield',
+            sound: 'block',
+            float: {
+              id: ++floatIdRef.current,
+              text: `FW ${absorbed}`,
+              cssClass: 'float-block',
+              color: '#00f0ff',
+              zone: isPlayerTarget ? 'player' : 'enemy',
+            },
+          }, {
+            attachToPending: Boolean(isPlayerTarget || targetId),
+            sourceId,
           });
         }
       } else if (entry.t === 'Info') {
         const msg = entry.msg || '';
-        const healMatch = msg.match(/healed? (\d+)/i);
-        if (healMatch) {
-          sfx.heal();
-          const isPlayerTarget = !msg.startsWith('enemy_');
-          if (isPlayerTarget) {
-            triggerPlayerImpact('heal');
-            triggerCombatFlash('heal', 'player');
-          }
-          newFloats.push({
-            id: ++floatIdRef.current,
-            text: `+${healMatch[1]}`,
-            cssClass: 'float-heal',
-            color: '#00ff6b',
-            zone: isPlayerTarget ? 'player' : 'enemy',
-          });
-        }
-        if (msg.includes('gained ') && msg.includes('(')) sfx.status();
+
         if (BOSS_PHASE_AUDIO_PATTERN.test(msg)) {
           sfx.bossPhase();
         }
         if (SYSTEM_WARNING_AUDIO_PATTERN.test(msg)) {
           sfx.systemWarning();
         }
-        const firewallMatch = msg.match(/gained Firewall\((\d+)\)/i);
-        if (firewallMatch) {
-          newFloats.push({
-            id: ++floatIdRef.current,
-            text: `□ ${firewallMatch[1]}`,
-            cssClass: 'float-block',
-            color: '#00f0ff',
-            zone: msg.startsWith('enemy_') ? 'enemy' : 'player',
+
+        const exactHealMatch = msg.match(/^([A-Za-z0-9_:-]+)\s+healed?\s+(\d+)/i);
+        const genericHealMatch = exactHealMatch ? null : msg.match(/healed? (\d+)/i);
+        if (exactHealMatch || genericHealMatch) {
+          const targetId = exactHealMatch?.[1] ?? null;
+          const amount = exactHealMatch?.[2] ?? genericHealMatch?.[1] ?? '0';
+          const isPlayerTarget = targetId ? isPlayerEntityId(targetId, resolvedPlayerId) : !msg.startsWith('enemy_');
+          queueReaction({
+            zone: isPlayerTarget ? 'player' : 'enemy',
+            targetId: !isPlayerTarget ? targetId : null,
+            impactType: 'heal',
+            sound: 'heal',
+            float: {
+              id: ++floatIdRef.current,
+              text: `+${amount}`,
+              cssClass: 'float-heal',
+              color: '#00ff6b',
+              zone: isPlayerTarget ? 'player' : 'enemy',
+            },
+          }, {
+            attachToPending: true,
           });
+        }
+
+        const firewallMatch = msg.match(/^([A-Za-z0-9_:-]+)\s+gained Firewall\((\d+)\)/i);
+        if (firewallMatch) {
+          const targetId = firewallMatch[1];
+          const isPlayerTarget = isPlayerEntityId(targetId, resolvedPlayerId);
+          queueReaction({
+            zone: isPlayerTarget ? 'player' : 'enemy',
+            targetId: !isPlayerTarget ? targetId : null,
+            impactType: 'shield',
+            sound: 'block',
+            float: {
+              id: ++floatIdRef.current,
+              text: `FW ${firewallMatch[2]}`,
+              cssClass: 'float-block',
+              color: '#00f0ff',
+              zone: isPlayerTarget ? 'player' : 'enemy',
+            },
+          }, {
+            attachToPending: true,
+          });
+        }
+
+        const statusGainMatch = msg.match(/^([A-Za-z0-9_:-]+)\s+gained\s+([A-Za-z][A-Za-z0-9_]*)\((\d+)\)/i);
+        if (statusGainMatch && !/^Firewall$/i.test(statusGainMatch[2])) {
+          const targetId = statusGainMatch[1];
+          const statusId = normalizeStatusId(statusGainMatch[2]);
+          const stacks = statusGainMatch[3];
+          const statusMeta = getStatusMeta(statusId);
+          const isPlayerTarget = isPlayerEntityId(targetId, resolvedPlayerId);
+          queueReaction({
+            zone: isPlayerTarget ? 'player' : 'enemy',
+            targetId: !isPlayerTarget ? targetId : null,
+            impactType: 'status',
+            sound: 'status',
+            float: {
+              id: ++floatIdRef.current,
+              text: `${humanizeStatusId(statusId)} ${stacks}`,
+              cssClass: 'float-status',
+              color: statusMeta.color,
+              zone: isPlayerTarget ? 'player' : 'enemy',
+            },
+          }, {
+            attachToPending: true,
+          });
+        } else if (msg.includes('gained ') && msg.includes('(')) {
+          sfx.status();
         }
       }
     }
 
+    immediateReactions.forEach((reaction) => emitCombatReaction(reaction));
+
     if (newAnimations.length) {
       setAnimationQueue((prev) => [...prev, ...newAnimations]);
-    }
-    if (newFloats.length) {
-      setFloats((prev) => [...prev.slice(-12), ...newFloats]);
-      setTimeout(() => {
-        setFloats((prev) => prev.slice(newFloats.length));
-      }, 1400);
     }
 
     if (waitingForEndTurnLogsRef.current) {
       waitingForEndTurnLogsRef.current = false;
       if (!sawEnemyCard) setEndTurnPending(false);
     }
-  }, [cardInstances, combat, data?.mutations, enemies, globalLog, state?.run?.playerId, triggerCombatFlash, triggerEnemyImpact, triggerPlayerImpact]);
+  }, [cardInstances, combat, data?.mutations, emitCombatReaction, enemies, globalLog, player?.id, state?.run?.playerId]);
 
   useEffect(() => {
     if (activeAnimation || animationQueue.length === 0) return;
@@ -6775,6 +6957,25 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
     setAnimationQueue(rest);
     setActiveAnimation(nextAnimation);
   }, [activeAnimation, animationQueue]);
+
+  useEffect(() => {
+    if (!activeAnimation?.reactions?.length) return undefined;
+
+    const totalDuration = activeAnimation.duration || PLAYER_PLAY_ANIMATION_MS;
+    const timeouts = activeAnimation.reactions.map((reaction, index, reactions) => {
+      const progress = reactions.length === 1
+        ? 0.48
+        : 0.34 + ((0.42 / Math.max(1, reactions.length - 1)) * index);
+      const delay = Math.max(120, Math.min(totalDuration - 120, Math.round(totalDuration * progress)));
+      return setTimeout(() => {
+        emitCombatReaction(reaction);
+      }, delay);
+    });
+
+    return () => {
+      timeouts.forEach((timeoutId) => clearTimeout(timeoutId));
+    };
+  }, [activeAnimation, emitCombatReaction]);
 
   useEffect(() => {
     if (!activeAnimation) return undefined;
@@ -7349,11 +7550,7 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
             pointerEvents: 'none',
             zIndex: 170,
             borderRadius: 28,
-            background: playerImpact.type === 'heal'
-              ? 'radial-gradient(circle at 50% 78%, rgba(0,255,107,0.18) 0%, rgba(0,255,107,0.08) 28%, transparent 70%)'
-              : playerImpact.type === 'shield'
-                ? 'radial-gradient(circle at 50% 78%, rgba(0,240,255,0.18) 0%, rgba(0,240,255,0.08) 30%, transparent 72%)'
-                : 'radial-gradient(circle at 50% 78%, rgba(255,68,51,0.2) 0%, rgba(255,68,51,0.08) 30%, transparent 72%)',
+            background: getPlayerImpactBackground(playerImpact.type),
           }}
         />
       )}

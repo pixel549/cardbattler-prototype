@@ -6696,6 +6696,80 @@ function App() {
     });
   }
 
+  async function pickImportSaveFile() {
+    if (typeof window === 'undefined') return null;
+
+    if (typeof window.showOpenFilePicker === 'function') {
+      const [handle] = await window.showOpenFilePicker({
+        multiple: false,
+        types: [
+          {
+            description: 'Card Battler save files',
+            accept: {
+              'application/json': ['.json'],
+            },
+          },
+        ],
+      });
+      return handle ? handle.getFile() : null;
+    }
+
+    return new Promise((resolve) => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.json,application/json';
+      input.style.display = 'none';
+      input.addEventListener('change', () => {
+        const [file] = Array.from(input.files || []);
+        resolve(file || null);
+        input.remove();
+      }, { once: true });
+      document.body.appendChild(input);
+      input.click();
+    });
+  }
+
+  async function importSaveFile() {
+    if (!data) return;
+    setShowPauseMenu(false);
+
+    try {
+      const file = await pickImportSaveFile();
+      if (!file) return;
+
+      const raw = await file.text();
+      const parsed = JSON.parse(raw);
+      let importedState = null;
+
+      if (parsed?.schemaVersion != null) {
+        const restored = restorePersistedSnapshot(parsed, contentFingerprintRef.current);
+        if (!restored.ok) {
+          window.alert('That save snapshot does not match the current build.');
+          return;
+        }
+        importedState = restored.payload.state;
+      } else if (parsed?.version === 1 && parsed?.state) {
+        importedState = sanitizeRestoredState(parsed.state);
+      }
+
+      if (!importedState) {
+        window.alert('Could not import that save file.');
+        return;
+      }
+
+      setMenuAutosave(null);
+      adoptState(importedState, {
+        handoffReason: `Imported save: ${file.name}`,
+        pauseAi: true,
+        clearAutosave: true,
+        autosaveToken: null,
+      });
+    } catch (error) {
+      console.error('Failed to import save file', error);
+      window.alert('Could not import that save file.');
+    }
+  }
+
   function clearDebugSlot(slotId) {
     const slots = { ...readDebugSaveSlots() };
     delete slots[slotId];
@@ -7812,6 +7886,7 @@ function App() {
           onBlockedNavigation={tutorialMenuState ? blockMenuTutorialAction : null}
           canContinue={Boolean(menuAutosave?.state)}
           onContinue={tutorialMenuState ? blockMenuTutorialAction : resumeAutosavedRun}
+          onImportSave={tutorialMenuState ? blockMenuTutorialAction : importSaveFile}
           onStartTutorial={tutorialMenuState ? blockMenuTutorialAction : startTutorialRun}
           onStartDailyRun={tutorialMenuState ? blockMenuTutorialAction : startDailyRun}
           onNewGame={tutorialMenuState ? blockMenuTutorialAction : (() => startNewRun())}
@@ -7849,6 +7924,23 @@ function App() {
                 : [...prev, challengeId]
             ));
           })}
+          debugSeed={debugSeedInput}
+          onDebugSeedChange={tutorialMenuState ? blockMenuTutorialAction : setDebugSeedInput}
+          seedMode={seedMode}
+          onSeedModeChange={tutorialMenuState ? blockMenuTutorialAction : setSeedMode}
+          randomizeDebugSeed={randomizeDebugSeed}
+          onRandomizeDebugSeed={tutorialMenuState ? blockMenuTutorialAction : setRandomizeDebugSeed}
+          onRandomizeSeed={tutorialMenuState ? blockMenuTutorialAction : (() => {
+            setSeedMode('wild');
+            setDebugSeedInput(String(randomDebugSeed()));
+          })}
+          onRandomizeSensibleSeed={tutorialMenuState ? blockMenuTutorialAction : (() => {
+            setSeedMode('sensible');
+            setDebugSeedInput(String(randomDebugSeed()));
+          })}
+          customConfig={customConfig}
+          onSetCustomField={tutorialMenuState ? blockMenuTutorialAction : ((key, val) => setCustomConfig((prev) => ({ ...prev, [key]: val })))}
+          onClearCustomConfig={tutorialMenuState ? blockMenuTutorialAction : (() => setCustomConfig(CUSTOM_CONFIG_DEFAULTS))}
         />
       );
       break;

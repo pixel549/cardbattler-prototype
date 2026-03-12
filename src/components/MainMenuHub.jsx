@@ -3,7 +3,14 @@ import RuntimeArt from './RuntimeArt.jsx';
 import { getCardImage } from '../data/cardImages.js';
 import { composeRunConfig, RUN_BASELINE } from '../game/runProfiles.js';
 import { getBossArchiveEntries } from '../game/bossIntel.js';
-import { getCallsignTheme, getDefaultCallsignId } from '../game/achievements.js';
+import {
+  getCallsignTheme,
+  getDefaultCallsignId,
+  getUnlockedAchievementRewardState,
+  isCardUnlockedByAchievements,
+  isRelicUnlockedByAchievements,
+} from '../game/achievements.js';
+import { MINIGAME_REGISTRY } from '../game/minigames.js';
 
 const C = {
   bg: '#0a0a0f',
@@ -35,6 +42,184 @@ const CARD_TYPE_COLORS = {
 
 function getCardColor(type) {
   return CARD_TYPE_COLORS[type] || CARD_TYPE_COLORS.default;
+}
+
+const MENU_LABELS = {
+  home: 'Main Menu',
+  load: 'Load Save',
+  new: 'New Run',
+  intel: 'Intel',
+  tutorial: 'Tutorial',
+  settings: 'Settings',
+};
+
+const CONFIGURABLE_RUN_FIELDS = [
+  {
+    key: 'playerMaxHP',
+    label: 'Max HP',
+    type: 'number',
+    min: 20,
+    max: 300,
+    step: 1,
+    placeholder: String(RUN_BASELINE.playerMaxHP),
+    description: 'Override the base HP budget before class and difficulty modifiers apply.',
+  },
+  {
+    key: 'startingGold',
+    label: 'Starting Gold',
+    type: 'number',
+    min: 0,
+    max: 9999,
+    step: 1,
+    placeholder: String(RUN_BASELINE.startingGold),
+    description: 'Adjust opening gold for the run package.',
+  },
+  {
+    key: 'playerMaxRAM',
+    label: 'Max RAM',
+    type: 'number',
+    min: 1,
+    max: 16,
+    step: 1,
+    placeholder: String(RUN_BASELINE.playerMaxRAM),
+    description: 'Set the player RAM ceiling before relics and other run effects stack on top.',
+  },
+  {
+    key: 'playerRamRegen',
+    label: 'RAM / Turn',
+    type: 'number',
+    min: 0,
+    max: 16,
+    step: 1,
+    placeholder: String(RUN_BASELINE.playerRamRegen),
+    description: 'Adjust passive RAM regeneration each turn.',
+  },
+  {
+    key: 'drawPerTurnDelta',
+    label: 'Draw Delta',
+    type: 'number',
+    min: -5,
+    max: 5,
+    step: 1,
+    placeholder: String(RUN_BASELINE.drawPerTurnDelta),
+    description: 'Add or subtract cards drawn each turn.',
+  },
+  {
+    key: 'enemyHpMult',
+    label: 'Enemy HP x',
+    type: 'number',
+    min: 0.1,
+    max: 5,
+    step: 0.1,
+    placeholder: String(RUN_BASELINE.enemyHpMult),
+    description: 'Scale enemy health before the encounter begins.',
+  },
+  {
+    key: 'enemyDmgMult',
+    label: 'Enemy Dmg x',
+    type: 'number',
+    min: 0.1,
+    max: 5,
+    step: 0.1,
+    placeholder: String(RUN_BASELINE.enemyDmgMult),
+    description: 'Scale enemy outgoing damage.',
+  },
+  {
+    key: 'enemyCount',
+    label: 'Enemy Count',
+    type: 'number',
+    min: 1,
+    max: 6,
+    step: 1,
+    placeholder: 'Auto',
+    description: 'Force a specific enemy count when the encounter generator allows it.',
+  },
+  {
+    key: 'actOverride',
+    label: 'Act Override',
+    type: 'select',
+    options: [
+      { value: '', label: 'Auto' },
+      { value: 1, label: 'Act 1' },
+      { value: 2, label: 'Act 2' },
+      { value: 3, label: 'Act 3' },
+      { value: 4, label: 'Act 4' },
+      { value: 5, label: 'Act 5' },
+      { value: 6, label: 'Act 6' },
+      { value: 7, label: 'Act 7' },
+    ],
+    description: 'Force the run to start from a specific act lane.',
+  },
+  {
+    key: 'encounterKind',
+    label: 'Encounter Kind',
+    type: 'select',
+    options: [
+      { value: '', label: 'Auto' },
+      { value: 'normal', label: 'Normal' },
+      { value: 'elite', label: 'Elite' },
+      { value: 'boss', label: 'Boss' },
+    ],
+    description: 'Bias or lock the generated combat encounter type.',
+  },
+];
+
+function mapLegacyMenuState(menuView = 'home', intelView = 'progress') {
+  if (menuView === 'setup') {
+    return { menuView: 'new', newRunView: 'standard', configureView: 'root', tutorialView: 'root', intelView: 'progress' };
+  }
+  if (menuView === 'daily') {
+    return { menuView: 'new', newRunView: 'daily', configureView: 'root', tutorialView: 'root', intelView: 'progress' };
+  }
+  if (menuView === 'intel') {
+    return { menuView: 'intel', newRunView: 'root', configureView: 'root', tutorialView: 'root', intelView: intelView || 'progress' };
+  }
+  if (menuView === 'tutorials') {
+    return { menuView: 'tutorial', newRunView: 'root', configureView: 'root', tutorialView: 'root', intelView: 'progress' };
+  }
+  if (menuView === 'recovery') {
+    return { menuView: 'load', newRunView: 'root', configureView: 'root', tutorialView: 'root', intelView: 'progress' };
+  }
+  if (menuView === 'settings') {
+    return { menuView: 'settings', newRunView: 'root', configureView: 'root', tutorialView: 'root', intelView: 'progress' };
+  }
+  return { menuView: 'home', newRunView: 'root', configureView: 'root', tutorialView: 'root', intelView: 'progress' };
+}
+
+function isBeginnerTutorial(tutorial) {
+  return tutorial?.title === 'Combat Basics' || tutorial?.title === 'Run Modes Briefing';
+}
+
+function getSeedSummary(debugSeed = '', seedMode = 'wild', randomizeDebugSeed = false) {
+  const trimmed = String(debugSeed || '').trim();
+  if (trimmed) return `Seed ${trimmed} (${seedMode})`;
+  if (randomizeDebugSeed) return `Random ${seedMode} seed each launch`;
+  return 'Auto seed at launch';
+}
+
+function formatCardDescription(cardDef = {}) {
+  const effects = Array.isArray(cardDef.effects) ? cardDef.effects : [];
+  const lines = effects.map((effect) => {
+    if (effect?.op === 'RawText') return String(effect.text || '');
+    if (effect?.op === 'DealDamage') return `Deal ${effect.amount ?? '?'} damage${effect.target === 'AllEnemies' ? ' to all enemies' : ''}.`;
+    if (effect?.op === 'Heal') return `Heal ${effect.amount ?? '?'} HP.`;
+    if (effect?.op === 'DrawCards') return `Draw ${effect.amount ?? '?'} cards.`;
+    if (effect?.op === 'GainRAM') return `Gain ${effect.amount ?? '?'} RAM.`;
+    if (effect?.op === 'ApplyStatus') return `Apply ${effect.statusId || 'status'} ${effect.stacks ?? '?'}.`;
+    return effect?.op || '';
+  }).filter(Boolean);
+  return lines.join(' ') || 'No card text available.';
+}
+
+function formatConfigFieldValue(field, value) {
+  if (value == null || value === '') return 'Auto';
+  if (field.type === 'select') {
+    return field.options?.find((option) => option.value === value)?.label || String(value);
+  }
+  if (field.step && field.step < 1 && Number.isFinite(Number(value))) {
+    return Number(value).toFixed(1);
+  }
+  return String(value);
 }
 
 function buildModeSummary(runConfig) {
@@ -92,10 +277,12 @@ function MainAction({
   meta = '',
   status = '',
   solid = false,
+  disabled = false,
 }) {
   return (
     <button
-      onClick={onClick}
+      onClick={disabled ? undefined : onClick}
+      disabled={disabled}
       style={{
         width: '100%',
         borderRadius: 20,
@@ -111,10 +298,11 @@ function MainAction({
         boxShadow: solid
           ? `0 20px 38px ${accent}2a`
           : `0 16px 30px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.04)`,
-        cursor: 'pointer',
+        cursor: disabled ? 'default' : 'pointer',
         textAlign: 'left',
         display: 'grid',
         gap: 10,
+        opacity: disabled ? 0.58 : 1,
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
@@ -226,6 +414,7 @@ export default function MainMenuHub({
   onBlockedNavigation = null,
   canContinue = false,
   onContinue,
+  onImportSave,
   onStartTutorial,
   onStartDailyRun,
   onNewGame,
@@ -257,24 +446,47 @@ export default function MainMenuHub({
   unlockedChallengeIds = [],
   selectedChallengeIds = [],
   onToggleChallenge,
+  debugSeed = '',
+  onDebugSeedChange,
+  seedMode = 'wild',
+  onSeedModeChange,
+  randomizeDebugSeed = false,
+  onRandomizeDebugSeed,
+  onRandomizeSeed,
+  onRandomizeSensibleSeed,
+  customConfig = {},
+  onSetCustomField,
+  onClearCustomConfig,
 }) {
-  const [menuView, setMenuView] = useState(initialMenuView);
-  const [intelView, setIntelView] = useState(initialIntelView);
-  const activeMenuView = forcedMenuView ?? menuView;
-  const activeIntelView = forcedIntelView ?? intelView;
+  const initialPath = mapLegacyMenuState(initialMenuView, initialIntelView);
+  const forcedPath = forcedMenuView != null || forcedIntelView != null
+    ? mapLegacyMenuState(forcedMenuView ?? initialMenuView, forcedIntelView ?? initialIntelView)
+    : null;
+
+  const [menuView, setMenuView] = useState(initialPath.menuView);
+  const [newRunView, setNewRunView] = useState(initialPath.newRunView);
+  const [configureView, setConfigureView] = useState(initialPath.configureView);
+  const [tutorialView, setTutorialView] = useState(initialPath.tutorialView);
+  const [intelView, setIntelView] = useState(initialPath.intelView);
+
+  const activeMenuView = forcedPath?.menuView ?? menuView;
+  const activeNewRunView = forcedPath?.newRunView ?? newRunView;
+  const activeConfigureView = forcedPath?.configureView ?? configureView;
+  const activeTutorialView = forcedPath?.tutorialView ?? tutorialView;
+  const activeIntelView = forcedPath?.intelView ?? intelView;
   const completedSet = new Set(completedTutorialIds);
   const unlockedStarterSet = new Set(unlockedStarterProfileIds);
   const unlockedDifficultySet = new Set(unlockedDifficultyIds);
   const unlockedChallengeSet = new Set(unlockedChallengeIds);
-  const unlockedAchievementSet = new Set(metaProgress?.achievementIdsUnlocked || []);
   const unlockedCallsignSet = new Set(unlockedCallsignIds);
   const selectedChallenges = new Set(selectedChallengeIds);
+  const unlockedRewardState = getUnlockedAchievementRewardState(metaProgress?.achievementIdsUnlocked || []);
 
   const callsignId = selectedCallsignId || getDefaultCallsignId();
   const activeCallsign = callsignCatalog.find((theme) => theme.id === callsignId) || getCallsignTheme(callsignId);
   const selectedProfile = starterProfiles.find((profile) => profile.id === selectedStarterProfileId) || starterProfiles[0] || null;
   const selectedDifficulty = difficultyProfiles.find((difficulty) => difficulty.id === selectedDifficultyId) || difficultyProfiles[0] || null;
-  const selectedRunConfig = composeRunConfig({}, selectedStarterProfileId, selectedDifficultyId, selectedChallengeIds);
+  const selectedRunConfig = composeRunConfig(customConfig || {}, selectedStarterProfileId, selectedDifficultyId, selectedChallengeIds);
   const selectedModeSummary = buildModeSummary(selectedRunConfig);
 
   const selectedProfileAccent = selectedProfile?.accent || C.orange;
@@ -294,84 +506,37 @@ export default function MainMenuHub({
     .slice(0, 6);
 
   const featuredTutorial = tutorialCatalog.find((tutorial) => tutorial.recommended && !completedSet.has(tutorial.id)) || tutorialCatalog[0] || null;
+  const beginnerTutorials = tutorialCatalog.filter((tutorial) => isBeginnerTutorial(tutorial));
+  const advancedTutorials = tutorialCatalog.filter((tutorial) => !isBeginnerTutorial(tutorial));
   const availableDebugSlots = debugSaveSlotIds
     .map((slotId, index) => ({ slotId, index, slot: debugSaveSlots?.[slotId] }))
     .filter((entry) => entry.slot);
   const hasRecovery = availableDebugSlots.length > 0;
 
   const recentUnlockLabels = recentUnlocks.map((unlock) => unlock?.name).filter(Boolean);
-  const achievementUnlockCount = achievements.filter((achievement) => unlockedAchievementSet.has(achievement.id)).length;
+  const achievementUnlockCount = achievements.filter((achievement) => unlockedRewardState.unlockedAchievementIds.includes(achievement.id)).length;
   const callsignUnlockCount = callsignCatalog.filter((theme) => unlockedCallsignSet.has(theme.id)).length;
+  const currentSeedSummary = getSeedSummary(debugSeed, seedMode, randomizeDebugSeed);
+  const activeOverrideFields = CONFIGURABLE_RUN_FIELDS.filter(({ key }) => customConfig?.[key] != null && customConfig[key] !== '');
+  const activeOverrideSummary = activeOverrideFields.length
+    ? activeOverrideFields.map((field) => `${field.label}: ${formatConfigFieldValue(field, customConfig[field.key])}`).join(' | ')
+    : 'No direct overrides active.';
 
   const bossArchiveEntries = data ? getBossArchiveEntries(data, metaProgress, 6) : [];
   const totalBossCount = Object.values(data?.encounters || {}).filter((encounter) => encounter?.kind === 'boss').length;
   const seenBossCount = metaProgress?.bossEncounterIdsSeen?.length ?? 0;
   const defeatedBossCount = metaProgress?.bossEncounterIdsDefeated?.length ?? 0;
 
-  const pageMeta = {
-    home: {
-      eyebrow: 'CARD BATTLER',
-      title: 'Ops Console',
-      body: 'Clean launch surface up front, deeper systems one layer down. The front page is now about starting runs, not browsing every subsystem at once.',
-      accent: C.cyan,
-    },
-    setup: {
-      eyebrow: 'RUN SETUP',
-      title: 'Loadout Bay',
-      body: 'Profiles, difficulty, and run variations are grouped here so the main menu can stay focused.',
-      accent: selectedProfileAccent,
-    },
-    tutorials: {
-      eyebrow: 'TUTORIALS',
-      title: 'Training Deck',
-      body: 'Guided onboarding, refreshers, and system primers live in one place.',
-      accent: C.cyan,
-    },
-    daily: {
-      eyebrow: 'DAILY RUN',
-      title: 'Shared Breach',
-      body: 'Shared seed, shared loadout, shared challenge. Records and reset timing are tucked into this lane.',
-      accent: C.cyan,
-    },
-    intel: {
-      eyebrow: 'INTEL',
-      title: 'Archive and Unlocks',
-      body: 'Meta progress, boss intel, achievements, and cosmetic identity are now grouped behind one archive view.',
-      accent: C.green,
-    },
-    recovery: {
-      eyebrow: 'RECOVERY',
-      title: 'Debug Slots',
-      body: 'Save-slot recovery and internal tooling stay out of the way until you deliberately open them.',
-      accent: C.orange,
-    },
-  };
-
-  const navItems = [
-    { id: 'home', label: 'Home', accent: C.cyan },
-    { id: 'setup', label: 'Run Setup', accent: selectedProfileAccent },
-    { id: 'tutorials', label: 'Tutorials', accent: C.cyan },
-    { id: 'daily', label: 'Daily Run', accent: C.cyan },
-    { id: 'intel', label: 'Intel', accent: C.green },
-    ...(hasRecovery ? [{ id: 'recovery', label: 'Recovery', accent: C.orange }] : []),
-  ];
-
   const panelStyle = (accent, emphasis = 'default', padding = '18px') => ({
     ...makeSurface(accent, emphasis),
     padding,
   });
   const tutorialMenuActive = tutorialStep?.mode === 'MainMenu';
-  const tutorialPaneLabel = tutorialStep?.intelView === 'bosses'
-    ? 'Boss archive'
-    : tutorialStep?.intelView === 'callsigns'
-      ? 'Callsign archive'
-      : tutorialStep?.menuView === 'setup'
-        ? 'Run setup'
-        : tutorialStep?.menuView === 'daily'
-          ? 'Daily run'
-          : tutorialStep?.menuView === 'intel'
-            ? 'Progress archive'
-            : 'Active pane';
+  const tutorialPaneLabel = activeMenuView === 'intel'
+    ? `Intel / ${activeIntelView === 'root' ? 'Index' : activeIntelView}`
+    : activeMenuView === 'new'
+      ? `New Run / ${activeNewRunView === 'configure' ? `Configure / ${activeConfigureView}` : activeNewRunView}`
+      : MENU_LABELS[activeMenuView] || 'Main Menu';
 
   const pillButtonStyle = (accent, active = false, disabled = false) => ({
     appearance: 'none',
@@ -405,17 +570,17 @@ export default function MainMenuHub({
   };
 
   useEffect(() => {
-    if (forcedMenuView != null) return;
-    setMenuView(initialMenuView);
-  }, [forcedMenuView, initialMenuView]);
-
-  useEffect(() => {
-    if (forcedIntelView != null) return;
-    setIntelView(initialIntelView);
-  }, [forcedIntelView, initialIntelView]);
+    if (forcedPath) return;
+    const nextPath = mapLegacyMenuState(initialMenuView, initialIntelView);
+    setMenuView(nextPath.menuView);
+    setNewRunView(nextPath.newRunView);
+    setConfigureView(nextPath.configureView);
+    setTutorialView(nextPath.tutorialView);
+    setIntelView(nextPath.intelView);
+  }, [forcedPath, initialMenuView, initialIntelView]);
 
   const handleMenuViewChange = (nextView) => {
-    if (forcedMenuView != null && nextView !== forcedMenuView) {
+    if (forcedPath && nextView !== forcedPath.menuView) {
       onBlockedNavigation?.();
       return;
     }
@@ -423,15 +588,147 @@ export default function MainMenuHub({
   };
 
   const handleIntelViewChange = (nextView) => {
-    if (forcedIntelView != null && nextView !== forcedIntelView) {
+    if (forcedPath && (forcedPath.menuView !== 'intel' || forcedPath.intelView !== nextView)) {
       onBlockedNavigation?.();
       return;
     }
+    setMenuView('intel');
     setIntelView(nextView);
   };
 
+  const handleNewRunViewChange = (nextView) => {
+    if (forcedPath && (forcedPath.menuView !== 'new' || forcedPath.newRunView !== nextView)) {
+      onBlockedNavigation?.();
+      return;
+    }
+    setMenuView('new');
+    setNewRunView(nextView);
+  };
+
+  const handleConfigureViewChange = (nextView) => {
+    if (forcedPath && (forcedPath.menuView !== 'new' || forcedPath.newRunView !== 'configure' || forcedPath.configureView !== nextView)) {
+      onBlockedNavigation?.();
+      return;
+    }
+    setMenuView('new');
+    setNewRunView('configure');
+    setConfigureView(nextView);
+  };
+
+  const handleTutorialViewChange = (nextView) => {
+    if (forcedPath && (forcedPath.menuView !== 'tutorial' || forcedPath.tutorialView !== nextView)) {
+      onBlockedNavigation?.();
+      return;
+    }
+    setMenuView('tutorial');
+    setTutorialView(nextView);
+  };
+
+  const handleBack = () => {
+    if (activeMenuView === 'new') {
+      if (activeNewRunView === 'configure' && activeConfigureView !== 'root') {
+        handleConfigureViewChange('root');
+        return;
+      }
+      if (activeNewRunView !== 'root') {
+        handleNewRunViewChange('root');
+        return;
+      }
+    }
+    if (activeMenuView === 'intel' && activeIntelView !== 'root') {
+      handleIntelViewChange('root');
+      return;
+    }
+    if (activeMenuView === 'tutorial' && activeTutorialView !== 'root') {
+      handleTutorialViewChange('root');
+      return;
+    }
+    handleMenuViewChange('home');
+  };
+
+  const activeHeaderMeta = (() => {
+    if (activeMenuView === 'home') {
+      return {
+        eyebrow: 'MAIN MENU',
+        title: 'Ops Console',
+        body: 'Only the five top-level doors stay visible on launch. Every detailed system is one deliberate click deeper now.',
+        accent: C.cyan,
+      };
+    }
+    if (activeMenuView === 'load') {
+      return {
+        eyebrow: 'LOAD SAVE',
+        title: 'Resume Or Recover',
+        body: 'Autosaves, save import, and recovery tools are tucked behind one parent menu.',
+        accent: C.green,
+      };
+    }
+    if (activeMenuView === 'new' && activeNewRunView === 'standard') {
+      return {
+        eyebrow: 'STANDARD RUN',
+        title: 'Choose A Loadout',
+        body: 'This leaf is now just player/loadout selection plus the live seed snapshot. Modifier editing stays under Configure Run.',
+        accent: selectedProfileAccent,
+      };
+    }
+    if (activeMenuView === 'new' && activeNewRunView === 'daily') {
+      return {
+        eyebrow: 'DAILY RUN',
+        title: 'Shared Breach',
+        body: 'Shared seed, shared loadout, shared challenge. Records stay in this lane.',
+        accent: C.cyan,
+      };
+    }
+    if (activeMenuView === 'new' && activeNewRunView === 'configure' && activeConfigureView === 'seed') {
+      return {
+        eyebrow: 'CONFIGURE RUN',
+        title: 'Seed Controls',
+        body: 'This is where the seed editor lives now instead of cluttering the first launch surface.',
+        accent: C.cyan,
+      };
+    }
+    if (activeMenuView === 'new' && activeNewRunView === 'configure' && activeConfigureView === 'modifiers') {
+      return {
+        eyebrow: 'CONFIGURE RUN',
+        title: 'Modifiers',
+        body: 'Difficulty, challenge modes, and every editable run override live together here instead of leaking into the launch surface.',
+        accent: C.purple,
+      };
+    }
+    if (activeMenuView === 'new') {
+      return {
+        eyebrow: 'NEW RUN',
+        title: 'Choose A Run Lane',
+        body: 'Start a standard run, jump into the daily, or open the deeper configuration surfaces.',
+        accent: C.yellow,
+      };
+    }
+    if (activeMenuView === 'intel') {
+      return {
+        eyebrow: 'INTEL',
+        title: activeIntelView === 'root' ? 'Archive Index' : `${activeIntelView[0].toUpperCase()}${activeIntelView.slice(1)} Archive`,
+        body: activeIntelView === 'root' ? 'Archive categories stay hidden until you open them.' : 'This archive page only appears after you choose its category.',
+        accent: activeIntelView === 'bosses' ? C.red : activeIntelView === 'callsigns' ? activeCallsignAccent : C.green,
+      };
+    }
+    if (activeMenuView === 'tutorial') {
+      return {
+        eyebrow: 'TUTORIAL',
+        title: activeTutorialView === 'beginner' ? 'Beginner Mechanics' : activeTutorialView === 'advanced' ? 'Advanced Mechanics' : 'Training Index',
+        body: activeTutorialView === 'root' ? 'Lessons are now split into beginner and advanced lanes.' : 'Tutorial modules only appear after you choose the lane they belong to.',
+        accent: activeTutorialView === 'advanced' ? C.purple : C.cyan,
+      };
+    }
+    return {
+      eyebrow: 'SETTINGS',
+      title: 'Control Room',
+      body: 'The settings panel still exists, but it is now hidden behind one clean parent option.',
+      accent: C.purple,
+    };
+  })();
+
   const renderHeader = () => {
-    const meta = pageMeta[activeMenuView];
+    const meta = activeHeaderMeta;
     return (
       <div style={{ ...panelStyle(meta.accent, 'bright', '22px'), display: 'grid', gap: 18 }}>
         <div
@@ -473,7 +770,7 @@ export default function MainMenuHub({
                 ACTIVE CALLSIGN
               </div>
               {activeMenuView !== 'home' ? (
-                <button onClick={() => handleMenuViewChange('home')} style={ghostButtonStyle}>
+                <button onClick={handleBack} style={ghostButtonStyle}>
                   Back
                 </button>
               ) : null}
@@ -482,7 +779,7 @@ export default function MainMenuHub({
               {activeCallsign?.name || 'Kernel Runner'}
             </div>
             <div style={{ fontFamily: UI_MONO, fontSize: 11, lineHeight: 1.6, color: C.textDim }}>
-              {dailyRunConfig?.id || 'Daily run offline'} | {dailyRunConfig?.resetLabel || 'Resets daily'}
+              {currentSeedSummary}
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               <DataChip accent={selectedProfileAccent}>{selectedProfile?.name || 'No starter'}</DataChip>
@@ -492,21 +789,6 @@ export default function MainMenuHub({
               ) : null}
             </div>
           </div>
-        </div>
-
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          {navItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => handleMenuViewChange(item.id)}
-              style={pillButtonStyle(item.accent, item.id === activeMenuView)}
-            >
-              {item.label}
-            </button>
-          ))}
-          <button onClick={onSettings} style={ghostButtonStyle}>
-            Settings
-          </button>
         </div>
         {tutorialMenuActive ? (
           <div
@@ -625,258 +907,424 @@ export default function MainMenuHub({
     );
   };
 
-  const renderHomeView = () => (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))', gap: 18 }}>
-      <div style={{ display: 'grid', gap: 18 }}>
-        <div style={{ ...panelStyle(C.yellow, 'bright', '18px'), display: 'grid', gap: 12 }}>
-          <SectionIntro
-            accent={C.yellow}
-            eyebrow="PRIMARY ACTIONS"
-            title="Launch"
-            body="The main screen now stays disciplined: resume, deploy, or head into one submenu for the rest."
+  const renderLoadView = () => (
+    <div style={{ display: 'grid', gap: 18 }}>
+      <div style={{ ...panelStyle(C.green, 'default', '18px'), display: 'grid', gap: 14 }}>
+        <SectionIntro
+          accent={C.green}
+          eyebrow="LOAD SAVE"
+          title="Recovery Paths"
+          body="Resume the last autosaved game, import a compatible save file, or dip into buried recovery slots if you need them."
+        />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+          <MainAction
+            accent={C.green}
+            title="Continue Last Game"
+            body={canContinue ? 'Return to the latest autosaved run immediately.' : 'No compatible autosave is currently available.'}
+            onClick={onContinue}
+            meta="Resume"
+            status={canContinue ? 'Ready' : 'Empty'}
+            solid
+            disabled={!canContinue}
           />
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
-            {canContinue ? (
-              <MainAction
-                accent={C.green}
-                title="Continue"
-                body="Jump back into the last autosaved run without browsing setup first."
-                onClick={onContinue}
-                meta="Resume"
-                status="Autosave"
-                solid
-              />
-            ) : null}
-            <MainAction
-              accent={C.yellow}
-              title={selectedProfile ? `Deploy ${selectedProfile.shortLabel || selectedProfile.name}` : 'New Game'}
-              body="Start from the current loadout, difficulty, and challenge selection."
-              onClick={onNewGame}
-              meta="Run"
-              status={selectedDifficulty?.name || 'Standard'}
-              solid={!canContinue}
-            />
-            <MainAction
-              accent={C.cyan}
-              title="Daily Run"
-              body="Shared seed, shared breach, separate lane. This keeps the landing page from turning back into a wall of details."
-              onClick={() => handleMenuViewChange('daily')}
-              meta="Shared"
-              status={dailyRunConfig?.id || 'Offline'}
-            />
-          </div>
-        </div>
-
-        <div style={{ ...panelStyle(C.cyan, 'default', '18px'), display: 'grid', gap: 12 }}>
-          <SectionIntro
+          <MainAction
             accent={C.cyan}
-            eyebrow="SUBMENUS"
-            title="Organize"
-            body="Everything noisy lives behind a clear door now."
+            title="Import Save File"
+            body={onImportSave ? 'Load a compatible save snapshot from disk.' : 'Import hooks are not wired yet, but the slot is now correctly buried here.'}
+            onClick={onImportSave}
+            meta="Import"
+            status={onImportSave ? 'File' : 'Unavailable'}
+            disabled={!onImportSave}
           />
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
-            <MainAction accent={selectedProfileAccent} title="Run Setup" body="Profiles, difficulty, and challenge layers." onClick={() => handleMenuViewChange('setup')} meta="Configure" />
-            <MainAction accent={C.cyan} title="Tutorials" body="Recommended onboarding and replayable lessons." onClick={() => handleMenuViewChange('tutorials')} meta="Learn" status={featuredTutorial?.title || 'Ready'} />
-            <MainAction accent={C.green} title="Intel" body="Progress, unlocks, bosses, and callsigns." onClick={() => { handleIntelViewChange('progress'); handleMenuViewChange('intel'); }} meta="Archive" />
-            {hasRecovery ? <MainAction accent={C.orange} title="Recovery" body="Internal save slots and debug recovery tools." onClick={() => handleMenuViewChange('recovery')} meta="Utility" status={`${availableDebugSlots.length} slot${availableDebugSlots.length === 1 ? '' : 's'}`} /> : null}
-          </div>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gap: 18 }}>
-        {renderProfilePreview()}
-
-        <div style={{ ...panelStyle(C.green, 'default', '18px'), display: 'grid', gap: 12 }}>
+      {hasRecovery ? (
+        <div style={{ ...panelStyle(C.orange, 'soft', '18px'), display: 'grid', gap: 14 }}>
           <SectionIntro
-            accent={C.green}
-            eyebrow="FIELD SNAPSHOT"
-            title="Current Signal"
-            body="A quick at-a-glance panel for the live build state."
+            accent={C.orange}
+            eyebrow="RECOVERY SLOTS"
+            title="Internal Snapshots"
+            body="These stay out of the first impression, but they are still available once you deliberately open Load Save."
           />
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: 8 }}>
-            <StatTile accent={C.text} label="Runs" value={metaProgress?.totalRuns ?? 0} />
-            <StatTile accent={C.green} label="Wins" value={metaProgress?.totalWins ?? 0} />
-            <StatTile accent={C.cyan} label="Act" value={metaProgress?.bestActReached ?? 1} />
-            <StatTile accent={C.purple} label="Muts" value={metaProgress?.totalUniqueMutations ?? 0} />
+          <div style={{ display: 'grid', gap: 12 }}>
+            {availableDebugSlots.map(({ slotId, index, slot }) => (
+              <MainAction
+                key={slotId}
+                accent={C.orange}
+                title={`Slot ${index + 1}`}
+                body={slot.label}
+                onClick={() => onLoadDebugSave?.(slotId)}
+                meta="Recovery"
+                status="Debug"
+              />
+            ))}
           </div>
+        </div>
+      ) : null}
+    </div>
+  );
 
-          {featuredTutorial ? (
-            <div style={{ ...panelStyle(C.cyan, 'soft', '14px'), display: 'grid', gap: 8 }}>
-              <div style={{ fontFamily: UI_MONO, fontSize: 10, letterSpacing: '0.14em', color: C.cyan }}>
-                FEATURED TUTORIAL
-              </div>
-              <div style={{ fontFamily: DISPLAY_FONT, fontSize: 24, fontWeight: 700, color: C.text }}>
-                {featuredTutorial.title}
-              </div>
-              <div style={{ fontFamily: UI_MONO, fontSize: 11, lineHeight: 1.6, color: C.textDim }}>
-                {featuredTutorial.menuDescription}
-              </div>
-              <button onClick={() => onStartTutorial?.(featuredTutorial.id)} style={ghostButtonStyle}>
-                {completedSet.has(featuredTutorial.id) ? 'Replay Tutorial' : 'Start Tutorial'}
-              </button>
-            </div>
-          ) : null}
+  const renderHomeView = () => (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))', gap: 12 }}>
+      <MainAction accent={C.green} title="Load Save" body="Continue the last autosave, import a run snapshot, or open buried recovery tools." onClick={() => handleMenuViewChange('load')} meta="Menu" status={canContinue ? 'Autosave' : 'No save'} />
+      <MainAction accent={C.yellow} title="New Run" body="Standard runs, daily runs, and deeper configuration now branch from here." onClick={() => handleNewRunViewChange('root')} meta="Menu" status={selectedProfile?.name || 'Ready'} solid />
+      <MainAction accent={C.green} title="Intel" body="Relics, cards, enemies, minigames, bosses, and progression live in the archive." onClick={() => { handleIntelViewChange('root'); handleMenuViewChange('intel'); }} meta="Menu" status={`${recentUnlockLabels.length || 0} recent`} />
+      <MainAction accent={C.cyan} title="Tutorial" body="Beginner and advanced lessons are split so you only see the lane you asked for." onClick={() => { handleTutorialViewChange('root'); handleMenuViewChange('tutorial'); }} meta="Menu" status={`${tutorialCatalog.length} modules`} />
+      <MainAction accent={C.purple} title="Settings" body="Open the existing settings and utility controls without polluting the front page." onClick={() => handleMenuViewChange('settings')} meta="Menu" status="Control room" />
+    </div>
+  );
 
-          <div style={{ display: 'grid', gap: 10 }}>
-            <div style={{ ...panelStyle(C.border, 'soft', '14px'), display: 'grid', gap: 6 }}>
-              <div style={{ fontFamily: UI_MONO, fontSize: 10, letterSpacing: '0.14em', color: C.textMuted }}>
-                TODAY'S DAILY
-              </div>
-              <div style={{ fontFamily: UI_MONO, fontSize: 12, lineHeight: 1.6, color: C.text }}>
-                {dailyRunConfig?.id || 'Daily run unavailable'}
-              </div>
-              <div style={{ fontFamily: UI_MONO, fontSize: 11, lineHeight: 1.6, color: C.textDim }}>
-                {dailyRunConfig?.summary || 'Fixed seed and shared loadout.'}
-              </div>
-            </div>
+  const renderNewRunRootView = () => (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(240px, 100%), 1fr))', gap: 12 }}>
+      <MainAction accent={selectedProfileAccent} title="Standard Run" body="Choose a class/loadout, preview the package, and launch it." onClick={() => handleNewRunViewChange('standard')} meta="Run" status={selectedProfile?.name || 'Ready'} solid />
+      <MainAction accent={C.cyan} title="Daily Run" body="Shared seed, shared modifiers, and a comparable run package for everyone." onClick={() => handleNewRunViewChange('daily')} meta="Shared" status={dailyRunConfig?.id || 'Offline'} />
+      <MainAction accent={C.orange} title="Configure Run" body="Seed controls and modifier tuning live one layer deeper so they stay out of the launch flow." onClick={() => handleConfigureViewChange('root')} meta="Advanced" status={selectedChallenges.size > 0 ? `${selectedChallenges.size} mods` : 'Baseline'} />
+    </div>
+  );
 
-            <div style={{ ...panelStyle(C.border, 'soft', '14px'), display: 'grid', gap: 6 }}>
-              <div style={{ fontFamily: UI_MONO, fontSize: 10, letterSpacing: '0.14em', color: C.textMuted }}>
-                RECENT UNLOCKS
-              </div>
-              <div style={{ fontFamily: UI_MONO, fontSize: 12, lineHeight: 1.6, color: C.text }}>
-                {recentUnlockLabels.slice(0, 4).join(' | ') || 'No recent unlocks yet'}
-              </div>
-            </div>
+  const renderConfigureRootView = () => (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(260px, 100%), 1fr))', gap: 12 }}>
+      <MainAction accent={C.cyan} title="Seed" body="Explicit seed entry, seed mode, and randomize-on-launch controls." onClick={() => handleConfigureViewChange('seed')} meta="Config" status={currentSeedSummary} />
+      <MainAction accent={C.purple} title="Modifiers" body="Difficulty, challenges, and the run modifiers the player can actually edit." onClick={() => handleConfigureViewChange('modifiers')} meta="Config" status={selectedModeSummary.length ? `${selectedModeSummary.length} active` : 'Baseline'} />
+    </div>
+  );
+
+  const renderSeedConfigView = () => (
+    <div style={{ ...panelStyle(C.cyan, 'default', '18px'), display: 'grid', gap: 14 }}>
+      <SectionIntro accent={C.cyan} eyebrow="SEED" title="Determinism Controls" body="This is where the seed editor lives now instead of cluttering the first launch surface." />
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        <button onClick={() => onSeedModeChange?.('wild')} style={pillButtonStyle(C.cyan, seedMode === 'wild')}>Wild</button>
+        <button onClick={() => onSeedModeChange?.('sensible')} style={pillButtonStyle(C.green, seedMode === 'sensible')}>Sensible</button>
+        <button onClick={() => onRandomizeDebugSeed?.(!randomizeDebugSeed)} style={pillButtonStyle(C.yellow, randomizeDebugSeed)}>Randomize Each Run</button>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+        <label style={{ ...panelStyle(C.border, 'soft', '14px'), display: 'grid', gap: 8 }}>
+          <div style={{ fontFamily: UI_MONO, fontSize: 10, letterSpacing: '0.14em', color: C.textMuted }}>
+            OVERRIDE SEED
           </div>
+          <input
+            type="text"
+            value={debugSeed || ''}
+            onChange={(event) => onDebugSeedChange?.(event.target.value)}
+            placeholder="Leave blank for auto"
+            style={{
+              width: '100%',
+              borderRadius: 12,
+              border: `1px solid ${C.border}`,
+              background: 'rgba(255,255,255,0.04)',
+              color: C.text,
+              padding: '12px 14px',
+              fontFamily: UI_MONO,
+              fontSize: 13,
+              outline: 'none',
+            }}
+          />
+          <div style={{ fontFamily: UI_MONO, fontSize: 11, lineHeight: 1.6, color: C.textDim }}>
+            Current: {currentSeedSummary}
+          </div>
+        </label>
+        <div style={{ ...panelStyle(C.border, 'soft', '14px'), display: 'grid', gap: 10 }}>
+          <div style={{ fontFamily: UI_MONO, fontSize: 10, letterSpacing: '0.14em', color: C.textMuted }}>
+            GENERATE
+          </div>
+          <MainAction accent={C.cyan} title="Random Wild Seed" body="Generate a fresh numeric seed using the wild decoder." onClick={onRandomizeSeed} meta="Seed" status="Wild" />
+          <MainAction accent={C.green} title="Random Sensible Seed" body="Generate a fresh numeric seed using the sensible decoder." onClick={onRandomizeSensibleSeed} meta="Seed" status="Sensible" />
         </div>
       </div>
     </div>
   );
 
-  const renderSetupView = () => (
-    <div style={{ display: 'grid', gap: 18 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))', gap: 18 }}>
-        <div style={{ ...panelStyle(C.orange, 'default', '18px'), display: 'grid', gap: 14 }}>
-          <SectionIntro
-            accent={C.orange}
-            eyebrow="STARTER PROFILES"
-            title="Select A Runner"
-            body="The archetype browser now lives here, not on the landing page."
-          />
+  const renderStarterProfilePanel = () => (
+    <div style={{ ...panelStyle(C.orange, 'default', '18px'), display: 'grid', gap: 14 }}>
+      <SectionIntro
+        accent={C.orange}
+        eyebrow="STARTER PROFILES"
+        title="Select A Runner"
+        body="Standard Run is now the clean loadout leaf. Pick the class, check the package, and launch."
+      />
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
-            {starterProfiles.map((profile) => {
-              const locked = !unlockedStarterSet.has(profile.id);
-              const selected = profile.id === selectedStarterProfileId;
-              return (
-                <button
-                  key={profile.id}
-                  onClick={() => !locked && onSelectStarterProfile?.(profile.id)}
-                  style={{
-                    appearance: 'none',
-                    ...panelStyle(profile.accent || C.orange, selected ? 'bright' : 'soft', '14px'),
-                    display: 'grid',
-                    gap: 8,
-                    opacity: locked ? 0.58 : 1,
-                    cursor: locked ? 'default' : 'pointer',
-                    textAlign: 'left',
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+        {starterProfiles.map((profile) => {
+          const locked = !unlockedStarterSet.has(profile.id);
+          const selected = profile.id === selectedStarterProfileId;
+          return (
+            <button
+              key={profile.id}
+              onClick={() => !locked && onSelectStarterProfile?.(profile.id)}
+              style={{
+                appearance: 'none',
+                ...panelStyle(profile.accent || C.orange, selected ? 'bright' : 'soft', '14px'),
+                display: 'grid',
+                gap: 8,
+                opacity: locked ? 0.58 : 1,
+                cursor: locked ? 'default' : 'pointer',
+                textAlign: 'left',
+              }}
+              title={locked ? profile.unlockHint : profile.description}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                <div style={{ fontFamily: DISPLAY_FONT, fontSize: 24, fontWeight: 700, color: profile.accent || C.orange }}>
+                  {profile.name}
+                </div>
+                <DataChip accent={profile.accent || C.orange} selected={selected}>
+                  {locked ? 'Locked' : selected ? 'Selected' : 'Ready'}
+                </DataChip>
+              </div>
+              <div style={{ fontFamily: UI_MONO, fontSize: 12, lineHeight: 1.6, color: C.textDim }}>
+                {profile.description}
+              </div>
+              <div style={{ fontFamily: UI_MONO, fontSize: 11, lineHeight: 1.55, color: locked ? C.textDim : C.text }}>
+                {locked ? profile.unlockHint : `Starts with ${profile.startingRelicIds?.length || 0} relic and ${profile.deck?.length || 0} cards.`}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  const renderDifficultyPanel = () => (
+    <div style={{ ...panelStyle(selectedDifficultyAccent, 'default', '18px'), display: 'grid', gap: 12 }}>
+      <SectionIntro
+        accent={selectedDifficultyAccent}
+        eyebrow="DIFFICULTY"
+        title={selectedDifficulty?.name || 'Standard'}
+        body={selectedDifficulty?.description || 'Standard baseline run.'}
+      />
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        {difficultyProfiles.map((difficulty) => {
+          const locked = !unlockedDifficultySet.has(difficulty.id);
+          const selected = difficulty.id === selectedDifficultyId;
+          return (
+            <button
+              key={difficulty.id}
+              onClick={() => !locked && onSelectDifficulty?.(difficulty.id)}
+              style={pillButtonStyle(difficulty.accent || C.purple, selected, locked)}
+              title={locked ? difficulty.unlockHint : difficulty.description}
+            >
+              {difficulty.name}
+            </button>
+          );
+        })}
+      </div>
+
+      <div style={{ ...panelStyle(C.border, 'soft', '14px'), display: 'grid', gap: 6 }}>
+        <div style={{ fontFamily: UI_MONO, fontSize: 10, letterSpacing: '0.14em', color: C.textMuted }}>
+          MODE SUMMARY
+        </div>
+        <div style={{ fontFamily: UI_MONO, fontSize: 12, lineHeight: 1.6, color: C.text }}>
+          {selectedModeSummary.join(' | ') || 'Standard baseline'}
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderChallengePanel = () => (
+    <div style={{ ...panelStyle(C.purple, 'default', '18px'), display: 'grid', gap: 12 }}>
+      <SectionIntro
+        accent={C.purple}
+        eyebrow="CHALLENGES"
+        title="Optional Variants"
+        body="Only the challenge list and other editable modifiers live here now."
+      />
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        {challengeModes.map((challenge) => {
+          const locked = !unlockedChallengeSet.has(challenge.id);
+          const selected = selectedChallenges.has(challenge.id);
+          return (
+            <button
+              key={challenge.id}
+              onClick={() => !locked && onToggleChallenge?.(challenge.id)}
+              style={pillButtonStyle(challenge.accent || C.purple, selected, locked)}
+              title={locked ? challenge.unlockHint : challenge.description}
+            >
+              {challenge.name}
+            </button>
+          );
+        })}
+      </div>
+
+      <div style={{ ...panelStyle(C.border, 'soft', '14px'), display: 'grid', gap: 6 }}>
+        <div style={{ fontFamily: UI_MONO, fontSize: 10, letterSpacing: '0.14em', color: C.textMuted }}>
+          ACTIVE STACK
+        </div>
+        <div style={{ fontFamily: UI_MONO, fontSize: 12, lineHeight: 1.6, color: C.text }}>
+          {activeChallengeSummary}
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderDirectOverridePanel = () => (
+    <div style={{ ...panelStyle(C.cyan, 'default', '18px'), display: 'grid', gap: 14 }}>
+      <SectionIntro
+        accent={C.cyan}
+        eyebrow="DIRECT OVERRIDES"
+        title="Editable Run Fields"
+        body="These are the concrete fields the player can modify without opening the AI tooling."
+      />
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 12 }}>
+        {CONFIGURABLE_RUN_FIELDS.map((field) => {
+          const value = customConfig?.[field.key] ?? '';
+          const active = value !== '' && value != null;
+          return (
+            <label
+              key={field.key}
+              style={{
+                ...panelStyle(active ? C.cyan : C.border, active ? 'soft' : 'default', '14px'),
+                display: 'grid',
+                gap: 8,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                <div style={{ fontFamily: UI_MONO, fontSize: 10, letterSpacing: '0.14em', color: active ? C.cyan : C.textMuted }}>
+                  {field.label.toUpperCase()}
+                </div>
+                <DataChip accent={active ? C.cyan : C.textMuted} selected={active}>
+                  {active ? 'Active' : 'Auto'}
+                </DataChip>
+              </div>
+              {field.type === 'select' ? (
+                <select
+                  value={value}
+                  onChange={(event) => {
+                    const rawValue = event.target.value;
+                    if (rawValue === '') {
+                      onSetCustomField?.(field.key, null);
+                      return;
+                    }
+                    const numericValue = Number(rawValue);
+                    onSetCustomField?.(field.key, Number.isNaN(numericValue) ? rawValue : numericValue);
                   }}
-                  title={locked ? profile.unlockHint : profile.description}
+                  style={{
+                    width: '100%',
+                    borderRadius: 12,
+                    border: `1px solid ${active ? `${C.cyan}38` : C.border}`,
+                    background: 'rgba(255,255,255,0.04)',
+                    color: C.text,
+                    padding: '11px 12px',
+                    fontFamily: UI_MONO,
+                    fontSize: 12,
+                    outline: 'none',
+                  }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-                    <div style={{ fontFamily: DISPLAY_FONT, fontSize: 24, fontWeight: 700, color: profile.accent || C.orange }}>
-                      {profile.name}
-                    </div>
-                    <DataChip accent={profile.accent || C.orange} selected={selected}>
-                      {locked ? 'Locked' : selected ? 'Selected' : 'Ready'}
-                    </DataChip>
-                  </div>
-                  <div style={{ fontFamily: UI_MONO, fontSize: 12, lineHeight: 1.6, color: C.textDim }}>
-                    {profile.description}
-                  </div>
-                  <div style={{ fontFamily: UI_MONO, fontSize: 11, lineHeight: 1.55, color: locked ? C.textDim : C.text }}>
-                    {locked ? profile.unlockHint : `Starts with ${profile.startingRelicIds?.length || 0} relic and ${profile.deck?.length || 0} cards.`}
-                  </div>
-                </button>
-              );
-            })}
+                  {field.options.map((option) => (
+                    <option key={`${field.key}-${option.label}`} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type="number"
+                  value={value}
+                  min={field.min}
+                  max={field.max}
+                  step={field.step}
+                  placeholder={field.placeholder}
+                  onChange={(event) => {
+                    const rawValue = event.target.value;
+                    if (rawValue === '') {
+                      onSetCustomField?.(field.key, null);
+                      return;
+                    }
+                    const nextValue = field.step && field.step < 1 ? Number.parseFloat(rawValue) : Number.parseInt(rawValue, 10);
+                    onSetCustomField?.(field.key, Number.isNaN(nextValue) ? null : nextValue);
+                  }}
+                  style={{
+                    width: '100%',
+                    borderRadius: 12,
+                    border: `1px solid ${active ? `${C.cyan}38` : C.border}`,
+                    background: 'rgba(255,255,255,0.04)',
+                    color: C.text,
+                    padding: '11px 12px',
+                    fontFamily: UI_MONO,
+                    fontSize: 12,
+                    outline: 'none',
+                  }}
+                />
+              )}
+              <div style={{ fontFamily: UI_MONO, fontSize: 11, lineHeight: 1.55, color: C.textDim }}>
+                {field.description}
+              </div>
+            </label>
+          );
+        })}
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+        <div style={{ ...panelStyle(C.border, 'soft', '14px'), display: 'grid', gap: 6 }}>
+          <div style={{ fontFamily: UI_MONO, fontSize: 10, letterSpacing: '0.14em', color: C.textMuted }}>
+            ACTIVE OVERRIDES
+          </div>
+          <div style={{ fontFamily: UI_MONO, fontSize: 12, lineHeight: 1.6, color: C.text }}>
+            {activeOverrideSummary}
           </div>
         </div>
+        <div style={{ alignSelf: 'stretch' }}>
+          <MainAction
+            accent={C.red}
+            title="Clear Direct Overrides"
+            body="Reset every manual field back to auto while keeping your selected class, difficulty, and challenge choices."
+            onClick={onClearCustomConfig}
+            meta="Cleanup"
+            status={activeOverrideFields.length > 0 ? `${activeOverrideFields.length} active` : 'Already clean'}
+            disabled={activeOverrideFields.length === 0}
+          />
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderStandardRunView = () => (
+    <div style={{ display: 'grid', gap: 18 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))', gap: 18 }}>
+        {renderStarterProfilePanel()}
 
         <div style={{ display: 'grid', gap: 18 }}>
-          <div style={{ ...panelStyle(selectedDifficultyAccent, 'default', '18px'), display: 'grid', gap: 12 }}>
+          <div style={{ ...panelStyle(C.cyan, 'default', '18px'), display: 'grid', gap: 12 }}>
             <SectionIntro
-              accent={selectedDifficultyAccent}
-              eyebrow="DIFFICULTY"
-              title={selectedDifficulty?.name || 'Standard'}
-              body={selectedDifficulty?.description || 'Standard baseline run.'}
+              accent={C.cyan}
+              eyebrow="RUN PACKAGE"
+              title="Seed And Launch"
+              body="Standard Run now shows the live seed number and the currently configured rule stack, but editing stays one layer deeper."
             />
-
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              {difficultyProfiles.map((difficulty) => {
-                const locked = !unlockedDifficultySet.has(difficulty.id);
-                const selected = difficulty.id === selectedDifficultyId;
-                return (
-                  <button
-                    key={difficulty.id}
-                    onClick={() => !locked && onSelectDifficulty?.(difficulty.id)}
-                    style={pillButtonStyle(difficulty.accent || C.purple, selected, locked)}
-                    title={locked ? difficulty.unlockHint : difficulty.description}
-                  >
-                    {difficulty.name}
-                  </button>
-                );
-              })}
+              <DataChip accent={C.cyan}>{currentSeedSummary}</DataChip>
+              <DataChip accent={selectedDifficultyAccent}>{selectedDifficulty?.name || 'Standard'}</DataChip>
+              <DataChip accent={C.purple}>{selectedChallenges.size > 0 ? `${selectedChallenges.size} modifier${selectedChallenges.size === 1 ? '' : 's'}` : 'Baseline rules'}</DataChip>
+              {activeOverrideFields.length > 0 ? <DataChip accent={C.orange}>{activeOverrideFields.length} override{activeOverrideFields.length === 1 ? '' : 's'}</DataChip> : null}
             </div>
-
             <div style={{ ...panelStyle(C.border, 'soft', '14px'), display: 'grid', gap: 6 }}>
               <div style={{ fontFamily: UI_MONO, fontSize: 10, letterSpacing: '0.14em', color: C.textMuted }}>
-                MODE SUMMARY
+                CURRENT MODIFIER STACK
               </div>
               <div style={{ fontFamily: UI_MONO, fontSize: 12, lineHeight: 1.6, color: C.text }}>
                 {selectedModeSummary.join(' | ') || 'Standard baseline'}
               </div>
             </div>
-          </div>
-
-          <div style={{ ...panelStyle(C.purple, 'default', '18px'), display: 'grid', gap: 12 }}>
-            <SectionIntro
-              accent={C.purple}
-              eyebrow="CHALLENGES"
-              title="Optional Variants"
-              body="Extra run modifiers stay available without cluttering the front page."
-            />
-
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              {challengeModes.map((challenge) => {
-                const locked = !unlockedChallengeSet.has(challenge.id);
-                const selected = selectedChallenges.has(challenge.id);
-                return (
-                  <button
-                    key={challenge.id}
-                    onClick={() => !locked && onToggleChallenge?.(challenge.id)}
-                    style={pillButtonStyle(challenge.accent || C.purple, selected, locked)}
-                    title={locked ? challenge.unlockHint : challenge.description}
-                  >
-                    {challenge.name}
-                  </button>
-                );
-              })}
-            </div>
-
             <div style={{ ...panelStyle(C.border, 'soft', '14px'), display: 'grid', gap: 6 }}>
               <div style={{ fontFamily: UI_MONO, fontSize: 10, letterSpacing: '0.14em', color: C.textMuted }}>
-                ACTIVE STACK
+                DIRECT OVERRIDES
               </div>
               <div style={{ fontFamily: UI_MONO, fontSize: 12, lineHeight: 1.6, color: C.text }}>
-                {activeChallengeSummary}
+                {activeOverrideSummary}
               </div>
             </div>
+            <MainAction
+              accent={C.yellow}
+              title={selectedProfile ? `Deploy ${selectedProfile.shortLabel || selectedProfile.name}` : 'New Game'}
+              body="Launch the selected class and current seed package immediately."
+              onClick={onNewGame}
+              meta="Run"
+              status={selectedDifficulty?.name || 'Standard'}
+              solid
+            />
           </div>
-
-          <MainAction
-            accent={C.yellow}
-            title={selectedProfile ? `Deploy ${selectedProfile.shortLabel || selectedProfile.name}` : 'New Game'}
-            body="Launch the selected run package immediately."
-            onClick={onNewGame}
-            meta="Run"
-            status={selectedDifficulty?.name || 'Standard'}
-            solid
-          />
         </div>
       </div>
 
@@ -884,89 +1332,94 @@ export default function MainMenuHub({
     </div>
   );
 
-  const renderTutorialsView = () => (
+  const renderModifierConfigView = () => (
     <div style={{ display: 'grid', gap: 18 }}>
-      {featuredTutorial ? (
-        <div style={{ ...panelStyle(C.cyan, 'bright', '18px'), display: 'grid', gap: 14 }}>
-          <SectionIntro
-            accent={C.cyan}
-            eyebrow="RECOMMENDED START"
-            title={featuredTutorial.title}
-            body={featuredTutorial.menuDescription}
-          />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))', gap: 18 }}>
+        {renderDifficultyPanel()}
+        {renderChallengePanel()}
+      </div>
 
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            {(featuredTutorial.concepts || []).slice(0, 4).map((concept) => (
-              <DataChip key={concept} accent={C.cyan}>
-                {concept}
-              </DataChip>
-            ))}
-          </div>
+      {renderDirectOverridePanel()}
 
-          <div style={{ maxWidth: 360 }}>
-            <MainAction
-              accent={C.cyan}
-              title={completedSet.has(featuredTutorial.id) ? 'Replay Tutorial' : 'Start Tutorial'}
-              body="Recommended first touchpoint for the current ruleset."
-              onClick={() => onStartTutorial?.(featuredTutorial.id)}
-              meta="Guide"
-              status={completedSet.has(featuredTutorial.id) ? 'Replay' : 'Recommended'}
-              solid
-            />
-          </div>
-        </div>
-      ) : null}
-
-      <div style={{ ...panelStyle(C.cyan, 'default', '18px'), display: 'grid', gap: 14 }}>
+      <div style={{ ...panelStyle(C.orange, 'soft', '18px'), display: 'grid', gap: 14 }}>
         <SectionIntro
-          accent={C.cyan}
-          eyebrow="LESSON LIST"
-          title="Training Modules"
-          body="Every tutorial and its covered concepts are grouped here instead of being mixed into run setup."
+          accent={C.orange}
+          eyebrow="LAUNCH SUMMARY"
+          title="Configured Package"
+          body="These modifier edits feed the same Standard Run leaf. Nothing new is exposed on the first launch surface."
         />
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
-          {tutorialCatalog.map((tutorial) => {
-            const completed = completedSet.has(tutorial.id);
-            const accent = tutorial.accent || C.cyan;
-            return (
-              <button
-                key={tutorial.id}
-                onClick={() => onStartTutorial?.(tutorial.id)}
-                style={{
-                  appearance: 'none',
-                  ...panelStyle(accent, tutorial.recommended && !completed ? 'bright' : 'soft', '16px'),
-                  display: 'grid',
-                  gap: 10,
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-                  <div style={{ fontFamily: DISPLAY_FONT, fontSize: 24, fontWeight: 700, color: accent }}>
-                    {tutorial.title}
-                  </div>
-                  <DataChip accent={accent} selected>
-                    {completed ? 'Replay' : tutorial.recommended ? 'Recommended' : 'New'}
-                  </DataChip>
-                </div>
-                <div style={{ fontFamily: UI_MONO, fontSize: 12, lineHeight: 1.6, color: C.textDim }}>
-                  {tutorial.menuDescription}
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                  {(tutorial.concepts || []).slice(0, 4).map((concept) => (
-                    <DataChip key={concept} accent={accent}>
-                      {concept}
-                    </DataChip>
-                  ))}
-                </div>
-              </button>
-            );
-          })}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          <DataChip accent={selectedProfileAccent}>{selectedProfile?.name || 'No runner selected'}</DataChip>
+          <DataChip accent={selectedDifficultyAccent}>{selectedDifficulty?.name || 'Standard'}</DataChip>
+          <DataChip accent={C.cyan}>{currentSeedSummary}</DataChip>
+          {activeOverrideFields.length > 0 ? <DataChip accent={C.orange}>{activeOverrideFields.length} direct override{activeOverrideFields.length === 1 ? '' : 's'}</DataChip> : null}
+        </div>
+        <div style={{ fontFamily: UI_MONO, fontSize: 12, lineHeight: 1.7, color: C.textDim }}>
+          {selectedModeSummary.join(' | ') || 'Standard baseline'}
         </div>
       </div>
     </div>
   );
+
+  const renderTutorialCategory = (tutorials, accent, title) => (
+    <div style={{ ...panelStyle(accent, 'default', '18px'), display: 'grid', gap: 14 }}>
+      <SectionIntro
+        accent={accent}
+        eyebrow={title.toUpperCase()}
+        title={title}
+        body="Tutorial modules only appear after you open the lane they belong to."
+      />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+        {tutorials.map((tutorial) => {
+          const completed = completedSet.has(tutorial.id);
+          const tutorialAccent = tutorial.accent || accent;
+          return (
+            <button
+              key={tutorial.id}
+              onClick={() => onStartTutorial?.(tutorial.id)}
+              style={{
+                appearance: 'none',
+                ...panelStyle(tutorialAccent, tutorial.recommended && !completed ? 'bright' : 'soft', '16px'),
+                display: 'grid',
+                gap: 10,
+                cursor: 'pointer',
+                textAlign: 'left',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                <div style={{ fontFamily: DISPLAY_FONT, fontSize: 24, fontWeight: 700, color: tutorialAccent }}>
+                  {tutorial.title}
+                </div>
+                <DataChip accent={tutorialAccent} selected>
+                  {completed ? 'Replay' : tutorial.recommended ? 'Recommended' : 'New'}
+                </DataChip>
+              </div>
+              <div style={{ fontFamily: UI_MONO, fontSize: 12, lineHeight: 1.6, color: C.textDim }}>
+                {tutorial.menuDescription}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  const renderTutorialsView = () => {
+    if (activeTutorialView === 'root') {
+      return (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(240px, 100%), 1fr))', gap: 12 }}>
+          <MainAction accent={C.cyan} title="Beginner Mechanics" body="Combat basics and menu/run-mode orientation for first-touch onboarding." onClick={() => handleTutorialViewChange('beginner')} meta="Training" status={`${beginnerTutorials.length} modules`} solid />
+          <MainAction accent={C.purple} title="Advanced Mechanics" body="Pressure systems, boss protocols, compile, stabilise, and deeper tactical rules." onClick={() => handleTutorialViewChange('advanced')} meta="Training" status={`${advancedTutorials.length} modules`} />
+        </div>
+      );
+    }
+
+    if (activeTutorialView === 'advanced') {
+      return renderTutorialCategory(advancedTutorials, C.purple, 'Advanced Mechanics');
+    }
+
+    return renderTutorialCategory(beginnerTutorials, C.cyan, 'Beginner Mechanics');
+  };
 
   const renderDailyView = () => (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: 18 }}>
@@ -1053,228 +1506,193 @@ export default function MainMenuHub({
     </div>
   );
 
-  const renderIntelView = () => {
-    const intelTabs = [
-      { id: 'progress', label: 'Progress', accent: C.yellow },
-      { id: 'achievements', label: 'Achievements', accent: C.green },
-      { id: 'bosses', label: 'Bosses', accent: C.red },
-      { id: 'callsigns', label: 'Callsigns', accent: activeCallsignAccent },
-    ];
-
-    let panel = (
-      <div style={{ ...panelStyle(C.yellow, 'default', '18px'), display: 'grid', gap: 14 }}>
-        <SectionIntro
-          accent={C.yellow}
-          eyebrow="META PROGRESSION"
-          title="Long-Term Signal"
-          body="Permanent unlocks, discovery counts, and active run context live here instead of the front page."
-        />
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 8 }}>
-          <StatTile accent={C.text} label="Runs" value={metaProgress?.totalRuns ?? 0} />
-          <StatTile accent={C.green} label="Wins" value={metaProgress?.totalWins ?? 0} />
-          <StatTile accent={C.cyan} label="Best Act" value={metaProgress?.bestActReached ?? 1} />
-          <StatTile accent={C.purple} label="Mutations" value={metaProgress?.totalUniqueMutations ?? 0} />
-          <StatTile accent={C.green} label="Achievements" value={achievementUnlockCount} />
-          <StatTile accent={activeCallsignAccent} label="Callsigns" value={callsignUnlockCount} />
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
-          <div style={{ ...panelStyle(C.green, 'soft', '14px'), display: 'grid', gap: 6 }}>
-            <div style={{ fontFamily: UI_MONO, fontSize: 10, letterSpacing: '0.14em', color: C.green }}>
-              RECENT UNLOCKS
+  const renderArchiveList = (entries, accent, emptyLabel) => (
+    entries.length ? (
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+        {entries.map((entry) => (
+          <div key={entry.id} style={{ ...panelStyle(accent, 'soft', '14px'), display: 'grid', gap: 8 }}>
+            <div style={{ fontFamily: DISPLAY_FONT, fontSize: 22, fontWeight: 700, color: accent }}>
+              {entry.name}
             </div>
-            <div style={{ fontFamily: UI_MONO, fontSize: 12, lineHeight: 1.6, color: C.text }}>
-              {recentUnlockLabels.join(' | ') || 'No recent unlocks yet'}
+            <div style={{ fontFamily: UI_MONO, fontSize: 11, lineHeight: 1.6, color: C.text }}>
+              {entry.description}
+            </div>
+            <div style={{ fontFamily: UI_MONO, fontSize: 10, lineHeight: 1.5, color: C.textMuted }}>
+              {entry.id}
             </div>
           </div>
-
-          <div style={{ ...panelStyle(C.border, 'soft', '14px'), display: 'grid', gap: 6 }}>
-            <div style={{ fontFamily: UI_MONO, fontSize: 10, letterSpacing: '0.14em', color: C.textMuted }}>
-              ACTIVE MODE STACK
-            </div>
-            <div style={{ fontFamily: UI_MONO, fontSize: 12, lineHeight: 1.6, color: C.text }}>
-              {selectedDifficulty?.name || 'Standard'} | {activeChallengeSummary}
-            </div>
-          </div>
-        </div>
+        ))}
       </div>
-    );
+    ) : (
+      <div style={{ ...panelStyle(C.border, 'soft', '14px'), fontFamily: UI_MONO, fontSize: 12, lineHeight: 1.6, color: C.textDim }}>
+        {emptyLabel}
+      </div>
+    )
+  );
+
+  const renderIntelView = () => {
+    if (activeIntelView === 'root') {
+      return (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))', gap: 12 }}>
+          <MainAction accent={C.yellow} title="Progress" body="Runs, wins, mutations, and the long-game signal." onClick={() => handleIntelViewChange('progress')} meta="Archive" status={`${metaProgress?.totalRuns ?? 0} runs`} />
+          <MainAction accent={C.green} title="Relics" body="Unlocked relics and their archive descriptions." onClick={() => handleIntelViewChange('relics')} meta="Archive" status={`${Object.values(data?.relics || {}).filter((relic) => isRelicUnlockedByAchievements(relic.id, unlockedRewardState.unlockedRelicIds)).length}`} />
+          <MainAction accent={C.cyan} title="Cards" body="Unlocked cards, costs, types, and text." onClick={() => handleIntelViewChange('cards')} meta="Archive" status={`${Object.values(data?.cards || {}).filter((card) => isCardUnlockedByAchievements(card.id, unlockedRewardState.unlockedCardIds)).length}`} />
+          <MainAction accent={C.red} title="Enemies" body="The active enemy roster and its baseline details." onClick={() => handleIntelViewChange('enemies')} meta="Archive" status={`${Object.keys(data?.enemies || {}).length}`} />
+          <MainAction accent={C.orange} title="Minigames" body="All current minigame variants and their act lanes." onClick={() => handleIntelViewChange('minigames')} meta="Archive" status={`${Object.keys(MINIGAME_REGISTRY).length}`} />
+          <MainAction accent={C.red} title="Bosses" body="Seen and defeated bosses with composition snapshots." onClick={() => handleIntelViewChange('bosses')} meta="Archive" status={`${bossArchiveEntries.length}/${totalBossCount}`} />
+          <MainAction accent={C.green} title="Achievements" body="Milestones and the unlocks attached to them." onClick={() => handleIntelViewChange('achievements')} meta="Archive" status={`${achievementUnlockCount}/${achievements.length}`} />
+          <MainAction accent={activeCallsignAccent} title="Callsigns" body="Cosmetic identity rewards and equipped theme selection." onClick={() => handleIntelViewChange('callsigns')} meta="Archive" status={`${callsignUnlockCount} unlocked`} />
+        </div>
+      );
+    }
+
+    if (activeIntelView === 'progress') {
+      return (
+        <div style={{ ...panelStyle(C.yellow, 'default', '18px'), display: 'grid', gap: 14 }}>
+          <SectionIntro accent={C.yellow} eyebrow="META PROGRESSION" title="Long-Term Signal" body="Permanent unlocks, discovery counts, and active run context live here instead of the front page." />
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 8 }}>
+            <StatTile accent={C.text} label="Runs" value={metaProgress?.totalRuns ?? 0} />
+            <StatTile accent={C.green} label="Wins" value={metaProgress?.totalWins ?? 0} />
+            <StatTile accent={C.cyan} label="Best Act" value={metaProgress?.bestActReached ?? 1} />
+            <StatTile accent={C.purple} label="Mutations" value={metaProgress?.totalUniqueMutations ?? 0} />
+            <StatTile accent={C.green} label="Achievements" value={achievementUnlockCount} />
+            <StatTile accent={activeCallsignAccent} label="Callsigns" value={callsignUnlockCount} />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+            <div style={{ ...panelStyle(C.green, 'soft', '14px'), display: 'grid', gap: 6 }}>
+              <div style={{ fontFamily: UI_MONO, fontSize: 10, letterSpacing: '0.14em', color: C.green }}>RECENT UNLOCKS</div>
+              <div style={{ fontFamily: UI_MONO, fontSize: 12, lineHeight: 1.6, color: C.text }}>{recentUnlockLabels.join(' | ') || 'No recent unlocks yet'}</div>
+            </div>
+            <div style={{ ...panelStyle(C.border, 'soft', '14px'), display: 'grid', gap: 6 }}>
+              <div style={{ fontFamily: UI_MONO, fontSize: 10, letterSpacing: '0.14em', color: C.textMuted }}>ACTIVE MODE STACK</div>
+              <div style={{ fontFamily: UI_MONO, fontSize: 12, lineHeight: 1.6, color: C.text }}>{selectedDifficulty?.name || 'Standard'} | {activeChallengeSummary}</div>
+            </div>
+          </div>
+        </div>
+      );
+    }
 
     if (activeIntelView === 'achievements') {
-      panel = (
-        <div style={{ ...panelStyle(C.green, 'default', '18px'), display: 'grid', gap: 14 }}>
-          <SectionIntro
-            accent={C.green}
-            eyebrow="ACHIEVEMENTS"
-            title="Run Goals"
-            body="Reward unlocks and milestone tracking now sit in one focused archive panel."
-          />
+      return renderArchiveList(
+        achievements.map((achievement) => ({
+          id: achievement.id,
+          name: achievement.name,
+          description: `${achievement.description} Reward: ${achievement.reward?.label || 'None'}${unlockedRewardState.unlockedAchievementIds.includes(achievement.id) ? ' | Unlocked' : ' | Locked'}`,
+        })),
+        C.green,
+        'No achievement catalog available.',
+      );
+    }
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
-            {achievements.map((achievement) => {
-              const unlocked = unlockedAchievementSet.has(achievement.id);
-              return (
-                <div
-                  key={achievement.id}
-                  style={{
-                    ...panelStyle(unlocked ? C.green : C.border, unlocked ? 'soft' : 'default', '14px'),
-                    display: 'grid',
-                    gap: 8,
-                    opacity: unlocked ? 1 : 0.84,
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                    <div style={{ fontFamily: DISPLAY_FONT, fontSize: 24, fontWeight: 700, color: unlocked ? C.green : C.text }}>
-                      {achievement.name}
-                    </div>
-                    <DataChip accent={unlocked ? C.green : C.textDim} selected>
-                      {unlocked ? 'Unlocked' : 'Locked'}
-                    </DataChip>
-                  </div>
-                  <div style={{ fontFamily: UI_MONO, fontSize: 11, lineHeight: 1.6, color: C.textDim }}>
-                    {achievement.description}
-                  </div>
-                  <div style={{ fontFamily: UI_MONO, fontSize: 10, lineHeight: 1.5, color: unlocked ? C.text : C.textMuted }}>
-                    Reward: {achievement.reward?.label || 'None'}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+    if (activeIntelView === 'relics') {
+      return renderArchiveList(
+        Object.values(data?.relics || {})
+          .filter((relic) => isRelicUnlockedByAchievements(relic.id, unlockedRewardState.unlockedRelicIds))
+          .map((relic) => ({ id: relic.id, name: relic.name, description: relic.description || relic.desc || 'No relic description.' })),
+        C.green,
+        'No unlocked relics yet.',
+      );
+    }
+
+    if (activeIntelView === 'cards') {
+      return renderArchiveList(
+        Object.values(data?.cards || {})
+          .filter((card) => isCardUnlockedByAchievements(card.id, unlockedRewardState.unlockedCardIds))
+          .map((card) => ({ id: card.id, name: card.name, description: `${card.type || 'Card'} | ${card.costRAM ?? 0} RAM | ${formatCardDescription(card)}` })),
+        C.cyan,
+        'No unlocked cards yet.',
+      );
+    }
+
+    if (activeIntelView === 'enemies') {
+      return renderArchiveList(
+        Object.values(data?.enemies || {}).map((enemy) => ({
+          id: enemy.id,
+          name: enemy.name,
+          description: `${enemy.maxHP ?? enemy.hp ?? '?'} HP | ${enemy.description || enemy.desc || 'Full roster archive currently visible.'}`,
+        })),
+        C.red,
+        'No enemy archive entries available.',
+      );
+    }
+
+    if (activeIntelView === 'minigames') {
+      return renderArchiveList(
+        Object.entries(MINIGAME_REGISTRY).map(([id, minigame]) => ({
+          id,
+          name: minigame.title,
+          description: `Act ${minigame.act} | ${String(minigame.type || '').toUpperCase()} | ${minigame.desc || 'No notes.'}`,
+        })),
+        C.orange,
+        'No minigames available.',
       );
     }
 
     if (activeIntelView === 'bosses') {
-      panel = (
-        <div style={{ ...panelStyle(C.red, 'default', '18px'), display: 'grid', gap: 14 }}>
-          <SectionIntro
-            accent={C.red}
-            eyebrow="BOSS ARCHIVE"
-            title="Threat Registry"
-            body="Bosses now have their own archive instead of taking over the front page."
-          />
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8 }}>
-            <StatTile accent={C.yellow} label="Seen" value={seenBossCount} />
-            <StatTile accent={C.green} label="Defeated" value={defeatedBossCount} />
-            <StatTile accent={C.red} label="Pool" value={totalBossCount} />
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
-            {bossArchiveEntries.map((boss) => {
-              const statusColor = boss.defeated ? C.green : boss.seen ? C.yellow : C.red;
-              const statusLabel = boss.defeated ? 'Defeated' : boss.seen ? 'Seen' : 'Unknown';
-              return (
-                <div key={boss.id} style={{ ...panelStyle(statusColor, 'soft', '14px'), display: 'grid', gap: 8 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                    <div style={{ fontFamily: DISPLAY_FONT, fontSize: 24, fontWeight: 700, color: statusColor }}>
-                      {boss.name}
-                    </div>
-                    <DataChip accent={statusColor} selected>
-                      {statusLabel}
-                    </DataChip>
-                  </div>
-                  <div style={{ fontFamily: UI_MONO, fontSize: 11, lineHeight: 1.6, color: C.textDim }}>
-                    Act {boss.act} | {boss.enemyCount} enemy{boss.enemyCount === 1 ? '' : 'ies'} | {boss.totalHp || '?'} total HP
-                  </div>
-                  <div style={{ fontFamily: UI_MONO, fontSize: 11, lineHeight: 1.6, color: C.text }}>
-                    {(boss.enemies || []).map((enemy) => enemy.name).slice(0, 3).join(', ') || 'Unknown composition'}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      );
-    }
-
-    if (activeIntelView === 'callsigns') {
-      panel = (
-        <div style={{ ...panelStyle(activeCallsignAccent, 'default', '18px'), display: 'grid', gap: 14 }}>
-          <SectionIntro
-            accent={activeCallsignAccent}
-            eyebrow="CALLSIGNS"
-            title={activeCallsign?.name || 'Kernel Runner'}
-            body={activeCallsign?.description || 'Default runner callsign.'}
-          />
-
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            {callsignCatalog.map((theme) => {
-              const unlocked = unlockedCallsignSet.has(theme.id);
-              const selected = theme.id === callsignId;
-              return (
-                <button
-                  key={theme.id}
-                  onClick={() => unlocked && onSelectCallsign?.(theme.id)}
-                  style={pillButtonStyle(theme.accent || C.cyan, selected, !unlocked)}
-                  title={unlocked ? theme.description : 'Unlock through achievements'}
-                >
-                  {theme.name}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+      return renderArchiveList(
+        bossArchiveEntries.map((boss) => ({
+          id: boss.id,
+          name: boss.name,
+          description: `${boss.defeated ? 'Defeated' : boss.seen ? 'Seen' : 'Unknown'} | Act ${boss.act} | ${(boss.enemies || []).map((enemy) => enemy.name).slice(0, 3).join(', ') || 'Unknown composition'}`,
+        })),
+        C.red,
+        'No boss archive entries yet.',
       );
     }
 
     return (
-      <div style={{ display: 'grid', gap: 18 }}>
-        <div style={{ ...panelStyle(C.green, 'soft', '16px'), display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          {intelTabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => handleIntelViewChange(tab.id)}
-              style={pillButtonStyle(tab.accent, activeIntelView === tab.id)}
-            >
-              {tab.label}
-            </button>
-          ))}
+      <div style={{ ...panelStyle(activeCallsignAccent, 'default', '18px'), display: 'grid', gap: 14 }}>
+        <SectionIntro accent={activeCallsignAccent} eyebrow="CALLSIGNS" title={activeCallsign?.name || 'Kernel Runner'} body={activeCallsign?.description || 'Default runner callsign.'} />
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {callsignCatalog.map((theme) => {
+            const unlocked = unlockedCallsignSet.has(theme.id);
+            const selected = theme.id === callsignId;
+            return (
+              <button
+                key={theme.id}
+                onClick={() => unlocked && onSelectCallsign?.(theme.id)}
+                style={pillButtonStyle(theme.accent || C.cyan, selected, !unlocked)}
+                title={unlocked ? theme.description : 'Unlock through achievements'}
+              >
+                {theme.name}
+              </button>
+            );
+          })}
         </div>
-        {panel}
       </div>
     );
   };
 
-  const renderRecoveryView = () => (
-    <div style={{ ...panelStyle(C.orange, 'default', '18px'), display: 'grid', gap: 14 }}>
+  const renderSettingsView = () => (
+    <div style={{ ...panelStyle(C.purple, 'default', '18px'), display: 'grid', gap: 14 }}>
       <SectionIntro
-        accent={C.orange}
-        eyebrow="DEBUG SAVES"
-        title="Recovery Slots"
-        body="These are internal run snapshots. They stay buried here so the main menu remains player-facing."
+        accent={C.purple}
+        eyebrow="SETTINGS"
+        title="Open The Existing Controls"
+        body="The settings and utility panel still exists. It is just hidden behind this parent menu now."
       />
-
-      {availableDebugSlots.length > 0 ? (
-        <div style={{ display: 'grid', gap: 12 }}>
-          {availableDebugSlots.map(({ slotId, index, slot }) => (
-            <MainAction
-              key={slotId}
-              accent={C.orange}
-              title={`Slot ${index + 1}`}
-              body={slot.label}
-              onClick={() => onLoadDebugSave?.(slotId)}
-              meta="Recovery"
-              status="Debug"
-            />
-          ))}
-        </div>
-      ) : (
-        <div style={{ ...panelStyle(C.border, 'soft', '14px'), fontFamily: UI_MONO, fontSize: 12, lineHeight: 1.6, color: C.textDim }}>
-          No recovery slots currently stored.
-        </div>
-      )}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        <DataChip accent={C.cyan}>{currentSeedSummary}</DataChip>
+        <DataChip accent={selectedDifficultyAccent}>{selectedDifficulty?.name || 'Standard'}</DataChip>
+        <DataChip accent={C.purple}>{selectedChallenges.size > 0 ? `${selectedChallenges.size} active modifiers` : 'Baseline rules'}</DataChip>
+      </div>
+      <div style={{ maxWidth: 360 }}>
+        <MainAction accent={C.purple} title="Open Settings" body="Launch the existing settings / utility panel." onClick={onSettings} meta="Control" status="Drawer" solid />
+      </div>
     </div>
   );
 
   let content = renderHomeView();
-  if (activeMenuView === 'setup') content = renderSetupView();
-  if (activeMenuView === 'tutorials') content = renderTutorialsView();
-  if (activeMenuView === 'daily') content = renderDailyView();
+  if (activeMenuView === 'load') content = renderLoadView();
+  if (activeMenuView === 'new' && activeNewRunView === 'root') content = renderNewRunRootView();
+  if (activeMenuView === 'new' && activeNewRunView === 'standard') content = renderStandardRunView();
+  if (activeMenuView === 'new' && activeNewRunView === 'daily') content = renderDailyView();
+  if (activeMenuView === 'new' && activeNewRunView === 'configure' && activeConfigureView === 'root') content = renderConfigureRootView();
+  if (activeMenuView === 'new' && activeNewRunView === 'configure' && activeConfigureView === 'seed') content = renderSeedConfigView();
+  if (activeMenuView === 'new' && activeNewRunView === 'configure' && activeConfigureView === 'modifiers') content = renderModifierConfigView();
   if (activeMenuView === 'intel') content = renderIntelView();
-  if (activeMenuView === 'recovery') content = renderRecoveryView();
+  if (activeMenuView === 'tutorial') content = renderTutorialsView();
+  if (activeMenuView === 'settings') content = renderSettingsView();
 
   return (
     <ScreenShell extraStyle={{ alignItems: 'center', justifyContent: 'center', padding: 20 }}>

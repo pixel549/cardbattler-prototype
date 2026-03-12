@@ -3451,6 +3451,7 @@ function CenterCardDisplay({
   const imgSrc = getCardImage(cardDef?.id);
   const visibleTags = getVisibleCardTags(cardDef.tags || EMPTY_ARRAY);
   const isPlayable = canActivate;
+  const shellAccent = isPlayable ? color : '#9aa4ba';
   const shellBorder = isPlayable ? `${color}70` : '#4b5468';
   const shellShadow = isPlayable
     ? `0 0 28px ${color}24, 0 8px 24px rgba(0,0,0,0.55)`
@@ -3478,7 +3479,7 @@ function CenterCardDisplay({
     : 'linear-gradient(180deg, rgba(8,10,16,0.28) 0%, rgba(8,10,16,0.8) 12%, rgba(8,10,16,0.94) 100%)';
   const shellInfoBorder = isPlayable ? `${color}22` : '#465063';
   const shellDivider = isPlayable ? `${color}20` : '#40495a';
-  const shellTypeColor = isPlayable ? color : '#9aa4ba';
+  const shellTypeColor = shellAccent;
 
   const leftMutations = mutations.filter((_, i) => i % 2 === 0);
   const rightMutations = mutations.filter((_, i) => i % 2 === 1);
@@ -4950,9 +4951,9 @@ function CombatPlayAnimationLayer({ animation, data, enemies = EMPTY_ARRAY, card
         >
           <RuntimeArt
             src={imgSrc}
-            alt={card?.name || 'Animated card'}
+            alt={cardDef?.name || 'Animated card'}
             accent={accent}
-            label={card?.name || 'Animated card'}
+            label={cardDef?.name || 'Animated card'}
             style={{
               width: '100%',
               height: '100%',

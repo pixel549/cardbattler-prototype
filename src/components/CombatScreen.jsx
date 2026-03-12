@@ -1,12 +1,12 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { getEnemyImage } from '../data/enemyImages';
-import { getCardImage } from '../data/cardImages';
-import RuntimeArt from './RuntimeArt';
-import { sfx } from '../game/sounds';
-import { getCardPlayability, getCardTargetingProfile } from '../game/engine';
-import { getEnemyDirectiveSummaries } from '../game/combatDirectives';
-import useDialogAccessibility from '../hooks/useDialogAccessibility';
-import usePlaytestRecorder from '../hooks/usePlaytestRecorder';
+import { getEnemyImage } from '../data/enemyImages.js';
+import { getCardImage } from '../data/cardImages.js';
+import RuntimeArt from './RuntimeArt.jsx';
+import { sfx } from '../game/sounds.js';
+import { getCardPlayability, getCardTargetingProfile } from '../game/engine.js';
+import { getEnemyDirectiveSummaries } from '../game/combatDirectives.js';
+import useDialogAccessibility from '../hooks/useDialogAccessibility.js';
+import usePlaytestRecorder from '../hooks/usePlaytestRecorder.js';
 
 /**
  * CombatScreen - Cyberpunk deckbuilder combat UI

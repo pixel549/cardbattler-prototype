@@ -3,7 +3,7 @@ import {
   PLAYTEST_UPLOAD_ENDPOINT,
   createPlaytestSessionId,
   readPlaytestModeEnabled,
-} from '../playtest/config';
+} from '../playtest/config.js';
 
 function getDeviceMeta() {
   if (typeof window === 'undefined') {

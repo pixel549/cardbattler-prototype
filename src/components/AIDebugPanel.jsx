@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { decodeDebugSeed, decodeSensibleDebugSeed, describeDebugSeed, DEBUG_PRESETS } from '../game/debugSeed';
-import { AI_PLAYSTYLES } from '../game/aiPlayer';
+import { decodeDebugSeed, decodeSensibleDebugSeed, describeDebugSeed, DEBUG_PRESETS } from '../game/debugSeed.js';
+import { AI_PLAYSTYLES } from '../game/aiPlayer.js';
 
 const MONO   = "'JetBrains Mono', 'Fira Code', 'Consolas', monospace";
 const CYAN   = '#00f0ff';

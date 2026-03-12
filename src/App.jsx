@@ -1,29 +1,29 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
-import { loadGameData } from './data/loadData';
+import { loadGameData } from './data/loadData.js';
 import {
   createInitialState,
   getServiceOfferPreview,
   getServiceTargetPreview,
-} from './game/game_core';
-import { dispatchWithJournal } from './game/dispatch_with_journal';
-import CombatScreen from './components/CombatScreen';
-import AIDebugPanel from './components/AIDebugPanel';
-import RuntimeArt from './components/RuntimeArt';
-import { getAIAction, AI_PLAYSTYLES } from './game/aiPlayer';
-import { decodeDebugSeed, decodeSensibleDebugSeed, randomDebugSeed } from './game/debugSeed';
-import { createBasicEventRegistry } from './game/events';
-import { MINIGAME_REGISTRY, isMinigameEvent } from './game/minigames';
-import { getRunMods } from './game/rules_mods';
-import { sfx } from './game/sounds';
-import { getEventImage } from './data/eventImages';
-import { getCardImage } from './data/cardImages';
-import useDialogAccessibility from './hooks/useDialogAccessibility';
+} from './game/game_core.js';
+import { dispatchWithJournal } from './game/dispatch_with_journal.js';
+import CombatScreen from './components/CombatScreen.jsx';
+import AIDebugPanel from './components/AIDebugPanel.jsx';
+import RuntimeArt from './components/RuntimeArt.jsx';
+import { getAIAction, AI_PLAYSTYLES } from './game/aiPlayer.js';
+import { decodeDebugSeed, decodeSensibleDebugSeed, randomDebugSeed } from './game/debugSeed.js';
+import { createBasicEventRegistry } from './game/events.js';
+import { MINIGAME_REGISTRY, isMinigameEvent } from './game/minigames.js';
+import { getRunMods } from './game/rules_mods.js';
+import { sfx } from './game/sounds.js';
+import { getEventImage } from './data/eventImages.js';
+import { getCardImage } from './data/cardImages.js';
+import useDialogAccessibility from './hooks/useDialogAccessibility.js';
 import {
   buildPlaytestUrl,
   readPlaytestModeEnabled,
   writePlaytestModeEnabled,
-} from './playtest/config';
+} from './playtest/config.js';
 import {
   TUTORIAL_COMPLETED_STORAGE_KEY,
   acknowledgeTutorialStep,
@@ -35,7 +35,7 @@ import {
   getTutorialStep,
   canUseTutorialAction,
   advanceTutorialState,
-} from './game/tutorial';
+} from './game/tutorial.js';
 import {
   STARTER_PROFILES,
   DIFFICULTY_PROFILES,
@@ -45,28 +45,28 @@ import {
   getUnlockedDifficulties,
   getUnlockedChallenges,
   composeRunConfig,
-} from './game/runProfiles';
+} from './game/runProfiles.js';
 import {
   readMetaProgress,
   writeMetaProgress,
   applyRunResultToMetaProgress,
-} from './game/metaProgression';
+} from './game/metaProgression.js';
 import {
   getAchievementCatalog,
   getUnlockedAchievementRewardState,
   getCallsignCatalog,
   getCallsignTheme,
   getDefaultCallsignId,
-} from './game/achievements';
+} from './game/achievements.js';
 import {
   getDailyRunConfig,
   scoreRunForDaily,
-} from './game/dailyRun';
+} from './game/dailyRun.js';
 import {
   getBossArchiveEntries,
   getProjectedBossEncounter,
   summarizeBossEncounter,
-} from './game/bossIntel';
+} from './game/bossIntel.js';
 
 // Module-level event registry (created once)
 const EVENT_REG_UI = createBasicEventRegistry();

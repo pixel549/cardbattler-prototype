@@ -19,6 +19,12 @@ import { getRunMods } from './game/rules_mods.js';
 import { sfx } from './game/sounds.js';
 import { getEventImage } from './data/eventImages.js';
 import { getCardImage } from './data/cardImages.js';
+import { getEnemyImage } from './data/enemyImages.js';
+import {
+  areRuntimeArtUrlsSettled,
+  getPendingRuntimeArtUrls,
+  preloadRuntimeArtUrls,
+} from './data/runtimeArtPreload.js';
 import useDialogAccessibility from './hooks/useDialogAccessibility.js';
 import {
   buildPlaytestUrl,
@@ -4647,22 +4653,141 @@ function GameOverScreen({ state, onNewRun, recentUnlocks = [] }) {
 // ============================================================
 // LOADING SCREEN
 // ============================================================
-function LoadingScreen() {
+function collectUniqueArtUrls(urls = []) {
+  return [...new Set((Array.isArray(urls) ? urls : []).filter((url) => typeof url === 'string' && url.trim()))];
+}
+
+function getRunDeckArtUrls(state) {
+  const cardDefIds = new Set();
+
+  for (const instanceId of state?.deck?.master || []) {
+    const defId = state?.deck?.cardInstances?.[instanceId]?.defId;
+    if (defId) cardDefIds.add(defId);
+  }
+
+  for (const cardInstance of Object.values(state?.combat?.cardInstances || {})) {
+    if (cardInstance?.defId) cardDefIds.add(cardInstance.defId);
+  }
+
+  return collectUniqueArtUrls([...cardDefIds].map((defId) => getCardImage(defId)));
+}
+
+function getShopOfferArtUrls(state) {
+  return collectUniqueArtUrls(
+    (state?.shop?.offers || [])
+      .filter((offer) => offer?.kind === 'Card')
+      .map((offer) => getCardImage(offer?.defId))
+  );
+}
+
+function getEventArtUrls(state) {
+  const eventId = state?.event?.eventId;
+  if (!eventId || isMinigameEvent(eventId)) return [];
+  const eventDef = EVENT_REG_UI.events[eventId];
+  return collectUniqueArtUrls([eventDef?.image || getEventImage(eventId)]);
+}
+
+function buildSceneArtManifest(state) {
+  if (!state) return null;
+
+  const seed = state.run?.seed ?? 'seed';
+  const act = state.run?.act ?? 'act';
+  const floor = state.run?.floor ?? 'floor';
+
+  if (state.deckView) {
+    const pendingOp = state.shop?.pendingService ?? state.event?.pendingSelectOp ?? 'deck';
+    const urls = getRunDeckArtUrls(state);
+    if (!urls.length) return null;
+    return {
+      key: `deck:${seed}:${act}:${floor}:${pendingOp}:${(state.deck?.master || []).join(',')}`,
+      title: 'SYNCING DECK',
+      message: 'Loading deck card art...',
+      accent: C.orange,
+      urls,
+    };
+  }
+
+  if (state.mode === 'Combat') {
+    const enemyIds = (state.combat?.enemies || []).map((enemy) => enemy?.enemyDefId ?? 'enemy');
+    const enemyUrls = collectUniqueArtUrls(enemyIds.map((enemyDefId) => getEnemyImage(enemyDefId)));
+    const cardUrls = getRunDeckArtUrls(state);
+    const urls = collectUniqueArtUrls([...enemyUrls, ...cardUrls]);
+    if (!urls.length) return null;
+    return {
+      key: `combat:${seed}:${act}:${floor}:${state.map?.currentNodeId ?? (enemyIds.join(',') || 'node')}`,
+      title: 'SYNCING ENCOUNTER',
+      message: 'Loading enemy and action card art...',
+      accent: C.orange,
+      urls,
+    };
+  }
+
+  if (state.mode === 'Reward') {
+    const cardIds = state.reward?.cardChoices || [];
+    const urls = collectUniqueArtUrls(cardIds.map((cardId) => getCardImage(cardId)));
+    if (!urls.length) return null;
+    return {
+      key: `reward:${seed}:${act}:${floor}:${cardIds.join(',')}`,
+      title: 'SYNCING REWARDS',
+      message: 'Loading reward card art...',
+      accent: C.cyan,
+      urls,
+    };
+  }
+
+  if (state.mode === 'Shop') {
+    const urls = getShopOfferArtUrls(state);
+    if (!urls.length) return null;
+    return {
+      key: `shop:${seed}:${act}:${floor}:${(state.shop?.offers || []).map((offer) => `${offer.kind}:${offer.defId ?? offer.relicId ?? offer.serviceId ?? '?'}`).join(',')}`,
+      title: 'SYNCING MARKET',
+      message: 'Loading market card art...',
+      accent: C.yellow,
+      urls,
+    };
+  }
+
+  if (state.mode === 'Event') {
+    const urls = getEventArtUrls(state);
+    if (!urls.length) return null;
+    return {
+      key: `event:${seed}:${act}:${floor}:${state.event?.eventId ?? 'event'}`,
+      title: 'SYNCING NODE',
+      message: 'Loading event art...',
+      accent: C.cyan,
+      urls,
+    };
+  }
+
+  return null;
+}
+
+function LoadingScreen({
+  title = 'INITIALIZING',
+  message = 'Loading game data...',
+  detail = '',
+  accent = C.cyan,
+}) {
   return (
     <ScreenShell extraStyle={{ alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ textAlign: 'center' }}>
-        <div style={{ fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace", fontWeight: 700, fontSize: '20px', marginBottom: '24px', color: C.cyan }}>
-          INITIALIZING
+        <div style={{ fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace", fontWeight: 700, fontSize: '20px', marginBottom: '24px', color: accent }}>
+          {title}
         </div>
         <div style={{ width: '160px', height: '4px', borderRadius: '9999px', overflow: 'hidden', backgroundColor: '#1a1a2a' }}>
           <div
             className="animate-pulse"
-            style={{ height: '100%', borderRadius: '9999px', width: '60%', backgroundColor: C.cyan, boxShadow: `0 0 10px ${C.cyan}` }}
+            style={{ height: '100%', borderRadius: '9999px', width: '60%', backgroundColor: accent, boxShadow: `0 0 10px ${accent}` }}
           />
         </div>
         <div style={{ fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace", marginTop: '12px', color: C.textMuted, fontSize: 10 }}>
-          Loading game data...
+          {message}
         </div>
+        {detail ? (
+          <div style={{ fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace", marginTop: '6px', color: C.textDim, fontSize: 10 }}>
+            {detail}
+          </div>
+        ) : null}
       </div>
     </ScreenShell>
   );
@@ -6112,6 +6237,7 @@ function App() {
   });
   const [selectedChallengeIds, setSelectedChallengeIds] = useState(() => readStoredArray(CHALLENGES_STORAGE_KEY));
   const [tutorialNudge, setTutorialNudge] = useState('');
+  const [sceneArtReadyKey, setSceneArtReadyKey] = useState(null);
   const [completedTutorialIds, setCompletedTutorialIds] = useState(() => {
     if (typeof window === 'undefined') return [];
     return parseCompletedTutorialIds(window.localStorage.getItem(TUTORIAL_COMPLETED_STORAGE_KEY));
@@ -6125,6 +6251,7 @@ function App() {
   const unlockedChallenges = getUnlockedChallenges(metaProgress);
   const todaysDailyRecord = (metaProgress?.dailyRunRecords || []).find((record) => record.id === dailyRunConfig.id) || null;
   const recentDailyRecords = metaProgress?.dailyRunRecords || [];
+  const sceneArtManifest = buildSceneArtManifest(state);
 
   // ── Sound mute toggle (persisted to localStorage) ────────────────────────
   const [soundMuted, setSoundMuted] = useState(() => {
@@ -6164,6 +6291,24 @@ function App() {
       setSelectedCallsignId(unlockedAchievementRewardState.unlockedCallsignIds?.[0] || getDefaultCallsignId());
     }
   }, [selectedCallsignId, unlockedAchievementRewardState]);
+
+  useEffect(() => {
+    if (!sceneArtManifest?.key) return undefined;
+    if (areRuntimeArtUrlsSettled(sceneArtManifest.urls)) {
+      setSceneArtReadyKey((prev) => (prev === sceneArtManifest.key ? prev : sceneArtManifest.key));
+      return undefined;
+    }
+
+    let cancelled = false;
+    preloadRuntimeArtUrls(sceneArtManifest.urls, { timeoutMs: 4500 }).finally(() => {
+      if (cancelled) return;
+      setSceneArtReadyKey(sceneArtManifest.key);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [sceneArtManifest?.key]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -7578,6 +7723,23 @@ function App() {
   // Loading state
   if (!data || !state) {
     return <LoadingScreen />;
+  }
+
+  const pendingSceneArtCount = sceneArtManifest ? getPendingRuntimeArtUrls(sceneArtManifest.urls).length : 0;
+  const shouldBlockSceneArt = Boolean(sceneArtManifest)
+    && sceneArtReadyKey !== sceneArtManifest.key
+    && pendingSceneArtCount > 0;
+
+  if (shouldBlockSceneArt) {
+    const readyCount = Math.max(0, sceneArtManifest.urls.length - pendingSceneArtCount);
+    return (
+      <LoadingScreen
+        title={sceneArtManifest.title}
+        message={sceneArtManifest.message}
+        detail={`${readyCount}/${sceneArtManifest.urls.length} art assets ready`}
+        accent={sceneArtManifest.accent}
+      />
+    );
   }
 
   const tutorialStep = getTutorialStep(state);

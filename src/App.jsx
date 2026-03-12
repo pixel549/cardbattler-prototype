@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { Suspense, lazy, useState, useEffect, useRef, useCallback } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import { loadGameData } from './data/loadData.js';
 import {
@@ -7,11 +7,8 @@ import {
   getServiceTargetPreview,
 } from './game/game_core.js';
 import { dispatchWithJournal } from './game/dispatch_with_journal.js';
-import CombatScreen from './components/CombatScreen.jsx';
-import AIDebugPanel from './components/AIDebugPanel.jsx';
 import MainMenuHub from './components/MainMenuHub.jsx';
 import RuntimeArt from './components/RuntimeArt.jsx';
-import { getAIAction, AI_PLAYSTYLES } from './game/aiPlayer.js';
 import { decodeDebugSeed, decodeSensibleDebugSeed, randomDebugSeed } from './game/debugSeed.js';
 import { createBasicEventRegistry } from './game/events.js';
 import { MINIGAME_REGISTRY, isMinigameEvent } from './game/minigames.js';
@@ -79,6 +76,23 @@ import {
   getProjectedBossEncounter,
   summarizeBossEncounter,
 } from './game/bossIntel.js';
+import {
+  AI_PLAYSTYLES,
+  getAiPlaystyleLabel,
+  getAiPlaystyleSlug,
+} from './game/aiPlaystyles.js';
+
+const CombatScreen = lazy(() => import('./components/CombatScreen.jsx'));
+const AIDebugPanel = lazy(() => import('./components/AIDebugPanel.jsx'));
+
+let aiPlayerModulePromise = null;
+
+function loadAiPlayerModule() {
+  if (!aiPlayerModulePromise) {
+    aiPlayerModulePromise = import('./game/aiPlayer.js');
+  }
+  return aiPlayerModulePromise;
+}
 
 // Module-level event registry (created once)
 const EVENT_REG_UI = createBasicEventRegistry();
@@ -802,7 +816,7 @@ function buildRunRecord({
     debugSeedActive,
     debugSeedMode:  debugSeedActive ? (runDbg?._mode ?? seedMode ?? 'wild') : null,
     aiPlaystyle,
-    aiPlaystyleLabel: AI_PLAYSTYLES[aiPlaystyle]?.label ?? aiPlaystyle,
+    aiPlaystyleLabel: getAiPlaystyleLabel(aiPlaystyle),
     debugOverrides: buildExportDebugOverrides(runDbg),
     relicIds:       finalRelicIds,
     relicNames:     finalRelicIds.map((rid) => data?.relics?.[rid]?.name || rid),
@@ -1581,6 +1595,19 @@ function HelpCard({ title, children }) {
   );
 }
 
+function InlineLoadingPanel({ title = 'Loading', detail = 'Pulling the next module into memory.' }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ fontFamily: UI_MONO, fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', color: C.cyan }}>
+        {title}
+      </div>
+      <div style={{ fontFamily: UI_MONO, fontSize: 11, lineHeight: 1.55, color: C.textMuted }}>
+        {detail}
+      </div>
+    </div>
+  );
+}
+
 function PauseMenuOverlay({
   open,
   onClose,
@@ -1600,7 +1627,7 @@ function PauseMenuOverlay({
   showLog,
   onDevAction,
   onToggleLog,
-  aiPanel,
+  aiPanelProps = null,
   playtestMode = false,
   onTogglePlaytestMode,
 }) {
@@ -1923,7 +1950,13 @@ function PauseMenuOverlay({
             </HelpCard>
 
             <HelpCard title="AI AUTO-PLAY">
-              {aiPanel}
+              {aiPanelProps ? (
+                <Suspense fallback={<InlineLoadingPanel title="Loading AI Tools" detail="Bringing the autoplay controls online." />}>
+                  <AIDebugPanel {...aiPanelProps} />
+                </Suspense>
+              ) : (
+                <InlineLoadingPanel title="AI Tools Unavailable" detail="No autoplay controls are attached to this build state." />
+              )}
             </HelpCard>
 
             <HelpCard title="DEBUG TOOLS">
@@ -6808,6 +6841,13 @@ function App() {
   }, [aiEnabled, aiPaused, state, data]);
 
   useEffect(() => {
+    if (!aiEnabled) return;
+    loadAiPlayerModule().catch((error) => {
+      console.error('Failed to preload AI module', error);
+    });
+  }, [aiEnabled]);
+
+  useEffect(() => {
     if (!state?.run) return;
     if (state.mode === 'GameOver' || state.mode === 'TutorialComplete') {
       clearNodeAutosave();
@@ -7062,7 +7102,18 @@ function App() {
   }, [aiSpeed, clearAiTimer]);
 
   useEffect(() => {
-    runAiStepRef.current = () => {
+    runAiStepRef.current = async () => {
+      if (!aiEnabledRef.current || aiPausedRef.current) return;
+
+      let getAIAction = null;
+      try {
+        ({ getAIAction } = await loadAiPlayerModule());
+      } catch (error) {
+        console.error('[AI] failed to load autoplay module', error);
+        stopAiForTakeover('AI controls failed to load. Handing control back to you.');
+        return;
+      }
+
       if (!aiEnabledRef.current || aiPausedRef.current) return;
 
       const currentState = stateRef.current;
@@ -7497,7 +7548,7 @@ function App() {
     const batchStart = batchEnd - 4;
     const batch      = runHistory.slice(batchStart - 1); // last 5 runs
     const pad        = n => String(n).padStart(3, '0');
-    const psLabel    = (AI_PLAYSTYLES[aiPlaystyle]?.label ?? aiPlaystyle).replace(/\s+/g, '_');
+    const psLabel    = getAiPlaystyleSlug(aiPlaystyle);
     const exportProfile = getAiExportProfileLabel(aiExportOptions);
     const uid        = Math.random().toString(36).slice(2, 7);
     const filename   = `ai_runs_${psLabel}_${exportProfile}_${pad(batchStart)}-${pad(batchEnd)}_${Date.now()}_${uid}.json`;
@@ -7545,7 +7596,7 @@ function App() {
     const snapshot = buildInProgressSnapshot();
     if (!snapshot) return false;
 
-    const psLabel = (AI_PLAYSTYLES[aiPlaystyle]?.label ?? aiPlaystyle).replace(/\s+/g, '_');
+    const psLabel = getAiPlaystyleSlug(aiPlaystyle);
     const exportProfile = getAiExportProfileLabel(aiExportOptions);
     const uid = Math.random().toString(36).slice(2, 7);
     const act = snapshot.finalAct ?? state?.run?.act ?? 'x';
@@ -7567,7 +7618,7 @@ function App() {
       : runHistory;
     const pad      = n => String(n).padStart(3, '0');
     const total    = allRuns.length;
-    const psLabel  = (AI_PLAYSTYLES[aiPlaystyle]?.label ?? aiPlaystyle).replace(/\s+/g, '_');
+    const psLabel  = getAiPlaystyleSlug(aiPlaystyle);
     const exportProfile = getAiExportProfileLabel(aiExportOptions);
     const uid      = Math.random().toString(36).slice(2, 7);
     const filename = total > 0
@@ -7817,7 +7868,17 @@ function App() {
             />
           )}
         >
-          <CombatScreen state={state} data={data} onAction={handleAction} aiPaused={aiPaused} onOpenMenu={openPauseMenu} tutorialStep={tutorialStep} />
+          <Suspense
+            fallback={(
+              <LoadingScreen
+                title="Booting Combat Shell"
+                message="Loading combat systems, FX, and encounter rendering."
+                accent={C.red}
+              />
+            )}
+          >
+            <CombatScreen state={state} data={data} onAction={handleAction} aiPaused={aiPaused} onOpenMenu={openPauseMenu} tutorialStep={tutorialStep} />
+          </Suspense>
         </ScreenErrorBoundary>
       );
       break;
@@ -7847,45 +7908,61 @@ function App() {
       );
   }
 
-  const aiPanel = (
-    <AIDebugPanel
-      embedded={true}
-      enabled={aiEnabled}              onToggle={toggleAiEnabled}
-      paused={aiPaused}                onTogglePause={toggleAiPause}
-      stopAtAct={aiStopAtAct}          onStopAtActChange={setAiStopAtAct}
-      stopAfterCombat={aiStopAfterCombat} onStopAfterCombatChange={setAiStopAfterCombat}
-      onTakeOverNow={takeOverNow}
-      speed={aiSpeed}                  onSpeedChange={setAiSpeed}
-      runHistory={runHistory}          onExport={exportRunData}
-      onExportCurrent={exportCurrentGameData}
-      currentState={state}
-      handoffReason={aiHandoffReason}
-      aiWatchdog={{ ...aiWatchdog, exportMs: AI_STALL_EXPORT_MS, recoveryMs: AI_STALL_RECOVER_MS }}
-      debugSeed={debugSeedInput}       onDebugSeedChange={setDebugSeedInput}
-      seedMode={seedMode}              onSeedModeChange={setSeedMode}
-      randomize={randomizeDebugSeed}   onRandomizeToggle={setRandomizeDebugSeed}
-      onRandomizeSeed={() => { setSeedMode('wild');     setDebugSeedInput(String(randomDebugSeed())); }}
-      onRandomizeSensibleSeed={() => { setSeedMode('sensible'); setDebugSeedInput(String(randomDebugSeed())); }}
-      aiPlaystyle={aiPlaystyle}        onPlaystyleChange={setAiPlaystyle}
-      saveDirName={saveDirName}        onSetSaveDir={pickSaveDir}
-      exportOptions={aiExportOptions}
-      onSetExportOption={(key, value) => setAiExportOptions(prev => normalizeAiExportOptions({ ...prev, [key]: value }))}
-      onSetAllExportOptions={(value) => setAiExportOptions(
-        normalizeAiExportOptions(Object.fromEntries(
-          Object.keys(AI_EXPORT_OPTIONS_DEFAULTS).map((key) => [key, value]),
-        )),
-      )}
-      customConfig={customConfig}      lockedFields={lockedFields}
-      onSetCustomField={(key, val) => setCustomConfig(prev => ({ ...prev, [key]: val }))}
-      onToggleLock={(key) => setLockedFields(prev => {
-        const next = new Set(prev);
-        next.has(key) ? next.delete(key) : next.add(key);
-        return next;
-      })}
-      onClearCustomConfig={() => setCustomConfig(CUSTOM_CONFIG_DEFAULTS)}
-      gameData={data}
-    />
-  );
+  const aiPanelProps = {
+    embedded: true,
+    enabled: aiEnabled,
+    onToggle: toggleAiEnabled,
+    paused: aiPaused,
+    onTogglePause: toggleAiPause,
+    stopAtAct: aiStopAtAct,
+    onStopAtActChange: setAiStopAtAct,
+    stopAfterCombat: aiStopAfterCombat,
+    onStopAfterCombatChange: setAiStopAfterCombat,
+    onTakeOverNow: takeOverNow,
+    speed: aiSpeed,
+    onSpeedChange: setAiSpeed,
+    runHistory,
+    onExport: exportRunData,
+    onExportCurrent: exportCurrentGameData,
+    currentState: state,
+    handoffReason: aiHandoffReason,
+    aiWatchdog: { ...aiWatchdog, exportMs: AI_STALL_EXPORT_MS, recoveryMs: AI_STALL_RECOVER_MS },
+    debugSeed: debugSeedInput,
+    onDebugSeedChange: setDebugSeedInput,
+    seedMode,
+    onSeedModeChange: setSeedMode,
+    randomize: randomizeDebugSeed,
+    onRandomizeToggle: setRandomizeDebugSeed,
+    onRandomizeSeed: () => {
+      setSeedMode('wild');
+      setDebugSeedInput(String(randomDebugSeed()));
+    },
+    onRandomizeSensibleSeed: () => {
+      setSeedMode('sensible');
+      setDebugSeedInput(String(randomDebugSeed()));
+    },
+    aiPlaystyle,
+    onPlaystyleChange: setAiPlaystyle,
+    saveDirName,
+    onSetSaveDir: pickSaveDir,
+    exportOptions: aiExportOptions,
+    onSetExportOption: (key, value) => setAiExportOptions((prev) => normalizeAiExportOptions({ ...prev, [key]: value })),
+    onSetAllExportOptions: (value) => setAiExportOptions(
+      normalizeAiExportOptions(Object.fromEntries(
+        Object.keys(AI_EXPORT_OPTIONS_DEFAULTS).map((key) => [key, value]),
+      )),
+    ),
+    customConfig,
+    lockedFields,
+    onSetCustomField: (key, val) => setCustomConfig((prev) => ({ ...prev, [key]: val })),
+    onToggleLock: (key) => setLockedFields((prev) => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    }),
+    onClearCustomConfig: () => setCustomConfig(CUSTOM_CONFIG_DEFAULTS),
+    gameData: data,
+  };
 
   const tutorialStepMode = tutorialStep?.mode || 'Combat';
   const showTutorialOverlay = Boolean(tutorialStep) && (
@@ -7921,7 +7998,7 @@ function App() {
         showLog={showLog}
         onDevAction={handleAction}
         onToggleLog={() => setShowLog(prev => !prev)}
-        aiPanel={aiPanel}
+        aiPanelProps={aiPanelProps}
         playtestMode={playtestMode}
         onTogglePlaytestMode={togglePlaytestMode}
       />

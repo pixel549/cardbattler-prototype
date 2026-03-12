@@ -223,6 +223,48 @@ function getEncounterDirectiveSet(state) {
   return new Set((state.encounterDirectives || []).map((directive) => directive.type));
 }
 
+function getAliveAlliedEnemies(state, enemyId) {
+  return getAliveEnemies(state).filter((ally) => ally.id !== enemyId);
+}
+
+function exposeBossPhaseWindow(state, enemy, stacks, reason) {
+  const safeStacks = Math.max(0, Math.floor(Number(stacks) || 0));
+  if (!enemy || enemy.hp <= 0 || safeStacks <= 0) return;
+  addStatus(state, enemy, "ExposedPorts", safeStacks);
+  if (reason) {
+    push(state.log, { t: "Info", msg: `${enemy.name} was exposed: ${reason}` });
+  }
+}
+
+function armMainframeCharge(state, enemy, rng) {
+  const desiredFirewall = Math.max(0, Number(enemy?.bossDirective?.chargeFirewall || 0));
+  const currentFirewall = getFirewallStacks(enemy);
+  const missingFirewall = Math.max(0, desiredFirewall - currentFirewall);
+
+  enemy.combatFlags.mainframeChargeActive = true;
+
+  if (missingFirewall > 0) {
+    grantFirewall(state, enemy, missingFirewall, rng);
+  }
+
+  push(state.log, { t: "Info", msg: `${enemy.name} armed Purge Charge - break its Firewall before the next action` });
+}
+
+function resolveMainframeCharge(state, enemy) {
+  if (!enemy?.combatFlags?.mainframeChargeActive) return;
+
+  const firewallRemaining = getFirewallStacks(enemy);
+  if (firewallRemaining > 0) {
+    const chargeDamage = Math.max(1, Number(enemy?.bossDirective?.chargeDamage || 0));
+    applyDamage(state, enemy.id, state.player, chargeDamage);
+    push(state.log, { t: "Info", msg: `${enemy.name} discharged Purge Charge for ${chargeDamage} damage` });
+  } else {
+    push(state.log, { t: "Info", msg: `${enemy.name} lost Purge Charge when its Firewall collapsed` });
+  }
+
+  enemy.combatFlags.mainframeChargeActive = false;
+}
+
 function syncHeatPressure(state) {
   const baseEnemyDmgMult = Number(state.balance?.baseEnemyDmgMult || state.balance?.enemyDmgMult || 1);
   const heatState = getHeatState(state.heat, state.maxHeat || HEAT_MAX);
@@ -731,11 +773,14 @@ function initBossDirective(enemy) {
   const type = enemy?.bossDirective?.type;
   if (!type) return;
   if (!enemy.combatFlags) enemy.combatFlags = {};
+  if (type === "mainframe") {
+    enemy.combatFlags.mainframeChargeActive = false;
+  }
   if (type === "goliath") {
     enemy.combatFlags.damageCapPerHit = Number(enemy.bossDirective.hitCap || 12);
   }
   if (type === "apex") {
-    enemy.combatFlags.apexNextThreshold = 4;
+    enemy.combatFlags.apexNextThreshold = Number(enemy.bossDirective.baseComboThreshold || 4);
     enemy.combatFlags.apexLastTriggerTurn = 0;
   }
   if (type === "oracle") {
@@ -787,13 +832,22 @@ function handleBossDirectiveTurnStart(state, data, rng, enemy) {
         enemy.combatFlags.oracleReturnTurn = 0;
       }
       break;
-    case "mainframe":
+    case "mainframe": {
+      const enemyTurn = Number(enemy.combatFlags?.enemyTurn || 0);
+      const resolvedCharge = Boolean(enemy.combatFlags?.mainframeChargeActive);
+      if (resolvedCharge) {
+        resolveMainframeCharge(state, enemy);
+      }
       if ((enemy.combatFlags?.enemyTurn || 0) >= 2 && (enemy.combatFlags.enemyTurn % 2) === 0) {
         state._bossNextTurnDrawPenalty = (state._bossNextTurnDrawPenalty || 0) + 1;
         state._bossNextTurnFirstCardTax = Math.max(state._bossNextTurnFirstCardTax || 0, 1);
         push(state.log, { t: "Info", msg: `${enemy.name} rewrote the rules: next turn draw -1, first card +1 RAM` });
       }
+      if (!resolvedCharge && enemyTurn >= 2 && enemyTurn % 3 === 0 && !enemy.combatFlags?.mainframeChargeActive) {
+        armMainframeCharge(state, enemy, rng);
+      }
       break;
+    }
     default:
       break;
   }
@@ -803,7 +857,7 @@ function handleBossDirectiveAfterActs(state, data, rng, enemy) {
   if (!enemy?.bossDirective || enemy.hp <= 0) return;
   switch (enemy.bossDirective.type) {
     case "hydra": {
-      const supportAdds = getAliveEnemies(state).filter((ally) => ally.id !== enemy.id);
+      const supportAdds = getAliveAlliedEnemies(state, enemy.id);
       if (supportAdds.length > 0) {
         grantFirewall(state, enemy, supportAdds.length * 3, rng);
         push(state.log, { t: "Info", msg: `${enemy.name} absorbed cover from its spawned heads` });
@@ -840,19 +894,33 @@ function handleBossDirectiveAfterActs(state, data, rng, enemy) {
 function handleBossDirectivePhaseChange(state, data, rng, enemy, thresholdPct) {
   if (!enemy?.bossDirective || enemy.hp <= 0) return;
   switch (enemy.bossDirective.type) {
-    case "hydra":
-      applyEffectOp(state, enemy.id, {
-        op: "SummonEnemy",
-        templateId: enemy.bossDirective.summonTemplate || "E_SCRAP_MINION",
-        countMin: 1,
-        countMax: thresholdPct <= 30 ? 2 : 1,
-        ifNoSlot: { op: "ApplyStatus", target: "Self", statusId: "Firewall", stacks: thresholdPct <= 30 ? 14 : 10 },
-      }, rng);
+    case "hydra": {
+      const supportAdds = getAliveAlliedEnemies(state, enemy.id);
+      if (supportAdds.length <= 0) {
+        exposeBossPhaseWindow(
+          state,
+          enemy,
+          enemy.bossDirective.phaseExposeStacks || 2,
+          "no spawned heads were online for the split",
+        );
+      } else {
+        applyEffectOp(state, enemy.id, {
+          op: "SummonEnemy",
+          templateId: enemy.bossDirective.summonTemplate || "E_SCRAP_MINION",
+          countMin: 1,
+          countMax: thresholdPct <= 30 ? 2 : 1,
+          ifNoSlot: { op: "ApplyStatus", target: "Self", statusId: "Firewall", stacks: thresholdPct <= 30 ? 14 : 10 },
+        }, rng);
+      }
       break;
+    }
     case "mainframe":
       state._bossNextTurnDrawPenalty = (state._bossNextTurnDrawPenalty || 0) + 1;
       state._bossNextTurnFirstCardTax = Math.max(state._bossNextTurnFirstCardTax || 0, 1);
       enemy.combatFlags.extraPlaysNow = (enemy.combatFlags.extraPlaysNow || 0) + 1;
+      if (!enemy.combatFlags?.mainframeChargeActive) {
+        armMainframeCharge(state, enemy, rng);
+      }
       push(state.log, { t: "Info", msg: `${enemy.name} forced a rule rewrite and queued an extra action` });
       break;
     case "oracle":
@@ -867,16 +935,28 @@ function handleBossDirectivePhaseChange(state, data, rng, enemy, thresholdPct) {
       queueLockedCardsForNextTurn(state, (state.player?.piles?.hand || []).filter((cid) => mutatedCardPool.includes(cid)).slice(0, 1));
       break;
     }
-    case "citadel":
-      applyEffectOp(state, enemy.id, {
-        op: "SummonEnemy",
-        templateId: enemy.bossDirective.summonTemplate || "E_FIREWALL_POD",
-        countMin: 1,
-        countMax: 1,
-        ifNoSlot: { op: "ApplyStatus", target: "Self", statusId: "Firewall", stacks: 12 },
-      }, rng);
-      for (const ally of getAliveEnemies(state)) grantFirewall(state, ally, 5, rng);
+    case "citadel": {
+      const allies = getAliveAlliedEnemies(state, enemy.id);
+      if (allies.length <= 0) {
+        exposeBossPhaseWindow(
+          state,
+          enemy,
+          enemy.bossDirective.phaseExposeStacks || 2,
+          "the defense grid had no support nodes left to anchor it",
+        );
+        grantFirewall(state, enemy, 4, rng);
+      } else {
+        applyEffectOp(state, enemy.id, {
+          op: "SummonEnemy",
+          templateId: enemy.bossDirective.summonTemplate || "E_FIREWALL_POD",
+          countMin: 1,
+          countMax: 1,
+          ifNoSlot: { op: "ApplyStatus", target: "Self", statusId: "Firewall", stacks: 12 },
+        }, rng);
+        for (const ally of getAliveEnemies(state)) grantFirewall(state, ally, 5, rng);
+      }
       break;
+    }
     case "core":
       enemy.combatFlags.hpPhaseShield = true;
       grantFirewall(state, enemy, thresholdPct <= 50 ? 18 : 14, rng);
@@ -4489,12 +4569,15 @@ export function dispatchCombat(state, data, action) {
       state._pendingEndTurnSelfDamage = 0;
       state._mutationTurnDamageReduce = 0;
       state._mutationTurnDamageSink = 0;
-      for (const enemy of state.enemies || []) {
-        if (enemy?.bossDirective?.type === "apex") {
-          enemy.combatFlags.apexNextThreshold = Math.max(3, Number(enemy.combatFlags.apexNextThreshold || 4));
-          enemy.combatFlags.apexLastTriggerTurn = 0;
+        for (const enemy of state.enemies || []) {
+          if (enemy?.bossDirective?.type === "apex") {
+            enemy.combatFlags.apexNextThreshold = Math.max(
+              3,
+              Number(enemy.combatFlags.apexNextThreshold || enemy.bossDirective?.baseComboThreshold || 4),
+            );
+            enemy.combatFlags.apexLastTriggerTurn = 0;
+          }
         }
-      }
 
       if (handPassiveTotals.clearFirewallOnTurnStart) {
         clearFirewall(state, state.player, { silent: true });

@@ -1,20 +1,17 @@
-import gamedata from "./gamedata.json";
+let gameDataPromise = null;
 
-/**
- * Single compiled bundle for the whole game.
- * Keep this as the only import point so swapping data sources is painless.
- */
 /**
  * Load the compiled game data bundle.
  *
- * Some parts of the UI expect this function to return a Promise so that
- * they can call `.then()` on the result. To maintain backwards
- * compatibility with that behaviour, we wrap the static game data in a
- * resolved Promise. Returning a plain object would cause a TypeError
- * when `.then` is accessed on the object.
+ * The data stays behind a Promise so the app can preload it as a separate
+ * chunk without changing the existing call sites.
  *
- * @returns {Promise<object>} A promise that resolves with the game data
+ * @returns {Promise<object>} A promise that resolves with the game data.
  */
 export function loadGameData() {
-  return Promise.resolve(gamedata);
+  if (!gameDataPromise) {
+    gameDataPromise = import('./gamedata.json')
+      .then((module) => module.default ?? module);
+  }
+  return gameDataPromise;
 }

@@ -82,6 +82,31 @@ function sweep(freqFrom, freqTo, type, duration, gainNode) {
   o.stop(c.currentTime + duration + 0.02);
 }
 
+function playNoteSequence(notes, {
+  type = 'triangle',
+  gainValue = 0.14,
+  noteDuration = 0.16,
+  stepDelay = 0.07,
+} = {}) {
+  const c = getCtx();
+  if (!c || muted || !Array.isArray(notes) || notes.length === 0) return;
+
+  notes.forEach((freq, index) => {
+    const start = c.currentTime + (index * stepDelay);
+    const g = c.createGain();
+    g.gain.setValueAtTime(gainValue, start);
+    g.gain.exponentialRampToValueAtTime(0.0001, start + noteDuration);
+    g.connect(masterGain);
+
+    const o = c.createOscillator();
+    o.type = type;
+    o.frequency.setValueAtTime(freq, start);
+    o.connect(g);
+    o.start(start);
+    o.stop(start + noteDuration + 0.03);
+  });
+}
+
 // â”€â”€ Public sound effects â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export const sfx = {
@@ -170,21 +195,11 @@ export const sfx = {
 
   /** Victory fanfare â€” ascending arpeggio */
   victory() {
-    const c = getCtx();
-    if (!c || muted) return;
-    const notes = [523, 659, 784, 1047]; // C5 E5 G5 C6
-    notes.forEach((freq, i) => {
-      const t = c.currentTime + i * 0.12;
-      const g2 = c.createGain();
-      g2.gain.setValueAtTime(0.22, t);
-      g2.gain.exponentialRampToValueAtTime(0.0001, t + 0.4);
-      g2.connect(masterGain);
-      const o2 = c.createOscillator();
-      o2.type = 'triangle';
-      o2.frequency.setValueAtTime(freq, t);
-      o2.connect(g2);
-      o2.start(t);
-      o2.stop(t + 0.45);
+    playNoteSequence([523, 659, 784, 1047], {
+      type: 'triangle',
+      gainValue: 0.22,
+      noteDuration: 0.4,
+      stepDelay: 0.12,
     });
   },
 
@@ -234,15 +249,11 @@ export const sfx = {
   enemyBuff() {
     const g = gain(0.09, 0.34);
     if (!g) return;
-    const c = getCtx();
-    const notes = [260, 328, 390];
-    notes.forEach((freq, index) => {
-      const o = c.createOscillator();
-      o.type = 'triangle';
-      o.frequency.setValueAtTime(freq, c.currentTime + index * 0.045);
-      o.connect(g);
-      o.start(c.currentTime + index * 0.045);
-      o.stop(c.currentTime + 0.16 + index * 0.045);
+    playNoteSequence([260, 328, 390], {
+      type: 'triangle',
+      gainValue: 0.05,
+      noteDuration: 0.16,
+      stepDelay: 0.045,
     });
   },
 
@@ -276,6 +287,49 @@ export const sfx = {
         break;
       }
     }
+  },
+
+  /** Target selection / arming cue */
+  targetLock() {
+    const g = gain(0.09, 0.16);
+    if (!g) return;
+    sweep(260, 420, 'triangle', 0.09, g);
+    osc(640, 'sine', 0.07, g);
+  },
+
+  /** Heat threshold cue */
+  heatAlert(level = 1) {
+    const safeLevel = Math.max(1, Math.min(3, Number(level || 1)));
+    if (safeLevel === 1) {
+      playNoteSequence([330, 392], { type: 'triangle', gainValue: 0.08, noteDuration: 0.14, stepDelay: 0.06 });
+      return;
+    }
+    if (safeLevel === 2) {
+      playNoteSequence([294, 392, 440], { type: 'sawtooth', gainValue: 0.09, noteDuration: 0.16, stepDelay: 0.055 });
+      return;
+    }
+    const g = gain(0.11, 0.34);
+    if (!g) return;
+    sweep(220, 120, 'sawtooth', 0.18, g);
+    noise(0.06, g, 0.55);
+    playNoteSequence([220, 330, 262], { type: 'square', gainValue: 0.06, noteDuration: 0.12, stepDelay: 0.05 });
+  },
+
+  /** Boss phase or objective spike */
+  bossPhase() {
+    const g = gain(0.14, 0.42);
+    if (!g) return;
+    sweep(180, 520, 'sawtooth', 0.18, g);
+    osc(92, 'triangle', 0.28, g);
+    playNoteSequence([262, 330, 494], { type: 'triangle', gainValue: 0.07, noteDuration: 0.18, stepDelay: 0.065 });
+  },
+
+  /** Urgent warning cue */
+  systemWarning() {
+    const g = gain(0.11, 0.28);
+    if (!g) return;
+    playNoteSequence([220, 220, 196], { type: 'square', gainValue: 0.07, noteDuration: 0.1, stepDelay: 0.06 });
+    noise(0.04, g, 0.48);
   },
 
   // Toggle mute

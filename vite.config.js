@@ -98,11 +98,58 @@ function playtestCapturePlugin() {
   };
 }
 
+function getManualChunkName(id) {
+  const normalized = id.split(path.sep).join('/');
+
+  if (normalized.includes('/node_modules/react/') || normalized.includes('/node_modules/react-dom/')) {
+    return 'react-vendor';
+  }
+  if (normalized.includes('/node_modules/')) {
+    return 'vendor';
+  }
+  if (normalized.includes('/src/data/gamedata.json')) {
+    return 'gamedata';
+  }
+  if (
+    normalized.includes('/src/components/CombatScreen.jsx')
+    || normalized.includes('/src/game/engine.js')
+    || normalized.includes('/src/game/game_core.js')
+    || normalized.includes('/src/game/combatMeta.js')
+    || normalized.includes('/src/game/combatDirectives.js')
+    || normalized.includes('/src/game/sounds.js')
+  ) {
+    return 'combat-systems';
+  }
+  if (
+    normalized.includes('/src/components/AIDebugPanel.jsx')
+    || normalized.includes('/src/game/aiPlayer.js')
+    || normalized.includes('/src/game/aiPlaystyles.js')
+  ) {
+    return 'ai-tools';
+  }
+  if (
+    normalized.includes('/src/components/MainMenuHub.jsx')
+    || normalized.includes('/src/game/tutorial.js')
+    || normalized.includes('/src/playtest/visualScenes.js')
+    || normalized.includes('/src/game/runProfiles.js')
+    || normalized.includes('/src/game/metaProgression.js')
+    || normalized.includes('/src/game/achievements.js')
+    || normalized.includes('/src/game/dailyRun.js')
+    || normalized.includes('/src/game/bossIntel.js')
+  ) {
+    return 'progression-systems';
+  }
+  return null;
+}
+
 export default defineConfig({
   base,
   build: {
     rollupOptions: {
       output: {
+        manualChunks(id) {
+          return getManualChunkName(id);
+        },
         assetFileNames: (assetInfo) => {
           const originalName = assetInfo.names?.[0] ?? assetInfo.name ?? '';
           if (/\.(png|jpe?g|gif|svg|webp|avif)$/i.test(originalName)) {

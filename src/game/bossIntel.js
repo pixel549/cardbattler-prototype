@@ -75,6 +75,8 @@ export function summarizeBossEncounter(data, encounter) {
             hp: Number(enemy.maxHP || 0),
             gimmick: directive?.label || null,
             gimmickSummary: directive?.summary || null,
+            objective: directive?.objective || null,
+            counterplay: directive?.counterplay || null,
           }
         : null;
     })

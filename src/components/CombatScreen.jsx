@@ -4,7 +4,8 @@ import { getCardImage } from '../data/cardImages.js';
 import RuntimeArt from './RuntimeArt.jsx';
 import { sfx } from '../game/sounds.js';
 import { getCardPlayability, getCardTargetingProfile } from '../game/engine.js';
-import { getEnemyDirectiveSummaries } from '../game/combatDirectives.js';
+import { getHeatState } from '../game/combatMeta.js';
+import { getBossDirectiveReadout, getEnemyDirectiveSummaries } from '../game/combatDirectives.js';
 import useDialogAccessibility from '../hooks/useDialogAccessibility.js';
 import usePlaytestRecorder from '../hooks/usePlaytestRecorder.js';
 
@@ -56,22 +57,30 @@ const EMPTY_ARRAY = [];
 const EMPTY_OBJECT = {};
 const DOUBLE_TAP_WINDOW_MS = 320;
 const PLAYER_TARGET_ID = '__player__';
+const HEAT_THRESHOLD_MARKERS = [
+  { ratio: 0.3, label: 'W', color: C.neonYellow },
+  { ratio: 0.55, label: 'H', color: C.neonOrange },
+  { ratio: 0.8, label: 'C', color: '#ff5b2d' },
+];
+const BOSS_PHASE_AUDIO_PATTERN = /armed Purge Charge|entered a shielded phase|forced a rule rewrite|tightened its combo punish threshold|was exposed:/i;
+const SYSTEM_WARNING_AUDIO_PATTERN = /armed Purge Charge|entered a shielded phase|Trace spike:/i;
 
 function getHeatVisualState(heat = 0, maxHeat = 20) {
-  const safeMax = Math.max(1, Number(maxHeat || 20));
-  const safeHeat = Math.max(0, Math.min(safeMax, Number(heat || 0)));
-  const ratio = safeHeat / safeMax;
+  const heatState = getHeatState(heat, maxHeat);
+  const glow = heatState.alertLevel >= 3
+    ? 'rgba(255,91,45,0.22)'
+    : heatState.alertLevel === 2
+      ? 'rgba(255,107,0,0.18)'
+      : heatState.alertLevel === 1
+        ? 'rgba(255,230,0,0.14)'
+        : 'rgba(0,240,255,0.12)';
 
-  if (ratio >= 0.8) {
-    return { color: '#ff5b2d', glow: 'rgba(255,91,45,0.22)', label: 'CRITICAL' };
-  }
-  if (ratio >= 0.55) {
-    return { color: C.neonOrange, glow: 'rgba(255,107,0,0.18)', label: 'HOT' };
-  }
-  if (ratio >= 0.3) {
-    return { color: C.neonYellow, glow: 'rgba(255,230,0,0.14)', label: 'WARM' };
-  }
-  return { color: C.neonCyan, glow: 'rgba(0,240,255,0.12)', label: 'COOL' };
+  return {
+    color: heatState.color,
+    glow,
+    label: heatState.shortLabel,
+    alertLevel: heatState.alertLevel,
+  };
 }
 
 function HeatBar({ heat = 0, maxHeat = 20, height = 12, showText = true }) {
@@ -88,15 +97,30 @@ function HeatBar({ heat = 0, maxHeat = 20, height = 12, showText = true }) {
           height: '100%',
           borderRadius: height / 2,
           background: `linear-gradient(90deg, ${C.neonYellow} 0%, ${tone.color} 100%)`,
-          boxShadow: `0 0 16px ${tone.glow}`,
-          transition: 'width 0.2s ease',
-        }}
-      />
-      {showText && (
-        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: MONO, fontSize: Math.max(8, height - 4), fontWeight: 700, color: C.bgDark, mixBlendMode: 'screen' }}>
-          HEAT {safeHeat}/{safeMax}
-        </div>
-      )}
+            boxShadow: `0 0 16px ${tone.glow}`,
+            transition: 'width 0.2s ease',
+          }}
+        />
+      {HEAT_THRESHOLD_MARKERS.map((marker) => (
+        <div
+          key={marker.label}
+          style={{
+            position: 'absolute',
+            top: 0,
+            bottom: 0,
+            left: `calc(${marker.ratio * 100}% - 1px)`,
+            width: 2,
+            background: `${marker.color}66`,
+            boxShadow: `0 0 8px ${marker.color}2c`,
+            pointerEvents: 'none',
+          }}
+        />
+      ))}
+        {showText && (
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: MONO, fontSize: Math.max(8, height - 4), fontWeight: 700, color: C.bgDark, mixBlendMode: 'screen' }}>
+            HEAT {safeHeat}/{safeMax}
+          </div>
+        )}
     </div>
   );
 }
@@ -148,6 +172,102 @@ function CombatConditionStrip({ heat = 0, maxHeat = 20, arenaModifier = null, co
           {arenaModifier.label}
         </div>
       )}
+    </div>
+    );
+  }
+
+function getBossReadoutTone(emphasis = 'neutral') {
+  switch (emphasis) {
+    case 'critical':
+      return { color: C.neonRed, background: `${C.neonRed}12`, border: `${C.neonRed}36` };
+    case 'warning':
+      return { color: C.neonOrange, background: `${C.neonOrange}12`, border: `${C.neonOrange}36` };
+    case 'good':
+      return { color: C.neonGreen, background: `${C.neonGreen}12`, border: `${C.neonGreen}36` };
+    default:
+      return { color: C.neonCyan, background: `${C.neonCyan}12`, border: `${C.neonCyan}30` };
+  }
+}
+
+function BossProtocolPanel({ readout, compact = false }) {
+  if (!readout) return null;
+
+  const tone = getBossReadoutTone(readout.emphasis);
+  const titleSize = compact ? 8 : 9;
+  const bodySize = compact ? 7 : 8;
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: compact ? 5 : 6,
+        padding: compact ? '7px 8px' : '8px 9px',
+        borderRadius: 12,
+        background: 'rgba(3,7,14,0.76)',
+        border: `1px solid ${tone.border}`,
+        boxShadow: `0 0 16px ${tone.background}`,
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+        <div style={{ fontFamily: MONO, fontSize: titleSize, fontWeight: 700, letterSpacing: '0.12em', color: tone.color, textTransform: 'uppercase' }}>
+          Boss Protocol
+        </div>
+        <div
+          style={{
+            padding: compact ? '2px 5px' : '3px 6px',
+            borderRadius: 999,
+            border: `1px solid ${tone.border}`,
+            background: tone.background,
+            color: tone.color,
+            fontFamily: MONO,
+            fontSize: compact ? 6 : 7,
+            fontWeight: 700,
+            letterSpacing: '0.12em',
+            textTransform: 'uppercase',
+          }}
+        >
+          {readout.title}
+        </div>
+      </div>
+      <div style={{ fontFamily: MONO, fontSize: bodySize, lineHeight: 1.45, color: '#d6deea' }}>
+        {readout.objective}
+      </div>
+      {readout.counterplay && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: compact ? 3 : 4 }}>
+          <div style={{ fontFamily: MONO, fontSize: compact ? 6 : 7, fontWeight: 700, letterSpacing: '0.12em', color: C.textDim, textTransform: 'uppercase' }}>
+            Counterplay
+          </div>
+          <div style={{ fontFamily: MONO, fontSize: bodySize, lineHeight: 1.45, color: C.textSecondary }}>
+            {readout.counterplay}
+          </div>
+        </div>
+      )}
+      {readout.progress && (
+        <div
+          style={{
+            padding: compact ? '5px 6px' : '6px 7px',
+            borderRadius: 10,
+            border: `1px solid ${tone.border}`,
+            background: tone.background,
+            color: tone.color,
+            fontFamily: MONO,
+            fontSize: bodySize,
+            fontWeight: 700,
+            lineHeight: 1.45,
+          }}
+        >
+          {readout.progress}
+        </div>
+      )}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+        <div style={{ fontFamily: MONO, fontSize: compact ? 6 : 7, color: C.textDim, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+          Phase Tracker
+        </div>
+        <div style={{ fontFamily: MONO, fontSize: bodySize, color: C.textPrimary }}>
+          {readout.nextPhase}
+        </div>
+      </div>
     </div>
   );
 }
@@ -1805,6 +1925,7 @@ function FirewallBar({ current, max, height = 12, showText = true, glow = true }
 function EnemyFocusPanel({
   enemy,
   intentBadges = EMPTY_ARRAY,
+  bossReadout = null,
   compact = false,
   onOpenMenu = null,
   hasActiveCard = false,
@@ -1895,6 +2016,8 @@ function EnemyFocusPanel({
             FW {firewallStacks}
           </div>
         </div>
+
+        {bossReadout && <BossProtocolPanel readout={bossReadout} compact={true} />}
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap', minHeight: 24 }}>
           {intentBadges.length > 0 ? intentBadges.map((badge, index) => (
@@ -2000,6 +2123,8 @@ function EnemyFocusPanel({
           <div style={{ fontFamily: MONO, fontSize: 11, fontWeight: 700, color: C.textPrimary }}>{firewallStacks}</div>
         </div>
       </div>
+
+      {bossReadout && <BossProtocolPanel readout={bossReadout} />}
 
       <div
         style={{
@@ -3453,6 +3578,7 @@ function CenterCardDisplay({
   canActivate = false,
   activateHint = 'Double tap a target to play',
   helperNote = null,
+  targetPreview = null,
   helperTone = C.neonCyan,
   layoutMode = 'desktop',
 }) {
@@ -3629,6 +3755,16 @@ function CenterCardDisplay({
           boxShadow: `0 0 18px ${helperTone}10`,
         }}
       >
+        {targetPreview && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+            <span style={{ fontFamily: MONO, fontSize: 7, fontWeight: 700, letterSpacing: '0.14em', color: C.textDim, textTransform: 'uppercase' }}>
+              Cast Route
+            </span>
+            <span style={{ fontFamily: MONO, fontSize: 8, fontWeight: 700, color: targetPreview.tone || helperTone, textTransform: 'uppercase', letterSpacing: '0.08em', textAlign: 'right' }}>
+              {targetPreview.label}
+            </span>
+          </div>
+        )}
         <span style={{ fontFamily: MONO, fontSize: 7, fontWeight: 700, letterSpacing: '0.14em', color: helperTone, textTransform: 'uppercase' }}>
           Targeting
         </span>
@@ -5848,6 +5984,7 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
   const prevHandRef = useRef([]);
   const logInitRef = useRef(false);
   const waitingForEndTurnLogsRef = useRef(false);
+  const prevHeatAlertRef = useRef(null);
   const enemyImpactTimeoutsRef = useRef({});
   const playerImpactTimeoutRef = useRef(null);
   const combatFlashTimeoutRef = useRef(null);
@@ -5945,12 +6082,26 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
   const compactTutorialPortrait = tutorialActive && isPhonePortrait;
   const landscapeFocusWidth = viewport.width < 720 ? 156 : 168;
   const landscapeSidebarWidth = viewport.width < 720 ? 224 : 244;
+  const desktopEnemyZoneMinHeight = tallDesktopLayout
+    ? 'clamp(196px, 23vh, 248px)'
+    : 'clamp(216px, 27vh, 294px)';
+  const desktopEnemyZonePadding = tallDesktopLayout ? '12px 10px 8px' : '14px 10px 10px';
+  const desktopCenterZonePadding = tallDesktopLayout ? '6px 8px 16px' : '10px 8px 8px';
+  const desktopCenterCardBottomPad = tallDesktopLayout ? 12 : 0;
 
   const activeInstance = activeCardId ? cardInstances[activeCardId] : null;
   const activeDef = activeInstance ? data?.cards?.[activeInstance.defId] : null;
   const targetedEnemy = visibleEnemies[targetedEnemyIndex] ?? visibleEnemies[0] ?? null;
   const targetedIntentCardDef = targetedEnemy ? data?.cards?.[targetedEnemy.intent?.cardDefId] : null;
   const targetedIntentBadges = targetedEnemy ? getIntentEffectBadges(targetedEnemy, targetedIntentCardDef) : EMPTY_ARRAY;
+  const mutatedHandCount = hand.filter((cardId) => (cardInstances[cardId]?.appliedMutations?.length || 0) > 0).length;
+  const targetedBossReadout = targetedEnemy
+    ? getBossDirectiveReadout(targetedEnemy, {
+      aliveAllies: visibleEnemies.filter((enemy) => enemy.id !== targetedEnemy.id).length,
+      mutatedHandCount,
+      cardsPlayedThisTurn: combat?._cardsPlayedThisTurn || 0,
+    })
+    : null;
   const activeTargetingProfile = activeCardId
     ? getCardTargetingProfile(state.combat, data, activeCardId)
     : { canTargetEnemy: false, canTargetSelf: false, targetHints: EMPTY_ARRAY };
@@ -6253,6 +6404,9 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
     setTargetedEnemyIndex(enemyIndex);
     setSelectedTargetMode('enemy');
     if (enemyInfoOpen) setEnemyInfoOpen(false);
+    if (!sameTarget || activeCardId) {
+      sfx.targetLock();
+    }
 
     if (sameTarget) {
       if (canUseOnEnemy && withinDoubleTap) {
@@ -6308,6 +6462,7 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
     const canUseOnSelf = getPlayabilityForTarget(activeCardId, 'self', defaultEnemyTargetId).playable;
 
     setSelectedTargetMode('self');
+    sfx.targetLock();
 
     if (sameTarget && canUseOnSelf && withinDoubleTap) {
       recordPlaytest('self_double_tap_cast', {
@@ -6579,6 +6734,12 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
           });
         }
         if (msg.includes('gained ') && msg.includes('(')) sfx.status();
+        if (BOSS_PHASE_AUDIO_PATTERN.test(msg)) {
+          sfx.bossPhase();
+        }
+        if (SYSTEM_WARNING_AUDIO_PATTERN.test(msg)) {
+          sfx.systemWarning();
+        }
         const firewallMatch = msg.match(/gained Firewall\((\d+)\)/i);
         if (firewallMatch) {
           newFloats.push({
@@ -6683,6 +6844,31 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
     : canCastActiveOnAnyEnemy || canCastActiveOnSelf
       ? C.neonGreen
       : C.neonOrange;
+  const activeCardTargetPreview = !activeCardId
+    ? null
+    : selectedTargetMode === 'self'
+      ? {
+        label: selfTargetArmed ? 'Self armed' : 'Self',
+        tone: selfTargetArmed ? C.neonYellow : (canCastActiveOnSelf ? C.neonGreen : C.neonOrange),
+      }
+      : {
+        label: enemyTargetArmed
+          ? `${targetedEnemy?.name ?? 'Target'} locked`
+          : (targetedEnemy?.name ?? 'Select target'),
+        tone: enemyTargetArmed ? C.neonYellow : (canCastActiveOnAnyEnemy ? C.neonRed : C.neonOrange),
+      };
+
+  useEffect(() => {
+    const alertLevel = getHeatState(heat, maxHeat).alertLevel;
+    if (prevHeatAlertRef.current == null) {
+      prevHeatAlertRef.current = alertLevel;
+      return;
+    }
+    if (alertLevel > prevHeatAlertRef.current) {
+      sfx.heatAlert(alertLevel);
+    }
+    prevHeatAlertRef.current = alertLevel;
+  }, [heat, maxHeat]);
 
   const handleEndTurn = () => {
     if (interactionLocked) return;
@@ -6746,6 +6932,7 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
       <EnemyFocusPanel
         enemy={targetedEnemy}
         intentBadges={targetedIntentBadges}
+        bossReadout={targetedBossReadout}
         compact={isPhoneLayout}
         onOpenMenu={isPhonePortrait ? () => {
           setDeckMenuOpen(false);
@@ -6772,6 +6959,7 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
         canActivate={!interactionLocked && !!activeCardId && canPlayCard(activeCardId)}
         activateHint={interactionLocked ? 'Resolving action' : activeCardHint}
         helperNote={interactionLocked ? 'Actions are resolving. Target input will unlock in a moment.' : activeCardHelperNote}
+        targetPreview={activeCardTargetPreview}
         helperTone={interactionLocked ? C.neonCyan : activeCardHelperTone}
         layoutMode={layoutMode}
       />
@@ -7205,11 +7393,11 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
             className="safe-area-top"
             style={{
               flex: '0 0 auto',
-              minHeight: tallDesktopLayout ? 'clamp(214px, 25vh, 286px)' : 'clamp(248px, 31vh, 330px)',
+              minHeight: desktopEnemyZoneMinHeight,
               display: 'flex',
               alignItems: 'flex-start',
               justifyContent: 'center',
-              padding: tallDesktopLayout ? '14px 10px 10px' : '18px 10px 12px',
+              padding: desktopEnemyZonePadding,
               overflow: 'visible',
             }}
           >
@@ -7231,13 +7419,13 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
             flex: 1,
             display: 'flex',
             flexDirection: 'column',
-            justifyContent: tallDesktopLayout ? 'flex-end' : 'center',
+            justifyContent: 'flex-start',
             alignItems: 'center',
-            padding: tallDesktopLayout ? '0 8px 18px' : '0 8px',
+            padding: desktopCenterZonePadding,
             minHeight: 0,
             overflow: 'hidden',
           }}>
-            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: tallDesktopLayout ? 'flex-end' : 'center', minHeight: 0, overflow: 'auto', width: '100%', paddingBottom: tallDesktopLayout ? 18 : 0 }}>
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-start', minHeight: 0, overflow: 'auto', width: '100%', paddingBottom: desktopCenterCardBottomPad }}>
               {centeredCardPanel}
             </div>
           </div>

@@ -5490,6 +5490,7 @@ function TutorialOverlay({ step, nudge = '', onAdvance, onExit }) {
 }
 
 function TutorialCompleteScreen({ state, onNewGame, onReturnToMenu }) {
+  const [showJessePopup, setShowJessePopup] = useState(true);
   const tutorialId = state?.run?.tutorial?.id;
   const tutorialDef = getTutorialDefinition(tutorialId);
   const outcome = state?.run?.tutorial?.outcome ?? 'complete';
@@ -5502,86 +5503,142 @@ function TutorialCompleteScreen({ state, onNewGame, onReturnToMenu }) {
 
   return (
     <ScreenShell extraStyle={{ alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-      <div
-        style={{
-          width: 'min(560px, 100%)',
-          padding: 24,
-          borderRadius: 24,
-          border: `1px solid ${accent}36`,
-          background: 'linear-gradient(180deg, rgba(8,12,20,0.97) 0%, rgba(5,7,12,0.99) 100%)',
-          boxShadow: `0 24px 54px rgba(0,0,0,0.42), inset 0 0 0 1px rgba(255,255,255,0.02)`,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 16,
-        }}
-      >
-        <div style={{ fontFamily: UI_MONO, fontSize: 12, letterSpacing: '0.18em', color: accent }}>
-          TRAINING NODE
-        </div>
-        <div style={{ fontFamily: UI_MONO, fontWeight: 700, fontSize: 28, color: C.text }}>
-          {title}
-        </div>
-        <div style={{ fontFamily: UI_MONO, fontSize: 13, lineHeight: 1.7, color: C.textDim }}>
-          {body}
-        </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          {tutorialDef.concepts.map((label) => (
-            <span
-              key={label}
+      <div style={{ width: 'min(560px, 100%)', position: 'relative' }}>
+        <div
+          style={{
+            padding: 24,
+            borderRadius: 24,
+            border: `1px solid ${accent}36`,
+            background: 'linear-gradient(180deg, rgba(8,12,20,0.97) 0%, rgba(5,7,12,0.99) 100%)',
+            boxShadow: `0 24px 54px rgba(0,0,0,0.42), inset 0 0 0 1px rgba(255,255,255,0.02)`,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 16,
+          }}
+        >
+          <div style={{ fontFamily: UI_MONO, fontSize: 12, letterSpacing: '0.18em', color: accent }}>
+            TRAINING NODE
+          </div>
+          <div style={{ fontFamily: UI_MONO, fontWeight: 700, fontSize: 28, color: C.text }}>
+            {title}
+          </div>
+          <div style={{ fontFamily: UI_MONO, fontSize: 13, lineHeight: 1.7, color: C.textDim }}>
+            {body}
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {tutorialDef.concepts.map((label) => (
+              <span
+                key={label}
+                style={{
+                  padding: '7px 10px',
+                  borderRadius: 999,
+                  border: `1px solid ${accent}30`,
+                  background: `${accent}10`,
+                  color: accent,
+                  fontFamily: UI_MONO,
+                  fontSize: 10,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.08em',
+                }}
+              >
+                {label}
+              </span>
+            ))}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 12 }}>
+            <button
+              onClick={onNewGame}
               style={{
-                padding: '7px 10px',
-                borderRadius: 999,
-                border: `1px solid ${accent}30`,
-                background: `${accent}10`,
-                color: accent,
+                padding: '14px 16px',
+                borderRadius: 14,
+                border: 'none',
+                background: C.cyan,
+                color: '#031014',
                 fontFamily: UI_MONO,
-                fontSize: 10,
-                textTransform: 'uppercase',
+                fontWeight: 700,
+                fontSize: 13,
                 letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                cursor: 'pointer',
               }}
             >
-              {label}
-            </span>
-          ))}
+              Start Real Run
+            </button>
+            <button
+              onClick={onReturnToMenu}
+              style={{
+                padding: '14px 16px',
+                borderRadius: 14,
+                border: `1px solid ${C.border}`,
+                background: 'rgba(255,255,255,0.03)',
+                color: C.text,
+                fontFamily: UI_MONO,
+                fontWeight: 700,
+                fontSize: 13,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                cursor: 'pointer',
+              }}
+            >
+              Return To Menu
+            </button>
+          </div>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 12 }}>
-          <button
-            onClick={onNewGame}
+
+        {showJessePopup && (
+          <div
             style={{
-              padding: '14px 16px',
-              borderRadius: 14,
-              border: 'none',
-              background: C.cyan,
-              color: '#031014',
-              fontFamily: UI_MONO,
-              fontWeight: 700,
-              fontSize: 13,
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
-              cursor: 'pointer',
+              position: 'fixed',
+              inset: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: 20,
+              background: 'rgba(4, 6, 12, 0.68)',
+              zIndex: 120,
             }}
           >
-            Start Real Run
-          </button>
-          <button
-            onClick={onReturnToMenu}
-            style={{
-              padding: '14px 16px',
-              borderRadius: 14,
-              border: `1px solid ${C.border}`,
-              background: 'rgba(255,255,255,0.03)',
-              color: C.text,
-              fontFamily: UI_MONO,
-              fontWeight: 700,
-              fontSize: 13,
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
-              cursor: 'pointer',
-            }}
-          >
-            Return To Menu
-          </button>
-        </div>
+            <div
+              style={{
+                width: 'min(420px, 100%)',
+                padding: 22,
+                borderRadius: 20,
+                border: `1px solid ${accent}44`,
+                background: 'linear-gradient(180deg, rgba(10,14,24,0.98) 0%, rgba(6,8,14,0.99) 100%)',
+                boxShadow: `0 26px 60px rgba(0,0,0,0.46), 0 0 32px ${accent}12`,
+                display: 'grid',
+                gap: 14,
+                textAlign: 'center',
+              }}
+            >
+              <div style={{ fontFamily: UI_MONO, fontSize: 11, letterSpacing: '0.18em', color: accent }}>
+                TUTORIAL COMPLETE
+              </div>
+              <div style={{ fontFamily: UI_MONO, fontWeight: 700, fontSize: 24, color: C.text }}>
+                Happy now, Jesse? :^)
+              </div>
+              <button
+                onClick={() => setShowJessePopup(false)}
+                style={{
+                  justifySelf: 'center',
+                  padding: '12px 16px',
+                  borderRadius: 12,
+                  border: `1px solid ${accent}34`,
+                  background: `${accent}12`,
+                  color: accent,
+                  fontFamily: UI_MONO,
+                  fontWeight: 700,
+                  fontSize: 12,
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                  cursor: 'pointer',
+                }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </ScreenShell>
   );

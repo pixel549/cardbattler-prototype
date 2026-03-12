@@ -6,12 +6,14 @@
  */
 const modules = import.meta.glob(
   '/src/assets/runtime-art/cards/*.png',
-  { eager: true, as: 'url' }
+  { eager: true, import: 'default' }
 );
 
 // Build map: cardId -> url (use variant -01 as primary)
 const cardImageMap = {};
-for (const [path, url] of Object.entries(modules)) {
+for (const [path, imported] of Object.entries(modules)) {
+  const url = typeof imported === 'string' ? imported : imported?.default ?? null;
+  if (!url) continue;
   const m = path.match(/\/([A-Z]+-\d+)-(\d+)\.png$/i);
   if (!m) continue;
   const [, id, variant] = m;

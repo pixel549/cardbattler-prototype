@@ -9,6 +9,7 @@ import {
 import { dispatchWithJournal } from './game/dispatch_with_journal.js';
 import CombatScreen from './components/CombatScreen.jsx';
 import AIDebugPanel from './components/AIDebugPanel.jsx';
+import MainMenuHub from './components/MainMenuHub.jsx';
 import RuntimeArt from './components/RuntimeArt.jsx';
 import { getAIAction, AI_PLAYSTYLES } from './game/aiPlayer.js';
 import { decodeDebugSeed, decodeSensibleDebugSeed, randomDebugSeed } from './game/debugSeed.js';
@@ -7278,7 +7279,8 @@ function App() {
   switch (state.mode) {
     case 'MainMenu':
       content = (
-        <MainMenuScreen
+        <MainMenuHub
+          ScreenShell={ScreenShell}
           data={data}
           canContinue={Boolean(menuAutosave?.state)}
           onContinue={resumeAutosavedRun}
@@ -7287,6 +7289,7 @@ function App() {
           onNewGame={() => startNewRun()}
           onSettings={openPauseMenu}
           debugSaveSlots={debugSaveSlots}
+          debugSaveSlotIds={DEBUG_SAVE_SLOT_IDS}
           onLoadDebugSave={loadDebugSlot}
           tutorialCatalog={TUTORIAL_CATALOG}
           completedTutorialIds={completedTutorialIds}

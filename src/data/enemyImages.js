@@ -2,12 +2,14 @@
 // Keep the glob narrow so we only bundle the runtime enemy art set.
 const imageModules = import.meta.glob(
   '/src/assets/runtime-art/enemies/*.{png,jpg,jpeg}',
-  { eager: true, as: 'url' }
+  { eager: true, import: 'default' }
 );
 
 // Build filename → URL map from the glob result
 const imageByFilename = {};
-for (const [path, url] of Object.entries(imageModules)) {
+for (const [path, imported] of Object.entries(imageModules)) {
+  const url = typeof imported === 'string' ? imported : imported?.default ?? null;
+  if (!url) continue;
   const filename = path.split('/').pop();
   imageByFilename[filename] = url;
 }

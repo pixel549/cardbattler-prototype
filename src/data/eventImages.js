@@ -23,11 +23,13 @@
 
 const modules = import.meta.glob(
   '/src/assets/runtime-art/events/*.{png,jpg,jpeg}',
-  { eager: true, as: 'url' }
+  { eager: true, import: 'default' }
 );
 
 const byFile = {};
-for (const [path, url] of Object.entries(modules)) {
+for (const [path, imported] of Object.entries(modules)) {
+  const url = typeof imported === 'string' ? imported : imported?.default ?? null;
+  if (!url) continue;
   const fname = path.split('/').pop();
   byFile[fname] = url;
 }

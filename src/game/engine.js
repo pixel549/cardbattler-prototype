@@ -4,6 +4,15 @@ import { applyDamage, addStatus, getFirewallStacks, getStatusStacks, loseFirewal
 import { getCompileBonus } from "./cardCompile";
 import { getBossDirective, getEncounterDirectives } from "./combatDirectives";
 import { analyzeDeckState } from "./runInsights";
+import {
+  HEAT_MAX,
+  clampHeat,
+  getAdaptiveEncounterDirective,
+  getCardHeatGain,
+  getHeatState,
+  normalizeRunAdaptationProfile,
+  pickArenaModifier,
+} from "./combatMeta";
 
 function getCardLogData(state, cid) {
   if (!cid) return null;
@@ -212,6 +221,109 @@ function getWeakestOtherEnemy(state, sourceId) {
 
 function getEncounterDirectiveSet(state) {
   return new Set((state.encounterDirectives || []).map((directive) => directive.type));
+}
+
+function syncHeatPressure(state) {
+  const baseEnemyDmgMult = Number(state.balance?.baseEnemyDmgMult || state.balance?.enemyDmgMult || 1);
+  const heatState = getHeatState(state.heat, state.maxHeat || HEAT_MAX);
+  if (!state.balance) state.balance = {};
+  state.balance.baseEnemyDmgMult = baseEnemyDmgMult;
+  state.balance.enemyDmgMult = Number((baseEnemyDmgMult * heatState.enemyDamageMult).toFixed(3));
+  return heatState;
+}
+
+function updateCombatHeat(state, nextHeat, { suppressLogs = false } = {}) {
+  const prevState = getHeatState(state.heat, state.maxHeat || HEAT_MAX);
+  state.heat = clampHeat(nextHeat, state.maxHeat || HEAT_MAX);
+  const nextState = syncHeatPressure(state);
+
+  if (!suppressLogs && prevState.alertLevel !== nextState.alertLevel) {
+    if (nextState.alertLevel > prevState.alertLevel) {
+      push(state.log, { t: "Info", msg: `Trace heat ${nextState.label.toLowerCase()}: ${nextState.summary}` });
+    } else {
+      push(state.log, { t: "Info", msg: `Trace heat eased to ${nextState.label.toLowerCase()}` });
+    }
+  }
+
+  return nextState;
+}
+
+function applyChipDamageIgnoringFirewall(state, target, amount, sourceLabel) {
+  const safeAmount = Math.max(0, Math.floor(Number(amount) || 0));
+  if (!target || safeAmount <= 0 || target.hp <= 0) return 0;
+  target.hp = Math.max(0, Number(target.hp || 0) - safeAmount);
+  push(state.log, { t: "Info", msg: `${sourceLabel}: ${target.name || target.id} took ${safeAmount} chip damage` });
+  return safeAmount;
+}
+
+function applyArenaModifierCombatStart(state, rng) {
+  const arenaModifier = state.arenaModifier;
+  if (!arenaModifier) return;
+
+  push(state.log, { t: "Info", msg: `Arena modifier: ${arenaModifier.label}` });
+
+  if (arenaModifier.id === "firewall_grid") {
+    for (const enemy of getAliveEnemies(state)) {
+      grantFirewall(state, enemy, arenaModifier.combatStartFirewall || 0, rng);
+    }
+    push(state.log, { t: "Info", msg: `${arenaModifier.label}: enemy firewall grid came online` });
+  }
+}
+
+function applyArenaModifierPreTurn(state, rng) {
+  const arenaModifier = state.arenaModifier;
+  if (!arenaModifier) return;
+
+  if (arenaModifier.id === "emp_zone") {
+    const hand = state.player?.piles?.hand || [];
+    if (hand.length <= 0) return;
+    const nonCore = hand.filter((cardId) => {
+      const def = state.dataRef?.cards?.[state.cardInstances?.[cardId]?.defId];
+      return !def?.tags?.includes("Core");
+    });
+    const picked = getRandomFromList(rng, nonCore.length > 0 ? nonCore : hand);
+    if (!picked) return;
+    if (!state._lockedCards) state._lockedCards = new Set();
+    state._lockedCards.add(picked);
+    const cardDef = state.dataRef?.cards?.[state.cardInstances?.[picked]?.defId];
+    push(state.log, { t: "Info", msg: `${arenaModifier.label}: ${cardDef?.name || picked} was scrambled` });
+  } else if (arenaModifier.id === "firewall_grid") {
+    for (const enemy of getAliveEnemies(state)) {
+      grantFirewall(state, enemy, arenaModifier.turnStartFirewall || 0, rng);
+    }
+    push(state.log, { t: "Info", msg: `${arenaModifier.label}: the enemy side gained Firewall` });
+  }
+}
+
+function applyArenaModifierPostStatus(state) {
+  const arenaModifier = state.arenaModifier;
+  if (!arenaModifier || arenaModifier.id !== "data_storm") return;
+  applyChipDamageIgnoringFirewall(state, state.player, arenaModifier.chipDamage || 0, arenaModifier.label);
+  for (const enemy of getAliveEnemies(state)) {
+    applyChipDamageIgnoringFirewall(state, enemy, arenaModifier.chipDamage || 0, arenaModifier.label);
+  }
+}
+
+function applyHeatPressureBeforeEnemyTurn(state, rng) {
+  const heatState = syncHeatPressure(state);
+  if (heatState.firewallPulse > 0) {
+    for (const enemy of getAliveEnemies(state)) {
+      grantFirewall(state, enemy, heatState.firewallPulse, rng);
+    }
+    push(state.log, { t: "Info", msg: `Trace spike: enemies hardened with +${heatState.firewallPulse} Firewall` });
+  }
+
+  if (heatState.mutationPulse > 0) {
+    const mutatedCardPool = getMutatedCardPool(state);
+    const picked = getRandomFromList(rng, mutatedCardPool);
+    if (picked) {
+      accelerateCardInstability(state, picked, {
+        useDelta: 1,
+        finalDelta: heatState.mutationPulse,
+        sourceLabel: "Trace spike",
+      });
+    }
+  }
 }
 
 function getTargetEnemy(state, targetEnemyId = null) {
@@ -571,10 +683,17 @@ export function drawCards(state, rng, n, source = "draw") {
   }
 }
 
-function handleEncounterCombatStart(state) {
+function handleEncounterCombatStart(state, rng = null) {
   for (const directive of state.encounterDirectives || []) {
     push(state.log, { t: "Info", msg: `Encounter directive: ${directive.label}` });
+    if (directive.type === "adaptive_firewall") {
+      for (const enemy of getAliveEnemies(state)) {
+        grantFirewall(state, enemy, directive.firewall || 0, rng);
+      }
+      push(state.log, { t: "Info", msg: `Adaptive Firewall: enemies deployed ${directive.firewall || 0} Firewall` });
+    }
   }
+  applyArenaModifierCombatStart(state, rng);
 }
 
 function handleEncounterAfterEnemyActs(state, data, rng, enemy) {
@@ -4116,6 +4235,7 @@ export function startCombatFromRunDeck(params) {
     encounterId = null,
     encounterName = null,
     encounterKind = "normal",
+    runAdaptationProfile = null,
   } = params;
   // ThrottledProc: cap RAM at 3, max card cost 1 (passive_combat)
   const effectiveMaxRAM = relicIds.includes('ThrottledProc') ? Math.min(3, playerMaxRAM) : playerMaxRAM;
@@ -4155,6 +4275,9 @@ export function startCombatFromRunDeck(params) {
         encounterName: encounterName || encounterId || "",
         encounterKind,
       });
+  const adaptiveDirective = getAdaptiveEncounterDirective(runAdaptationProfile, { act, encounterKind });
+  if (adaptiveDirective) encounterDirectives.push(adaptiveDirective);
+  const arenaModifier = pickArenaModifier(seed, act, encounterKind, encounterId || encounterName || "");
 
   const enemies = enemyIds.map((eid, idx) => {
     const ed = data.enemies[eid];
@@ -4165,6 +4288,7 @@ export function startCombatFromRunDeck(params) {
       if (directive.type === "linked_support") return String(ed.role || "").toLowerCase() === "support/heal";
       if (directive.type === "shield_wall") return String(ed.role || "").toLowerCase() === "defense/tank";
       if (directive.type === "mutation_hunters") return /Warden|Oracle|Hacker/i.test(String(ed.name || ""));
+      if (directive.type === "adaptive_firewall") return true;
       return directive.type === "swarm" || directive.type === "formed";
     });
     return {
@@ -4212,11 +4336,19 @@ export function startCombatFromRunDeck(params) {
     encounterName,
     encounterKind,
     encounterDirectives,
+    arenaModifier,
     cardInstances: runDeck.cardInstances,
     log: [],
     combatOver: false,
     victory: false,
-    balance: { enemyDmgMult: effectiveEnemyDmgMult, enemyHpMult: effectiveEnemyHpMult },
+    heat: 0,
+    maxHeat: HEAT_MAX,
+    runAdaptationProfile: normalizeRunAdaptationProfile(runAdaptationProfile),
+    balance: {
+      baseEnemyDmgMult: effectiveEnemyDmgMult,
+      enemyDmgMult: effectiveEnemyDmgMult,
+      enemyHpMult: effectiveEnemyHpMult,
+    },
     ruleMods: effectiveRuleMods,
     forcedMutationTier,
     relicIds,
@@ -4225,10 +4357,11 @@ export function startCombatFromRunDeck(params) {
   };
 
   push(state.log, { t: "Info", msg: `Combat started (seed=${seed})` });
+  syncHeatPressure(state);
   runRelicHooks(state, data, 'on_combat_start', { rng });
   runEnemyPassives(state, "CombatStart", rng, null, { turn: 0 });
   for (const enemy of enemies) handleBossDirectiveCombatStart(state, data, rng, enemy);
-  handleEncounterCombatStart(state);
+  handleEncounterCombatStart(state, rng);
   for (const cid of Object.keys(state.cardInstances || {})) {
     getCardRuntime(state.cardInstances[cid]);
     runPatchTrigger(state, data, rng, cid, 'onCombatStart', { alwaysMeetCondition: true });
@@ -4266,6 +4399,12 @@ export function dispatchCombat(state, data, action) {
   switch (action.type) {
     case "StartTurn": {
       state.turn += 1;
+      if (state.heat > 0) {
+        const carriedHeat = getHeatState(state.heat, state.maxHeat || HEAT_MAX);
+        updateCombatHeat(state, state.heat - carriedHeat.decay);
+      } else {
+        syncHeatPressure(state);
+      }
       state.player.ram = Math.min(state.player.maxRAM, state.player.ram + state.player.ramRegen);
       state._firstDrawDoneThisTurn = false;
       state._cardsPlayedThisTurn = 0;
@@ -4335,6 +4474,7 @@ export function dispatchCombat(state, data, action) {
         delete state._lockedCardsNextTurn;
         push(state.log, { t: "Info", msg: "Enemy lockdown: a card is disabled this turn" });
       }
+      applyArenaModifierPreTurn(state, rng);
       state._pendingEndTurnSelfDamage = 0;
       state._mutationTurnDamageReduce = 0;
       state._mutationTurnDamageSink = 0;
@@ -4361,6 +4501,7 @@ export function dispatchCombat(state, data, action) {
         state.player.statuses = [...nonFirewall.filter((status) => status.stacks > 0), ...firewall];
       }
       for (const e of state.enemies) tickStatuses(e, state.dataRef);
+      applyArenaModifierPostStatus(state);
 
       // Win / defeat check after DoT — Burn/Leak can kill before the player acts
       if (state.player.hp <= 0) {
@@ -4386,6 +4527,10 @@ export function dispatchCombat(state, data, action) {
 
       // Relic on_turn_start hooks
       runRelicHooks(state, data, 'on_turn_start', { rng });
+
+      for (const enemy of state.enemies) {
+        if (enemy?.hp > 0) setEnemyIntent(state, data, enemy.id);
+      }
 
       pushHandState(state, "turn_start_ready", { source: "turn_start" });
       push(state.log, { t: "Info", msg: `Turn ${state.turn} start` });
@@ -4471,6 +4616,19 @@ export function dispatchCombat(state, data, action) {
       }
 
       state.player.ram -= cost;
+      const heatGain = getCardHeatGain({
+        cost,
+        type: def?.type,
+        tags: def?.tags,
+        compileLevel: ci?.compileLevel ?? 0,
+        appliedMutationCount: ci?.appliedMutations?.length ?? 0,
+        effectSummary: playedSummary,
+      });
+      const prevHeatState = getHeatState(state.heat, state.maxHeat || HEAT_MAX);
+      const nextHeatState = updateCombatHeat(state, state.heat + heatGain, { suppressLogs: true });
+      if (heatGain >= 3 || nextHeatState.alertLevel !== prevHeatState.alertLevel) {
+        push(state.log, { t: "Info", msg: `Trace heat +${heatGain} (${state.heat}/${state.maxHeat})` });
+      }
 
       // Emit structured card-played event for stats tracking and UI animation
       push(state.log, {
@@ -4482,6 +4640,7 @@ export function dispatchCombat(state, data, action) {
           cost,
           ramBefore,
           ramAfter: state.player.ram,
+          heatAfter: state.heat,
           playerBefore,
           targetEnemyId: resolvedContextEnemy?.id ?? action.targetEnemyId ?? null,
           targetSelf,
@@ -4863,6 +5022,8 @@ export function dispatchCombat(state, data, action) {
         push(state.log, { t: "Info", msg: `Delayed recoil: ${state._pendingEndTurnSelfDamage} self-damage` });
         state._pendingEndTurnSelfDamage = 0;
       }
+
+      applyHeatPressureBeforeEnemyTurn(state, rng);
 
       // enemy actions (TraceBeacon bonus is active during enemy attacks)
       for (const e of state.enemies) enemyTurn(state, data, rng, e.id);

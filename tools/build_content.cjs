@@ -16,9 +16,21 @@ const OUT_PATH = path.join(ROOT, "src", "data", "gamedata.json");
 function die(msg) { console.error(msg); process.exit(1); }
 function exists(p) { try { fs.accessSync(p); return true; } catch { return false; } }
 function readText(p) { return fs.readFileSync(p, "utf8"); }
+function toPrettyJson(value) { return JSON.stringify(value, null, 2); }
 function writeJson(p, obj) {
+  const nextText = toPrettyJson(obj);
   fs.mkdirSync(path.dirname(p), { recursive: true });
-  fs.writeFileSync(p, JSON.stringify(obj, null, 2), "utf8");
+  if (exists(p)) {
+    try {
+      if (readText(p) === nextText) {
+        return { written: false, bytes: Buffer.byteLength(nextText, "utf8") };
+      }
+    } catch {
+      // Fall through to rewrite the file if we cannot read the current contents.
+    }
+  }
+  fs.writeFileSync(p, nextText, "utf8");
+  return { written: true, bytes: Buffer.byteLength(nextText, "utf8") };
 }
 
 // Robust enough CSV parser (quoted fields, commas, CRLF)
@@ -102,12 +114,40 @@ function ensureId(obj, filename) {
   if (!obj.id) die(`[content] Missing id in ${filename} row: ${JSON.stringify(obj)}`);
   return obj.id;
 }
+function assertUniqueField(rows, filename, field = "id") {
+  const seen = new Set();
+  for (const row of rows || []) {
+    const value = String(row?.[field] ?? "").trim();
+    if (!value) continue;
+    if (seen.has(value)) {
+      throw new Error(`[content] Duplicate ${field} "${value}" in ${filename}`);
+    }
+    seen.add(value);
+  }
+  return rows;
+}
+function omitKeys(value, keys = []) {
+  if (!value || typeof value !== "object") return value;
+  const next = { ...value };
+  for (const key of keys) delete next[key];
+  return next;
+}
+function preserveBuiltAtWhenContentUnchanged(previous, next) {
+  if (!previous || typeof previous !== "object") return next;
+  const previousComparable = omitKeys(previous, ["builtAt"]);
+  const nextComparable = omitKeys(next, ["builtAt"]);
+  if (toPrettyJson(previousComparable) !== toPrettyJson(nextComparable)) return next;
+  return {
+    ...next,
+    builtAt: previous.builtAt || next.builtAt,
+  };
+}
 
 // ---------- per-file builders ----------
 function buildCards(filename) {
   const p = path.join(CONTENT_DIR, filename);
   if (!exists(p)) return {};
-  const rows = rowsToObjects(parseCsv(readText(p)));
+  const rows = assertUniqueField(rowsToObjects(parseCsv(readText(p))), filename);
   const out = {};
   for (const r of rows) {
     const id = ensureId(r, filename);
@@ -134,7 +174,7 @@ function buildCards(filename) {
 function buildMutations(filename) {
   const p = path.join(CONTENT_DIR, filename);
   if (!exists(p)) return {};
-  const rows = rowsToObjects(parseCsv(readText(p)));
+  const rows = assertUniqueField(rowsToObjects(parseCsv(readText(p))), filename);
   const out = {};
   for (const r of rows) {
     const id = ensureId(r, filename);
@@ -155,7 +195,7 @@ function buildMutations(filename) {
 function buildMutationPools(filename) {
   const p = path.join(CONTENT_DIR, filename);
   if (!exists(p)) return {};
-  const rows = rowsToObjects(parseCsv(readText(p)));
+  const rows = assertUniqueField(rowsToObjects(parseCsv(readText(p))), filename, "tier");
   // expected columns: tier, mutationIds  (mutationIds separated by ; or |)
   const out = {};
   for (const r of rows) {
@@ -322,7 +362,7 @@ function getEnemyRotationByRole(role, difficulty, act) {
 function buildEnemies(filename) {
   const p = path.join(CONTENT_DIR, filename);
   if (!exists(p)) return {};
-  const rows = rowsToObjects(parseCsv(readText(p)));
+  const rows = assertUniqueField(rowsToObjects(parseCsv(readText(p))), filename);
   const out = {};
 
   for (const r of rows) {
@@ -397,7 +437,7 @@ function buildEnemies(filename) {
 function buildEncounters(filename) {
   const p = path.join(CONTENT_DIR, filename);
   if (!exists(p)) return {};
-  const rows = rowsToObjects(parseCsv(readText(p)));
+  const rows = assertUniqueField(rowsToObjects(parseCsv(readText(p))), filename);
 
   // expected columns: id,name,act,kind,enemyIds (list),extra (JSON with generator config)
   const out = {};
@@ -433,7 +473,7 @@ function buildEncounters(filename) {
 function buildRelics(filename) {
   const p = path.join(CONTENT_DIR, filename);
   if (!exists(p)) return { relics: {}, relicRewardPools: {} };
-  const rows = rowsToObjects(parseCsv(readText(p)));
+  const rows = assertUniqueField(rowsToObjects(parseCsv(readText(p))), filename);
 
   const MOD_NUM_COLS = [
     'maxHPDelta','maxMPDelta','maxRAMDelta','startingGoldDelta','drawPerTurnDelta',
@@ -482,7 +522,7 @@ function buildRelics(filename) {
 function buildEvents(filename) {
   const p = path.join(CONTENT_DIR, filename);
   if (!exists(p)) return {};
-  const rows = rowsToObjects(parseCsv(readText(p)));
+  const rows = assertUniqueField(rowsToObjects(parseCsv(readText(p))), filename);
   const out = {};
   for (const r of rows) {
     const id = ensureId(r, filename);
@@ -499,7 +539,7 @@ function buildEvents(filename) {
 function buildStatuses(filename) {
   const p = path.join(CONTENT_DIR, filename);
   if (!exists(p)) return {};
-  const rows = rowsToObjects(parseCsv(readText(p)));
+  const rows = assertUniqueField(rowsToObjects(parseCsv(readText(p))), filename);
   const out = {};
   for (const r of rows) {
     const id = ensureId(r, filename);
@@ -519,7 +559,7 @@ function buildStatuses(filename) {
 function buildActBalance(filename) {
   const p = path.join(CONTENT_DIR, filename);
   if (!exists(p)) return [];
-  const rows = rowsToObjects(parseCsv(readText(p)));
+  const rows = assertUniqueField(rowsToObjects(parseCsv(readText(p))), filename, "act");
   // expected columns: act, goldNormal, goldElite, goldBoss, enemyHpMult, enemyDmgMult
   return rows.map(r => ({
     act: toNum(r.act, 1),
@@ -571,43 +611,67 @@ function ensureActBalance(actBalance) {
 
 // ---------- build ----------
 function main() {
-  const encountersById = buildEncounters("encounters.csv");
-  ensureEncounterWeights(encountersById);
+  try {
+    const encountersById = buildEncounters("encounters.csv");
+    ensureEncounterWeights(encountersById);
 
-  // Preserve manual, non-generated sections from existing gamedata.json (eg mapRules)
-  let prev = null;
-  if (exists(OUT_PATH)) {
-    try { prev = JSON.parse(readText(OUT_PATH)); } catch { prev = null; }
+    // Preserve manual, non-generated sections from existing gamedata.json (eg mapRules)
+    let prev = null;
+    if (exists(OUT_PATH)) {
+      try { prev = JSON.parse(readText(OUT_PATH)); } catch { prev = null; }
+    }
+
+    const { relics, relicRewardPools } = buildRelics("relics.csv");
+
+    let gamedata = {
+      version: 1,
+      builtAt: new Date().toISOString(),
+      cards: buildCards("cards.csv"),
+      mutations: buildMutations("mutations.csv"),
+      mutationPoolsByTier: buildMutationPools("mutation_pools.csv"),
+      enemies: buildEnemies("enemies.csv"),
+      encounters: encountersById,
+      encounterTables: buildEncounterTables(encountersById),
+      relics,
+      relicRewardPools,
+      events: buildEvents("events.csv"),
+      statuses: buildStatuses("statuses.csv"),
+      actBalance: ensureActBalance(buildActBalance("act_balance.csv")),
+    };
+
+    // Merge preserved sections
+    if (prev && typeof prev === "object") {
+      if (prev.mapRules && typeof prev.mapRules === "object") gamedata.mapRules = prev.mapRules;
+    }
+
+    gamedata = preserveBuiltAtWhenContentUnchanged(prev, gamedata);
+
+    // Write now; validate script can be run separately (or in the same step in package.json)
+    const writeResult = writeJson(OUT_PATH, gamedata);
+    console.log(`[content] ${writeResult.written ? "Wrote" : "Up to date"} ${path.relative(ROOT, OUT_PATH)}`);
+  } catch (error) {
+    die(error instanceof Error ? error.message : String(error));
   }
-
-  const { relics, relicRewardPools } = buildRelics("relics.csv");
-
-  const gamedata = {
-    version: 1,
-    builtAt: new Date().toISOString(),
-    cards: buildCards("cards.csv"),
-    mutations: buildMutations("mutations.csv"),
-    mutationPoolsByTier: buildMutationPools("mutation_pools.csv"),
-    enemies: buildEnemies("enemies.csv"),
-    encounters: encountersById,
-    encounterTables: buildEncounterTables(encountersById),
-    relics,
-    relicRewardPools,
-    events: buildEvents("events.csv"),
-    statuses: buildStatuses("statuses.csv"),
-    actBalance: ensureActBalance(buildActBalance("act_balance.csv")),
-  };
-
-
-  // Merge preserved sections
-  if (prev && typeof prev === "object") {
-    if (prev.mapRules && typeof prev.mapRules === "object") gamedata.mapRules = prev.mapRules;
-  }
-
-  // Write now; validate script can be run separately (or in the same step in package.json)
-  writeJson(OUT_PATH, gamedata);
-  console.log(`[content] Wrote ${path.relative(ROOT, OUT_PATH)}`);
 }
 
+if (require.main === module) {
+  main();
+}
 
-main();
+module.exports = {
+  assertUniqueField,
+  buildActBalance,
+  buildCards,
+  buildEncounters,
+  buildEnemies,
+  buildEvents,
+  buildMutationPools,
+  buildMutations,
+  buildRelics,
+  buildStatuses,
+  main,
+  parseCsv,
+  preserveBuiltAtWhenContentUnchanged,
+  rowsToObjects,
+  writeJson,
+};

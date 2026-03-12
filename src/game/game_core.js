@@ -14,6 +14,11 @@ import { getStarterProfile } from "./runProfiles";
 import { getCompilePreview, applyCompileToCardInstance } from "./cardCompile";
 import { analyzeDeckState } from "./runInsights";
 import {
+  createRunAdaptationProfile,
+  normalizeRunAdaptationProfile,
+  recordCardPlayForAdaptation,
+} from "./combatMeta";
+import {
   isCardUnlockedByAchievements,
   isRelicUnlockedByAchievements,
 } from "./achievements";
@@ -54,6 +59,8 @@ export function normalizeDeckServiceId(rawId) {
       return "Accelerate";
     case "CompileSelectedCard":
       return "Compile";
+    case "ForgeSelectedCard":
+      return "Forge";
     default:
       return rawId ?? null;
   }
@@ -157,6 +164,54 @@ function previewRepairMutationRemoval(data, ci) {
 
 function getShopOfferPrice(offer) {
   return Math.max(0, Number(offer?.price ?? 0));
+}
+
+function getOfferCurrency(offer) {
+  return offer?.currency === "scrap" ? "scrap" : "gold";
+}
+
+function getRunCurrencyAmount(run, currency = "gold") {
+  if (!run) return 0;
+  if (currency === "scrap") return Math.max(0, Number(run.scrap || 0));
+  return Math.max(0, Number(run.gold || 0));
+}
+
+function canAffordRunCurrency(run, amount, currency = "gold") {
+  return getRunCurrencyAmount(run, currency) >= Math.max(0, Number(amount || 0));
+}
+
+function addRunCurrency(run, amount, currency = "gold") {
+  if (!run) return 0;
+  const gain = Math.max(0, Number(amount || 0));
+  if (currency === "scrap") {
+    run.scrap = Math.max(0, Number(run.scrap || 0) + gain);
+    return run.scrap;
+  }
+  run.gold = Math.max(0, Number(run.gold || 0) + gain);
+  return run.gold;
+}
+
+function spendRunCurrency(run, amount, currency = "gold") {
+  const cost = Math.max(0, Number(amount || 0));
+  if (!canAffordRunCurrency(run, cost, currency)) return false;
+  if (currency === "scrap") {
+    run.scrap = Math.max(0, Number(run.scrap || 0) - cost);
+    return true;
+  }
+  run.gold = Math.max(0, Number(run.gold || 0) - cost);
+  return true;
+}
+
+function formatCurrencyForLog(amount, currency = "gold") {
+  const safeAmount = Math.max(0, Number(amount || 0));
+  return currency === "scrap" ? `${safeAmount} scrap` : `${safeAmount}g`;
+}
+
+function salvageRemovedCard(state, ci, log, reason = "salvaged") {
+  if (!ci || ci.finalMutationId !== "J_BRICK") return 0;
+  addRunCurrency(state.run, 2, "scrap");
+  log?.({ t: "Info", msg: `Recovered 2 scrap from ${ci.defId} (${reason})` });
+  return 2;
 }
 
 function createRunTelemetry() {
@@ -352,6 +407,28 @@ function getServiceCardPreview(serviceId, data, ci) {
     };
   }
 
+  if (normalizedId === "Forge") {
+    const compilePreview = getCompilePreview(data?.cards?.[ci?.defId], ci);
+    const repairPreview = previewRepairMutationRemoval(data, ci);
+    const stabilisePreview = previewMutationClockScale(data, ci, "up");
+    const steps = [];
+    if (repairPreview.eligible) steps.push("strip the latest mutation");
+    if (compilePreview.eligible) steps.push("compile the card");
+    if (stabilisePreview.changed) steps.push("stabilise its clocks");
+    return {
+      serviceId: normalizedId,
+      eligible: steps.length > 0,
+      steps,
+      summary: steps.length > 0
+        ? `Reforge this card: ${steps.join(", ")}.`
+        : "Nothing on this card can be reforged right now.",
+      reason: steps.length > 0 ? null : "Nothing on this card can be reforged right now.",
+      compilePreview,
+      repairPreview,
+      stabilisePreview,
+    };
+  }
+
   return {
     serviceId: normalizedId,
     eligible: false,
@@ -425,9 +502,10 @@ export function getServiceOfferPreview(serviceId, state, data) {
 
   const eligibleCount = targetCards.filter((entry) => entry.eligible).length;
   const countLabel = `${eligibleCount} eligible card${eligibleCount === 1 ? "" : "s"}`;
+  const isScrapService = normalizedId === "Forge";
   const repeatableDetail = isRepeatableShopService(normalizedId)
     ? " Gold is charged when you apply the service. Cost doubles after each use in this shop."
-    : " Gold is charged when you apply the service.";
+    : (isScrapService ? " Scrap is charged when you apply the service." : " Gold is charged when you apply the service.");
   const genericDetail = targetCards.length > 0
     ? `${countLabel}.${repeatableDetail}`
     : "No cards are available to target.";
@@ -441,6 +519,8 @@ export function getServiceOfferPreview(serviceId, state, data) {
     summary = "Choose 1 non-final card. Extend its use and final mutation clocks by 10%.";
   } else if (normalizedId === "Accelerate") {
     summary = "Choose 1 non-final card. Reduce its use and final mutation clocks by 10%.";
+  } else if (normalizedId === "Forge") {
+    summary = "Choose 1 non-final card. Spend scrap to reforge it: repair, compile, and stabilise what you can.";
   }
 
   return {
@@ -964,6 +1044,7 @@ function makeShop(data, seed, relicIds = [], act = 1, options = {}) {
     { kind: "Service", serviceId: "Repair", price: p(60), basePrice: p(60), requiresCard: true, timesPurchased: 0 },
     { kind: "Service", serviceId: "Stabilise", price: p(60), basePrice: p(60), requiresCard: true, timesPurchased: 0 },
     { kind: "Service", serviceId: "Accelerate", price: p(40), basePrice: p(40), requiresCard: true, timesPurchased: 0 },
+    { kind: "Service", serviceId: "Forge", price: 4, basePrice: 4, requiresCard: true, currency: "scrap" },
     { kind: "Service", serviceId: "Heal", price: p(60), basePrice: p(60), requiresCard: false },
   ];
   if (relicOffer) offers.push(relicOffer);
@@ -1006,6 +1087,8 @@ function maybeAdvanceAct(state, data, log) {
 function service_RemoveCard(state, data, source = 'shop', log = null) {
   const sel = state.deckView?.selectedInstanceId;
   if (!state.deck || !sel) return false;
+  const removed = state.deck.cardInstances[sel];
+  salvageRemovedCard(state, removed, log, source === "shop" ? "market salvage" : "manual salvage");
   delete state.deck.cardInstances[sel];
   state.deck.master = state.deck.master.filter(x => x !== sel);
   // on_card_remove relic effects
@@ -1064,6 +1147,38 @@ function service_AccelerateCard(state, data) {
   ci.useCounter = preview.nextUseCounter;
   ci.finalMutationCountdown = preview.nextFinalCountdown;
   return true;
+}
+function service_ForgeCard(state, data) {
+  const sel = state.deckView?.selectedInstanceId;
+  if (!state.deck || !sel) return false;
+  const preview = getServiceTargetPreview("Forge", state, data, sel);
+  if (!preview.eligible) return false;
+
+  const ci = state.deck.cardInstances[sel];
+  if (!ci) return false;
+  let changed = false;
+
+  if (preview.repairPreview?.eligible) {
+    ci.appliedMutations = [...(preview.repairPreview.nextAppliedMutations || [])];
+    ci.ramCostDelta = Number(preview.repairPreview.nextRamCostDelta ?? ci.ramCostDelta ?? 0);
+    ci.useCounter = preview.repairPreview.nextUseCounter;
+    ci.finalMutationCountdown = preview.repairPreview.nextFinalCountdown;
+    incrementRunTelemetry(state.run, "repairsUsed", 1);
+    changed = true;
+  }
+
+  if (preview.compilePreview?.eligible && service_CompileCard(state, data)) {
+    changed = true;
+  }
+
+  const stabilisePreview = previewMutationClockScale(data, ci, "up");
+  if (stabilisePreview.changed) {
+    ci.useCounter = stabilisePreview.nextUseCounter;
+    ci.finalMutationCountdown = stabilisePreview.nextFinalCountdown;
+    changed = true;
+  }
+
+  return changed;
 }
 function service_CompileCard(state, data) {
   const sel = state.deckView?.selectedInstanceId;
@@ -1130,12 +1245,13 @@ function resolveCurrentNodeInternal(state, data, log) {
       encounterName = `Debug pool (${enemyIds.length} enemies)`;
     } else {
       let enc = null;
-      try {
-        enc = pickEncounter(data, state.run.seed ^ resolvedFloor, effectiveAct, effectiveKind, {
-          floor: resolvedFloor,
-          recentHistory: state.run.encounterHistory || [],
-        });
-      } catch (err) {
+        try {
+          enc = pickEncounter(data, state.run.seed ^ resolvedFloor, effectiveAct, effectiveKind, {
+            floor: resolvedFloor,
+            recentHistory: state.run.encounterHistory || [],
+            adaptationProfile: state.run.adaptationProfile || null,
+          });
+        } catch (err) {
         log({ t: "Error", msg: `Encounter selection failed: ${String(err?.message || err)}` });
         return state;
       }
@@ -1177,11 +1293,12 @@ function resolveCurrentNodeInternal(state, data, log) {
       playerMaxRAM: (dbg?.playerMaxRAM ?? 8) + (mods.maxRAMDelta ?? 0),
       playerRamRegen: (dbg?.playerRamRegen ?? 2) + (mods.ramRegenDelta ?? 0),
       openingHand: 5,
-      ruleMods: mods,
-      forcedMutationTier: state.run.forcedMutationTier ?? null,
-      debugOverrides: dbg,
-      relicIds: state.run.relicIds || [],
-    });
+        ruleMods: mods,
+        forcedMutationTier: state.run.forcedMutationTier ?? null,
+        debugOverrides: dbg,
+        relicIds: state.run.relicIds || [],
+        runAdaptationProfile: state.run.adaptationProfile || null,
+      });
     state.combat.player.hp = state.run.hp;
     const debugTag = dbg ? ` [dbg: act${effectiveAct}/${effectiveKind}]` : '';
     log({ t: "Info", msg: `Encounter: ${encounterName}${debugTag}` });
@@ -1291,6 +1408,7 @@ export function dispatchGame(stateIn, data, action) {
         mp: startMaxMP,
         maxMP: startMaxMP,
         gold: startGold,
+        scrap: 0,
         hp: startMaxHP,
         maxHP: startMaxHP,
         travelHpCost,
@@ -1313,6 +1431,7 @@ export function dispatchGame(stateIn, data, action) {
           relicIds: Array.isArray(action.unlockedRelicIds) ? action.unlockedRelicIds : [],
           callsignIds: Array.isArray(action.unlockedCallsignIds) ? action.unlockedCallsignIds : [],
         },
+        adaptationProfile: createRunAdaptationProfile(),
         telemetry: createRunTelemetry(),
       };
 
@@ -1438,6 +1557,7 @@ export function dispatchGame(stateIn, data, action) {
 
       // drain combat logs into global log and mark mutation discoveries per run
       const seenMutationIds = new Set(state.run.seenMutationIds || []);
+      state.run.adaptationProfile = normalizeRunAdaptationProfile(state.run.adaptationProfile);
       for (const e of state.combat.log) {
         if (e.t === "MutationApplied") {
           const mutationId = e.data?.mutationId
@@ -1455,8 +1575,20 @@ export function dispatchGame(stateIn, data, action) {
           });
           continue;
         }
+        if (e.t === "CardPlayed") {
+          const currentInstance = state.deck?.cardInstances?.[e.data?.cardInstanceId] || null;
+          state.run.adaptationProfile = recordCardPlayForAdaptation(state.run.adaptationProfile, {
+            cost: e.data?.cost,
+            effectSummary: e.data?.effectSummary,
+            type: currentInstance?.defId ? data?.cards?.[currentInstance.defId]?.type : null,
+            compileLevel: currentInstance?.compileLevel ?? 0,
+            appliedMutationCount: currentInstance?.appliedMutations?.length ?? 0,
+          });
+        }
         if (e.t === "FinalMutation" && e.data?.outcome === "brick") {
           incrementRunTelemetry(state.run, "bricksTriggered", 1);
+          addRunCurrency(state.run, 1, "scrap");
+          push(state.log, { t: "Info", msg: `Recovered 1 scrap from ${e.data?.cardDefId || "bricked card"}` });
         }
         push(state.log, e);
       }
@@ -1479,6 +1611,8 @@ export function dispatchGame(stateIn, data, action) {
           .filter(ci => ci.removeFromRunOnCombatEnd)
           .map(ci => ci.instanceId);
         for (const id of toRemove) {
+          const removed = state.deck.cardInstances[id];
+          salvageRemovedCard(state, removed, log, "post-combat salvage");
           delete state.deck.cardInstances[id];
           state.deck.master = state.deck.master.filter(x => x !== id);
           log({ t: "Info", msg: `Removed bricked card from run: ${id}` });
@@ -1617,10 +1751,14 @@ export function dispatchGame(stateIn, data, action) {
       if (!offer) return state;
       if (offer.sold) { log({ t: "Info", msg: "Offer sold out" }); return state; }
       const offerPrice = getShopOfferPrice(offer);
-      if (state.run.gold < offerPrice) { log({ t: "Info", msg: "Not enough gold" }); return state; }
+      const offerCurrency = getOfferCurrency(offer);
+      if (!canAffordRunCurrency(state.run, offerPrice, offerCurrency)) {
+        log({ t: "Info", msg: `Not enough ${offerCurrency}` });
+        return state;
+      }
 
       if (offer.kind === "Card") {
-        state.run.gold -= offerPrice;
+        spendRunCurrency(state.run, offerPrice, offerCurrency);
         const rng = new RNG((state.run.seed ^ state.run.floor ^ 0xC0FFEE) >>> 0);
         addCardToRunDeck(data, state.deck, rng, offer.defId);
         markShopCardOfferSold(state.shop, offer.defId);
@@ -1631,7 +1769,7 @@ export function dispatchGame(stateIn, data, action) {
 
       if (offer.kind === "Relic") {
         if (state.run.relicIds.includes(offer.relicId)) return state; // already owned
-        state.run.gold -= offerPrice;
+        spendRunCurrency(state.run, offerPrice, offerCurrency);
         state.run.relicIds.push(offer.relicId);
         // Apply run-level stat mods (same logic as Reward_PickRelic)
         const boughtRelic = data.relics?.[offer.relicId];
@@ -1663,8 +1801,8 @@ export function dispatchGame(stateIn, data, action) {
           return state;
         }
         if (!service_HealPlayer(state)) return state;
-        state.run.gold -= offerPrice;
-        log({ t: "Info", msg: `Bought service: Heal (+${healPreview.amount} HP)` });
+        spendRunCurrency(state.run, offerPrice, offerCurrency);
+        log({ t: "Info", msg: `Bought service: Heal (+${healPreview.amount} HP, ${formatCurrencyForLog(offerPrice, offerCurrency)})` });
         return state;
       }
 
@@ -1677,6 +1815,7 @@ export function dispatchGame(stateIn, data, action) {
       state.deckView = { selectedInstanceId: null, returnMode: "Shop" };
       state.shop.pendingService = offer.serviceId;
       state.shop.pendingPrice = offerPrice;
+      state.shop.pendingCurrency = offerCurrency;
       state.shop.pendingOfferIndex = action.index;
       log({ t: "Info", msg: `Select a card for service: ${offer.serviceId}` });
       return state;
@@ -1820,8 +1959,13 @@ export function dispatchGame(stateIn, data, action) {
       if (state.mode === "Shop" && state.shop?.pendingService) {
         delete state.shop.pendingService;
         delete state.shop.pendingPrice;
+        delete state.shop.pendingCurrency;
         delete state.shop.pendingOfferIndex;
         log({ t: "Info", msg: "Cancelled shop service selection" });
+      }
+      if (state.mode === "Event" && state.event?.pendingSelectOp) {
+        delete state.event.pendingPrice;
+        delete state.event.pendingCurrency;
       }
       state.deckView = null;
       log({ t: "Info", msg: "Closed deck" });
@@ -1837,9 +1981,10 @@ export function dispatchGame(stateIn, data, action) {
       if (state.mode === "Shop" && state.shop?.pendingService) {
         const serviceId = state.shop.pendingService;
         const servicePrice = Math.max(0, Number(state.shop.pendingPrice ?? 0));
+        const serviceCurrency = state.shop.pendingCurrency === "scrap" ? "scrap" : "gold";
         const serviceOfferIndex = Number.isInteger(state.shop.pendingOfferIndex) ? state.shop.pendingOfferIndex : null;
-        if ((state.run?.gold ?? 0) < servicePrice) {
-          log({ t: "Info", msg: `Not enough gold for service: ${serviceId}` });
+        if (!canAffordRunCurrency(state.run, servicePrice, serviceCurrency)) {
+          log({ t: "Info", msg: `Not enough ${serviceCurrency} for service: ${serviceId}` });
           return state;
         }
         let ok = false;
@@ -1847,14 +1992,16 @@ export function dispatchGame(stateIn, data, action) {
         if (serviceId === "Repair") ok = service_RepairCard(state, data, "shop");
         if (serviceId === "Stabilise") ok = service_StabiliseCard(state, data);
         if (serviceId === "Accelerate") ok = service_AccelerateCard(state, data);
+        if (serviceId === "Forge") ok = service_ForgeCard(state, data);
         if (serviceId === "Compile") ok = service_CompileCard(state, data);
         if (!ok) { log({ t: "Info", msg: `Service failed: ${serviceId}` }); return state; }
-        state.run.gold -= servicePrice;
+        spendRunCurrency(state.run, servicePrice, serviceCurrency);
         advanceRepeatableShopServiceOffer(state.shop, serviceId, serviceOfferIndex, servicePrice);
         syncRunDeckTelemetry(state, data);
-        log({ t: "Info", msg: `Applied service: ${serviceId}` });
+        log({ t: "Info", msg: `Applied service: ${serviceId} (${formatCurrencyForLog(servicePrice, serviceCurrency)})` });
         delete state.shop.pendingService;
         delete state.shop.pendingPrice;
+        delete state.shop.pendingCurrency;
         delete state.shop.pendingOfferIndex;
         state.deckView = null;
       }
@@ -1862,20 +2009,32 @@ export function dispatchGame(stateIn, data, action) {
       // event pending op apply
       if (state.mode === "Event" && state.event?.pendingSelectOp) {
         const op = state.event.pendingSelectOp;
+        const eventPrice = Math.max(0, Number(state.event.pendingPrice ?? 0));
+        const eventCurrency = state.event.pendingCurrency === "scrap" ? "scrap" : "gold";
+        if (eventPrice > 0 && !canAffordRunCurrency(state.run, eventPrice, eventCurrency)) {
+          log({ t: "Info", msg: `Not enough ${eventCurrency} for event action: ${op}` });
+          return state;
+        }
         let ok = false;
         if (op === "RemoveSelectedCard") ok = service_RemoveCard(state, data, 'event', log);
         if (op === "RepairSelectedCard") ok = service_RepairCard(state, data, "event");
         if (op === "StabiliseSelectedCard") ok = service_StabiliseCard(state, data);
         if (op === "AccelerateSelectedCard") ok = service_AccelerateCard(state, data);
+        if (op === "ForgeSelectedCard") ok = service_ForgeCard(state, data);
         if (op === "CompileSelectedCard") ok = service_CompileCard(state, data);
         if (op === "DuplicateSelectedCard") {
           const dupRng = new RNG((state.run?.seed ^ state.run?.floor ^ 0xD0D0D0) >>> 0);
           ok = service_DuplicateCard(state, dupRng);
         }
         if (!ok) { log({ t: "Info", msg: `Event card op failed: ${op}` }); return state; }
+        if (eventPrice > 0) {
+          spendRunCurrency(state.run, eventPrice, eventCurrency);
+        }
         syncRunDeckTelemetry(state, data);
-        log({ t: "Info", msg: `Event: applied card op ${op}` });
+        log({ t: "Info", msg: `Event: applied card op ${op}${eventPrice > 0 ? ` (${formatCurrencyForLog(eventPrice, eventCurrency)})` : ""}` });
         state.event.pendingSelectOp = undefined;
+        delete state.event.pendingPrice;
+        delete state.event.pendingCurrency;
         state.deckView = null;
         state.mode = "Map";
         state.event = null;
@@ -1907,6 +2066,20 @@ export function dispatchGame(stateIn, data, action) {
       state.deckView = { selectedInstanceId: null, returnMode: "Event" };
       state.event.pendingSelectOp = "RepairSelectedCard";
       log({ t: "Info", msg: "Rest: choose a card to Repair" });
+      return state;
+    }
+    case "Rest_Forge": {
+      if (state.mode !== "Event" || state.event?.eventId !== "RestSite" || !state.run) return state;
+      const forgeCost = 3;
+      if (!canAffordRunCurrency(state.run, forgeCost, "scrap")) {
+        log({ t: "Info", msg: "Not enough scrap to reforge at the rest site" });
+        return state;
+      }
+      state.deckView = { selectedInstanceId: null, returnMode: "Event" };
+      state.event.pendingSelectOp = "ForgeSelectedCard";
+      state.event.pendingPrice = forgeCost;
+      state.event.pendingCurrency = "scrap";
+      log({ t: "Info", msg: `Rest: choose a card to Reforge (${forgeCost} scrap)` });
       return state;
     }
     case "Rest_Leave": {

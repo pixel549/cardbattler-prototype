@@ -1,21 +1,36 @@
-# CardBattler (Logic + Debug Harness)
+# CardBattler
 
-This zip contains the core game logic modules (run loop, combat engine, mutation/decay, encounters, relic hooks, save/replay)
-plus a debug-first `src/App.jsx` that can drive the whole system.
+CardBattler is a React + Vite roguelike deckbuilder prototype with a data-driven combat engine, generated game content, and a heavy debug/playtest surface for AI and manual balancing.
 
-## Expected paths
-- `src/App.jsx`
-- `src/game/*`
-- `src/data/gamedata.json` (stub included)
-- `tools/build_gamedata.py` (xlsx -> json converter)
+## Commands
 
-## Quick boot
-If you're using Vite React:
-1) Drop `src/` into your project
-2) Ensure your bundler can import JSON (Vite can)
-3) Run dev server; open the debug UI
-4) Click: New Run -> Resolve Node -> Combat controls
+- `npm run dev`: rebuild content, validate assets, then start the Vite dev server
+- `npm run build`: rebuild content, validate it, validate runtime art, then produce a production bundle
+- `npm test`: run the baseline Node test suite
+- `npm run analyze:runs`: inspect archived AI run exports
+
+## Content pipeline
+
+The source-of-truth spreadsheets live in [`content_src/`](content_src).
+The build step converts those CSV files into [`src/data/gamedata.json`](src/data/gamedata.json) via [`tools/build_content.cjs`](tools/build_content.cjs).
+
+The content builder now:
+
+- validates duplicate IDs in CSV-backed tables before generating output
+- keeps `builtAt` stable when the semantic content has not changed
+- skips rewriting `src/data/gamedata.json` when the generated payload is already up to date
+
+## Tests
+
+The project now includes a small baseline `node --test` suite under [`tests/`](tests) covering:
+
+- run profile and difficulty composition
+- meta-progression unlock tracking
+- CSV parsing and generated-content safeguards
+
+It is still only a starting point, but it gives refactors a real safety net where there previously was none.
 
 ## Notes
-- The data schema is defined by the JSON stub and `tools/build_gamedata.py`.
-- Everything is intentionally data-driven and logged.
+
+- The current app remains heavily centered around [`src/App.jsx`](src/App.jsx) and [`src/components/CombatScreen.jsx`](src/components/CombatScreen.jsx).
+- Production deploys should always use `npm run build` so the generated data stays in sync with `content_src`.

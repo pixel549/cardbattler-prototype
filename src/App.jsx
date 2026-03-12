@@ -1987,6 +1987,7 @@ function RunHeader({ run, data }) {
         <div style={{ display: 'flex', gap: '12px', fontFamily: MONO, fontSize: 12 }}>
           <span style={{ color: C.green }}>{run.hp}/{run.maxHP}</span>
           <span style={{ color: C.yellow }}>{run.gold}g</span>
+          <span style={{ color: C.orange }}>{run.scrap ?? 0}scrap</span>
           <span style={{ color: C.cyan }}>{run.mp}mp</span>
         </div>
       </div>
@@ -2814,6 +2815,37 @@ const SHOP_SERVICE_INFO = {
   Heal:       { icon: '💊', label: 'Heal', color: C.green },
 };
 
+SHOP_SERVICE_INFO.Forge = { icon: 'F', label: 'Forge', color: C.orange };
+
+function getOfferCurrency(offer) {
+  return offer?.currency === 'scrap' ? 'scrap' : 'gold';
+}
+
+function getRunCurrencyAmount(run, currency = 'gold') {
+  if (!run) return 0;
+  return currency === 'scrap' ? (run.scrap ?? 0) : (run.gold ?? 0);
+}
+
+function formatOfferPrice(amount, currency = 'gold') {
+  return currency === 'scrap' ? `${amount} scrap` : `${amount}g`;
+}
+
+function getCurrencyBadgeStyle(color) {
+  return {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px',
+    padding: '4px 12px',
+    borderRadius: '8px',
+    fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace",
+    fontWeight: 700,
+    backgroundColor: `${color}15`,
+    border: `1px solid ${color}40`,
+    color,
+    fontSize: 14,
+  };
+}
+
 function describeEffects(effects) {
   if (!effects?.length) return '';
   return effects.map(e => {
@@ -2832,6 +2864,7 @@ function describeEffects(effects) {
 function ShopScreen({ state, data, onAction }) {
   const offers = state.shop?.offers || [];
   const gold = state.run?.gold || 0;
+  const scrap = state.run?.scrap || 0;
   const MONO = "'JetBrains Mono', 'Fira Code', 'Consolas', monospace";
 
   return (
@@ -2858,17 +2891,11 @@ function ShopScreen({ state, data, onAction }) {
           <span style={{ fontFamily: MONO, color: C.textMuted, fontSize: 12 }}>
             ACT {state.run?.act} · FLOOR {state.run?.floor}
           </span>
-          <div
-            style={{
-              display: 'flex', alignItems: 'center', gap: '4px',
-              padding: '4px 12px', borderRadius: '8px',
-              fontFamily: MONO, fontWeight: 700,
-              backgroundColor: `${C.yellow}15`,
-              border: `1px solid ${C.yellow}40`,
-              color: C.yellow, fontSize: 14,
-            }}
-          >
+          <div style={getCurrencyBadgeStyle(C.yellow)}>
             {gold}g
+          </div>
+          <div style={getCurrencyBadgeStyle(C.orange)}>
+            {scrap} scrap
           </div>
         </div>
       </div>
@@ -2912,7 +2939,8 @@ function ShopScreen({ state, data, onAction }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {offers.map((offer, i) => {
                 if (offer.kind !== 'Service') return null;
-                const canAfford = gold >= offer.price;
+                const currency = getOfferCurrency(offer);
+                const canAfford = getRunCurrencyAmount(state.run, currency) >= offer.price;
                 const svc = SHOP_SERVICE_INFO[offer.serviceId] || { icon: '⚙', label: offer.serviceId, color: C.cyan };
                 const preview = getServiceOfferPreview(offer.serviceId, state, data);
                 const canUse = preview.available !== false;
@@ -2923,7 +2951,7 @@ function ShopScreen({ state, data, onAction }) {
                     key={i}
                     onClick={() => canBuy && onAction({ type: 'Shop_BuyOffer', index: i })}
                     disabled={!canBuy}
-                    title={!canAfford ? `Costs ${offer.price}g` : (preview.detail || preview.summary || '')}
+                    title={!canAfford ? `Costs ${formatOfferPrice(offer.price, currency)}` : (preview.detail || preview.summary || '')}
                     style={{
                       width: '100%', padding: '14px', borderRadius: '12px',
                       textAlign: 'left', transition: 'all 0.2s ease',
@@ -3008,11 +3036,11 @@ function ShopScreen({ state, data, onAction }) {
                       <div style={{
                         padding: '4px 10px', borderRadius: '8px',
                         fontFamily: MONO, fontWeight: 700,
-                        backgroundColor: canAfford ? `${C.yellow}18` : 'transparent',
-                        border: `1px solid ${canAfford ? `${C.yellow}50` : C.border}`,
-                        color: canAfford ? C.yellow : C.textMuted, fontSize: 13, flexShrink: 0,
+                        backgroundColor: canAfford ? `${currency === 'scrap' ? C.orange : C.yellow}18` : 'transparent',
+                        border: `1px solid ${canAfford ? `${currency === 'scrap' ? C.orange : C.yellow}50` : C.border}`,
+                        color: canAfford ? (currency === 'scrap' ? C.orange : C.yellow) : C.textMuted, fontSize: 13, flexShrink: 0,
                       }}>
-                        {offer.price}g
+                        {formatOfferPrice(offer.price, currency)}
                       </div>
                     </div>
                   </button>
@@ -3648,6 +3676,7 @@ function EventScreen({ state, data, onAction }) {
   }
 
   if (eventId === 'RestSite') {
+    const restScrap = state.run?.scrap || 0;
     return (
       <ScreenShell>
         <RunHeader run={state.run} data={data} />
@@ -3673,10 +3702,12 @@ function EventScreen({ state, data, onAction }) {
               { type: 'Rest_Heal', label: 'Rest', desc: 'Heal 30% HP', color: C.green, icon: '\u2665' },
               { type: 'Rest_Repair', label: 'Repair', desc: 'Restore a card', color: C.cyan, icon: '\uD83D\uDD27' },
               { type: 'Rest_Stabilise', label: 'Stabilise', desc: 'Stabilise a card', color: C.purple, icon: '\u25C6' },
+              { type: 'Rest_Forge', label: 'Reforge', desc: 'Spend 3 scrap to rebuild a card', color: C.orange, icon: '\u2692', disabled: restScrap < 3 },
             ].map(opt => (
               <button
                 key={opt.type}
-                onClick={() => onAction({ type: opt.type })}
+                onClick={() => !opt.disabled && onAction({ type: opt.type })}
+                disabled={opt.disabled}
                 style={{
                   width: '100%',
                   padding: '16px',
@@ -3687,7 +3718,8 @@ function EventScreen({ state, data, onAction }) {
                   backgroundColor: C.bgCard,
                   border: `2px solid ${opt.color}40`,
                   boxShadow: `0 0 16px ${opt.color}10`,
-                  cursor: 'pointer',
+                  cursor: opt.disabled ? 'default' : 'pointer',
+                  opacity: opt.disabled ? 0.45 : 1,
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -4012,6 +4044,8 @@ const DECK_OP_LABELS = {
   StabiliseSelectedCard: { label: 'STABILISE A CARD', desc: 'Extend the chosen card\'s use and final mutation clocks by 10%.', color: '#b44aff' },
   Accelerate:            { label: 'ACCELERATE A CARD',desc: 'Reduce the chosen card\'s use and final mutation clocks by 10%.', color: '#ff6b00' },
   AccelerateSelectedCard:{ label: 'ACCELERATE A CARD',desc: 'Reduce the chosen card\'s use and final mutation clocks by 10%.', color: '#ff6b00' },
+  Forge:                 { label: 'REFORGE A CARD',   desc: 'Spend salvage to repair, compile, and stabilise one card.', color: '#ff6b00' },
+  ForgeSelectedCard:     { label: 'REFORGE A CARD',   desc: 'Spend salvage to repair, compile, and stabilise one card.', color: '#ff6b00' },
   Compile:               { label: 'COMPILE A CARD',   desc: 'Reduce its RAM cost and add a permanent typed bonus.', color: '#ff6b00' },
   CompileSelectedCard:   { label: 'COMPILE A CARD',   desc: 'Reduce its RAM cost and add a permanent typed bonus.', color: '#ff6b00' },
 };
@@ -4336,6 +4370,7 @@ function GameOverScreen({ state, onNewRun, recentUnlocks = [] }) {
     { label: 'FLOOR',     value: run.floor ?? 0 },
     { label: 'HP',        value: `${run.hp ?? 0}/${run.maxHP ?? 0}`, color: hpPct > 30 ? C.green : C.red },
     { label: 'GOLD',      value: `${run.gold ?? 0}g`, color: C.yellow },
+    { label: 'SCRAP',     value: `${run.scrap ?? 0}`, color: C.orange },
     { label: 'DECK SIZE', value: deck.master?.length ?? 0 },
     { label: 'MP',        value: `${run.mp ?? 0}mp`, color: C.cyan },
   ];
@@ -6849,7 +6884,7 @@ function App() {
       });
     }
 
-    if (['Rest_Heal', 'Rest_Repair', 'Rest_Stabilise'].includes(action.type)) {
+    if (['Rest_Heal', 'Rest_Repair', 'Rest_Stabilise', 'Rest_Forge'].includes(action.type)) {
       pendingFloorEventsRef.current.push({
         act: currentState.run?.act,
         floor: currentState.run?.floor,
@@ -6869,6 +6904,7 @@ function App() {
             kind: offer.kind,
             defId: offer.defId ?? offer.serviceId ?? offer.relicId,
             price: offer.price,
+            currency: getOfferCurrency(offer),
           },
         });
       }
@@ -6906,6 +6942,7 @@ function App() {
             kind: 'Service',
             defId: currentState.shop.pendingService,
             price: currentState.shop.pendingPrice ?? null,
+            currency: currentState.shop.pendingCurrency ?? 'gold',
             targetInstanceId: action.instanceId,
             targetDefId: instance?.defId ?? null,
           },

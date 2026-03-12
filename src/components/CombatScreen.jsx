@@ -57,6 +57,101 @@ const EMPTY_OBJECT = {};
 const DOUBLE_TAP_WINDOW_MS = 320;
 const PLAYER_TARGET_ID = '__player__';
 
+function getHeatVisualState(heat = 0, maxHeat = 20) {
+  const safeMax = Math.max(1, Number(maxHeat || 20));
+  const safeHeat = Math.max(0, Math.min(safeMax, Number(heat || 0)));
+  const ratio = safeHeat / safeMax;
+
+  if (ratio >= 0.8) {
+    return { color: '#ff5b2d', glow: 'rgba(255,91,45,0.22)', label: 'CRITICAL' };
+  }
+  if (ratio >= 0.55) {
+    return { color: C.neonOrange, glow: 'rgba(255,107,0,0.18)', label: 'HOT' };
+  }
+  if (ratio >= 0.3) {
+    return { color: C.neonYellow, glow: 'rgba(255,230,0,0.14)', label: 'WARM' };
+  }
+  return { color: C.neonCyan, glow: 'rgba(0,240,255,0.12)', label: 'COOL' };
+}
+
+function HeatBar({ heat = 0, maxHeat = 20, height = 12, showText = true }) {
+  const safeMax = Math.max(1, Number(maxHeat || 20));
+  const safeHeat = Math.max(0, Math.min(safeMax, Number(heat || 0)));
+  const pct = Math.max(0, Math.min(100, (safeHeat / safeMax) * 100));
+  const tone = getHeatVisualState(safeHeat, safeMax);
+
+  return (
+    <div style={{ position: 'relative', width: '100%', height, borderRadius: height / 2, overflow: 'hidden', background: 'rgba(255,255,255,0.05)', border: `1px solid ${tone.color}33` }}>
+      <div
+        style={{
+          width: `${pct}%`,
+          height: '100%',
+          borderRadius: height / 2,
+          background: `linear-gradient(90deg, ${C.neonYellow} 0%, ${tone.color} 100%)`,
+          boxShadow: `0 0 16px ${tone.glow}`,
+          transition: 'width 0.2s ease',
+        }}
+      />
+      {showText && (
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: MONO, fontSize: Math.max(8, height - 4), fontWeight: 700, color: C.bgDark, mixBlendMode: 'screen' }}>
+          HEAT {safeHeat}/{safeMax}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CombatConditionStrip({ heat = 0, maxHeat = 20, arenaModifier = null, compact = false }) {
+  const tone = getHeatVisualState(heat, maxHeat);
+  const fontSize = compact ? 8 : 9;
+  const padding = compact ? '3px 7px' : '4px 8px';
+
+  return (
+    <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', justifyContent: compact ? 'flex-start' : 'center' }}>
+      <div
+        title={`Trace heat ${heat}/${maxHeat}`}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 4,
+          padding,
+          borderRadius: 999,
+          fontFamily: MONO,
+          fontSize,
+          fontWeight: 700,
+          letterSpacing: '0.08em',
+          color: tone.color,
+          backgroundColor: `${tone.color}18`,
+          border: `1px solid ${tone.color}36`,
+        }}
+      >
+        HEAT {heat}/{maxHeat} {tone.label}
+      </div>
+      {arenaModifier && (
+        <div
+          title={arenaModifier.summary || arenaModifier.shortSummary || arenaModifier.label}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+            padding,
+            borderRadius: 999,
+            fontFamily: MONO,
+            fontSize,
+            fontWeight: 700,
+            letterSpacing: '0.08em',
+            color: arenaModifier.color || C.neonOrange,
+            backgroundColor: `${arenaModifier.color || C.neonOrange}16`,
+            border: `1px solid ${(arenaModifier.color || C.neonOrange)}34`,
+          }}
+        >
+          {arenaModifier.label}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function describeCardPlayabilityReason(reason, targetLabel = 'that target') {
   switch (reason) {
     case 'disabled':
@@ -2314,7 +2409,7 @@ function EnemyDetailDialog({
 // ============================================================
 // PLAYER STATS PANEL (bottom-left)
 // ============================================================
-function PlayerPanel({ player, ram = 0, maxRam = 0, powerPile = [], cardInstances = {}, data }) {
+function PlayerPanel({ player, ram = 0, maxRam = 0, heat = 0, maxHeat = 20, arenaModifier = null, powerPile = [], cardInstances = {}, data }) {
   const hp = player?.hp ?? 0;
   const maxHp = player?.maxHP ?? 1;
   const firewallStacks = player?.statuses?.find(s => s.id === 'Firewall')?.stacks ?? 0;
@@ -2398,6 +2493,18 @@ function PlayerPanel({ player, ram = 0, maxRam = 0, powerPile = [], cardInstance
         <RamBar ram={ram} maxRam={maxRam} compact={true} showLabel={false} />
       </div>
 
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+          <span style={{ fontFamily: MONO, fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', color: getHeatVisualState(heat, maxHeat).color }}>
+            HEAT
+          </span>
+          <span style={{ fontFamily: MONO, fontSize: 10, color: C.textPrimary }}>
+            {heat}<span style={{ color: C.textDim }}>/</span>{maxHeat}
+          </span>
+        </div>
+        <HeatBar heat={heat} maxHeat={maxHeat} height={12} showText={false} />
+      </div>
+
       {/* Firewall shield badge (persistent) */}
       <div style={{ display: 'flex', gap: '3px', justifyContent: 'center', flexWrap: 'wrap' }}>
         <div
@@ -2441,6 +2548,8 @@ function PlayerPanel({ player, ram = 0, maxRam = 0, powerPile = [], cardInstance
         )}
       </div>
 
+      <CombatConditionStrip heat={heat} maxHeat={maxHeat} arenaModifier={arenaModifier} />
+
       {/* Player statuses (Firewall shown separately above) */}
       <StatusRow statuses={nonFirewallStatuses} size="small" justify="center" />
 
@@ -2473,6 +2582,9 @@ function CompactPlayerHud({
   player,
   ram = 0,
   maxRam = 0,
+  heat = 0,
+  maxHeat = 20,
+  arenaModifier = null,
   powerPile = [],
   cardInstances = {},
   data,
@@ -2583,7 +2695,7 @@ function CompactPlayerHud({
             CORE VITALS
           </span>
           <span style={{ fontFamily: MONO, fontSize: 8, color: C.textSecondary }}>
-            Firewall, HP, RAM
+            Firewall, HP, RAM, Heat
           </span>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -2619,7 +2731,20 @@ function CompactPlayerHud({
           </div>
           <RamBar ram={ram} maxRam={maxRam} compact={true} showLabel={false} />
         </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+            <span style={{ fontFamily: MONO, fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', color: getHeatVisualState(heat, maxHeat).color }}>
+              HEAT
+            </span>
+            <span style={{ fontFamily: MONO, fontSize: 10, color: C.textPrimary }}>
+              {heat}<span style={{ color: C.textDim }}>/</span>{maxHeat}
+            </span>
+          </div>
+          <HeatBar heat={heat} maxHeat={maxHeat} height={12} showText={false} />
+        </div>
       </div>
+
+      <CombatConditionStrip heat={heat} maxHeat={maxHeat} arenaModifier={arenaModifier} compact={true} />
 
       {nonFirewallStatuses.length > 0 && (
         <div
@@ -2688,6 +2813,9 @@ function MobilePlayerHud({
   player,
   ram = 0,
   maxRam = 0,
+  heat = 0,
+  maxHeat = 20,
+  arenaModifier = null,
   drawCount = 0,
   discardCount = 0,
   exhaustCount = 0,
@@ -2749,6 +2877,12 @@ function MobilePlayerHud({
     C.neonCyan,
     <RamBar ram={ram} maxRam={maxRam} compact={true} showLabel={false} />,
   );
+  const heatMetric = renderMetric(
+    'HEAT',
+    `${heat}/${maxHeat}`,
+    getHeatVisualState(heat, maxHeat).color,
+    <HeatBar heat={heat} maxHeat={maxHeat} height={isPhonePortrait ? 8 : 10} showText={false} />,
+  );
 
   return (
     <div
@@ -2800,16 +2934,16 @@ function MobilePlayerHud({
           <span style={{ fontFamily: MONO, fontSize: isPhonePortrait ? 9 : 10, fontWeight: 700, letterSpacing: '0.12em', color: C.textDim }}>
             PLAYER
           </span>
-          <span style={{ fontFamily: MONO, fontSize: isPhonePortrait ? 9 : 10, color: selfTargetArmed ? C.neonYellow : selfTargetable ? C.neonGreen : C.textSecondary }}>
-            {selfTargetable
-              ? (selfTargetArmed
-                ? 'DOUBLE TAP NOW'
-                : selfTargetSelected
-                  ? 'SELF TARGET READY'
-                  : 'DOUBLE TAP SELF')
-              : 'FW / HP / RAM'}
-          </span>
-        </div>
+            <span style={{ fontFamily: MONO, fontSize: isPhonePortrait ? 9 : 10, color: selfTargetArmed ? C.neonYellow : selfTargetable ? C.neonGreen : C.textSecondary }}>
+              {selfTargetable
+                ? (selfTargetArmed
+                  ? 'DOUBLE TAP NOW'
+                  : selfTargetSelected
+                    ? 'SELF TARGET READY'
+                    : 'DOUBLE TAP SELF')
+                : 'FW / HP / RAM / HEAT'}
+            </span>
+          </div>
         {hasPortraitActionRail ? (
           <>
             <div
@@ -2855,6 +2989,7 @@ function MobilePlayerHud({
               </div>
             </div>
             {ramMetric}
+            {heatMetric}
             {deckMenuOpen && (
               <div
                 ref={deckMenuRef}
@@ -2876,9 +3011,12 @@ function MobilePlayerHud({
             {firewallMetric}
             {hpMetric}
             {ramMetric}
+            {heatMetric}
           </>
         )}
       </div>
+
+      <CombatConditionStrip heat={heat} maxHeat={maxHeat} arenaModifier={arenaModifier} compact={true} />
 
       {(nonFirewallStatuses.length > 0 || activePowers.length > 0) && (
         <div
@@ -5598,6 +5736,9 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
   const powerPile = player?.piles?.power ?? EMPTY_ARRAY;
   const ram = player?.ram ?? 0;
   const maxRam = player?.maxRAM ?? 0;
+  const heat = combat?.heat ?? 0;
+  const maxHeat = combat?.maxHeat ?? 20;
+  const arenaModifier = combat?.arenaModifier ?? null;
   const hasQueuedAnimations = Boolean(activeAnimation) || animationQueue.length > 0;
   const interactionLocked = endTurnPending || hasQueuedAnimations;
   const layoutMode = viewport.width <= 820
@@ -5655,7 +5796,10 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
       firewall: player?.statuses?.find((status) => status.id === 'Firewall')?.stacks ?? 0,
       ram,
       maxRam,
+      heat,
+      maxHeat,
     },
+    arenaModifier: arenaModifier?.label ?? null,
     target: targetedEnemy
       ? {
           id: targetedEnemy.id,
@@ -6444,6 +6588,9 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
             player={player}
             ram={ram}
             maxRam={maxRam}
+            heat={heat}
+            maxHeat={maxHeat}
+            arenaModifier={arenaModifier}
             drawCount={drawPile.length}
             discardCount={discardPile.length}
             exhaustCount={exhaustPile.length}
@@ -6469,6 +6616,9 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
           player={player}
           ram={ram}
           maxRam={maxRam}
+          heat={heat}
+          maxHeat={maxHeat}
+          arenaModifier={arenaModifier}
           drawCount={drawPile.length}
           discardCount={discardPile.length}
           exhaustCount={exhaustPile.length}
@@ -6543,6 +6693,9 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
         player={player}
         ram={ram}
         maxRam={maxRam}
+        heat={heat}
+        maxHeat={maxHeat}
+        arenaModifier={arenaModifier}
         powerPile={powerPile}
         cardInstances={cardInstances}
         data={data}

@@ -1,4 +1,5 @@
 import { RNG } from "./rng";
+import { getAdaptiveEncounterWeight } from "./combatMeta";
 
 function weightedPick(rng, defs) {
   const sum = defs.reduce((a, d) => a + Math.max(0, d.weight || 1), 0);
@@ -123,6 +124,7 @@ export function pickEncounter(data, seed, act, kind, options = {}) {
   const tables = data.encounterTables || [];
   const recentHistory = Array.isArray(options?.recentHistory) ? options.recentHistory : [];
   const floor = Number(options?.floor || 0);
+  const adaptationProfile = options?.adaptationProfile || null;
 
   // Tables can be in two formats:
   // A) Flat: {act, kind, encounterIds: [...]}  (from build_content.cjs)
@@ -203,6 +205,7 @@ export function pickEncounter(data, seed, act, kind, options = {}) {
       0.05,
       Math.max(0, def.weight || 1)
         * getEncounterRecencyMultiplier(def, recentHistory)
+        * getAdaptiveEncounterWeight(def, data, adaptationProfile, { act, encounterKind: finalKind })
         * (0.96 + ((index % 4) * 0.02))
     ),
   }));

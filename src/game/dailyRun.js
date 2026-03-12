@@ -1,4 +1,4 @@
-import { STARTER_PROFILES, DIFFICULTY_PROFILES, CHALLENGE_MODES } from "./runProfiles";
+import { STARTER_PROFILES, DIFFICULTY_PROFILES, CHALLENGE_MODES } from "./runProfiles.js";
 
 const DAILY_PROFILE_ROTATION = ["kernel", "bruteforce", "ghost", "architect", "scrapper"];
 const DAILY_DIFFICULTY_ROTATION = ["standard", "ascension_1", "ascension_2", "ascension_3"];

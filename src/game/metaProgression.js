@@ -5,7 +5,7 @@ import {
   isStarterProfileUnlocked,
   isDifficultyUnlocked,
   isChallengeUnlocked,
-} from "./runProfiles";
+} from "./runProfiles.js";
 import {
   getDefaultCallsignId,
   normalizeAchievementIds,
@@ -14,8 +14,8 @@ import {
   getAchievementUnlockEntries,
   getUnlockedAchievementRewardState,
   getHighestActReached,
-} from "./achievements";
-import { scoreRunForDaily } from "./dailyRun";
+} from "./achievements.js";
+import { scoreRunForDaily } from "./dailyRun.js";
 
 export const META_PROGRESSION_STORAGE_KEY = "cb_meta_progress_v1";
 

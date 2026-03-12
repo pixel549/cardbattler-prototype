@@ -1,4 +1,4 @@
-import { push } from "./log";
+import { push } from "./log.js";
 
 function getStatusEntry(target, id) {
   if (!target) return null;
@@ -98,7 +98,7 @@ export function applyDamage(state, sourceId, target, amount) {
   const exposedPortsStacks = getStatusStacks(target, "ExposedPorts");
   if (exposedPortsStacks > 0) amount = Math.floor(amount * 1.4);
 
-  // TraceBeacon: target has a tracking beacon — takes +20% damage per stack
+  // TraceBeacon: target has a tracking beacon â€” takes +20% damage per stack
   if (target._traceBeaconStacks) {
     amount = Math.floor(amount * (1 + target._traceBeaconStacks * 0.2));
   }
@@ -129,7 +129,7 @@ export function applyDamage(state, sourceId, target, amount) {
   const relics = state.relicIds || [];
   const playerDealing = !isEnemy;
   if (playerDealing) {
-    // GlassCannon: player deals 50% more damage (but takes 50% more — handled on intake)
+    // GlassCannon: player deals 50% more damage (but takes 50% more â€” handled on intake)
     if (relics.includes('GlassCannon')) amount = Math.floor(amount * 1.5);
     // TheDaemon: flat +N bonus damage
     if (state._relicDaemonDmgBonus && amount > 0) amount += state._relicDaemonDmgBonus;
@@ -147,7 +147,7 @@ export function applyDamage(state, sourceId, target, amount) {
     push(state.log, { t: 'Info', msg: `${target.id} limited the hit to ${hitCap}` });
   }
 
-  // --- relic damage intake modifiers (enemy → player only) ---
+  // --- relic damage intake modifiers (enemy â†’ player only) ---
   if (isEnemy && target === state.player) {
     const relics2 = state.relicIds || [];
     if (state._mutationTurnDamageReduce && amount > 0) {
@@ -225,7 +225,7 @@ export function applyDamage(state, sourceId, target, amount) {
   if (target === state.player && target.hp <= 0 && !state._deadMansChipUsed && relicsPost.includes('DeadMansChip')) {
     target.hp = 1;
     state._deadMansChipUsed = true;
-    push(state.log, { t: 'Info', msg: 'DeadMansChip: lethal save! HP → 1' });
+    push(state.log, { t: 'Info', msg: 'DeadMansChip: lethal save! HP â†’ 1' });
   }
   // BlackIce: reflect 3 damage to attacker on being hit
   if (dmg > 0 && target === state.player && isEnemy && relicsPost.includes('BlackIce')) {

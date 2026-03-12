@@ -1,0 +1,333 @@
+{
+  "version": 1,
+  "touchpoints": [
+    {
+      "id": "tutorials",
+      "label": "Tutorials and onboarding",
+      "description": "Does this feature need new tutorial steps, glossary updates, or guided surfacing?"
+    },
+    {
+      "id": "ui",
+      "label": "UI and player readability",
+      "description": "Does the player-facing UI explain the feature, surface state clearly, and avoid hidden rules?"
+    },
+    {
+      "id": "content_balance",
+      "label": "Content and balance",
+      "description": "Does the feature connect to content generation, balance passes, encounter tables, and tuning hooks?"
+    },
+    {
+      "id": "ai",
+      "label": "AI and systemic behavior",
+      "description": "Does AI, encounter logic, or autoplay understand the feature well enough to use or react to it?"
+    },
+    {
+      "id": "progression",
+      "label": "Meta progression and persistence",
+      "description": "Does the feature need unlocks, save data, dailies, run history, or long-term progression hooks?"
+    },
+    {
+      "id": "telemetry",
+      "label": "Telemetry and debugging",
+      "description": "Does the feature emit enough state or logs to debug balancing and regressions later?"
+    },
+    {
+      "id": "tests",
+      "label": "Automated tests",
+      "description": "Does the feature have baseline unit or integration coverage for the risky logic?"
+    },
+    {
+      "id": "audio",
+      "label": "Audio and feedback",
+      "description": "Does the feature need SFX, music, or stronger feedback hooks to feel intentional?"
+    },
+    {
+      "id": "narrative",
+      "label": "Narrative and atmosphere",
+      "description": "Does the feature connect to worldbuilding, NPC reactions, or atmospheric delivery?"
+    },
+    {
+      "id": "docs",
+      "label": "Docs and workflow",
+      "description": "Is the feature documented well enough for future contributors to extend it safely?"
+    }
+  ],
+  "features": [
+    {
+      "id": "build-and-runtime-guardrails",
+      "title": "Build and runtime guardrails",
+      "status": "live",
+      "summary": "Protect the content pipeline and runtime from silent failures with CI, tests, and crash recovery.",
+      "files": [
+        "package.json",
+        "README.md",
+        ".github/workflows/ci.yml",
+        "tools/build_content.cjs",
+        "src/components/ErrorBoundary.jsx",
+        "src/main.jsx",
+        "tests/buildContent.test.js"
+      ],
+      "touchpoints": {
+        "tutorials": {
+          "status": "n/a",
+          "notes": "No player-facing mechanic to onboard."
+        },
+        "ui": {
+          "status": "done",
+          "notes": "The app now has a visible recovery path instead of a white screen."
+        },
+        "content_balance": {
+          "status": "done",
+          "notes": "Generated content is validated and no longer silently deploys stale data."
+        },
+        "ai": {
+          "status": "n/a",
+          "notes": "No AI behavior changed."
+        },
+        "progression": {
+          "status": "n/a",
+          "notes": "No meta-state changes required."
+        },
+        "telemetry": {
+          "status": "n/a",
+          "notes": "This pass focuses on prevention and recovery rather than production analytics."
+        },
+        "tests": {
+          "status": "done",
+          "notes": "Baseline content and progression tests were added."
+        },
+        "audio": {
+          "status": "n/a",
+          "notes": "No audio work required."
+        },
+        "narrative": {
+          "status": "n/a",
+          "notes": "No narrative hooks required."
+        },
+        "docs": {
+          "status": "done",
+          "notes": "README and workflow docs were updated to match the real build path."
+        }
+      }
+    },
+    {
+      "id": "tutorial-onboarding",
+      "title": "Tutorial onboarding",
+      "status": "active",
+      "summary": "Guided tutorial runs for combat basics and advanced mechanics.",
+      "files": [
+        "src/game/tutorial.js",
+        "src/App.jsx",
+        "src/components/CombatScreen.jsx"
+      ],
+      "touchpoints": {
+        "tutorials": {
+          "status": "done",
+          "notes": "This system is the tutorial layer itself."
+        },
+        "ui": {
+          "status": "done",
+          "notes": "Tutorial state is surfaced through overlays and action gating."
+        },
+        "content_balance": {
+          "status": "done",
+          "notes": "Tutorial decks and encounters are curated for specific teaching moments."
+        },
+        "ai": {
+          "status": "n/a",
+          "notes": "No autonomous agent needs to consume tutorial state yet."
+        },
+        "progression": {
+          "status": "done",
+          "notes": "Completion is persisted in local storage and surfaced in the app."
+        },
+        "telemetry": {
+          "status": "planned",
+          "notes": "We do not yet log tutorial completion or drop-off points for balancing."
+        },
+        "tests": {
+          "status": "done",
+          "notes": "Tutorial flow now has direct regression coverage, including the pressure-systems lesson and scripted reforge transition."
+        },
+        "audio": {
+          "status": "planned",
+          "notes": "Tutorial-specific success/error cues are still missing."
+        },
+        "narrative": {
+          "status": "n/a",
+          "notes": "This is teaching-focused for now rather than story delivery."
+        },
+        "docs": {
+          "status": "done",
+          "notes": "The integration-pipeline docs now call out tutorial and autoplay retrofit hotspots so new mechanics get onboarded intentionally."
+        }
+      }
+    },
+    {
+      "id": "meta-progression-and-run-modes",
+      "title": "Meta progression and run modes",
+      "status": "active",
+      "summary": "Starter profiles, ascensions, challenges, daily runs, and persistent unlock tracking.",
+      "files": [
+        "src/game/metaProgression.js",
+        "src/game/runProfiles.js",
+        "src/game/dailyRun.js",
+        "src/App.jsx",
+        "tests/metaProgression.test.js",
+        "tests/runProfiles.test.js"
+      ],
+      "touchpoints": {
+        "tutorials": {
+          "status": "planned",
+          "notes": "The player still needs onboarding for classes, dailies, and challenge tradeoffs."
+        },
+        "ui": {
+          "status": "done",
+          "notes": "The mode selection and unlock state are already surfaced in the menu flow."
+        },
+        "content_balance": {
+          "status": "done",
+          "notes": "Profiles and challenge modifiers feed run configuration directly."
+        },
+        "ai": {
+          "status": "done",
+          "notes": "Run profile composition flows through the existing run setup path."
+        },
+        "progression": {
+          "status": "done",
+          "notes": "This is the core persistence layer for unlocks and run history."
+        },
+        "telemetry": {
+          "status": "planned",
+          "notes": "We still need a cleaner debugging/reporting view for why unlock thresholds are firing."
+        },
+        "tests": {
+          "status": "done",
+          "notes": "Meta progression and run profile coverage is in place."
+        },
+        "audio": {
+          "status": "n/a",
+          "notes": "No bespoke audio hooks are required for the underlying rules."
+        },
+        "narrative": {
+          "status": "planned",
+          "notes": "Future NPC/fixer commentary should react to run-mode history and unlocks."
+        },
+        "docs": {
+          "status": "planned",
+          "notes": "Contributor docs still need a concise explanation of how mode data composes."
+        }
+      }
+    },
+    {
+      "id": "boss-directives-and-contextual-events",
+      "title": "Boss directives and contextual events",
+      "status": "active",
+      "summary": "Boss phase gimmicks, encounter directives, and contextual event selection to deepen runs.",
+      "files": [
+        "src/game/combatDirectives.js",
+        "src/game/engine.js",
+        "src/game/events.js",
+        "src/game/encounters.js"
+      ],
+      "touchpoints": {
+        "tutorials": {
+          "status": "planned",
+          "notes": "We should add a guided explanation for directives and phase bosses."
+        },
+        "ui": {
+          "status": "done",
+          "notes": "Directive summaries and encounter hints are already surfaced in combat."
+        },
+        "content_balance": {
+          "status": "done",
+          "notes": "The systems connect to encounter tables, event picking, and combat resolution."
+        },
+        "ai": {
+          "status": "done",
+          "notes": "Encounter logic and enemy turns both understand the new directive hooks."
+        },
+        "progression": {
+          "status": "done",
+          "notes": "Boss encounters already feed run history and meta progression."
+        },
+        "telemetry": {
+          "status": "done",
+          "notes": "Combat logs and encounter history expose the behavior for debugging."
+        },
+        "tests": {
+          "status": "planned",
+          "notes": "Engine-level tests are still needed for boss and directive behavior."
+        },
+        "audio": {
+          "status": "planned",
+          "notes": "Boss phases and directive triggers need stronger audio identity."
+        },
+        "narrative": {
+          "status": "planned",
+          "notes": "Event writing exists, but recurring NPC reactions and boss framing are still thin."
+        },
+        "docs": {
+          "status": "planned",
+          "notes": "Contributor docs should capture where new directive logic belongs."
+        }
+      }
+    },
+    {
+      "id": "combat-pressure-systems",
+      "title": "Combat pressure systems",
+      "status": "active",
+      "summary": "Heat, scrap salvaging/reforging, adaptive encounters, and arena hazards.",
+      "files": [
+        "src/game/combatMeta.js",
+        "src/game/game_core.js",
+        "src/game/engine.js",
+        "src/App.jsx",
+        "src/components/CombatScreen.jsx",
+        "tests/combatMeta.test.js"
+      ],
+      "touchpoints": {
+        "tutorials": {
+          "status": "done",
+          "notes": "The new Pressure Systems tutorial now teaches arena modifiers, Heat, scrap recovery, and Reforge in a scripted flow."
+        },
+        "ui": {
+          "status": "done",
+          "notes": "Heat, scrap, and arena modifiers are now surfaced in the run and combat HUD."
+        },
+        "content_balance": {
+          "status": "done",
+          "notes": "The systems are parameterized and wired into encounter/balance flow."
+        },
+        "ai": {
+          "status": "done",
+          "notes": "Encounter weighting reacts to player strategy, and autoplay now understands Heat pressure, forge targeting, and scrap-spending rest/shop choices."
+        },
+        "progression": {
+          "status": "planned",
+          "notes": "These systems do not yet feed unlocks, archives, or long-term run progression."
+        },
+        "telemetry": {
+          "status": "done",
+          "notes": "Adaptation profiles and combat logs capture the new behavior for debugging."
+        },
+        "tests": {
+          "status": "done",
+          "notes": "The new combat-meta helper has direct Node test coverage."
+        },
+        "audio": {
+          "status": "planned",
+          "notes": "Heat spikes, salvage, and arena hazards still need dedicated feedback."
+        },
+        "narrative": {
+          "status": "planned",
+          "notes": "A fixer or handler should comment on trace heat, salvage loops, and adaptive enemies."
+        },
+        "docs": {
+          "status": "done",
+          "notes": "Contributor docs and the README now call out the tutorial and autoplay retrofit points for these systems."
+        }
+      }
+    }
+  ]
+}

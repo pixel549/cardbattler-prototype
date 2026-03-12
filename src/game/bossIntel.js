@@ -1,5 +1,5 @@
-import { pickEncounter } from "./encounters";
-import { getBossDirective } from "./combatDirectives";
+import { pickEncounter } from "./encounters.js";
+import { getBossDirective } from "./combatDirectives.js";
 
 function getEncounterIds(data, act, kind) {
   const tables = data?.encounterTables || [];

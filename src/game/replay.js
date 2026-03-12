@@ -1,4 +1,4 @@
-import { createInitialState, dispatchGame } from "./game_core";
+import { createInitialState, dispatchGame } from "./game_core.js";
 
 export function replayFromSeed(data, seed, actions) {
   let state = createInitialState();

@@ -1,4 +1,4 @@
-import { dispatchGame } from "./game_core";
+import { dispatchGame } from "./game_core.js";
 
 // A set of action types that should not be recorded into the journal.
 // These actions represent UI-only transitions (such as opening or closing
@@ -10,9 +10,9 @@ const NON_REPLAYABLE = new Set(["OpenDeck", "CloseDeck"]);
  * Dispatches a game action and records it into the journal if applicable.
  *
  * This helper wraps the core {@code dispatchGame} function to ensure that
- * actions which should be replayable are persisted into the run’s journal.
+ * actions which should be replayable are persisted into the runâ€™s journal.
  * Certain UI-only actions (defined in {@link NON_REPLAYABLE}) are ignored so
- * that things like opening and closing the deck don’t pollute the journal.
+ * that things like opening and closing the deck donâ€™t pollute the journal.
  *
  * @param {object} state - The current game state
  * @param {object} data - Static game data (cards, encounters, etc.)

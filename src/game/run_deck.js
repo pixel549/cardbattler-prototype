@@ -1,11 +1,11 @@
-import { RNG } from "./rng";
+import { RNG } from "./rng.js";
 
 function uid(rng, prefix) { return `${prefix}_${rng.nextUint().toString(16)}`; }
 
 // The finalMutationCountdown and useCounter come from gamedata.json, but every
-// card currently has them equal — meaning the final mutation fires simultaneously
+// card currently has them equal â€” meaning the final mutation fires simultaneously
 // with the very first guaranteed mutation cycle, so cards only ever get one
-// mutation before bricking.  We enforce a minimum 3× ratio here so cards
+// mutation before bricking.  We enforce a minimum 3Ã— ratio here so cards
 // survive at least three full useCounter cycles (= ~3 guaranteed mutations)
 // before the final mutation.  This gives a meaningful progression over the
 // 10-encounter-deep act maps.
@@ -16,7 +16,7 @@ function mkInstance(def, instanceId) {
     instanceId,
     defId: def.id,
     useCounter:             uc,
-    finalMutationCountdown: Math.max(fc, uc * 3),  // ← at least 3 mutation cycles
+    finalMutationCountdown: Math.max(fc, uc * 3),  // â† at least 3 mutation cycles
     appliedMutations:       [],
     finalMutationId:        null,
     ramCostDelta:           0,

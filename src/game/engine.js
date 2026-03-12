@@ -1,9 +1,9 @@
-import { RNG } from "./rng";
-import { push } from "./log";
-import { applyDamage, addStatus, getFirewallStacks, getStatusStacks, loseFirewall, clearFirewall, enforceFirewallCap } from "./rules";
-import { getCompileBonus } from "./cardCompile";
-import { getBossDirective, getEncounterDirectives } from "./combatDirectives";
-import { analyzeDeckState } from "./runInsights";
+import { RNG } from "./rng.js";
+import { push } from "./log.js";
+import { applyDamage, addStatus, getFirewallStacks, getStatusStacks, loseFirewall, clearFirewall, enforceFirewallCap } from "./rules.js";
+import { getCompileBonus } from "./cardCompile.js";
+import { getBossDirective, getEncounterDirectives } from "./combatDirectives.js";
+import { analyzeDeckState } from "./runInsights.js";
 import {
   HEAT_MAX,
   clampHeat,
@@ -12,7 +12,7 @@ import {
   getHeatState,
   normalizeRunAdaptationProfile,
   pickArenaModifier,
-} from "./combatMeta";
+} from "./combatMeta.js";
 
 function getCardLogData(state, cid) {
   if (!cid) return null;
@@ -676,7 +676,7 @@ export function drawCards(state, rng, n, source = "draw") {
       reshuffled,
     });
   }
-  // POWER: NC-061 Signal Amplifier — first draw each turn gets +1 bonus card
+  // POWER: NC-061 Signal Amplifier â€” first draw each turn gets +1 bonus card
   if (isFirstDraw && drawn.length > 0) {
     state._firstDrawDoneThisTurn = true;
     runPowerTriggers(state, state.dataRef, rng, 'FirstDraw', {});
@@ -999,7 +999,7 @@ function endTurnEthereal(state, data) {
         p.exhaust.push(cid);
         exhausted.push(cid);
         push(state.log, { t: 'Info', msg: `${def.name} auto-purged from hand` });
-        continue; // skip keep — already exhausted
+        continue; // skip keep â€” already exhausted
       }
     }
 
@@ -1060,7 +1060,7 @@ function runPowerTriggers(state, data, rng, event, ctx = {}) {
 }
 
 function _applyPowerEffect(state, data, rng, text, event, ctx) {
-  // ── StartTurn triggers ──
+  // â”€â”€ StartTurn triggers â”€â”€
   if (event === 'StartTurn') {
     // NC-058: At the start of your turn, gain +1 RAM
     if (/start of your turn.*gain \+?1 ram/i.test(text)) {
@@ -1090,7 +1090,7 @@ function _applyPowerEffect(state, data, rng, text, event, ctx) {
     }
   }
 
-  // ── EndTurn triggers ──
+  // â”€â”€ EndTurn triggers â”€â”€
   if (event === 'EndTurn') {
     // NC-059: At the end of your turn, gain 4 Firewall
     const fwMatch = text.match(/end of your turn.*gain (\d+) firewall/i);
@@ -1132,7 +1132,7 @@ function _applyPowerEffect(state, data, rng, text, event, ctx) {
     }
   }
 
-  // ── PlayCard triggers ──
+  // â”€â”€ PlayCard triggers â”€â”€
   if (event === 'PlayAttack') {
     // NC-063: Whenever you play an Attack, gain 1 RAM
     if (/whenever you play an attack.*gain 1 ram/i.test(text)) {
@@ -1151,7 +1151,7 @@ function _applyPowerEffect(state, data, rng, text, event, ctx) {
     }
   }
 
-  // ── Debuff applied to enemy ──
+  // â”€â”€ Debuff applied to enemy â”€â”€
   if (event === 'ApplyDebuff') {
     // NC-060: Whenever you apply a Debuff, deal 3 damage to that enemy
     if (/whenever you apply a debuff.*deal (\d+) damage/i.test(text)) {
@@ -1164,7 +1164,7 @@ function _applyPowerEffect(state, data, rng, text, event, ctx) {
     }
   }
 
-  // ── Gain Firewall ──
+  // â”€â”€ Gain Firewall â”€â”€
   if (event === 'GainFirewall') {
     // NC-062: The first time each turn you gain Firewall, gain +2 additional.
     if (/(?:whenever you gain firewall|first time each turn you gain firewall).*gain \+(\d+) additional firewall/i.test(text) && !ctx._heatSinkLock && !state._heatSinkTriggeredTurn) {
@@ -1176,7 +1176,7 @@ function _applyPowerEffect(state, data, rng, text, event, ctx) {
     }
   }
 
-  // ── First draw each turn ──
+  // â”€â”€ First draw each turn â”€â”€
   if (event === 'FirstDraw') {
     // NC-061: The first time you draw each turn, draw N additional cards
     const firstDrawMatch = text.match(/first time you draw each turn.*draw (\d+) additional/i);
@@ -1187,7 +1187,7 @@ function _applyPowerEffect(state, data, rng, text, event, ctx) {
     }
   }
 
-  // ── First damage this turn ──
+  // â”€â”€ First damage this turn â”€â”€
   if (event === 'FirstDamage') {
     // NC-066: First time each turn you deal damage, deal +6 additional
     if (/first time each turn you deal damage.*deal \+(\d+) additional/i.test(text)) {
@@ -1200,7 +1200,7 @@ function _applyPowerEffect(state, data, rng, text, event, ctx) {
     }
   }
 
-  // ── Enemy dies ──
+  // â”€â”€ Enemy dies â”€â”€
   if (event === 'EnemyDeath') {
     // NC-070: When you defeat an enemy, gain +10 Credits
     if (/defeat an enemy.*gain \+?(\d+) credits/i.test(text)) {
@@ -1210,7 +1210,7 @@ function _applyPowerEffect(state, data, rng, text, event, ctx) {
     }
   }
 
-  // ── Enemy heal attempt ──
+  // â”€â”€ Enemy heal attempt â”€â”€
   if (event === 'EnemyHeal') {
     // NC-071: First time an enemy intends to heal, cancel that heal
     if (/first time an enemy intends to heal.*cancel/i.test(text)) {
@@ -1318,7 +1318,7 @@ function processStatusEffects(state, entity) {
         }
         break;
       case 'TargetSpoof':
-        // Confuses attacker — reduces outgoing damage -25% per stack (max 75%)
+        // Confuses attacker â€” reduces outgoing damage -25% per stack (max 75%)
         {
           const reduction = Math.min(0.75, s.stacks * 0.25);
           entity._targetSpoofMult = 1 - reduction;
@@ -1472,7 +1472,7 @@ function parseRawText(text) {
     else if (/Remove \(Exhaust\) \d+ random non-core card from your hand per RAM spent/i.test(s)) {
       ops.push({ op: '_ExhaustHandPerRAM' });
     }
-    // Follow-up text for NC-080 / NC-084 — handled by their respective ops above; skip to avoid misparse
+    // Follow-up text for NC-080 / NC-084 â€” handled by their respective ops above; skip to avoid misparse
     else if (/Threads Exhaust|Draw that many cards|Add \d+ temporary/i.test(s)) {
       // intentionally no-op
     }
@@ -1525,7 +1525,7 @@ function parseRawText(text) {
     else if (/Restore all health/i.test(s)) {
       ops.push({ op: '_HealFull' });
     }
-    // "Gain X Firewall" — Firewall is the only shield mechanic.
+    // "Gain X Firewall" â€” Firewall is the only shield mechanic.
     else if ((m = s.match(/Gain (\d+) Firewall/i))) {
       ops.push({ op: 'ApplyStatus', statusId: 'Firewall', stacks: parseInt(m[1]), target: 'Self' });
     }
@@ -1571,7 +1571,7 @@ function parseRawText(text) {
     else if ((m = s.match(/^Draw (\d+)/i))) {
       ops.push({ op: 'DrawCards', amount: parseInt(m[1]), target: 'Self' });
     }
-    // Unrecognized — skip (caller logs the full RawText)
+    // Unrecognized â€” skip (caller logs the full RawText)
   }
 
   return ops;
@@ -1675,7 +1675,7 @@ export function applyEffectOp(state, sourceId, op, rng) {
           delete state._nextCardDamageBonus;
         }
 
-        // POWER: NC-066 Killchain Protocol — first damage this turn deals +6 bonus
+        // POWER: NC-066 Killchain Protocol â€” first damage this turn deals +6 bonus
         if (isPlayerSource && !state._firstDamageThisTurn) {
           state._firstDamageThisTurn = true;
           runPowerTriggers(state, state.dataRef, rng, 'FirstDamage', { target });
@@ -1728,7 +1728,7 @@ export function applyEffectOp(state, sourceId, op, rng) {
           if (wasHp > 0 && target.hp <= 0) {
             handleBossDirectiveDeath(state, target);
             runEnemyPassives(state, "Death", rng, target.id);
-            // POWER: NC-070 Dark Web Broker — gain gold on kill
+            // POWER: NC-070 Dark Web Broker â€” gain gold on kill
             runPowerTriggers(state, state.dataRef, rng, 'EnemyDeath', { target });
           }
         }
@@ -1789,7 +1789,7 @@ export function applyEffectOp(state, sourceId, op, rng) {
             target.combatFlags.firstDebuffSeen = true;
             runEnemyPassives(state, "FirstDebuffAppliedToSelfThisCombat", rng, target.id);
           }
-          // POWER: NC-060 Packet Leech — debuff applied to enemy → deal 3 damage
+          // POWER: NC-060 Packet Leech â€” debuff applied to enemy â†’ deal 3 damage
           if (sourceId === state.player.id) {
             runPowerTriggers(state, state.dataRef, rng, 'ApplyDebuff', { target });
           }
@@ -1888,7 +1888,7 @@ export function applyEffectOp(state, sourceId, op, rng) {
     case "DrawCards": {
       const self = targets.find((target) => target?.id === state.player?.id) || null;
       if (!self) return;
-      // rng may not be passed for enemy effects — safe fallback
+      // rng may not be passed for enemy effects â€” safe fallback
       if (rng) {
         drawCards(
           state,
@@ -1903,7 +1903,7 @@ export function applyEffectOp(state, sourceId, op, rng) {
     case "Heal": {
       const amt = Math.max(0, Math.floor(((effectiveOp.amount || 0) + effectFlatMod) * effectMult));
       for (const target of targets) {
-        // POWER: NC-071 System Watchdog — cancel first enemy heal
+        // POWER: NC-071 System Watchdog â€” cancel first enemy heal
         if (target.id && String(target.id).startsWith("enemy_") && sourceId !== state.player.id) {
           const ctx = { cancelHeal: false };
           runPowerTriggers(state, state.dataRef, rng, 'EnemyHeal', ctx);
@@ -2187,7 +2187,7 @@ export function applyEffectOp(state, sourceId, op, rng) {
                 const effectiveVal = scaledOp.op === 'ApplyStatus' ? scaledOp.stacks : scaledOp.amount;
                 if (effectiveVal > 0) applyEffectOp(state, sourceId, scaledOp, rng);
               }
-              // If ramSpent === 0, card had 0 RAM to spend — all per-RAM effects produce nothing
+              // If ramSpent === 0, card had 0 RAM to spend â€” all per-RAM effects produce nothing
             } else if (pOp.scaleBySpentFirewall) {
               if (firewallSpent > 0) {
                 const scaledOp = { ...pOp };
@@ -2410,7 +2410,7 @@ function applyMutation(state, data, rng, cardInstanceId, tier) {
   if (numCandidates > 1) {
     const candidates = [mid];
     for (let i = 1; i < numCandidates; i++) candidates.push(availablePool[rng.int(availablePool.length)]);
-    // Score: prefer positive ramCostDelta (−), positive useCounterDelta (+), no Disabled passive
+    // Score: prefer positive ramCostDelta (âˆ’), positive useCounterDelta (+), no Disabled passive
     const score = (id) => {
       const m = data.mutations[id];
       if (!m) return -99;
@@ -2597,7 +2597,7 @@ function maybeTriggerMutation(state, data, rng, cardInstanceId) {
   }
   if (forced) state.forcedMutationTier = null;
 
-  // OverclockSuite: applied mutations are 1 tier weaker (A→B, B→C, etc.)
+  // OverclockSuite: applied mutations are 1 tier weaker (Aâ†’B, Bâ†’C, etc.)
   if ((state.relicIds || []).includes('OverclockSuite') && !forced) {
     const tierOrder = ['A','B','C','D','E'];
     const idx = tierOrder.indexOf(tier);
@@ -3572,12 +3572,12 @@ function execPatchOp(state, data, rng, cardInstanceId, op, args, ctx = null) {
     }
     // ---- fizzle (handled pre-effects in PlayCard; this is a post-check no-op) ----
     case 'Fizzle':
-      // fizzle was already resolved before card effects ran — nothing to do here
+      // fizzle was already resolved before card effects ran â€” nothing to do here
       break;
 
     // ---- transfer card to enemy network (J-04 Network Hop) ----
     case 'TransferToEnemy': {
-      // Card jumps to the enemy network — remove it from the player's deck and deal recoil damage
+      // Card jumps to the enemy network â€” remove it from the player's deck and deal recoil damage
       removeCardEverywhere(state, cardInstanceId);
       if (ci) ci.removeFromRunOnCombatEnd = true;
       const recoil = parseInt(args[0]) || 5;
@@ -4120,7 +4120,7 @@ function applyRelicHook(state, data, relic, ctx) {
         if (state._protocolBreachTypes.length >= 3) {
           state.player.ram = Math.min(state.player.maxRAM, state.player.ram + 1);
           state._protocolBreachTriggered = true;
-          push(state.log, { t: 'Info', msg: 'ProtocolBreach: 3 types played — +1 RAM' });
+          push(state.log, { t: 'Info', msg: 'ProtocolBreach: 3 types played â€” +1 RAM' });
         }
       }
       break;
@@ -4131,7 +4131,7 @@ function applyRelicHook(state, data, relic, ctx) {
         state._debugLogCount = (state._debugLogCount || 0) + 1;
         if (state._debugLogCount % 5 === 0) {
           state._nextCardFree = true;
-          push(state.log, { t: 'Info', msg: 'DebugLog: 5th card — next is free' });
+          push(state.log, { t: 'Info', msg: 'DebugLog: 5th card â€” next is free' });
         }
       }
       break;
@@ -4489,7 +4489,7 @@ export function dispatchCombat(state, data, action) {
         clearFirewall(state, state.player, { silent: true });
       }
 
-      // Apply per-turn status effects (Corrode, Nanoflow, Overheat, Underclock…) before decaying stacks
+      // Apply per-turn status effects (Corrode, Nanoflow, Overheat, Underclockâ€¦) before decaying stacks
       processStatusEffects(state, state.player);
       for (const e of state.enemies) processStatusEffects(state, e);
       if (!handPassiveTotals.retainFirewall) {
@@ -4503,7 +4503,7 @@ export function dispatchCombat(state, data, action) {
       for (const e of state.enemies) tickStatuses(e, state.dataRef);
       applyArenaModifierPostStatus(state);
 
-      // Win / defeat check after DoT — Burn/Leak can kill before the player acts
+      // Win / defeat check after DoT â€” Burn/Leak can kill before the player acts
       if (state.player.hp <= 0) {
         state.combatOver = true;
         state.victory = false;
@@ -4671,7 +4671,7 @@ export function dispatchCombat(state, data, action) {
         state._memoryLeakCount = (state._memoryLeakCount || 0) + 1;
         if (state._memoryLeakCount % 3 === 0) {
           state._memoryLeakThisCard = true;
-          push(state.log, { t: 'Info', msg: 'MemoryLeak: 3rd card — double effect + exhaust' });
+          push(state.log, { t: 'Info', msg: 'MemoryLeak: 3rd card â€” double effect + exhaust' });
         }
       }
 

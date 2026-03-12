@@ -1,5 +1,5 @@
-import { RNG } from "./rng";
-import { getAdaptiveEncounterWeight } from "./combatMeta";
+import { RNG } from "./rng.js";
+import { getAdaptiveEncounterWeight } from "./combatMeta.js";
 
 function weightedPick(rng, defs) {
   const sum = defs.reduce((a, d) => a + Math.max(0, d.weight || 1), 0);
@@ -132,7 +132,7 @@ export function pickEncounter(data, seed, act, kind, options = {}) {
   // Support both.
 
   function getEncounterIds(targetAct, targetKind) {
-    // Try flat format first (one table per act×kind)
+    // Try flat format first (one table per actÃ—kind)
     const flatTable = tables.find(t => t.act === targetAct && t.kind === targetKind);
     if (flatTable?.encounterIds?.length) return flatTable.encounterIds;
 

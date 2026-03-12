@@ -1,4 +1,4 @@
-import { analyzeDeckState } from "./runInsights";
+import { analyzeDeckState } from "./runInsights.js";
 
 function hasName(enemyDef, pattern) {
   return pattern.test(String(enemyDef?.name || ""));

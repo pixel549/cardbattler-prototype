@@ -1,5 +1,5 @@
-import { RNG } from "./rng";
-import { isRelicUnlockedByAchievements } from "./achievements";
+import { RNG } from "./rng.js";
+import { isRelicUnlockedByAchievements } from "./achievements.js";
 
 function pickDistinct(rng, pool, n) {
   const out = [];

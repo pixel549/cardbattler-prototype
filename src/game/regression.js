@@ -1,4 +1,4 @@
-import { replayFromSeed } from "./replay";
+import { replayFromSeed } from "./replay.js";
 
 export function runGolden(data, golden) {
   const { finalState } = replayFromSeed(data, golden.seed, golden.actions || []);

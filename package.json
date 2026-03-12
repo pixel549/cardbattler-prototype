@@ -4,9 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "npm run build:content && npm run validate:content && npm run validate:art && vite --configLoader runner",
-    "playtest:dev": "npm run build:content && npm run validate:content && npm run validate:art && vite --configLoader runner --host 0.0.0.0 --strictPort",
-    "build": "npm run build:content && npm run validate:content && npm run validate:art && vite build --configLoader runner",
+    "dev": "npm run build:content && npm run validate:content && npm run validate:art && npm run validate:feature-pipeline && vite --configLoader runner",
+    "playtest:dev": "npm run build:content && npm run validate:content && npm run validate:art && npm run validate:feature-pipeline && vite --configLoader runner --host 0.0.0.0 --strictPort",
+    "build": "npm run build:content && npm run validate:content && npm run validate:art && npm run validate:feature-pipeline && vite build --configLoader runner",
     "test": "node --test --experimental-specifier-resolution=node",
     "test:watch": "node --test --watch --experimental-specifier-resolution=node",
     "lint": "eslint .",
@@ -15,6 +15,7 @@
     "build:content": "node tools/build_content.cjs",
     "validate:content": "node tools/validate_content.cjs",
     "validate:art": "node tools/validate_runtime_art.cjs",
+    "validate:feature-pipeline": "node tools/check_feature_pipeline.cjs",
     "analyze:runs": "node tools/analyze_ai_runs.cjs"
   },
   "dependencies": {

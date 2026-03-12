@@ -1,9 +1,9 @@
 /**
- * sounds.js — Synthesized Web Audio API sound effects.
- * No audio files needed — all sounds are generated procedurally.
+ * sounds.js â€” Synthesized Web Audio API sound effects.
+ * No audio files needed â€” all sounds are generated procedurally.
  *
  * Usage:
- *   import { sfx } from './sounds';
+ *   import { sfx } from './sounds.js';
  *   sfx.attack();
  *   sfx.block();
  *   sfx.victory();
@@ -82,7 +82,7 @@ function sweep(freqFrom, freqTo, type, duration, gainNode) {
   o.stop(c.currentTime + duration + 0.02);
 }
 
-// ── Public sound effects ──────────────────────────────────────────────────────
+// â”€â”€ Public sound effects â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export const sfx = {
   /** Short swoosh when a player card is played */
@@ -127,7 +127,7 @@ export const sfx = {
     osc(640, 'triangle', 0.1, g);
   },
 
-  /** Healing sound — warm ascending tone */
+  /** Healing sound â€” warm ascending tone */
   heal() {
     const g = gain(0.15, 0.35);
     if (!g) return;
@@ -142,7 +142,7 @@ export const sfx = {
     o.stop(c.currentTime + 0.4);
   },
 
-  /** Status effect applied — fizzing blip */
+  /** Status effect applied â€” fizzing blip */
   status() {
     const g = gain(0.12, 0.22);
     if (!g) return;
@@ -150,7 +150,7 @@ export const sfx = {
     osc(880, 'square', 0.08, g);
   },
 
-  /** Mutation triggered — glitchy distortion */
+  /** Mutation triggered â€” glitchy distortion */
   mutation() {
     const c = getCtx();
     if (!c || muted) return;
@@ -168,7 +168,7 @@ export const sfx = {
     noise(0.15, g, 0.6);
   },
 
-  /** Victory fanfare — ascending arpeggio */
+  /** Victory fanfare â€” ascending arpeggio */
   victory() {
     const c = getCtx();
     if (!c || muted) return;
@@ -188,7 +188,7 @@ export const sfx = {
     });
   },
 
-  /** Defeat — descending mournful tone */
+  /** Defeat â€” descending mournful tone */
   defeat() {
     const c = getCtx();
     if (!c || muted) return;
@@ -213,7 +213,7 @@ export const sfx = {
     osc(220, 'square', 0.08, g);
   },
 
-  /** Enemy attack telegraph — hostile warning stab */
+  /** Enemy attack telegraph â€” hostile warning stab */
   enemyAttack() {
     const g = gain(0.11, 0.34);
     if (!g) return;
@@ -222,7 +222,7 @@ export const sfx = {
     noise(0.04, g, 0.42);
   },
 
-  /** Enemy defense telegraph — cool shield swell */
+  /** Enemy defense telegraph â€” cool shield swell */
   enemyDefense() {
     const g = gain(0.085, 0.3);
     if (!g) return;
@@ -230,7 +230,7 @@ export const sfx = {
     osc(540, 'triangle', 0.16, g);
   },
 
-  /** Enemy buff telegraph — upward charge tone */
+  /** Enemy buff telegraph â€” upward charge tone */
   enemyBuff() {
     const g = gain(0.09, 0.34);
     if (!g) return;
@@ -246,7 +246,7 @@ export const sfx = {
     });
   },
 
-  /** Enemy debuff telegraph — glitchy interference pulse */
+  /** Enemy debuff telegraph â€” glitchy interference pulse */
   enemyDebuff() {
     const g = gain(0.095, 0.32);
     if (!g) return;

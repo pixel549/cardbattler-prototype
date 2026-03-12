@@ -1,7 +1,8 @@
-import { push } from "./log";
-import { createInitialState, dispatchGame } from "./game_core";
-import { createRunDeckFromDefs } from "./run_deck";
-import { startCombatFromRunDeck } from "./engine";
+import { push } from "./log.js";
+import { createInitialState, dispatchGame } from "./game_core.js";
+import { createRunDeckFromDefs } from "./run_deck.js";
+import { startCombatFromRunDeck } from "./engine.js";
+import { HEAT_MAX, getArenaModifierMeta } from "./combatMeta.js";
 
 export const TUTORIAL_COMPLETED_STORAGE_KEY = "cb_tutorial_completed_v1";
 export const DEFAULT_TUTORIAL_ID = "combat_basics";
@@ -9,6 +10,8 @@ export const DEFAULT_TUTORIAL_ID = "combat_basics";
 const BASE_TUTORIAL_SEED = 0x51f7e0a1;
 const COMBAT_BASICS_ID = "combat_basics";
 const ADVANCED_MECHANICS_ID = "advanced_mechanics";
+const PRESSURE_SYSTEMS_ID = "pressure_systems";
+const PRESSURE_SYSTEMS_EVENT_STEP_INDEX = 6;
 
 const COMBAT_BASICS_DECK_DEF_IDS = [
   "C-001",
@@ -34,6 +37,19 @@ const ADVANCED_MECHANICS_DECK_DEF_IDS = [
   "C-011",
   "C-010",
   "C-001",
+];
+
+const PRESSURE_SYSTEMS_DECK_DEF_IDS = [
+  "C-011",
+  "NC-011",
+  "NC-074",
+  "C-001",
+  "C-002",
+  "C-004",
+  "NC-062",
+  "C-006",
+  "C-001",
+  "C-002",
 ];
 
 const COMBAT_BASICS_STEPS = [
@@ -138,6 +154,61 @@ const ADVANCED_MECHANICS_STEPS = [
   },
 ];
 
+const PRESSURE_SYSTEMS_STEPS = [
+  {
+    id: "overview",
+    title: "Pressure Systems",
+    body: "This lesson covers the newer run pressure loop: arena modifiers, trace Heat, scrap recovery, and Reforge. The encounter and rest stop are scripted so each piece lands in order.",
+    concepts: ["Arena Modifiers", "Heat", "Scrap", "Reforge"],
+    acknowledgeOnly: true,
+    ctaLabel: "Start Pressure Lesson",
+  },
+  {
+    id: "breach_firewall",
+    title: "Arena Modifiers Change The Fight",
+    body: "Firewall Grid is online, so the Trace Warden starts with extra Firewall and keeps pulsing it back in. Center Shieldbreak Pulse, then double tap the Warden to cut through the arena bonus first.",
+    concepts: ["Arena Modifiers", "Firewall"],
+  },
+  {
+    id: "cache_ram",
+    title: "Set Up Your Burst",
+    body: "Center RAM Cache next, then double tap your own FW / HP / RAM panel. Burst turns usually need setup, and utility cards can bankroll the spike before you cash it out.",
+    concepts: ["RAM", "Burst Setup"],
+  },
+  {
+    id: "spike_heat",
+    title: "Burst Cards Build Heat",
+    body: "Center Broadcast Surge, then double tap the Trace Warden. Big x-cost bursts raise trace Heat fast, so watch the heat meter jump as you unload the turn.",
+    concepts: ["Heat", "X-Cost"],
+  },
+  {
+    id: "end_turn_heat",
+    title: "Heat Pushes Back",
+    body: "End Turn now. Once Heat is up, the network hardens and future turns get harsher, so pressure management matters just as much as raw damage.",
+    concepts: ["Heat Thresholds", "Enemy Pressure"],
+  },
+  {
+    id: "free_play",
+    title: "Close The Fight",
+    body: "Finish the Warden from here. After combat, the lesson will pivot into the recovery loop so you can see how scrap turns bad card states into future leverage.",
+    concepts: ["Pressure Loop", "Recovery"],
+  },
+  {
+    id: "rest_scrap",
+    mode: "Event",
+    title: "Scrap Funds Recovery",
+    body: "Cleanup from the fight recovered enough scrap to fix one stressed card. Bricked code and broken runs feed this salvage loop. Choose Reforge at the rest site.",
+    concepts: ["Scrap", "Rest Sites", "Recovery"],
+  },
+  {
+    id: "reforge_target",
+    mode: "Event",
+    title: "Reforge Bundles Repair",
+    body: "Select Heat Sink. Reforge rolls repair, compile, and clock stabilisation into one action, which is how scrap turns damage control back into long-run momentum.",
+    concepts: ["Reforge", "Compile", "Stabilise"],
+  },
+];
+
 const TUTORIAL_DEFINITIONS = [
   {
     id: COMBAT_BASICS_ID,
@@ -172,6 +243,23 @@ const TUTORIAL_DEFINITIONS = [
     completionVictoryBody: "You stepped through effect timing, status carry-over, mutation payoff, and the difference between passive relics and active cards.",
     completionReviewBody: "You reached the end of the advanced lesson. The key ideas about mutations, status timing, and relics versus cards were still introduced.",
     buildState: createAdvancedMechanicsRunState,
+  },
+  {
+    id: PRESSURE_SYSTEMS_ID,
+    title: "Pressure Systems",
+    menuDescription: "Arena modifiers, Heat, salvage scrap, and how Reforge folds recovery back into the run.",
+    concepts: ["Heat", "Arena", "Scrap", "Reforge"],
+    accent: "#ff8c39",
+    recommended: false,
+    steps: PRESSURE_SYSTEMS_STEPS,
+    rewardStepIndex: PRESSURE_SYSTEMS_EVENT_STEP_INDEX,
+    rewardConfig: {
+      cardChoices: [],
+      relicChoices: [],
+    },
+    completionVictoryBody: "You pushed through a scripted pressure fight, watched Heat and the arena push back, and then used scrap to reforge a stressed card at the rest site.",
+    completionReviewBody: "You reached the end of the pressure lesson. Heat, arena pressure, salvage, and Reforge were all surfaced even if the run got messy.",
+    buildState: createPressureSystemsRunState,
   },
 ];
 
@@ -271,6 +359,7 @@ function buildTutorialCardRefs(runDeck) {
     strike: takeInstanceId(idPool, "C-001"),
     followupStrike: takeInstanceId(idPool, "C-001"),
     guard: takeInstanceId(idPool, "C-002"),
+    followupGuard: takeInstanceId(idPool, "C-002"),
     patch: takeInstanceId(idPool, "C-003"),
     scanA: takeInstanceId(idPool, "C-004"),
     scanB: takeInstanceId(idPool, "C-004"),
@@ -278,6 +367,9 @@ function buildTutorialCardRefs(runDeck) {
     corrodeDart: takeInstanceId(idPool, "NC-005"),
     shieldbreak: takeInstanceId(idPool, "C-011"),
     scatterfire: takeInstanceId(idPool, "C-010"),
+    ramCache: takeInstanceId(idPool, "NC-011"),
+    broadcastSurge: takeInstanceId(idPool, "NC-074"),
+    heatSink: takeInstanceId(idPool, "NC-062"),
   };
 }
 
@@ -314,10 +406,14 @@ function createTutorialBaseState(data, tutorialId, deckDefIds, config = {}) {
       followupStrike: cardRefs.followupStrike,
       chargePack: cardRefs.chargePack,
       guard: cardRefs.guard,
+      followupGuard: cardRefs.followupGuard,
       patch: cardRefs.patch,
       corrodeDart: cardRefs.corrodeDart,
       shieldbreak: cardRefs.shieldbreak,
       scatterfire: cardRefs.scatterfire,
+      ramCache: cardRefs.ramCache,
+      broadcastSurge: cardRefs.broadcastSurge,
+      reforgeTarget: cardRefs.heatSink,
     },
   };
 
@@ -437,6 +533,66 @@ function createAdvancedMechanicsRunState(data) {
       state.combat.enemyAI.cursorByEnemyId[enemy.id] = 1;
     }
   }
+
+  return state;
+}
+
+function createPressureSystemsRunState(data) {
+  const { state, cardRefs } = createTutorialBaseState(data, PRESSURE_SYSTEMS_ID, PRESSURE_SYSTEMS_DECK_DEF_IDS, {
+    seedSalt: 0x33330000,
+    playerMaxHP: 34,
+    playerHp: 28,
+    playerMaxRAM: 4,
+    playerRamRegen: 3,
+    playerRam: 2,
+  });
+
+  state.run.scrap = 0;
+  state.combat.player.piles.hand = [
+    cardRefs.shieldbreak,
+    cardRefs.ramCache,
+    cardRefs.broadcastSurge,
+    cardRefs.guard,
+    cardRefs.strike,
+  ].filter(Boolean);
+  state.combat.player.piles.draw = [
+    cardRefs.scanA,
+    cardRefs.heatSink,
+    cardRefs.chargePack,
+    cardRefs.followupStrike,
+    cardRefs.followupGuard,
+  ].filter(Boolean);
+  state.combat.player.piles.discard = [];
+  state.combat.player.piles.exhaust = [];
+  state.combat.player.piles.power = [];
+  state.combat.heat = 0;
+  state.combat.maxHeat = HEAT_MAX;
+  state.combat.arenaModifier = getArenaModifierMeta("firewall_grid", { act: 2, encounterKind: "normal" });
+
+  const enemy = state.combat.enemies?.[0];
+  if (enemy) {
+    enemy.name = "Trace Warden";
+    enemy.hp = 20;
+    enemy.maxHP = 20;
+    enemy.statuses = [{ id: "Firewall", stacks: 6 }];
+    enemy.intent = createTutorialEnemyIntent(data, "EC-A1");
+    if (state.combat.enemyAI?.cursorByEnemyId) {
+      state.combat.enemyAI.cursorByEnemyId[enemy.id] = 1;
+    }
+  }
+
+  const reforgeTarget = cardRefs.heatSink && state.deck?.cardInstances?.[cardRefs.heatSink];
+  if (reforgeTarget) {
+    reforgeTarget.appliedMutations = ["A-01"];
+    reforgeTarget.useCounter = 2;
+    reforgeTarget.finalMutationCountdown = 3;
+    reforgeTarget.compileLevel = 0;
+  }
+
+  push(state.log, {
+    t: "Info",
+    msg: `Tutorial arena locked: ${state.combat.arenaModifier?.label || "Arena Modifier"}`,
+  });
 
   return state;
 }
@@ -581,10 +737,75 @@ function canUseAdvancedMechanicsAction(state, action) {
   return { allowed: true };
 }
 
+function canUsePressureSystemsAction(state, action) {
+  const tutorial = state?.run?.tutorial;
+  if (!tutorial) return { allowed: true };
+  const cardIds = tutorial.cardIds || {};
+  const isCombatAction = isCombatTutorialAction(action);
+
+  if (state?.mode === "Combat") {
+    switch (tutorial.stepIndex) {
+      case 0:
+        if (isCombatAction) {
+          return buildTutorialBlock("Start the lesson note first so the pressure cues land in order.");
+        }
+        break;
+      case 1:
+        if (isCombatAction && !(action.type === "Combat_PlayCard" && action.cardInstanceId === cardIds.shieldbreak)) {
+          return buildTutorialBlock("Shieldbreak Pulse is first. Use it on the Trace Warden so the arena bonus is obvious before the burst turn starts.");
+        }
+        break;
+      case 2:
+        if (isCombatAction && !(action.type === "Combat_PlayCard" && action.cardInstanceId === cardIds.ramCache)) {
+          return buildTutorialBlock("RAM Cache is next. Use it on yourself so you can see how burst turns get funded before they spike Heat.");
+        }
+        break;
+      case 3:
+        if (isCombatAction && !(action.type === "Combat_PlayCard" && action.cardInstanceId === cardIds.broadcastSurge)) {
+          return buildTutorialBlock("Broadcast Surge is the Heat lesson. Spend the burst now so the trace meter visibly climbs.");
+        }
+        break;
+      case 4:
+        if (isCombatAction && action.type !== "Combat_EndTurn") {
+          return buildTutorialBlock("End Turn here so you can watch the hotter board state push back.");
+        }
+        break;
+      default:
+        break;
+    }
+  }
+
+  if (state?.mode === "Event") {
+    switch (tutorial.stepIndex) {
+      case PRESSURE_SYSTEMS_EVENT_STEP_INDEX:
+        if (action.type !== "Rest_Forge") {
+          return buildTutorialBlock("Choose Reforge first so the scrap loop is introduced before any other rest action.");
+        }
+        break;
+      case PRESSURE_SYSTEMS_EVENT_STEP_INDEX + 1:
+        if (!(action.type === "SelectDeckCard" && action.instanceId === cardIds.reforgeTarget)) {
+          return buildTutorialBlock("Select Heat Sink for the tutorial reforge so you can see repair, compile, and stabilisation bundle together.");
+        }
+        break;
+      default:
+        break;
+    }
+  }
+
+  if (state?.mode === "Reward" && tutorial.stepIndex < PRESSURE_SYSTEMS_EVENT_STEP_INDEX && isRewardTutorialAction(action)) {
+    return buildTutorialBlock("Finish the pressure drill first. The lesson moves straight into a scripted rest-site reforge.");
+  }
+
+  return { allowed: true };
+}
+
 export function canUseTutorialAction(state, action) {
   const tutorial = state?.run?.tutorial;
   if (!tutorial?.active || tutorial.status === "complete") return { allowed: true };
 
+  if (tutorial.id === PRESSURE_SYSTEMS_ID) {
+    return canUsePressureSystemsAction(state, action);
+  }
   if (tutorial.id === ADVANCED_MECHANICS_ID) {
     return canUseAdvancedMechanicsAction(state, action);
   }
@@ -617,6 +838,23 @@ function handleRewardStepTransition(nextState, definition) {
   applyTutorialRewardConfig(nextState, definition);
   setTutorialStepIndex(nextState.run.tutorial, definition, definition.rewardStepIndex);
   return true;
+}
+
+function beginPressureSystemsRestStep(nextState, definition) {
+  const tutorial = nextState?.run?.tutorial;
+  if (!tutorial) return nextState;
+
+  nextState.mode = "Event";
+  nextState.reward = null;
+  nextState.shop = null;
+  nextState.map = null;
+  nextState.combat = null;
+  nextState.deckView = null;
+  nextState.event = { eventId: "RestSite", step: 0 };
+  nextState.run.scrap = Math.max(3, Number(nextState.run.scrap || 0));
+  setTutorialStepIndex(tutorial, definition, PRESSURE_SYSTEMS_EVENT_STEP_INDEX);
+  push(nextState.log, { t: "Info", msg: "Tutorial salvage recovered: 3 scrap ready for Reforge" });
+  return nextState;
 }
 
 function advanceCombatBasicsTutorial(nextState, action, definition) {
@@ -682,6 +920,41 @@ function advanceAdvancedMechanicsTutorial(nextState, action, definition) {
   return nextState;
 }
 
+function advancePressureSystemsTutorial(nextState, action, definition) {
+  const tutorial = nextState.run.tutorial;
+  const cardIds = tutorial.cardIds || {};
+
+  if (nextState.mode === "Reward") {
+    return beginPressureSystemsRestStep(nextState, definition);
+  }
+
+  if (action.type === "SelectDeckCard" && action.instanceId === cardIds.reforgeTarget) {
+    return finalizeTutorialState(nextState, "victory");
+  }
+
+  switch (tutorial.stepIndex) {
+    case 1:
+      if (action.type === "Combat_PlayCard" && action.cardInstanceId === cardIds.shieldbreak) advanceTutorialStep(tutorial, definition);
+      break;
+    case 2:
+      if (action.type === "Combat_PlayCard" && action.cardInstanceId === cardIds.ramCache) advanceTutorialStep(tutorial, definition);
+      break;
+    case 3:
+      if (action.type === "Combat_PlayCard" && action.cardInstanceId === cardIds.broadcastSurge) advanceTutorialStep(tutorial, definition);
+      break;
+    case 4:
+      if (action.type === "Combat_EndTurn") advanceTutorialStep(tutorial, definition);
+      break;
+    case PRESSURE_SYSTEMS_EVENT_STEP_INDEX:
+      if (action.type === "Rest_Forge") advanceTutorialStep(tutorial, definition);
+      break;
+    default:
+      break;
+  }
+
+  return nextState;
+}
+
 export function advanceTutorialState(nextState, action) {
   const tutorial = nextState?.run?.tutorial;
   if (!tutorial?.active || tutorial.status === "complete") return nextState;
@@ -691,6 +964,9 @@ export function advanceTutorialState(nextState, action) {
   }
 
   const definition = getTutorialRuntime(tutorial.id);
+  if (definition.id === PRESSURE_SYSTEMS_ID) {
+    return advancePressureSystemsTutorial(nextState, action, definition);
+  }
   if (definition.id === ADVANCED_MECHANICS_ID) {
     return advanceAdvancedMechanicsTutorial(nextState, action, definition);
   }

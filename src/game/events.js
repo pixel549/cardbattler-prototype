@@ -1,6 +1,6 @@
-import { RNG } from "./rng";
-import { addCardToRunDeck } from "./run_deck";
-import { analyzeDeckState, getFactionRep, getHighestFaction } from "./runInsights";
+import { RNG } from "./rng.js";
+import { addCardToRunDeck } from "./run_deck.js";
+import { analyzeDeckState, getFactionRep, getHighestFaction } from "./runInsights.js";
 
 function weightedPick(rng, defs) {
   const entries = defs.filter((entry) => entry && entry.weight > 0);

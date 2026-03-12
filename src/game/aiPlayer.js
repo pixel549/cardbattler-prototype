@@ -1,13 +1,15 @@
-import { createBasicEventRegistry } from "./events";
-import { MINIGAME_REGISTRY, isMinigameEvent } from "./minigames";
-import { dispatchCombat, getCardPlayability, getCardTargetingProfile } from "./engine";
+import { createBasicEventRegistry } from "./events.js";
+import { MINIGAME_REGISTRY, isMinigameEvent } from "./minigames.js";
+import { dispatchCombat, getCardPlayability, getCardTargetingProfile } from "./engine.js";
+import { getCompilePreview } from "./cardCompile.js";
+import { getHeatState } from "./combatMeta.js";
 
 /**
- * aiPlayer.js — Pure AI decision functions for the auto-play debug feature.
+ * aiPlayer.js â€” Pure AI decision functions for the auto-play debug feature.
  * No React imports, no side effects. Returns action objects or null.
  */
 
-// ─── Playstyle Configurations ─────────────────────────────────────────────────
+// â”€â”€â”€ Playstyle Configurations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export const AI_PLAYSTYLES = {
   balanced: {
@@ -33,9 +35,10 @@ export const AI_PLAYSTYLES = {
     rewardMutRiskCutoff: null,   // skip reward cards with countdown <= this
     rewardSkipFloor: -18,        // skip only truly bad reward cards
     // rest site priority order: tries each in sequence
-    restPriority: ['heal', 'stabilise', 'repair'],
+    restPriority: ['heal', 'forge', 'stabilise', 'repair'],
     // shop
     shopGoldReserve: 40,         // won't buy if it leaves less than this gold
+    shopScrapReserve: 0,
     shopBuyCards: true,
     shopPreferCardTypes: ['Attack', 'Power', 'Skill', 'Defense'],
     shopAvoidCardTypes: [],
@@ -43,6 +46,7 @@ export const AI_PLAYSTYLES = {
     shopBuyRepair: false,
     shopBuyStabilise: true,
     shopBuyAccelerate: false,
+    shopBuyForge: true,
     shopBuyRemoveCard: false,
     shopRemoveTargetTypes: [],   // card types to prioritise for RemoveCard
   },
@@ -56,8 +60,8 @@ export const AI_PLAYSTYLES = {
     drawWeight: 0.8,
     ramWeight: 0.8,
     costPenalty: 2.0,
-    useCounterPenalty: 4,        // low — risk is acceptable
-    finalMutCounterPenalty: 8,   // low — mutation risk is acceptable
+    useCounterPenalty: 4,        // low â€” risk is acceptable
+    finalMutCounterPenalty: 8,   // low â€” mutation risk is acceptable
     posMutBonus: 7,
     negMutPenalty: 2,
     restThreshold: 0.25,         // only rest when critically low
@@ -68,6 +72,7 @@ export const AI_PLAYSTYLES = {
     rewardSkipFloor: -24,
     restPriority: ['heal'],      // just heal, don't bother with card maintenance
     shopGoldReserve: 20,
+    shopScrapReserve: 0,
     shopBuyCards: true,
     shopPreferCardTypes: ['Attack', 'Power', 'Skill'],
     shopAvoidCardTypes: ['Defense', 'Support'],
@@ -75,6 +80,7 @@ export const AI_PLAYSTYLES = {
     shopBuyRepair: false,
     shopBuyStabilise: false,
     shopBuyAccelerate: false,
+    shopBuyForge: false,
     shopBuyRemoveCard: true,     // prune non-attack cards
     shopRemoveTargetTypes: ['Defense', 'Support'],
   },
@@ -98,8 +104,9 @@ export const AI_PLAYSTYLES = {
     rewardTypeWeights: { Attack: 0, Power: 8, Skill: 14, Defense: 22, Support: 14, Utility: 6 },
     rewardMutRiskCutoff: null,
     rewardSkipFloor: -16,
-    restPriority: ['heal', 'stabilise', 'repair'],
+    restPriority: ['heal', 'forge', 'stabilise', 'repair'],
     shopGoldReserve: 25,
+    shopScrapReserve: 0,
     shopBuyCards: true,
     shopPreferCardTypes: ['Defense', 'Skill', 'Support', 'Power'],
     shopAvoidCardTypes: ['Attack'],
@@ -107,6 +114,7 @@ export const AI_PLAYSTYLES = {
     shopBuyRepair: true,
     shopBuyStabilise: true,
     shopBuyAccelerate: false,
+    shopBuyForge: true,
     shopBuyRemoveCard: false,
     shopRemoveTargetTypes: [],
   },
@@ -130,8 +138,9 @@ export const AI_PLAYSTYLES = {
     rewardTypeWeights: { Attack: -5, Power: 18, Skill: 16, Defense: 10, Support: 12, Utility: 12 },
     rewardMutRiskCutoff: null,
     rewardSkipFloor: -16,
-    restPriority: ['stabilise', 'heal', 'repair'],  // protect key status cards first
+    restPriority: ['stabilise', 'heal', 'forge', 'repair'],  // protect key status cards first
     shopGoldReserve: 25,
+    shopScrapReserve: 0,
     shopBuyCards: true,
     shopPreferCardTypes: ['Skill', 'Power', 'Defense', 'Utility', 'Support'],
     shopAvoidCardTypes: ['Attack'],
@@ -139,6 +148,7 @@ export const AI_PLAYSTYLES = {
     shopBuyRepair: false,
     shopBuyStabilise: true,
     shopBuyAccelerate: false,
+    shopBuyForge: true,
     shopBuyRemoveCard: false,
     shopRemoveTargetTypes: [],
   },
@@ -152,8 +162,8 @@ export const AI_PLAYSTYLES = {
     drawWeight: 1.0,
     ramWeight: 1.0,
     costPenalty: 3.5,
-    useCounterPenalty: 30,       // very heavy — avoids playing cards about to exhaust
-    finalMutCounterPenalty: 60,  // extreme — strongly protects cards near final mutation
+    useCounterPenalty: 30,       // very heavy â€” avoids playing cards about to exhaust
+    finalMutCounterPenalty: 60,  // extreme â€” strongly protects cards near final mutation
     posMutBonus: 5,
     negMutPenalty: 10,
     restThreshold: 0.6,
@@ -162,15 +172,17 @@ export const AI_PLAYSTYLES = {
     rewardTypeWeights: {},
     rewardMutRiskCutoff: 3,      // skip any reward card with countdown <= 3
     rewardSkipFloor: 6,
-    restPriority: ['repair', 'stabilise', 'heal'],  // card maintenance over healing
+    restPriority: ['forge', 'repair', 'stabilise', 'heal'],  // card maintenance over healing
     shopGoldReserve: 20,
-    shopBuyCards: false,         // don't expand deck — maintain what we have
+    shopScrapReserve: 1,
+    shopBuyCards: false,         // don't expand deck â€” maintain what we have
     shopPreferCardTypes: [],
     shopAvoidCardTypes: [],
     shopBuyHeal: true,
     shopBuyRepair: true,
     shopBuyStabilise: true,
     shopBuyAccelerate: false,
+    shopBuyForge: true,
     shopBuyRemoveCard: false,
     shopRemoveTargetTypes: [],
   },
@@ -184,8 +196,8 @@ export const AI_PLAYSTYLES = {
     drawWeight: 0.9,
     ramWeight: 0.9,
     costPenalty: 2.5,
-    useCounterPenalty: -18,      // BONUS — wants cards to exhaust and mutate
-    finalMutCounterPenalty: -25, // BONUS — wants final mutations to fire
+    useCounterPenalty: -18,      // BONUS â€” wants cards to exhaust and mutate
+    finalMutCounterPenalty: -25, // BONUS â€” wants final mutations to fire
     posMutBonus: 8,
     negMutPenalty: 1,            // doesn't care much about negative mutations
     restThreshold: 0.4,
@@ -194,21 +206,24 @@ export const AI_PLAYSTYLES = {
     rewardTypeWeights: { Attack: 5, Power: 8, Skill: 5, Defense: 0, Support: 5, Utility: 5 },
     rewardMutRiskCutoff: null,   // never skips risky cards
     rewardSkipFloor: -30,
-    restPriority: ['heal', 'repair'],  // no stabilise — never protect cards from mutating
+    restPriority: ['heal', 'repair'],  // no stabilise â€” never protect cards from mutating
     shopGoldReserve: 25,
+    shopScrapReserve: 0,
     shopBuyCards: true,
     shopPreferCardTypes: ['Attack', 'Power', 'Skill'],
     shopAvoidCardTypes: [],
     shopBuyHeal: false,
     shopBuyRepair: false,
-    shopBuyStabilise: false,     // never stabilise — let mutations happen
+    shopBuyStabilise: false,     // never stabilise â€” let mutations happen
     shopBuyAccelerate: true,     // push cards toward final mutation faster
+    shopBuyForge: false,
     shopBuyRemoveCard: false,
     shopRemoveTargetTypes: [],
   },
 };
 
 const EVENT_REG = createBasicEventRegistry();
+const REST_FORGE_COST = 3;
 
 const STATUS_NAME_ALIASES = {
   firewall: "Firewall",
@@ -856,6 +871,41 @@ function getDeckCardValue(ci, data, playstyle, deck = null, run = null) {
   return scoreCardForPickup(def, data, playstyle, run, deck, ci);
 }
 
+function getRunCurrencyAmount(run, currency = "gold") {
+  if (currency === "scrap") return Math.max(0, Number(run?.scrap || 0));
+  return Math.max(0, Number(run?.gold || 0));
+}
+
+function scoreForgeTarget(ci, data, playstyle, deck, run = null) {
+  if (!ci || ci.finalMutationId) return -Infinity;
+
+  const def = data.cards?.[ci.defId];
+  if (!def) return -Infinity;
+
+  const compilePreview = getCompilePreview(def, ci);
+  const mutationIds = ci.appliedMutations || [];
+  const latestMutationId = mutationIds[mutationIds.length - 1] || null;
+  const latestIsNegative = !!latestMutationId && latestMutationId.includes("-") && !latestMutationId.startsWith("C-S");
+  const maxUse = getCardUseCounterLimit(ci, data);
+  const useRatio = maxUse > 0 ? ((ci.useCounter ?? maxUse) / maxUse) : 1;
+  const countdown = ci.finalMutationCountdown ?? getBaseFinalMutationCountdown(def);
+  const cardValue = getDeckCardValue(ci, data, playstyle, deck, run);
+
+  let score = 0;
+  score += mutationIds.length * 5;
+  if (latestIsNegative) score += 7;
+  if (compilePreview?.eligible) score += 8;
+  score += Math.max(0, 1 - useRatio) * 12;
+  score += Math.max(0, 6 - countdown) * 2.5;
+  score += Math.max(0, cardValue * 0.14);
+
+  if (playstyle === "preservation") score += 6;
+  if (playstyle === "defensive" || playstyle === "buffDebuff") score += 3;
+  if (playstyle === "mutationPusher") score -= 6;
+
+  return score;
+}
+
 function scoreDeckOperation(op, deck, data, playstyle, run = null) {
   if (!deck?.cardInstances) return -Infinity;
 
@@ -915,6 +965,12 @@ function scoreDeckOperation(op, deck, data, playstyle, run = null) {
       playstyle === "aggressive" ? 1.8 :
       0.8;
     return (countdown + (remainingUses * 0.65)) * styleBias;
+  }
+
+  if (op === "Forge" || op === "ForgeSelectedCard") {
+    const target = selectTarget("Forge");
+    if (!target) return -Infinity;
+    return scoreForgeTarget(target, data, playstyle, deck, run);
   }
 
   if (op === "DuplicateSelectedCard") {
@@ -994,6 +1050,7 @@ function scoreEventChoice(choice, run, deck, data, playstyle) {
       case "RepairSelectedCard":
       case "StabiliseSelectedCard":
       case "AccelerateSelectedCard":
+      case "ForgeSelectedCard":
       case "DuplicateSelectedCard":
         score += scoreDeckOperation(op.op, deck, data, playstyle, run);
         break;
@@ -1065,7 +1122,7 @@ function scoreMapPath(nodeId, nodes, run, playstyle, deck, depth, memo = new Map
   return total;
 }
 
-// ─── Main entry point ─────────────────────────────────────────────────────────
+// â”€â”€â”€ Main entry point â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /**
  * Returns the next action to dispatch, or null.
@@ -1107,7 +1164,7 @@ export function getAIAction(state, data, playstyle = 'balanced') {
   }
 }
 
-// ─── Combat ──────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Combat â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 // AI auto-resolves Scry by scoring each card and discarding the bottom half
 function resolveScryAction(scryPending, cardInstances, data, playstyle) {
@@ -1276,6 +1333,31 @@ function scoreSimulatedCombatAction(beforeCombat, afterCombat, action, playstyle
   const delayedDelta = ((afterCombat?._delayedCardEffects || []).length - (beforeCombat?._delayedCardEffects || []).length);
   if (delayedDelta > 0) score += delayedDelta * 8;
 
+  const beforeHeatState = getHeatState(beforeCombat?.heat || 0, beforeCombat?.maxHeat || 20);
+  const afterHeatState = getHeatState(
+    afterCombat?.heat ?? beforeCombat?.heat ?? 0,
+    afterCombat?.maxHeat || beforeCombat?.maxHeat || 20,
+  );
+  const heatDelta = afterHeatState.heat - beforeHeatState.heat;
+  const heatCare =
+    playstyle === "aggressive" || playstyle === "mutationPusher" ? 0.45 :
+    playstyle === "balanced" ? 0.8 :
+    1.05;
+  if (!(afterCombat?.combatOver && afterCombat?.victory)) {
+    if (heatDelta > 0) {
+      score -= heatDelta * (beforeHeatState.alertLevel >= 1 ? 2.2 : 1.25) * heatCare;
+    } else if (heatDelta < 0) {
+      score += Math.abs(heatDelta) * 1.8 * heatCare;
+    }
+    if (afterHeatState.alertLevel > beforeHeatState.alertLevel) {
+      score -= (afterHeatState.alertLevel - beforeHeatState.alertLevel) * 12 * heatCare;
+    }
+  }
+
+  if ((beforeCombat?.arenaModifier?.id || afterCombat?.arenaModifier?.id) === "data_storm" && !afterCombat?.combatOver) {
+    score -= Math.max(0, afterAliveEnemies.length) * 6;
+  }
+
   const beforeEnemyMap = new Map(beforeAliveEnemies.map((enemy) => [enemy.id, enemy]));
   const afterEnemyMap = new Map(afterAliveEnemies.map((enemy) => [enemy.id, enemy]));
   const enemyIds = new Set([...beforeEnemyMap.keys(), ...afterEnemyMap.keys()]);
@@ -1433,10 +1515,25 @@ function getCombatAction(combat, data, playstyle) {
         score += Math.max(-90, Math.min(180, scoreCard(def, ci, fallbackTarget, aliveEnemies, player, playstyle, data) * 0.15));
       }
 
+      if (combat?.arenaModifier?.id === "emp_zone" && ((def.costRAM || 0) >= 2 || def.type === "Power" || isXCost)) {
+        score += 6;
+      }
+
       if (score > bestScore) {
         bestScore = score;
         bestAction = candidate.action;
       }
+    }
+  }
+
+  const simulatedEndTurn = cloneCombatForSimulation(combat, data);
+  if (simulatedEndTurn) {
+    const resolvedEndTurn = dispatchCombat(simulatedEndTurn, data, { type: "EndTurn" });
+    const endTurnAction = { type: "Combat_EndTurn", targetEnemyId: defaultEnemyId };
+    const endTurnScore = scoreSimulatedCombatAction(combat, resolvedEndTurn, endTurnAction, playstyle, data);
+    if (endTurnScore > bestScore) {
+      bestScore = endTurnScore;
+      bestAction = endTurnAction;
     }
   }
 
@@ -1459,16 +1556,16 @@ function enemyIsHealer(enemy, data) {
 // Per-status base score values: how many points each stack is worth as a raw number.
 // Multiplied by ps.statusWeight afterward.
 const STATUS_BASE_SCORES = {
-  Corrode:      9,   // DoT every player turn + strips Firewall — compound value
+  Corrode:      9,   // DoT every player turn + strips Firewall â€” compound value
   Overheat:     7,   // Pure DoT, still strong
-  Vulnerable:   8,   // +50% damage taken — huge multiplier effect
+  Vulnerable:   8,   // +50% damage taken â€” huge multiplier effect
   ExposedPorts: 8,   // Similar to Vulnerable
-  Weak:         5,   // −25% enemy attack — good but situational
-  Underclock:   5,   // −1 RAM/card — reduces enemy plays per turn
-  Leak:         4,   // Reduces enemy max-HP ceiling — good for healers
-  Firewall:     5,   // Persistent shield gain — solid sustained defense
-  Nanoflow:     6,   // Player heals each turn — strong when low HP
-  Surge:        4,   // Player deals +1 dmg — offensive bonus
+  Weak:         5,   // âˆ’25% enemy attack â€” good but situational
+  Underclock:   5,   // âˆ’1 RAM/card â€” reduces enemy plays per turn
+  Leak:         4,   // Reduces enemy max-HP ceiling â€” good for healers
+  Firewall:     5,   // Persistent shield gain â€” solid sustained defense
+  Nanoflow:     6,   // Player heals each turn â€” strong when low HP
+  Surge:        4,   // Player deals +1 dmg â€” offensive bonus
 };
 
 STATUS_BASE_SCORES.Overclock = 6;
@@ -1569,13 +1666,13 @@ function scoreCard(def, ci, target, aliveEnemies, player, playstyle, data) {
           });
         }
         /*
-        // "Gain X Firewall" or "gain X Firewall" → immediate block
+        // "Gain X Firewall" or "gain X Firewall" â†’ immediate block
         const fwMatch = t.match(/[Gg]ain (\d+) Firewall/);
         if (fwMatch) score += scoreBlockGain(parseInt(fwMatch[1]));
-        // "POWER.*gain X Firewall" — persistent per-turn block; value ~3 turns
+        // "POWER.*gain X Firewall" â€” persistent per-turn block; value ~3 turns
         const pwrFwMatch = t.match(/POWER[^]*gain (\d+) Firewall/i);
         if (pwrFwMatch) score += scoreBlockGain(parseInt(pwrFwMatch[1]) * 3);
-        // "Deal X damage" — single-target
+        // "Deal X damage" â€” single-target
         const dmgMatch = t.match(/[Dd]eal (\d+) damage(?! to ALL)/);
         if (dmgMatch) score += scoreDamage(parseInt(dmgMatch[1]), false);
         // "Deal X damage to ALL enemies"
@@ -1623,7 +1720,7 @@ function scoreCard(def, ci, target, aliveEnemies, player, playstyle, data) {
 
   score -= cost * ps.costPenalty;
 
-  // Mutation risk — these are negative penalties by default, but mutation pusher
+  // Mutation risk â€” these are negative penalties by default, but mutation pusher
   // makes them positive bonuses by using negative config values.
   const playsUntilMutation = getPlaysUntilMutation(ci, data);
   const playsUntilFinalMutation = getPlaysUntilFinalMutation(ci, data);
@@ -1640,7 +1737,7 @@ function scoreCard(def, ci, target, aliveEnemies, player, playstyle, data) {
   return score;
 }
 
-// ─── Map ─────────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Map â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function getMapAction(map, run, playstyle, deck = null) {
   if (!map) return null;
@@ -1666,7 +1763,7 @@ function getMapAction(map, run, playstyle, deck = null) {
   return { type: 'SelectNextNode', nodeId: bestId };
 }
 
-// ─── Reward ──────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Reward â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 // Score a relic by how useful its mods are for this playstyle
 function scoreRelic(relic, playstyle = 'balanced') {
@@ -1746,13 +1843,12 @@ function getRewardAction(reward, data, playstyle, run = null, deck = null) {
   return { type: 'Reward_PickCard', defId: bestDefId };
 }
 
-// ─── Shop ────────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Shop â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function getShopAction(shop, run, deck, data, playstyle) {
   if (!shop || !run) return { type: 'Shop_Exit' };
 
   const ps = AI_PLAYSTYLES[playstyle] || AI_PLAYSTYLES.balanced;
-  const gold = run.gold;
   const offers = shop.offers || [];
   let bestIndex = -1;
   let bestScore = -Infinity;
@@ -1760,8 +1856,13 @@ function getShopAction(shop, run, deck, data, playstyle) {
   for (let i = 0; i < offers.length; i++) {
     const offer = offers[i];
     if (offer?.sold) continue;
-    if (gold < offer.price) continue;
-    if (gold - offer.price < ps.shopGoldReserve) continue;
+    const currency = offer?.currency === "scrap" ? "scrap" : "gold";
+    const funds = getRunCurrencyAmount(run, currency);
+    const reserve = currency === "scrap"
+      ? Math.max(0, Number(ps.shopScrapReserve ?? 0))
+      : Math.max(0, Number(ps.shopGoldReserve ?? 0));
+    if (funds < offer.price) continue;
+    if (funds - offer.price < reserve) continue;
 
     let score = -Infinity;
 
@@ -1791,6 +1892,9 @@ function getShopAction(shop, run, deck, data, playstyle) {
       if (offer.serviceId === 'Accelerate' && ps.shopBuyAccelerate) {
         score = scoreDeckOperation('Accelerate', deck, data, playstyle, run) - offer.price * 0.3;
       }
+      if (offer.serviceId === 'Forge' && ps.shopBuyForge) {
+        score = scoreDeckOperation('Forge', deck, data, playstyle, run) - offer.price * 1.15;
+      }
     }
 
     if (score > bestScore) {
@@ -1806,7 +1910,7 @@ function getShopAction(shop, run, deck, data, playstyle) {
   return { type: 'Shop_Exit' };
 }
 
-// ─── Deck Selection (card-targeting services and rest ops) ───────────────────
+// â”€â”€â”€ Deck Selection (card-targeting services and rest ops) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function getDeckSelectionAction(deck, data, playstyle, op, run = null) {
   if (!deck) return null;
@@ -1886,6 +1990,18 @@ function getDeckSelectionAction(deck, data, playstyle, op, run = null) {
     return target ? { type: 'SelectDeckCard', instanceId: target.instanceId } : null;
   }
 
+  if (op === 'ForgeSelectedCard' || op === 'Forge') {
+    const scored = active
+      .map((ci) => ({
+        ci,
+        score: scoreForgeTarget(ci, data, playstyle, deck, run),
+      }))
+      .filter((entry) => Number.isFinite(entry.score) && entry.score > 0)
+      .sort((a, b) => b.score - a.score);
+    const target = scored[0]?.ci;
+    return target ? { type: 'SelectDeckCard', instanceId: target.instanceId } : null;
+  }
+
   if (op === 'DuplicateSelectedCard') {
     const scored = active
       .map(ci => ({
@@ -1900,7 +2016,7 @@ function getDeckSelectionAction(deck, data, playstyle, op, run = null) {
   return null;
 }
 
-// ─── Event ───────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Event â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function getEventAction(event, run, deck, data, playstyle) {
   if (!event) return null;
@@ -1933,8 +2049,16 @@ function getEventAction(event, run, deck, data, playstyle) {
         });
         if (hasTarget) return { type: 'Rest_Stabilise' };
       }
+      if (choice === 'forge' && deck && getRunCurrencyAmount(run, 'scrap') >= REST_FORGE_COST) {
+        const target = getDeckSelectionAction(deck, data, playstyle, 'Forge', run);
+        if (target) return { type: 'Rest_Forge' };
+      }
     }
     // Fallback
+    if (deck && getRunCurrencyAmount(run, 'scrap') >= REST_FORGE_COST && hpPct >= 0.8) {
+      const target = getDeckSelectionAction(deck, data, playstyle, 'Forge', run);
+      if (target) return { type: 'Rest_Forge' };
+    }
     return hpPct < 0.99 ? { type: 'Rest_Heal' } : { type: 'Rest_Leave' };
   }
 

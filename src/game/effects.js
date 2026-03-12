@@ -1,4 +1,4 @@
-import { applyEffectOp as _applyEffectOp } from "./engine";
+import { applyEffectOp as _applyEffectOp } from "./engine.js";
 
 /**
  * Wrapper: player plays a card -> sourceId = "player"

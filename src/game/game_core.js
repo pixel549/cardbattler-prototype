@@ -1,27 +1,27 @@
-import { RNG } from "./rng";
-import { push } from "./log";
-import { createInitialState as _init } from "./game_state";
-import { createRunDeckFromDefs, addCardToRunDeck } from "./run_deck";
-import { pickEncounter } from "./encounters";
-import { startCombatFromRunDeck, dispatchCombat, forceNewMutation } from "./engine";
-import { makeRelicChoices } from "./relic_rewards";
-import { getRunMods } from "./rules_mods";
-import { createBasicEventRegistry, applyEventChoiceImmediate, pickContextualEventId } from "./events";
-import { getMinigameRewards, getMinigamePoolForAct } from "./minigames";
-import { decodeDebugSeed, decodeSensibleDebugSeed } from "./debugSeed";
-import { getCardBalanceMeta } from "./card_balance";
-import { getStarterProfile } from "./runProfiles";
-import { getCompilePreview, applyCompileToCardInstance } from "./cardCompile";
-import { analyzeDeckState } from "./runInsights";
+import { RNG } from "./rng.js";
+import { push } from "./log.js";
+import { createInitialState as _init } from "./game_state.js";
+import { createRunDeckFromDefs, addCardToRunDeck } from "./run_deck.js";
+import { pickEncounter } from "./encounters.js";
+import { startCombatFromRunDeck, dispatchCombat, forceNewMutation } from "./engine.js";
+import { makeRelicChoices } from "./relic_rewards.js";
+import { getRunMods } from "./rules_mods.js";
+import { createBasicEventRegistry, applyEventChoiceImmediate, pickContextualEventId } from "./events.js";
+import { getMinigameRewards, getMinigamePoolForAct } from "./minigames.js";
+import { decodeDebugSeed, decodeSensibleDebugSeed } from "./debugSeed.js";
+import { getCardBalanceMeta } from "./card_balance.js";
+import { getStarterProfile } from "./runProfiles.js";
+import { getCompilePreview, applyCompileToCardInstance } from "./cardCompile.js";
+import { analyzeDeckState } from "./runInsights.js";
 import {
   createRunAdaptationProfile,
   normalizeRunAdaptationProfile,
   recordCardPlayForAdaptation,
-} from "./combatMeta";
+} from "./combatMeta.js";
 import {
   isCardUnlockedByAchievements,
   isRelicUnlockedByAchievements,
-} from "./achievements";
+} from "./achievements.js";
 
 const EVENT_REG = createBasicEventRegistry();
 
@@ -922,17 +922,17 @@ export function generateMap(seed) {
     return id;
   }
 
-  // ── StS-style path generation ───────────────────────────────────────────
+  // â”€â”€ StS-style path generation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // 6 columns (0-5), 15 rows (0=Start, 1-13=content, 14=Boss).
-  // 6 paths, each starting at a unique column. Each path meanders ±1 col/row.
+  // 6 paths, each starting at a unique column. Each path meanders Â±1 col/row.
   // Sorted-order invariant: after each row, path columns are sorted ascending.
   // This ensures edges never cross (planar graph).
   // Nodes at the same (row, col) are shared between paths.
   //
-  //  Start (2.5, 0)      ← single centred node
-  //  /  |  |  |  |  \   ← up to 6 row-1 nodes
+  //  Start (2.5, 0)      â† single centred node
+  //  /  |  |  |  |  \   â† up to 6 row-1 nodes
   //   ...14 rows of meandering content...
-  //  \  |  |  |  |  /   ← converge to Boss
+  //  \  |  |  |  |  /   â† converge to Boss
   //  Boss (2.5, 14)
 
   const COLS   = 6;    // columns 0..5
@@ -946,7 +946,7 @@ export function generateMap(seed) {
     return rowTypeTable[row]?.[col] || "Combat";
   }
 
-  // Grid cache: "row,col" → nodeId
+  // Grid cache: "row,col" â†’ nodeId
   const grid = {};
   function getNode(row, col) {
     const key = `${row},${col}`;
@@ -955,13 +955,13 @@ export function generateMap(seed) {
     return grid[key];
   }
 
-  // Start and Boss — centred at x=2.5
+  // Start and Boss â€” centred at x=2.5
   const startId = makeNode('Start', 2.5, 0);
   nodes[startId].cleared = true;
   const bossId = makeNode('Boss', 2.5, 14);
   nodes[bossId].next = [];
 
-  // Generate paths — pathCols[p][r-1] = column for path p at row r (rows 1-13)
+  // Generate paths â€” pathCols[p][r-1] = column for path p at row r (rows 1-13)
   const pathCols = Array.from({ length: PATH_N }, (_, p) => [p]);
   for (let r = 1; r <= 12; r++) {
     const proposals = pathCols.map(p => {
@@ -969,29 +969,29 @@ export function generateMap(seed) {
       const d = rng.pick([-1, 0, 0, 1]); // slight stay-bias
       return Math.max(0, Math.min(COLS - 1, cur + d));
     });
-    // Sort to maintain left-to-right order → edges never cross
+    // Sort to maintain left-to-right order â†’ edges never cross
     const sorted = [...proposals].sort((a, b) => a - b);
     pathCols.forEach((p, i) => p.push(sorted[i]));
   }
 
-  // Build edges — deduplicated
+  // Build edges â€” deduplicated
   const edgeSet = new Set();
   function addEdge(fromId, toId) {
     const k = `${fromId}|${toId}`;
     if (!edgeSet.has(k)) { edgeSet.add(k); nodes[fromId].next.push(toId); }
   }
 
-  // Start → row 1
+  // Start â†’ row 1
   for (let p = 0; p < PATH_N; p++) addEdge(startId, getNode(1, pathCols[p][0]));
 
-  // Row r → row r+1 (rows 1..12)
+  // Row r â†’ row r+1 (rows 1..12)
   for (let r = 1; r <= 12; r++) {
     for (let p = 0; p < PATH_N; p++) {
       addEdge(getNode(r, pathCols[p][r - 1]), getNode(r + 1, pathCols[p][r]));
     }
   }
 
-  // Row 13 → Boss
+  // Row 13 â†’ Boss
   for (let p = 0; p < PATH_N; p++) addEdge(getNode(13, pathCols[p][12]), bossId);
 
   return {
@@ -1069,7 +1069,7 @@ function maybeAdvanceAct(state, data, log) {
   if (prevAct >= MAX_ACTS && !endless) {
     state.run.victory = true;
     state.mode = "GameOver";
-    log({ t: "Info", msg: `RUN COMPLETE — all ${MAX_ACTS} acts cleared!` });
+    log({ t: "Info", msg: `RUN COMPLETE â€” all ${MAX_ACTS} acts cleared!` });
     return;
   }
 
@@ -1078,10 +1078,10 @@ function maybeAdvanceAct(state, data, log) {
   // Generate a new map seeded differently per act so layouts vary
   state.map = generateMap((state.run.seed ^ (state.run.act * 0x9E3779B9)) >>> 0);
   if (endless && prevAct >= MAX_ACTS) {
-    log({ t: "Info", msg: `Endless Protocol stabilised â€” entering Act ${state.run.act}` });
+    log({ t: "Info", msg: `Endless Protocol stabilised Ã¢â‚¬â€ entering Act ${state.run.act}` });
     return;
   }
-  log({ t: "Info", msg: `Act ${prevAct} complete — entering Act ${state.run.act}` });
+  log({ t: "Info", msg: `Act ${prevAct} complete â€” entering Act ${state.run.act}` });
 }
 
 function service_RemoveCard(state, data, source = 'shop', log = null) {
@@ -1259,7 +1259,7 @@ function resolveCurrentNodeInternal(state, data, log) {
       encounterId = enc?.id ?? enc?.name ?? null;
       encounterName = enc?.name ?? 'Unknown';
       if (!enemyIds) {
-        log({ t: "Error", msg: `Encounter "${encounterName}" returned no enemyIds — keeping combat node unresolved` });
+        log({ t: "Error", msg: `Encounter "${encounterName}" returned no enemyIds â€” keeping combat node unresolved` });
         return state;
       }
     }
@@ -1923,7 +1923,7 @@ export function dispatchGame(stateIn, data, action) {
         if (op.op === "GainMaxHP")  state.run.maxHP = (state.run.maxHP || 0) + op.amount;
         if (op.op === "GainMP")     state.run.mp    = (state.run.mp    || 0) + op.amount;
 
-        // Card ops — open deck picker for player to select a card
+        // Card ops â€” open deck picker for player to select a card
         if (op.op === "AccelerateSelectedCard" || op.op === "StabiliseSelectedCard" ||
             op.op === "RepairSelectedCard"     || op.op === "RemoveSelectedCard") {
           state.deckView = { selectedInstanceId: null, returnMode: "Event" };

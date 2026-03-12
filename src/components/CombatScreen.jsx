@@ -279,6 +279,34 @@ function getMutLabel(id) {
   return t;
 }
 
+function getTutorialFocusFrameStyle(active, tone = C.neonCyan, padding = 8, radius = 20) {
+  if (!active) return null;
+  return {
+    padding,
+    borderRadius: radius,
+    border: `1px solid ${tone}55`,
+    background: `${tone}08`,
+    boxShadow: `0 0 0 1px ${tone}18, 0 0 28px ${tone}18`,
+  };
+}
+
+function getCombatTutorialFocus(step) {
+  if (!step || step.mode !== 'Combat') {
+    return {
+      enemy: false,
+      center: false,
+      actions: false,
+    };
+  }
+  if (step.id?.includes('end_turn')) {
+    return { enemy: false, center: false, actions: true };
+  }
+  if (step.id === 'phase_read' || step.id === 'adaptive_intro') {
+    return { enemy: true, center: false, actions: false };
+  }
+  return { enemy: true, center: true, actions: false };
+}
+
 function parseMutationPatch(patchStr) {
   if (!patchStr) return [];
   const entries = [];
@@ -3158,7 +3186,7 @@ function CombatActionButton({ label, onClick, disabled = false, active = false, 
   );
 }
 
-function PortraitCombatRail({ interactionLocked, onEndTurn, deckMenuOpen = false, onToggleDeckMenu }) {
+function PortraitCombatRail({ interactionLocked, onEndTurn, deckMenuOpen = false, onToggleDeckMenu, highlightEndTurn = false }) {
   return (
     <div
       style={{
@@ -3185,6 +3213,10 @@ function PortraitCombatRail({ interactionLocked, onEndTurn, deckMenuOpen = false
           padding: '10px 7px',
           fontSize: 11,
           lineHeight: 1.1,
+          ...(highlightEndTurn ? {
+            border: `1px solid ${C.neonYellow}88`,
+            boxShadow: `0 0 0 1px ${C.neonYellow}2a, 0 0 24px ${C.neonYellow}26`,
+          } : {}),
         }}
       />
       <CombatActionButton
@@ -3220,6 +3252,7 @@ function CombatUtilityPanel({
   showDeckAction = true,
   showEndTurnAction = true,
   showDeckMenu = true,
+  highlightActionKey = null,
 }) {
   const compact = layoutMode !== 'desktop';
   const isPhonePortrait = layoutMode === 'phone-portrait';
@@ -3306,6 +3339,10 @@ function CombatUtilityPanel({
               active={button.active}
               tone={button.tone}
               compact={compact}
+              style={button.key === highlightActionKey ? {
+                border: `1px solid ${C.neonYellow}88`,
+                boxShadow: `0 0 0 1px ${C.neonYellow}2a, 0 0 24px ${C.neonYellow}26`,
+              } : undefined}
             />
           ))}
         </div>
@@ -5624,7 +5661,7 @@ function ArcHand({
 // ============================================================
 // MAIN COMBAT SCREEN
 // ============================================================
-export default function CombatScreen({ state, data, onAction, aiPaused = false, onOpenMenu }) {
+export default function CombatScreen({ state, data, onAction, aiPaused = false, onOpenMenu, tutorialStep = null }) {
   const {
     enabled: playtestEnabled,
     sessionId: playtestSessionId,
@@ -5749,7 +5786,8 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
   const isPhonePortrait = layoutMode === 'phone-portrait';
   const isPhoneLandscape = layoutMode === 'phone-landscape';
   const tutorialActive = Boolean(state?.run?.tutorial?.active);
-  const tallTutorialLayout = tutorialActive && viewport.height >= 1400;
+  const combatTutorialFocus = getCombatTutorialFocus(tutorialStep);
+  const tallDesktopLayout = !isPhoneLayout && viewport.height >= 1200;
   const compactTutorialPortrait = tutorialActive && isPhonePortrait;
   const landscapeFocusWidth = viewport.width < 720 ? 156 : 168;
   const landscapeSidebarWidth = viewport.width < 720 ? 224 : 244;
@@ -6524,35 +6562,39 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
   );
 
   const enemyFocusPanel = (
-    <EnemyFocusPanel
-      enemy={targetedEnemy}
-      intentBadges={targetedIntentBadges}
-      compact={isPhoneLayout}
-      onOpenMenu={isPhonePortrait ? () => {
-        setDeckMenuOpen(false);
-        onOpenMenu?.();
-      } : null}
-      hasActiveCard={Boolean(activeCardId)}
-      canActivate={Boolean(focusedEnemyPlayability.playable)}
-      isArmed={enemyTargetArmed}
-      blockedReason={enemyBlockedReason}
-    />
+    <div style={getTutorialFocusFrameStyle(combatTutorialFocus.enemy, C.neonCyan, 8, 20) || undefined}>
+      <EnemyFocusPanel
+        enemy={targetedEnemy}
+        intentBadges={targetedIntentBadges}
+        compact={isPhoneLayout}
+        onOpenMenu={isPhonePortrait ? () => {
+          setDeckMenuOpen(false);
+          onOpenMenu?.();
+        } : null}
+        hasActiveCard={Boolean(activeCardId)}
+        canActivate={Boolean(focusedEnemyPlayability.playable)}
+        isArmed={enemyTargetArmed}
+        blockedReason={enemyBlockedReason}
+      />
+    </div>
   );
 
   const centeredCardPanel = (
-    <CenterCardDisplay
-      cardInstance={activeInstance}
-      cardDef={activeDef}
-      data={data}
-      dismissed={centerCardDismissed}
-      onDismiss={() => setCenterCardDismissed(true)}
-      onActivate={() => playCardToTarget(activeCardId, selectedTargetMode, defaultEnemyTargetId)}
-      canActivate={!interactionLocked && !!activeCardId && canPlayCard(activeCardId)}
-      activateHint={interactionLocked ? 'Resolving action' : activeCardHint}
-      helperNote={interactionLocked ? 'Actions are resolving. Target input will unlock in a moment.' : activeCardHelperNote}
-      helperTone={interactionLocked ? C.neonCyan : activeCardHelperTone}
-      layoutMode={layoutMode}
-    />
+    <div style={getTutorialFocusFrameStyle(combatTutorialFocus.center, C.neonYellow, 8, 24) || undefined}>
+      <CenterCardDisplay
+        cardInstance={activeInstance}
+        cardDef={activeDef}
+        data={data}
+        dismissed={centerCardDismissed}
+        onDismiss={() => setCenterCardDismissed(true)}
+        onActivate={() => playCardToTarget(activeCardId, selectedTargetMode, defaultEnemyTargetId)}
+        canActivate={!interactionLocked && !!activeCardId && canPlayCard(activeCardId)}
+        activateHint={interactionLocked ? 'Resolving action' : activeCardHint}
+        helperNote={interactionLocked ? 'Actions are resolving. Target input will unlock in a moment.' : activeCardHelperNote}
+        helperTone={interactionLocked ? C.neonCyan : activeCardHelperTone}
+        layoutMode={layoutMode}
+      />
+    </div>
   );
 
   const handFan = (
@@ -6613,6 +6655,7 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
             onEndTurn={handleEndTurn}
             deckMenuOpen={deckMenuOpen}
             onToggleDeckMenu={setDeckMenuOpen}
+            highlightEndTurn={combatTutorialFocus.actions}
           />
         </div>
       ) : (
@@ -6671,6 +6714,7 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
           showDeckAction={!isPhonePortrait}
           showEndTurnAction={!isPhonePortrait}
           showDeckMenu={!isPhonePortrait}
+          highlightActionKey={combatTutorialFocus.actions ? 'end-turn' : null}
         />
       )}
     </div>
@@ -6726,6 +6770,7 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
           deckMenuOpen={deckMenuOpen}
           onToggleDeckMenu={setDeckMenuOpen}
           layoutMode={layoutMode}
+          highlightActionKey={combatTutorialFocus.actions ? 'end-turn' : null}
         />
       </div>
     </div>
@@ -6979,11 +7024,11 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
             className="safe-area-top"
             style={{
               flex: '0 0 auto',
-              minHeight: tallTutorialLayout ? 'clamp(214px, 25vh, 286px)' : 'clamp(248px, 31vh, 330px)',
+              minHeight: tallDesktopLayout ? 'clamp(214px, 25vh, 286px)' : 'clamp(248px, 31vh, 330px)',
               display: 'flex',
               alignItems: 'flex-start',
               justifyContent: 'center',
-              padding: tallTutorialLayout ? '14px 10px 10px' : '18px 10px 12px',
+              padding: tallDesktopLayout ? '14px 10px 10px' : '18px 10px 12px',
               overflow: 'visible',
             }}
           >
@@ -7005,13 +7050,13 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
             flex: 1,
             display: 'flex',
             flexDirection: 'column',
-            justifyContent: tallTutorialLayout ? 'flex-end' : 'center',
+            justifyContent: tallDesktopLayout ? 'flex-end' : 'center',
             alignItems: 'center',
-            padding: tallTutorialLayout ? '0 8px 18px' : '0 8px',
+            padding: tallDesktopLayout ? '0 8px 18px' : '0 8px',
             minHeight: 0,
             overflow: 'hidden',
           }}>
-            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: tallTutorialLayout ? 'flex-end' : 'center', minHeight: 0, overflow: 'auto', width: '100%', paddingBottom: tallTutorialLayout ? 18 : 0 }}>
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: tallDesktopLayout ? 'flex-end' : 'center', minHeight: 0, overflow: 'auto', width: '100%', paddingBottom: tallDesktopLayout ? 18 : 0 }}>
               {centeredCardPanel}
             </div>
           </div>

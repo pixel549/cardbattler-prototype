@@ -3674,8 +3674,28 @@ function MinigameScreen({ state, onAction }) {
 // ============================================================
 // EVENT SCREEN
 // ============================================================
-function EventScreen({ state, data, onAction }) {
+function getEventTutorialActionId(eventId, tutorialStep) {
+  if (!tutorialStep || tutorialStep.mode !== 'Event') return null;
+  if (eventId === 'CompileStation') return 'Compile_Open';
+  if (eventId !== 'RestSite') return null;
+  if (tutorialStep.id === 'rest_scrap') return 'Rest_Forge';
+  if (tutorialStep.id === 'stabilise_open') return 'Rest_Stabilise';
+  return null;
+}
+
+function getDeckPickerTutorialTargetId(state, tutorialStep) {
+  if (!tutorialStep || tutorialStep.mode !== 'DeckView') return null;
+  const tutorialCardIds = state?.run?.tutorial?.cardIds || {};
+  if (tutorialStep.id === 'compile_target') return tutorialCardIds.compileTarget || null;
+  if (tutorialStep.id === 'stabilise_target') return tutorialCardIds.stabiliseTarget || null;
+  if (tutorialStep.id === 'reforge_target') return tutorialCardIds.reforgeTarget || null;
+  return null;
+}
+
+function EventScreen({ state, data, onAction, tutorialStep = null }) {
   const eventId = state.event?.eventId;
+  const highlightedEventAction = getEventTutorialActionId(eventId, tutorialStep);
+  const eventTutorialActive = tutorialStep?.mode === 'Event';
 
   if (isMinigameEvent(eventId)) {
     return <MinigameScreen state={state} onAction={onAction} />;
@@ -3686,7 +3706,7 @@ function EventScreen({ state, data, onAction }) {
     return (
       <ScreenShell>
         <RunHeader run={state.run} data={data} />
-        <div style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', paddingTop: 'clamp(72px, 16vh, 176px)', paddingBottom: '96px' }}>
           <div
             className="animate-slide-up"
             style={{
@@ -3703,54 +3723,77 @@ function EventScreen({ state, data, onAction }) {
             Choose an action
           </div>
 
-          <div style={{ width: '100%', maxWidth: '320px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div
+            style={{
+              width: '100%',
+              maxWidth: '320px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px',
+              padding: eventTutorialActive ? '10px' : 0,
+              borderRadius: eventTutorialActive ? 20 : 0,
+              border: eventTutorialActive ? `1px solid ${C.cyan}20` : 'none',
+              boxShadow: eventTutorialActive ? `0 0 0 1px ${C.cyan}10, 0 18px 36px rgba(0,0,0,0.18)` : 'none',
+              background: eventTutorialActive ? 'linear-gradient(180deg, rgba(3,8,14,0.32) 0%, rgba(3,6,12,0.08) 100%)' : 'transparent',
+            }}
+          >
             {[
               { type: 'Rest_Heal', label: 'Rest', desc: 'Heal 30% HP', color: C.green, icon: '\u2665' },
               { type: 'Rest_Repair', label: 'Repair', desc: 'Restore a card', color: C.cyan, icon: '\uD83D\uDD27' },
               { type: 'Rest_Stabilise', label: 'Stabilise', desc: 'Stabilise a card', color: C.purple, icon: '\u25C6' },
               { type: 'Rest_Forge', label: 'Reforge', desc: 'Spend 3 scrap to rebuild a card', color: C.orange, icon: '\u2692', disabled: restScrap < 3 },
-            ].map(opt => (
-              <button
-                key={opt.type}
-                onClick={() => !opt.disabled && onAction({ type: opt.type })}
-                disabled={opt.disabled}
-                style={{
-                  width: '100%',
-                  padding: '16px',
-                  borderRadius: '12px',
-                  fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace",
-                  textAlign: 'left',
-                  transition: 'all 0.15s ease',
-                  backgroundColor: C.bgCard,
-                  border: `2px solid ${opt.color}40`,
-                  boxShadow: `0 0 16px ${opt.color}10`,
-                  cursor: opt.disabled ? 'default' : 'pointer',
-                  opacity: opt.disabled ? 0.45 : 1,
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div
-                    style={{
-                      width: '40px',
-                      height: '40px',
-                      borderRadius: '8px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '18px',
-                      backgroundColor: `${opt.color}15`,
-                      border: `1px solid ${opt.color}40`,
-                    }}
-                  >
-                    {opt.icon}
+            ].map(opt => {
+              const highlighted = highlightedEventAction === opt.type;
+              return (
+                <button
+                  key={opt.type}
+                  onClick={() => !opt.disabled && onAction({ type: opt.type })}
+                  disabled={opt.disabled}
+                  style={{
+                    width: '100%',
+                    padding: '16px',
+                    borderRadius: '12px',
+                    fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace",
+                    textAlign: 'left',
+                    transition: 'all 0.15s ease',
+                    backgroundColor: C.bgCard,
+                    border: `2px solid ${highlighted ? `${opt.color}cc` : `${opt.color}40`}`,
+                    boxShadow: highlighted
+                      ? `0 0 0 1px ${opt.color}26, 0 0 24px ${opt.color}32`
+                      : `0 0 16px ${opt.color}10`,
+                    cursor: opt.disabled ? 'default' : 'pointer',
+                    opacity: opt.disabled ? 0.45 : 1,
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div
+                      style={{
+                        width: '40px',
+                        height: '40px',
+                        borderRadius: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '18px',
+                        backgroundColor: `${opt.color}15`,
+                        border: `1px solid ${opt.color}40`,
+                      }}
+                    >
+                      {opt.icon}
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 700, color: opt.color, fontSize: 14 }}>{opt.label}</div>
+                      <div style={{ color: C.textMuted, fontSize: 11 }}>{opt.desc}</div>
+                    </div>
                   </div>
-                  <div>
-                    <div style={{ fontWeight: 700, color: opt.color, fontSize: 14 }}>{opt.label}</div>
-                    <div style={{ color: C.textMuted, fontSize: 11 }}>{opt.desc}</div>
-                  </div>
-                </div>
-              </button>
-            ))}
+                  {highlighted ? (
+                    <div style={{ marginTop: 10, fontFamily: UI_MONO, fontSize: 10, letterSpacing: '0.1em', color: opt.color, textTransform: 'uppercase' }}>
+                      Training target
+                    </div>
+                  ) : null}
+                </button>
+              );
+            })}
 
             <button
               onClick={() => onAction({ type: 'Rest_Leave' })}
@@ -3771,7 +3814,7 @@ function EventScreen({ state, data, onAction }) {
     return (
       <ScreenShell>
         <RunHeader run={state.run} data={data} />
-        <div style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', paddingTop: 'clamp(72px, 16vh, 176px)', paddingBottom: '96px' }}>
           <div
             className="animate-slide-up"
             style={{
@@ -3788,7 +3831,20 @@ function EventScreen({ state, data, onAction }) {
             Spend this node to deliberately upgrade one card. Compiled cards cost 1 less RAM and gain a permanent typed bonus when played.
           </div>
 
-          <div style={{ width: '100%', maxWidth: '360px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div
+            style={{
+              width: '100%',
+              maxWidth: '360px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px',
+              padding: eventTutorialActive ? '10px' : 0,
+              borderRadius: eventTutorialActive ? 20 : 0,
+              border: eventTutorialActive ? `1px solid ${C.orange}22` : 'none',
+              boxShadow: eventTutorialActive ? `0 0 0 1px ${C.orange}10, 0 18px 36px rgba(0,0,0,0.18)` : 'none',
+              background: eventTutorialActive ? 'linear-gradient(180deg, rgba(18,8,3,0.2) 0%, rgba(3,6,12,0.08) 100%)' : 'transparent',
+            }}
+          >
             <button
               onClick={() => onAction({ type: 'Compile_Open' })}
               style={{
@@ -3799,8 +3855,10 @@ function EventScreen({ state, data, onAction }) {
                 textAlign: 'left',
                 transition: 'all 0.15s ease',
                 backgroundColor: C.bgCard,
-                border: `2px solid ${C.orange}40`,
-                boxShadow: `0 0 16px ${C.orange}10`,
+                border: `2px solid ${highlightedEventAction === 'Compile_Open' ? `${C.orange}cc` : `${C.orange}40`}`,
+                boxShadow: highlightedEventAction === 'Compile_Open'
+                  ? `0 0 0 1px ${C.orange}26, 0 0 24px ${C.orange}32`
+                  : `0 0 16px ${C.orange}10`,
                 cursor: 'pointer',
               }}
             >
@@ -3825,6 +3883,11 @@ function EventScreen({ state, data, onAction }) {
                   <div style={{ color: C.textMuted, fontSize: 11 }}>Choose a card and permanently enhance it for this run.</div>
                 </div>
               </div>
+              {highlightedEventAction === 'Compile_Open' ? (
+                <div style={{ marginTop: 10, fontFamily: UI_MONO, fontSize: 10, letterSpacing: '0.1em', color: C.orange, textTransform: 'uppercase' }}>
+                  Training target
+                </div>
+              ) : null}
             </button>
 
             <button
@@ -4056,10 +4119,11 @@ const DECK_OP_LABELS = {
   CompileSelectedCard:   { label: 'COMPILE A CARD',   desc: 'Reduce its RAM cost and add a permanent typed bonus.', color: '#ff6b00' },
 };
 
-function DeckPickerOverlay({ state, data, onAction }) {
+function DeckPickerOverlay({ state, data, onAction, tutorialStep = null }) {
   const dv = state.deckView;
   const dialogRef = useRef(null);
   const closeButtonRef = useRef(null);
+  const tutorialTileRefs = useRef(new Map());
   const handleClose = useCallback(() => onAction({ type: 'CloseDeck' }), [onAction]);
   const pendingOp = state.event?.pendingSelectOp || state.shop?.pendingService;
   const [viewportWidth, setViewportWidth] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 1280));
@@ -4078,6 +4142,15 @@ function DeckPickerOverlay({ state, data, onAction }) {
     window.addEventListener('resize', syncViewport);
     return () => window.removeEventListener('resize', syncViewport);
   }, []);
+
+  const tutorialTargetId = getDeckPickerTutorialTargetId(state, tutorialStep);
+  const tutorialDeckActive = tutorialStep?.mode === 'DeckView';
+
+  useEffect(() => {
+    if (!tutorialTargetId) return;
+    const targetNode = tutorialTileRefs.current.get(tutorialTargetId);
+    targetNode?.scrollIntoView?.({ block: 'center', inline: 'center', behavior: 'smooth' });
+  }, [tutorialTargetId]);
 
   if (!dv) return null;
 
@@ -4149,6 +4222,11 @@ function DeckPickerOverlay({ state, data, onAction }) {
             {cards.length} card{cards.length !== 1 ? 's' : ''} in deck
             {pendingOp ? ` • ${eligibleCardCount} eligible` : ''}
           </div>
+          {tutorialDeckActive ? (
+            <div style={{ fontFamily: MONO, fontSize: 10, color: opInfo.color, marginTop: 8, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+              Training target marked in-grid
+            </div>
+          ) : null}
         </div>
         <button
           ref={closeButtonRef}
@@ -4187,8 +4265,32 @@ function DeckPickerOverlay({ state, data, onAction }) {
           justifyItems: 'center',
         }}
       >
-        {cardsWithSelectionState.map(({ iid, ci, def, selectionInfo }) => (
-          <div key={iid} style={{ width: '100%', maxWidth: `${MENU_CARD_MAX_W}px`, display: 'flex', flexDirection: 'column', gap: 6, alignSelf: 'start' }}>
+        {cardsWithSelectionState.map(({ iid, ci, def, selectionInfo }) => {
+          const highlighted = tutorialTargetId === iid;
+          const dimmed = tutorialDeckActive && tutorialTargetId && !highlighted;
+          return (
+          <div
+            key={iid}
+            ref={(node) => {
+              if (highlighted && node) tutorialTileRefs.current.set(iid, node);
+              if (!node) tutorialTileRefs.current.delete(iid);
+            }}
+            style={{
+              width: '100%',
+              maxWidth: `${MENU_CARD_MAX_W}px`,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 6,
+              alignSelf: 'start',
+              padding: highlighted ? '8px' : 0,
+              borderRadius: highlighted ? 18 : 0,
+              border: highlighted ? `1px solid ${opInfo.color}55` : '1px solid transparent',
+              boxShadow: highlighted ? `0 0 0 1px ${opInfo.color}22, 0 0 26px ${opInfo.color}24` : 'none',
+              background: highlighted ? `${opInfo.color}08` : 'transparent',
+              opacity: dimmed ? 0.58 : 1,
+              transition: 'opacity 0.15s ease, box-shadow 0.15s ease',
+            }}
+          >
             <CardChoiceTile
               cardId={ci.defId}
               card={def}
@@ -4210,8 +4312,14 @@ function DeckPickerOverlay({ state, data, onAction }) {
                 {selectionInfo.eligible ? selectionInfo.summary : selectionInfo.reason}
               </div>
             )}
+            {highlighted ? (
+              <div style={{ fontFamily: MONO, fontSize: 10, color: opInfo.color, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                Training target
+              </div>
+            ) : null}
           </div>
-        ))}
+        );
+        })}
         {showLegacyDeckList && cards.map(({ iid, ci, def }) => {
           const color = typeColors[def.type] || C.text;
           const maxUse = getCardUseCounterLimit(def, ci, data);
@@ -5380,32 +5488,103 @@ function MainMenuScreen({
   );
 }
 
+function getTutorialFocusLabel(step, presentationMode = 'Combat') {
+  if (!step) return '';
+  if (presentationMode === 'MainMenu') {
+    if (step.menuView === 'setup') return 'RUN SETUP';
+    if (step.menuView === 'daily') return 'DAILY RUN';
+    if (step.menuView === 'intel' && step.intelView === 'bosses') return 'BOSS ARCHIVE';
+    if (step.menuView === 'intel' && step.intelView === 'callsigns') return 'CALLSIGN ARCHIVE';
+    if (step.menuView === 'intel') return 'PROGRESS ARCHIVE';
+    return 'ACTIVE MENU PANE';
+  }
+  if (presentationMode === 'DeckView') return 'DECK PICKER';
+  if (presentationMode === 'Event') return 'EVENT CHOICE';
+  if (presentationMode === 'Reward') return 'REWARD CHOICES';
+  if (presentationMode === 'Combat') {
+    if (step.id?.includes('end_turn')) return 'END TURN';
+    if (step.id === 'phase_read' || step.id === 'adaptive_intro') return 'ENEMY PANEL';
+    return 'CENTER CARD + TARGET';
+  }
+  return 'ACTIVE PANEL';
+}
+
+function getTutorialOverlayLayout(presentationMode = 'Combat') {
+  if (presentationMode === 'Event') {
+    return {
+      justifyContent: 'center',
+      left: 12,
+      right: 12,
+      top: 'min(calc(36% + 72px), calc(100% - 228px))',
+      bottom: 'auto',
+      width: 'min(440px, 100%)',
+      pointerSide: 'top',
+    };
+  }
+  if (presentationMode === 'MainMenu') {
+    return {
+      justifyContent: 'center',
+      left: 12,
+      right: 12,
+      bottom: 14,
+      width: 'min(520px, 100%)',
+      pointerSide: 'top',
+    };
+  }
+  if (presentationMode === 'DeckView') {
+    return {
+      justifyContent: 'center',
+      left: 12,
+      right: 12,
+      bottom: 16,
+      width: 'min(520px, 100%)',
+      pointerSide: 'top',
+    };
+  }
+  if (presentationMode === 'Reward') {
+    return {
+      justifyContent: 'center',
+      left: 12,
+      right: 12,
+      bottom: 18,
+      width: 'min(560px, 100%)',
+      pointerSide: 'top',
+    };
+  }
+  return {
+    justifyContent: 'center',
+    left: 12,
+    right: 12,
+    top: 'min(calc(54% + 32px), calc(100% - 240px))',
+    bottom: 'auto',
+    width: 'min(500px, 100%)',
+    pointerSide: 'top',
+  };
+}
+
 function TutorialOverlay({ step, nudge = '', onAdvance, onExit, presentationMode = 'Combat' }) {
   if (!step) return null;
-
-  const overlayBottom = presentationMode === 'Combat'
-    ? 'clamp(92px, 16vh, 164px)'
-    : presentationMode === 'DeckView'
-      ? 18
-      : 0;
+  const layout = getTutorialOverlayLayout(presentationMode);
+  const focusLabel = getTutorialFocusLabel(step, presentationMode);
 
   return (
     <div
       className="safe-area-bottom"
       style={{
         position: 'fixed',
-        left: 12,
-        right: 12,
-        bottom: overlayBottom,
+        left: layout.left,
+        right: layout.right,
+        top: layout.top,
+        bottom: layout.bottom,
         zIndex: 980,
         display: 'flex',
-        justifyContent: 'center',
+        justifyContent: layout.justifyContent,
         pointerEvents: 'none',
       }}
     >
       <div
         style={{
-          width: 'min(560px, 100%)',
+          width: layout.width,
           pointerEvents: 'auto',
           borderRadius: 20,
           border: `1px solid ${C.cyan}38`,
@@ -5415,11 +5594,45 @@ function TutorialOverlay({ step, nudge = '', onAdvance, onExit, presentationMode
           display: 'flex',
           flexDirection: 'column',
           gap: 12,
+          position: 'relative',
         }}
       >
+        <div
+          aria-hidden="true"
+          style={{
+            position: 'absolute',
+            width: 16,
+            height: 16,
+            left: '50%',
+            transform: 'translateX(-50%) rotate(45deg)',
+            background: 'rgba(6,10,18,0.97)',
+            borderLeft: `1px solid ${C.cyan}38`,
+            borderTop: `1px solid ${C.cyan}38`,
+            top: layout.pointerSide === 'top' ? -9 : 'auto',
+            bottom: layout.pointerSide === 'bottom' ? -9 : 'auto',
+          }}
+        />
+
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-          <div style={{ fontFamily: UI_MONO, fontSize: 12, letterSpacing: '0.16em', color: C.cyan }}>
-            TUTORIAL
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+            <div style={{ fontFamily: UI_MONO, fontSize: 12, letterSpacing: '0.16em', color: C.cyan }}>
+              TUTORIAL
+            </div>
+            <div
+              style={{
+                padding: '5px 8px',
+                borderRadius: 999,
+                border: `1px solid ${C.cyan}28`,
+                background: `${C.cyan}10`,
+                color: C.cyan,
+                fontFamily: UI_MONO,
+                fontSize: 10,
+                letterSpacing: '0.1em',
+                textTransform: 'uppercase',
+              }}
+            >
+              Focus: {focusLabel}
+            </div>
           </div>
           <button
             onClick={onExit}
@@ -7378,6 +7591,7 @@ function App() {
         <MainMenuHub
           ScreenShell={ScreenShell}
           data={data}
+          tutorialStep={tutorialStep}
           initialMenuView={tutorialMenuState?.menuView ?? visualMenuState?.menuView ?? 'home'}
           initialIntelView={tutorialMenuState?.intelView ?? visualMenuState?.intelView ?? 'progress'}
           forcedMenuView={tutorialMenuState?.menuView ?? null}
@@ -7441,7 +7655,7 @@ function App() {
             />
           )}
         >
-          <CombatScreen state={state} data={data} onAction={handleAction} aiPaused={aiPaused} onOpenMenu={openPauseMenu} />
+          <CombatScreen state={state} data={data} onAction={handleAction} aiPaused={aiPaused} onOpenMenu={openPauseMenu} tutorialStep={tutorialStep} />
         </ScreenErrorBoundary>
       );
       break;
@@ -7455,7 +7669,7 @@ function App() {
       content = <ShopScreen state={state} data={data} onAction={handleAction} />;
       break;
     case 'Event':
-      content = <EventScreen state={state} data={data} onAction={handleAction} />;
+      content = <EventScreen state={state} data={data} onAction={handleAction} tutorialStep={tutorialStep} />;
       break;
     case 'GameOver':
       content = <GameOverScreen state={state} onNewRun={hardReloadIntoFreshRun} recentUnlocks={recentUnlocks} />;
@@ -7551,7 +7765,7 @@ function App() {
       />
       {/* Deck picker overlay — appears on top of any screen when card selection is needed */}
       {state?.deckView && (
-        <DeckPickerOverlay state={state} data={data} onAction={handleAction} />
+        <DeckPickerOverlay state={state} data={data} onAction={handleAction} tutorialStep={tutorialStep} />
       )}
       {showTutorialOverlay && (
         <TutorialOverlay

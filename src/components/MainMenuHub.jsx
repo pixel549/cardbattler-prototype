@@ -218,6 +218,7 @@ function StatTile({ accent, label, value }) {
 export default function MainMenuHub({
   ScreenShell,
   data = null,
+  tutorialStep = null,
   initialMenuView = 'home',
   initialIntelView = 'progress',
   forcedMenuView = null,
@@ -359,6 +360,18 @@ export default function MainMenuHub({
     ...makeSurface(accent, emphasis),
     padding,
   });
+  const tutorialMenuActive = tutorialStep?.mode === 'MainMenu';
+  const tutorialPaneLabel = tutorialStep?.intelView === 'bosses'
+    ? 'Boss archive'
+    : tutorialStep?.intelView === 'callsigns'
+      ? 'Callsign archive'
+      : tutorialStep?.menuView === 'setup'
+        ? 'Run setup'
+        : tutorialStep?.menuView === 'daily'
+          ? 'Daily run'
+          : tutorialStep?.menuView === 'intel'
+            ? 'Progress archive'
+            : 'Active pane';
 
   const pillButtonStyle = (accent, active = false, disabled = false) => ({
     appearance: 'none',
@@ -495,6 +508,26 @@ export default function MainMenuHub({
             Settings
           </button>
         </div>
+        {tutorialMenuActive ? (
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '10px 12px',
+              borderRadius: 16,
+              border: `1px solid ${meta.accent}32`,
+              background: `${meta.accent}10`,
+              fontFamily: UI_MONO,
+              fontSize: 11,
+              lineHeight: 1.5,
+              color: C.textDim,
+            }}
+          >
+            <span style={{ color: meta.accent, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Briefing focus</span>
+            <span style={{ color: C.text }}>{tutorialPaneLabel}</span>
+          </div>
+        ) : null}
       </div>
     );
   };

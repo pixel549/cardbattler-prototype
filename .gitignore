@@ -11,6 +11,7 @@ node_modules
 dist
 dist-ssr
 *.local
+.vite-cache
 
 # AI run output files (local analysis data, not source)
 AI runs/

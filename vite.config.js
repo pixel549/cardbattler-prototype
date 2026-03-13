@@ -11,6 +11,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 const repoName = process.env.GITHUB_REPOSITORY?.split('/')[1];
 const base      = repoName ? `/${repoName}/` : '/';
 const playtestDir = path.resolve(process.cwd(), 'playtest_sessions');
+const cacheDir = path.resolve(process.cwd(), '.vite-cache');
 
 function sanitiseSessionId(sessionId) {
   return String(sessionId || 'session')
@@ -144,6 +145,7 @@ function getManualChunkName(id) {
 
 export default defineConfig({
   base,
+  cacheDir,
   build: {
     rollupOptions: {
       output: {

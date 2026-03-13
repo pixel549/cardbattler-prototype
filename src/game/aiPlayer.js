@@ -1279,6 +1279,44 @@ function cloneCombatForSimulation(combat, data) {
   return cloned;
 }
 
+function summarizeEntityForCombatDecision(entity) {
+  if (!entity) return null;
+  return {
+    id: entity.id || null,
+    hp: entity.hp || 0,
+    protection: getProtection(entity),
+    statuses: (entity.statuses || [])
+      .filter((status) => status?.id && (status.stacks || 0) > 0)
+      .map((status) => `${status.id}:${status.stacks}`)
+      .sort(),
+  };
+}
+
+function captureCombatDecisionSignature(combat) {
+  if (!combat) return "null";
+  return JSON.stringify({
+    combatOver: !!combat.combatOver,
+    victory: !!combat.victory,
+    turn: combat.turn || 0,
+    heat: combat.heat || 0,
+    player: {
+      ...summarizeEntityForCombatDecision(combat.player),
+      ram: combat.player?.ram || 0,
+      hand: [...(combat.player?.piles?.hand || [])],
+      discard: [...(combat.player?.piles?.discard || [])],
+      exhaust: [...(combat.player?.piles?.exhaust || [])],
+      power: [...(combat.player?.piles?.power || [])],
+    },
+    enemies: (combat.enemies || []).map((enemy) => summarizeEntityForCombatDecision(enemy)),
+    flags: {
+      scryPending: !!combat._scryPending,
+      nextCardFree: !!combat._nextCardFree,
+      nextCardDamageBonus: combat._nextCardDamageBonus || 0,
+      delayedEffects: (combat._delayedCardEffects || []).length,
+    },
+  });
+}
+
 function scoreSimulatedCombatAction(beforeCombat, afterCombat, action, playstyle, data) {
   const ps = AI_PLAYSTYLES[playstyle] || AI_PLAYSTYLES.balanced;
   const beforePlayer = beforeCombat?.player || {};
@@ -1493,12 +1531,14 @@ function getCombatAction(combat, data, playstyle) {
     for (const candidate of candidateActions) {
       const simulatedCombat = cloneCombatForSimulation(combat, data);
       if (!simulatedCombat) continue;
+      const beforeSignature = captureCombatDecisionSignature(simulatedCombat);
       const nextCombat = dispatchCombat(simulatedCombat, data, {
         type: 'PlayCard',
         cardInstanceId: candidate.action.cardInstanceId,
         targetEnemyId: candidate.action.targetEnemyId,
         targetSelf: !!candidate.action.targetSelf,
       });
+      if (captureCombatDecisionSignature(nextCombat) === beforeSignature) continue;
 
       let score = playBias + scoreSimulatedCombatAction(combat, nextCombat, candidate.action, playstyle, data);
 

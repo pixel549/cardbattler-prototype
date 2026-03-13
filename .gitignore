@@ -16,6 +16,8 @@ dist-ssr
 AI runs/
 playtest_sessions/
 artifacts/visual-smoke/
+sim-output.txt
+sim-result.json
 
 # Zip archives
 *.zip

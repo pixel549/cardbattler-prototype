@@ -3136,6 +3136,7 @@ export function getCardPlayability(state, data, cardInstanceId, targetEnemyId = 
 
   let reason = null;
   if (mods.disabled || mods.noEffect) reason = "disabled";
+  else if (state._lockedCards?.has(cardInstanceId)) reason = "locked_turn";
   else if (mods.disabledBelowHpPct != null && hpPct < mods.disabledBelowHpPct) reason = "hp_lock";
   else if (mods.requireHpAbovePct != null && hpPct <= mods.requireHpAbovePct && !mods.alwaysMeetCondition) reason = "hp_requirement";
   else if (mods.requireEnemyStatus && !conditionState.targetHasNegativeStatus && !mods.alwaysMeetCondition) reason = "enemy_status_requirement";

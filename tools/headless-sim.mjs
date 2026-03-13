@@ -1,231 +1,103 @@
-/**
- * headless-sim.mjs
- * Run a full cardbattler game with the AI player, no browser required.
- *
- * Usage (from project root):
- *   npx vite-node tools/headless-sim.mjs [seed] [playstyle] [maxActions]
- *
- * Playstyles: balanced, aggressive, defensive, greedy
- *
- * Writes:
- *   sim-output.txt  — human-readable run log
- *   sim-result.json — machine-readable summary (deck, encounters, events, errors)
- */
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-import { createInitialState } from '../src/game/game_state.js';
-import { dispatchWithJournal  } from '../src/game/dispatch_with_journal.js';
-import { getAIAction          } from '../src/game/aiPlayer.js';
-import { writeFileSync, readFileSync } from 'fs';
-import { fileURLToPath } from 'url';
-import { dirname, join  } from 'path';
+import { loadGameData, runAiSimulation } from './aiSimulationCore.mjs';
 
-const __dir  = dirname(fileURLToPath(import.meta.url));
-const ROOT   = join(__dir, '..');
-const data   = JSON.parse(readFileSync(join(ROOT, 'src/data/gamedata.json'), 'utf-8'));
+function parseArgs(argv) {
+  const positional = [];
+  const options = {};
 
-// ── Args ──────────────────────────────────────────────────────────────────────
-const seed       = parseInt(process.argv[2]) || Date.now();
-const playstyle  = process.argv[3] || 'balanced';
-const MAX_ACTS   = parseInt(process.argv[4]) || 3000;
-
-// ── Output buffers ────────────────────────────────────────────────────────────
-const lines      = [];
-const encounters = [];
-const events_log = [];
-const errors_log = [];
-let   prevMode   = null;
-let   combatStart= null;
-
-function line(s) { lines.push(s); process.stdout.write(s + '\n'); }
-function sep(ch = '─') { line(ch.repeat(52)); }
-
-// ── Boot ─────────────────────────────────────────────────────────────────────
-sep('═');
-line(`  CARDBATTLER HEADLESS SIMULATION`);
-sep('═');
-line(`  Seed      : ${seed}`);
-line(`  Playstyle : ${playstyle}`);
-line(`  Max steps : ${MAX_ACTS}`);
-sep('═');
-
-let state = dispatchWithJournal(createInitialState(), data, {
-  type: 'NewRun', seed,
-});
-
-// ── Main loop ─────────────────────────────────────────────────────────────────
-let step = 0;
-while (state.mode !== 'GameOver' && step < MAX_ACTS) {
-  const mode = state.mode;
-  const run  = state.run;
-
-  // ── Mode transition banner ─────────────────────────────────────────────────
-  if (mode !== prevMode) {
-    sep();
-    line(`  [${String(step).padStart(4)}] ${mode.toUpperCase()} — Act ${run?.act ?? '?'}, Floor ${run?.floor ?? '?'}, HP ${run?.hp ?? '?'}/${run?.maxHP ?? '?'}, Gold ${run?.gold ?? '?'}g`);
-    prevMode = mode;
-
-    // Track combat start
-    if (mode === 'Combat' && state.combat) {
-      const enemyDebug = (state.combat.enemies || []).map(e =>
-        `${e.enemyDefId ?? e.id}(hp=${e.hp},maxHp=${e.maxHP})`);
-      line(`    [DBG] enemies at start: ${enemyDebug.join(', ')}`);
-      line(`    [DBG] player ram=${state.combat.player?.ram}/${state.combat.player?.maxRAM} hand=${state.combat.player?.piles?.hand?.length ?? 0} cards`);
-      combatStart = {
-        act:    run?.act,
-        floor:  run?.floor,
-        hpBefore: run?.hp,
-        enemies: (state.combat.enemies || []).map(e => e.enemyDefId ?? e.id),
-      };
+  for (const arg of argv) {
+    if (arg.startsWith('--')) {
+      const [rawKey, rawValue] = arg.slice(2).split('=');
+      const key = rawKey.trim();
+      const value = rawValue == null ? 'true' : rawValue.trim();
+      options[key] = value;
+    } else {
+      positional.push(arg);
     }
   }
 
-  // ── Get AI action ──────────────────────────────────────────────────────────
-  let action;
-  try {
-    action = getAIAction(state, data, playstyle);
-  } catch (e) {
-    const msg = `[ERROR] getAIAction threw in mode ${mode}: ${e.message}`;
-    line(msg); errors_log.push(msg); break;
-  }
+  const seed = Number(options.seed ?? positional[0] ?? Date.now());
+  const playstyle = options.playstyle ?? positional[1] ?? 'balanced';
+  const maxSteps = Number(options['max-steps'] ?? options.maxSteps ?? positional[2] ?? 5000);
+  const starterProfileId = options.starter ?? options.starterProfile ?? 'kernel';
+  const difficultyId = options.difficulty ?? 'standard';
+  const challengeIds = String(options.challenges ?? '')
+    .split(',')
+    .map((challengeId) => challengeId.trim())
+    .filter(Boolean);
 
-  if (!action) {
-    const msg = `[STUCK] No AI action for mode: ${mode}`;
-    line(msg); errors_log.push(msg); break;
-  }
-
-  // ── Log interesting actions ────────────────────────────────────────────────
-  switch (action.type) {
-    case 'Combat_PlayCard': {
-      const c   = state.combat;
-      const ci  = c?.cardInstances?.[action.cardInstanceId];
-      const def = ci ? data.cards?.[ci.defId] : null;
-      line(`    ▶  Play: ${def?.name ?? action.cardInstanceId} (${def?.costRAM ?? '?'}r) RAM=${c?.player?.ram ?? '?'}/${c?.player?.maxRAM ?? '?'}`);
-      break;
-    }
-    case 'Combat_EndTurn': {
-      const c = state.combat;
-      const handIds  = c?.player?.piles?.hand ?? [];
-      const ram      = c?.player?.ram ?? '?';
-      const maxRam   = c?.player?.maxRAM ?? '?';
-      const handNames = handIds.map(id => {
-        const ci  = c?.cardInstances?.[id];
-        const def = ci ? data.cards?.[ci.defId] : null;
-        return def ? `${def.name}(${def.costRAM ?? 0}r)` : `??(${id.slice(-4)})`;
-      });
-      line(`    ↩  End Turn  (turn ${c?.turn ?? '?'}) RAM=${ram}/${maxRam} hand=[${handNames.join(', ') || 'EMPTY'}]`);
-      break;
-    }
-    case 'Reward_PickCard':
-      line(`    ★  Picked card: ${data.cards?.[action.defId]?.name ?? action.defId}`);
-      break;
-    case 'Reward_Skip':
-      line(`    ✗  Skipped reward`);
-      break;
-    case 'Shop_BuyOffer': {
-      const offer = state.shop?.offers?.[action.index];
-      const name  = offer?.kind === 'Card'
-        ? (data.cards?.[offer.defId]?.name ?? offer.defId)
-        : offer?.serviceId;
-      line(`    🛒  Bought: ${name} (${offer?.price ?? '?'}g)`);
-      break;
-    }
-    case 'Shop_Exit':
-      line(`    ← Left shop`);
-      break;
-    case 'Event_Choose':
-      line(`    ?  Event choice: ${action.choiceId}`);
-      events_log.push({ act: run?.act, floor: run?.floor, eventId: state.event?.eventId, choice: action.choiceId });
-      break;
-    case 'SelectNextNode': {
-      const ntype = state.map?.nodes?.[action.nodeId]?.type;
-      line(`    →  Moving to: ${ntype} (node ${action.nodeId.slice(-4)})`);
-      break;
-    }
-    case 'Rest_Heal':
-      line(`    ♥  Resting: Heal`);
-      break;
-    case 'Rest_Repair':
-      line(`    🔧  Resting: Repair`);
-      break;
-    case 'Rest_Stabilise':
-      line(`    ◆  Resting: Stabilise`);
-      break;
-    case 'Rest_Leave':
-      line(`    ← Left rest site`);
-      break;
-  }
-
-  // ── Dispatch ───────────────────────────────────────────────────────────────
-  try {
-    state = dispatchWithJournal(state, data, action);
-  } catch (e) {
-    const msg = `[ERROR] dispatchWithJournal threw on ${action.type}: ${e.message}`;
-    line(msg); errors_log.push(msg); break;
-  }
-
-  // ── Capture combat result when it ends ────────────────────────────────────
-  // state.combat is cleared by game_core after combat ends, so we detect
-  // win vs loss by checking whether the mode transitioned to GameOver.
-  if (prevMode === 'Combat' && state.mode !== 'Combat' && combatStart) {
-    const result  = state.mode !== 'GameOver' ? 'win' : 'loss';
-    const hpAfter = state.run?.hp ?? 0;
-    line(`    ── Combat result: ${result.toUpperCase()}, HP ${combatStart.hpBefore} → ${hpAfter}`);
-    encounters.push({ ...combatStart, result, hpAfter });
-    combatStart = null;
-  }
-
-  step++;
+  return {
+    seed: Number.isFinite(seed) ? seed : Date.now(),
+    playstyle,
+    maxSteps: Number.isFinite(maxSteps) ? maxSteps : 5000,
+    starterProfileId,
+    difficultyId,
+    challengeIds,
+  };
 }
 
-// ── Final summary ─────────────────────────────────────────────────────────────
-sep('═');
-line(`  FINAL STATE`);
-sep('═');
-const run  = state.run  || {};
-const deck = state.deck || {};
-const deckNames = (deck.master || []).map(iid => {
-  const ci  = deck.cardInstances?.[iid];
-  const def = ci ? data.cards?.[ci.defId] : null;
-  return def?.name ?? ci?.defId ?? iid;
+function buildSummaryLines(record) {
+  const lines = [
+    'CARDBATTLER HEADLESS SIMULATION',
+    '================================',
+    `Seed: ${record.seed}`,
+    `Playstyle: ${record.aiPlaystyleLabel}`,
+    `Starter: ${record.starterProfileName}`,
+    `Difficulty: ${record.difficultyName}`,
+    `Outcome: ${record.outcome}`,
+    `Act / Floor: ${record.finalAct} / ${record.finalFloor}`,
+    `Final HP: ${record.finalHP}`,
+    `Final Gold: ${record.finalGold}`,
+    `Steps: ${record.steps}`,
+    `Peak Heat: ${record.runTelemetry?.peakHeat ?? 0}`,
+    `RAM-starved turns: ${record.runTelemetry?.ramStarvedTurns ?? 0}`,
+    `Encounters: ${record.encounters?.length ?? 0}`,
+  ];
+
+  if (record.errors?.length) {
+    lines.push('Errors:');
+    for (const error of record.errors) lines.push(`- ${error}`);
+  }
+
+  if ((record.encounters?.length ?? 0) > 0) {
+    lines.push('Encounter summary:');
+    for (const encounter of record.encounters) {
+      lines.push(
+        `- Act ${encounter.act} Floor ${encounter.floor} ${encounter.nodeType}: ${encounter.result} in ${encounter.turns} turns (${encounter.enemies.join(', ')})`,
+      );
+    }
+  }
+
+  return `${lines.join('\n')}\n`;
+}
+
+const args = parseArgs(process.argv.slice(2));
+const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const data = loadGameData(rootDir);
+const result = runAiSimulation({
+  data,
+  seed: args.seed,
+  playstyle: args.playstyle,
+  starterProfileId: args.starterProfileId,
+  difficultyId: args.difficultyId,
+  challengeIds: args.challengeIds,
+  maxSteps: args.maxSteps,
 });
 
-line(`  Mode   : ${state.mode}`);
-line(`  Act    : ${run.act ?? '?'}`);
-line(`  Floor  : ${run.floor ?? '?'}`);
-line(`  HP     : ${run.hp ?? '?'} / ${run.maxHP ?? '?'}`);
-line(`  Gold   : ${run.gold ?? '?'}g`);
-line(`  MP     : ${run.mp ?? '?'}`);
-line(`  Steps  : ${step}`);
-line(`  Deck   : ${deckNames.length} cards`);
-if (deckNames.length) line(`           ${deckNames.join(', ')}`);
-line(`  Errors : ${errors_log.length}`);
-if (errors_log.length) errors_log.forEach(e => line(`    ${e}`));
-sep('═');
+const outputText = buildSummaryLines(result);
+const outTextPath = path.join(rootDir, 'sim-output.txt');
+const outJsonPath = path.join(rootDir, 'sim-result.json');
 
-// ── Write files ───────────────────────────────────────────────────────────────
-const outTxt  = join(ROOT, 'sim-output.txt');
-const outJson = join(ROOT, 'sim-result.json');
+fs.writeFileSync(outTextPath, outputText, 'utf8');
+fs.writeFileSync(outJsonPath, `${JSON.stringify(result, null, 2)}\n`, 'utf8');
 
-writeFileSync(outTxt, lines.join('\n') + '\n', 'utf-8');
+process.stdout.write(outputText);
+process.stdout.write(`Wrote ${outTextPath}\n`);
+process.stdout.write(`Wrote ${outJsonPath}\n`);
 
-const summary = {
-  seed, playstyle,
-  finalMode:  state.mode,
-  act:        run.act,
-  floor:      run.floor,
-  hp:         run.hp,
-  maxHP:      run.maxHP,
-  gold:       run.gold,
-  deckSize:   deckNames.length,
-  deck:       deckNames,
-  steps:      step,
-  encounters,
-  events:     events_log,
-  errors:     errors_log,
-};
-writeFileSync(outJson, JSON.stringify(summary, null, 2), 'utf-8');
-
-line(`\n  Wrote: sim-output.txt`);
-line(`  Wrote: sim-result.json`);
-
-process.exit(errors_log.length > 0 ? 1 : 0);
+if (result.errors?.length) {
+  process.exitCode = 1;
+}

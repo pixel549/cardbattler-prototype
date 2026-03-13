@@ -6066,6 +6066,13 @@ function App() {
       console.warn('PWA registration failed.', error);
     },
   });
+  const _upInitial = (key) => window.__launchParams?.[key] ?? null;
+  const launchStarterProfileIdInitial = _upInitial('starterProfile') ?? _upInitial('starter') ?? null;
+  const launchDifficultyIdInitial = _upInitial('difficulty') ?? null;
+  const launchChallengeIdsInitial = String(_upInitial('challenges') ?? '')
+    .split(',')
+    .map((challengeId) => challengeId.trim())
+    .filter(Boolean);
   const [data, setData] = useState(null);
   const [state, setState] = useState(null);
   const [error, setError] = useState(null);
@@ -6082,13 +6089,27 @@ function App() {
   ));
   const [selectedStarterProfileId, setSelectedStarterProfileId] = useState(() => {
     const unlocked = getUnlockedStarterProfiles(readMetaProgress());
+    if (launchStarterProfileIdInitial && unlocked.some((profile) => profile.id === launchStarterProfileIdInitial)) {
+      return launchStarterProfileIdInitial;
+    }
     return readStoredString(STARTER_PROFILE_STORAGE_KEY, unlocked[0]?.id || 'kernel');
   });
   const [selectedDifficultyId, setSelectedDifficultyId] = useState(() => {
     const unlocked = getUnlockedDifficulties(readMetaProgress());
+    if (launchDifficultyIdInitial && unlocked.some((difficulty) => difficulty.id === launchDifficultyIdInitial)) {
+      return launchDifficultyIdInitial;
+    }
     return readStoredString(DIFFICULTY_STORAGE_KEY, unlocked[0]?.id || 'standard');
   });
-  const [selectedChallengeIds, setSelectedChallengeIds] = useState(() => readStoredArray(CHALLENGES_STORAGE_KEY));
+  const [selectedChallengeIds, setSelectedChallengeIds] = useState(() => {
+    const unlocked = getUnlockedChallenges(readMetaProgress());
+    if (launchChallengeIdsInitial.length > 0) {
+      const unlockedIds = new Set(unlocked.map((challenge) => challenge.id));
+      const filtered = launchChallengeIdsInitial.filter((challengeId) => unlockedIds.has(challengeId));
+      if (filtered.length > 0) return filtered;
+    }
+    return readStoredArray(CHALLENGES_STORAGE_KEY);
+  });
   const [tutorialNudge, setTutorialNudge] = useState('');
   const [sceneArtReadyKey, setSceneArtReadyKey] = useState(null);
   const [completedTutorialIds, setCompletedTutorialIds] = useState(() => {
@@ -6244,9 +6265,17 @@ function App() {
   const _up = (key) => window.__launchParams?.[key] ?? null;
   const visualSceneId = _up('scene');
   const visualMenuState = getVisualSceneMenuState(visualSceneId);
+  const launchAiEnabled = _up('ai') === 'true';
+  const launchAiAutoRun = _up('autoRun') === 'true' || _up('autorun') === 'true';
+  const launchStarterProfileId = _up('starterProfile') ?? _up('starter') ?? null;
+  const launchDifficultyId = _up('difficulty') ?? null;
+  const launchChallengeIds = String(_up('challenges') ?? '')
+    .split(',')
+    .map((challengeId) => challengeId.trim())
+    .filter(Boolean);
 
   // ── AI auto-play debug state ──────────────────────────────────────────────
-  const [aiEnabled, setAiEnabled]       = useState(() => _up('ai') === 'true');
+  const [aiEnabled, setAiEnabled]       = useState(() => launchAiEnabled || launchAiAutoRun);
   const [aiPaused, setAiPaused]         = useState(false);
   const [aiSpeed, setAiSpeed]           = useState(() => {
 
@@ -6877,12 +6906,13 @@ function App() {
         autosaveTokenRef.current = null;
         setMenuAutosave(null);
       }
-      aiPausedRef.current = true;
-      setAiPaused(true);
-      setAiHandoffReason('');
+      const bootAiActive = launchAiEnabled || launchAiAutoRun;
+      aiPausedRef.current = !bootAiActive;
+      setAiPaused(!bootAiActive);
+      setAiHandoffReason(bootAiActive ? 'AI launch session' : '');
       setState(createInitialState());
     }
-  }, [data, state, debugSeedInput, seedMode, customConfig, lockedFields, visualSceneId]);
+  }, [data, state, debugSeedInput, seedMode, customConfig, lockedFields, visualSceneId, launchAiEnabled, launchAiAutoRun]);
 
   const clearAiTimer = useCallback(() => {
     if (aiTimerRef.current) {
@@ -6892,14 +6922,13 @@ function App() {
   }, []);
 
   useEffect(() => {
-    const shouldForcePause = state?.mode === 'MainMenu'
-      || state?.mode === 'TutorialComplete'
+    const shouldForcePause = state?.mode === 'TutorialComplete'
       || Boolean(state?.run?.tutorial?.active);
     if (!shouldForcePause || !aiEnabled || aiPaused) return;
     clearAiTimer();
     aiPausedRef.current = true;
     setAiPaused(true);
-    setAiHandoffReason(state?.run?.tutorial?.active ? 'Tutorial active' : 'Paused from menu');
+    setAiHandoffReason(state?.run?.tutorial?.active ? 'Tutorial active' : 'Tutorial complete');
     setAiWatchdog(AI_WATCHDOG_IDLE);
   }, [state?.mode, state?.run?.tutorial?.active, aiEnabled, aiPaused, clearAiTimer]);
 
@@ -7220,6 +7249,23 @@ function App() {
       return;
     }
 
+    if (mode === 'MainMenu') {
+      const next = createRunStateFromSettings();
+      if (!next) {
+        stopAiForTakeover('AI could not start a run from the current launch settings.');
+        return;
+      }
+      setMenuAutosave(null);
+      adoptState(next, {
+        handoffReason: '',
+        pauseAi: false,
+        clearAutosave: true,
+        autosaveToken: null,
+      });
+      scheduleAiTick(Math.min(120, aiSpeed));
+      return;
+    }
+
     if (mode === 'GameOver') {
       if (aiPausedRef.current || !aiEnabledRef.current) return;
 
@@ -7407,6 +7453,7 @@ function App() {
       scheduleAiTick();
     };
   }, [
+    adoptState,
     appendRunSummary,
     aiPlaystyle,
     aiSpeed,

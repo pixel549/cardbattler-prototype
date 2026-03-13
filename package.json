@@ -17,7 +17,9 @@
     "validate:art": "node tools/validate_runtime_art.cjs",
     "validate:feature-pipeline": "node tools/check_feature_pipeline.cjs",
     "analyze:runs": "node tools/analyze_ai_runs.cjs",
-    "visual:capture": "npm run build && node tools/capture_visual_scenes.cjs"
+    "visual:capture": "npm run build && node tools/capture_visual_scenes.cjs",
+    "ai:sim": "node tools/headless-sim.mjs",
+    "ai:batch": "node tools/run_ai_batch.mjs"
   },
   "dependencies": {
     "react": "^19.2.0",

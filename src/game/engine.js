@@ -4314,6 +4314,7 @@ export function startCombatFromRunDeck(params) {
     data,
     seed,
     act,
+    floor = 1,
     runDeck,
     enemyIds,
     playerMaxHP = 50,
@@ -4341,9 +4342,24 @@ export function startCombatFromRunDeck(params) {
 
   const bal = (data.actBalance || []).find(b => b.act === act) || data.actBalance?.[0] || { enemyHpMult: 1, enemyDmgMult: 1 };
 
+  const floorTuning = (() => {
+    if (act !== 1 || encounterKind !== "normal" || !Number.isFinite(floor)) {
+      return { enemyHpMult: 1, enemyDmgMult: 1 };
+    }
+    if (floor <= 2) return { enemyHpMult: 0.9, enemyDmgMult: 0.78 };
+    if (floor === 3) return { enemyHpMult: 0.94, enemyDmgMult: 0.84 };
+    if (floor === 4) return { enemyHpMult: 0.97, enemyDmgMult: 0.9 };
+    if (floor <= 5) return { enemyHpMult: 1, enemyDmgMult: 0.95 };
+    return { enemyHpMult: 1, enemyDmgMult: 1 };
+  })();
+
   // Debug overrides apply on top of act balance
-  const effectiveEnemyHpMult  = debugOverrides?.enemyHpMult  ?? (bal.enemyHpMult  ?? 1);
-  const effectiveEnemyDmgMult = debugOverrides?.enemyDmgMult ?? (bal.enemyDmgMult ?? 1);
+  const effectiveEnemyHpMult = debugOverrides?.enemyHpMult != null
+    ? debugOverrides.enemyHpMult
+    : Number(((bal.enemyHpMult ?? 1) * floorTuning.enemyHpMult).toFixed(3));
+  const effectiveEnemyDmgMult = debugOverrides?.enemyDmgMult != null
+    ? debugOverrides.enemyDmgMult
+    : Number(((bal.enemyDmgMult ?? 1) * floorTuning.enemyDmgMult).toFixed(3));
 
   // Debug/run overrides replace ruleMods when explicitly set.
   const effectiveRuleMods = { ...ruleMods };

@@ -574,10 +574,11 @@ function replaceRandomType(types, rng, fromType, toType) {
 
 function getRowTypeWeights(row) {
   if (row === 6 || row === 12) return { Elite: 1 };
+  if (row === 2) return { Combat: 3, Event: 1, Shop: 1, Rest: 2 };
   if (row === 7) return { Rest: 4, Shop: 2 };
   if (row === 5 || row === 10) return { Combat: 3, Event: 1, Shop: 1, Rest: 1, Compile: 2 };
   if (row === 13) return { Rest: 2, Shop: 2, Event: 2 };
-  if (row <= 2) return { Combat: 4, Event: 1, Shop: 1 };
+  if (row <= 1) return { Combat: 4, Event: 1, Shop: 1 };
   return { Combat: 4, Event: 2, Shop: 2, Rest: 1, Compile: 1 };
 }
 
@@ -626,6 +627,30 @@ function buildRowTypeTable(seed, cols) {
     table[row] = rowTypes;
   }
   return table;
+}
+
+function getRowCoverage(pathCols, row) {
+  const coverage = new Map();
+  const rowIndex = row - 1;
+  for (const path of pathCols) {
+    const col = path[rowIndex];
+    if (!Number.isInteger(col)) continue;
+    coverage.set(col, (coverage.get(col) || 0) + 1);
+  }
+  return [...coverage.entries()]
+    .map(([col, count]) => ({ col, count }))
+    .sort((a, b) => b.count - a.count || Math.abs(a.col - 2.5) - Math.abs(b.col - 2.5));
+}
+
+function ensureRecoveryRowType(rowTypeTable, pathCols, row) {
+  const coverage = getRowCoverage(pathCols, row);
+  if (coverage.length === 0) return;
+  if (coverage.some(({ col }) => rowTypeTable[row]?.[col] === "Rest")) return;
+
+  const preferred = coverage.filter(({ col }) => rowTypeTable[row]?.[col] === "Combat");
+  const chosen = preferred[0] || coverage[0];
+  if (!chosen) return;
+  rowTypeTable[row][chosen.col] = "Rest";
 }
 
 function getCardPoolEntry(id, card) {
@@ -985,6 +1010,10 @@ export function generateMap(seed) {
     pathCols.forEach((p, i) => p.push(sorted[i]));
   }
 
+  // Ensure the displayed "floor 3" layer always offers at least one true
+  // recovery route on an actually used lane before we instantiate the nodes.
+  ensureRecoveryRowType(rowTypeTable, pathCols, 2);
+
   // Build edges â€” deduplicated
   const edgeSet = new Set();
   function addEdge(fromId, toId) {
@@ -1295,6 +1324,7 @@ function resolveCurrentNodeInternal(state, data, log) {
       data,
       seed: state.run.seed ^ resolvedFloor,
       act: effectiveAct,
+      floor: resolvedFloor,
       runDeck: state.deck,
       enemyIds,
       encounterId,

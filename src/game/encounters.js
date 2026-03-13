@@ -37,6 +37,18 @@ function getEncounterTotalHP(def, data) {
   ), 0);
 }
 
+function getEncounterDifficulty(def, data) {
+  return (def?.enemyIds || []).reduce((sum, enemyId) => (
+    sum + Number(data?.enemies?.[enemyId]?.difficulty || 0)
+  ), 0);
+}
+
+function getEncounterMaxEnemyDifficulty(def, data) {
+  return (def?.enemyIds || []).reduce((maxValue, enemyId) => (
+    Math.max(maxValue, Number(data?.enemies?.[enemyId]?.difficulty || 0))
+  ), 0);
+}
+
 function getEncounterRoleCounts(def, data) {
   const counts = {};
   for (const enemyId of def?.enemyIds || []) {
@@ -44,6 +56,117 @@ function getEncounterRoleCounts(def, data) {
     counts[role] = (counts[role] || 0) + 1;
   }
   return counts;
+}
+
+function getEncounterTier(def) {
+  const id = String(def?.id || '');
+  const explicitTier = id.match(/_N(\d+)_/i);
+  if (explicitTier) {
+    return Math.max(1, Number.parseInt(explicitTier[1], 10) || 1);
+  }
+  return Math.max(1, Math.min(3, getEncounterEnemyCount(def)));
+}
+
+function getEarlyActEncounterBudget(act, kind, floor) {
+  if (act !== 1 || kind !== "normal" || !Number.isFinite(floor) || floor <= 0) return null;
+
+  if (floor <= 2) {
+    return {
+      maxEncounterTier: 1,
+      maxEnemyCount: 1,
+      maxTotalHP: 90,
+      maxDifficulty: 9,
+      maxEnemyDifficulty: 9,
+      maxPressureRoles: 1,
+      forbidSupportTankCombo: true,
+    };
+  }
+
+  if (floor === 3) {
+    return {
+      maxEncounterTier: 2,
+      maxEnemyCount: 2,
+      maxTotalHP: 104,
+      maxDifficulty: 11,
+      maxEnemyDifficulty: 8.6,
+      maxPressureRoles: 1,
+      forbidSupportTankCombo: true,
+    };
+  }
+
+  if (floor === 4) {
+    return {
+      maxEncounterTier: 2,
+      maxEnemyCount: 2,
+      maxTotalHP: 118,
+      maxDifficulty: 12.5,
+      maxEnemyDifficulty: 9.8,
+      maxPressureRoles: 2,
+      forbidSupportTankCombo: true,
+    };
+  }
+
+  if (floor <= 6) {
+    return {
+      maxEncounterTier: 2,
+      maxEnemyCount: 2,
+      maxTotalHP: 136,
+      maxDifficulty: 15,
+      maxEnemyDifficulty: 10.8,
+      maxPressureRoles: 2,
+      forbidSupportTankCombo: true,
+    };
+  }
+
+  if (floor <= 8) {
+    return {
+      maxEncounterTier: 2,
+      maxEnemyCount: 2,
+      maxTotalHP: 150,
+      maxDifficulty: 16.8,
+      maxEnemyDifficulty: 11.8,
+      maxPressureRoles: 2,
+      forbidSupportTankCombo: false,
+    };
+  }
+
+  if (floor <= 10) {
+    return {
+      maxEncounterTier: 3,
+      maxEnemyCount: 3,
+      maxTotalHP: 170,
+      maxDifficulty: 19.2,
+      maxEnemyDifficulty: 12.8,
+      maxPressureRoles: 3,
+      forbidSupportTankCombo: false,
+    };
+  }
+
+  return {
+    maxEncounterTier: 3,
+    maxEnemyCount: 3,
+    maxTotalHP: 184,
+    maxDifficulty: 21.5,
+    maxEnemyDifficulty: 14.5,
+    maxPressureRoles: 3,
+    forbidSupportTankCombo: false,
+  };
+}
+
+function encounterFitsBudget(def, data, budget) {
+  if (!budget) return true;
+
+  const roles = getEncounterRoleCounts(def, data);
+  const pressureRoles = (roles['Debuff/DoT'] || 0) + (roles['Control'] || 0) + (roles['Economy pressure'] || 0);
+  const supportTankCombo = (roles['Support/Heal'] || 0) > 0 && (roles['Defense/Tank'] || 0) > 0;
+
+  return getEncounterTier(def) <= budget.maxEncounterTier
+    && getEncounterEnemyCount(def) <= budget.maxEnemyCount
+    && getEncounterTotalHP(def, data) <= budget.maxTotalHP
+    && getEncounterDifficulty(def, data) <= budget.maxDifficulty
+    && getEncounterMaxEnemyDifficulty(def, data) <= budget.maxEnemyDifficulty
+    && pressureRoles <= budget.maxPressureRoles
+    && (!budget.forbidSupportTankCombo || !supportTankCombo);
 }
 
 function filterEarlyActEncounters(defs, data, act, kind, floor) {
@@ -55,44 +178,8 @@ function filterEarlyActEncounters(defs, data, act, kind, floor) {
     return filtered.length > 0 ? filtered : defs;
   };
 
-  if (floor <= 2) {
-    return keepIfAny((def) => (
-      getEncounterEnemyCount(def) <= 2
-      && getEncounterTotalHP(def, data) <= 138
-      && (() => {
-        const roles = getEncounterRoleCounts(def, data);
-        const slowRoles = (roles['Support/Heal'] || 0) + (roles['Defense/Tank'] || 0) + (roles['Control'] || 0);
-        return slowRoles <= 1 && !((roles['Support/Heal'] || 0) > 0 && (roles['Defense/Tank'] || 0) > 0);
-      })()
-    ));
-  }
-
-  if (floor <= 4) {
-    return keepIfAny((def) => (
-      (() => {
-        const roles = getEncounterRoleCounts(def, data);
-        const slowRoles = (roles['Support/Heal'] || 0) + (roles['Defense/Tank'] || 0) + (roles['Control'] || 0);
-        const supportTankCombo = (roles['Support/Heal'] || 0) > 0 && (roles['Defense/Tank'] || 0) > 0;
-        return !supportTankCombo
-          && slowRoles <= 2
-          && (
-            getEncounterEnemyCount(def) <= 2
-            || getEncounterTotalHP(def, data) <= 152
-          );
-      })()
-    ));
-  }
-
-  if (floor <= 7) {
-    return keepIfAny((def) => {
-      const roles = getEncounterRoleCounts(def, data);
-      const supportTankCombo = (roles['Support/Heal'] || 0) > 0 && (roles['Defense/Tank'] || 0) > 0;
-      if (!supportTankCombo) return true;
-      return getEncounterTotalHP(def, data) <= 156;
-    });
-  }
-
-  return defs;
+  const budget = getEarlyActEncounterBudget(act, kind, floor);
+  return budget ? keepIfAny((def) => encounterFitsBudget(def, data, budget)) : defs;
 }
 
 function getEncounterRecencyMultiplier(def, recentHistory = []) {

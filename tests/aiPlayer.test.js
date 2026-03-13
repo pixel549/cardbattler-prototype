@@ -3,8 +3,8 @@ import { createRequire } from "node:module";
 import test from "node:test";
 
 import { getAIAction } from "../src/game/aiPlayer.js";
-import { dispatchWithJournal } from "../src/game/dispatch_with_journal.js";
-import { createInitialState } from "../src/game/game_core.js";
+import { startCombatFromRunDeck } from "../src/game/engine.js";
+import { createRunDeckFromDefs } from "../src/game/run_deck.js";
 import { createTutorialRunState } from "../src/game/tutorial.js";
 
 const require = createRequire(import.meta.url);
@@ -77,29 +77,33 @@ test("AI can evaluate combat states that include Heat and arena modifiers", () =
 });
 
 test("AI skips cards that are locked for the turn", () => {
-  let state = dispatchWithJournal(createInitialState(), data, {
-    type: "NewRun",
+  const runDeck = createRunDeckFromDefs(data, 12345, ["C-001", "NC-003", "NC-001"]);
+  const combat = startCombatFromRunDeck({
+    data,
     seed: 12345,
-    starterProfileId: "kernel",
-    difficultyId: "standard",
-    challengeIds: [],
+    act: 1,
+    floor: 3,
+    runDeck,
+    enemyIds: ["E_ION_SNIPER_RIG"],
+    encounterKind: "normal",
+    playerMaxHP: 75,
+    playerMaxRAM: 8,
+    playerRamRegen: 2,
   });
 
-  for (let step = 0; step < 9; step += 1) {
-    const action = getAIAction(state, data, "balanced");
-    assert.ok(action, `expected AI action at setup step ${step}`);
-    state = dispatchWithJournal(state, data, action);
-  }
+  const preferredAction = getAIAction({
+    mode: "Combat",
+    combat,
+  }, data, "balanced");
+  assert.equal(preferredAction?.type, "Combat_PlayCard");
 
-  assert.equal(state.mode, "Combat");
-  assert.ok(state.combat?._lockedCards instanceof Set);
-  assert.ok(state.combat._lockedCards.has("rc_dca3686a"));
+  const lockedCombat = structuredClone(combat);
+  lockedCombat._lockedCards = new Set([preferredAction.cardInstanceId]);
 
-  const action = getAIAction(state, data, "balanced");
+  const action = getAIAction({
+    mode: "Combat",
+    combat: lockedCombat,
+  }, data, "balanced");
   assert.ok(action);
-  assert.notDeepEqual(action, {
-    type: "Combat_PlayCard",
-    cardInstanceId: "rc_dca3686a",
-    targetEnemyId: "enemy_0",
-  });
+  assert.notEqual(action.cardInstanceId, preferredAction.cardInstanceId);
 });

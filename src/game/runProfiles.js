@@ -44,7 +44,7 @@ const STARTER_LOADOUT_POOLS = {
     name: "Random RAM Tool",
     accent: "#00f0ff",
     description: "Resolves into an extra RAM-focused utility card at run start.",
-    candidateIds: ["NC-010", "NC-011", "NC-063"],
+    candidateIds: ["NC-010", "NC-012", "NC-020", "NC-058", "NC-063", "NC-101"],
   },
   firewall: {
     id: "firewall",

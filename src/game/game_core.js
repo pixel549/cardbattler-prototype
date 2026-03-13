@@ -736,6 +736,45 @@ function makeDistinctCardSelection(rng, pool, rarityTables, act = 1) {
   return picks;
 }
 
+function getEarlyStabilityRewardPool(data, unlockedCardIds = []) {
+  return getRewardCardPool(data, unlockedCardIds).filter((entry) => {
+    const card = entry?.card;
+    if (!card) return false;
+    const tags = card.tags || [];
+    if (tags.includes("Tradeoff") || tags.includes("Volatile") || tags.includes("OneShot")) return false;
+    if ((card.costRAM ?? 99) > 2) return false;
+
+    const text = getStarterCardText(card);
+    return /\bRAM\b/i.test(text)
+      || /\bDraw\b/i.test(text)
+      || /\bScry\b/i.test(text)
+      || /\bGain\s+\d+\s+Firewall\b/i.test(text)
+      || /\bHeal\b/i.test(text)
+      || /\bThe next card you play costs -1 RAM\b/i.test(text);
+  });
+}
+
+function ensureEarlyStabilityRewardChoice(rng, picks, data, act = 1, nodeType = "Combat", options = {}) {
+  const floor = Number(options?.floor || 0);
+  if (act !== 1 || nodeType !== "Combat" || !Number.isFinite(floor) || floor > 4 || floor <= 0) {
+    return picks;
+  }
+  const current = Array.isArray(picks) ? [...picks] : [];
+  const pool = getEarlyStabilityRewardPool(data, options?.unlockedCardIds || []);
+  if (pool.length === 0 || current.some((id) => pool.some((entry) => entry.id === id))) return current;
+
+  const available = pool.filter((entry) => !current.includes(entry.id));
+  if (available.length === 0) return current;
+
+  const replacementIndex = current.length > 0 ? current.length - 1 : 0;
+  const picked = weightedPickEntry(rng, available, (entry) => getCardRarityWeight(entry, act));
+  if (!picked) return current;
+
+  if (current.length === 0) return [picked.id];
+  current[replacementIndex] = picked.id;
+  return current;
+}
+
 function getCombatRewardRarityTables(nodeType, act) {
   if (nodeType === "Boss") {
     return [
@@ -1042,11 +1081,27 @@ export function generateMap(seed) {
   };
 }
 
-function makeCardRewards(data, seed, act = 1, nodeType = 'Combat', options = {}) {
+export function makeCardRewards(data, seed, act = 1, nodeType = 'Combat', options = {}) {
   const rng = new RNG(seed ^ 0x55CCAA11);
   const pool = getRewardCardPool(data, options?.unlockedCardIds || []);
-  const cardChoices = makeDistinctCardSelection(rng, pool, getCombatRewardRarityTables(nodeType, act), act);
+  const cardChoices = ensureEarlyStabilityRewardChoice(
+    rng,
+    makeDistinctCardSelection(rng, pool, getCombatRewardRarityTables(nodeType, act), act),
+    data,
+    act,
+    nodeType,
+    options,
+  );
   return { cardChoices, canSkip: true };
+}
+
+export function getEarlyCombatRecovery(run, nodeType) {
+  const act = Number(run?.act || 1);
+  const floor = Number(run?.floor || 1);
+  if (act !== 1 || nodeType !== "Combat") return null;
+  if (floor <= 2) return { hp: 6 };
+  if (floor <= 4) return { hp: 4 };
+  return null;
 }
 
 function makeShop(data, seed, relicIds = [], act = 1, options = {}) {
@@ -1680,13 +1735,26 @@ export function dispatchGame(stateIn, data, action) {
         state.run.gold += gold;
         if (nodeType === "Boss") incrementRunTelemetry(state.run, "bossesDefeated", 1);
 
+        const earlyRecovery = getEarlyCombatRecovery(state.run, nodeType);
+        if (earlyRecovery?.hp > 0) {
+          const beforeRecovery = state.run.hp;
+          state.run.hp = Math.min(state.run.maxHP, state.run.hp + earlyRecovery.hp);
+          const recovered = state.run.hp - beforeRecovery;
+          if (recovered > 0) {
+            log({ t: "Info", msg: `Early combat recovery: +${recovered} HP` });
+          }
+        }
+
         state.mode = "Reward";
         state.reward = makeCardRewards(
           data,
           state.run.seed ^ (state.run.floor * 777),
           getContentActForRun(state.run),
           nodeType,
-          { unlockedCardIds: getRunUnlockedCardIds(state.run) },
+          {
+            floor: state.run.floor,
+            unlockedCardIds: getRunUnlockedCardIds(state.run),
+          },
         );
 
         // relic rewards

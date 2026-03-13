@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
   composeRunConfig,
   getStarterProfileLoadoutSlots,
+  getStarterLoadoutPoolCandidates,
   resolveStarterProfileDeck,
   getUnlockedDifficulties,
   getUnlockedStarterProfiles,
@@ -71,4 +72,20 @@ test('starter profiles expose themed random loadout slots and resolve them deter
   assert.ok(deckA.includes('SUP-01') || deckA.includes('SUP-02'));
   assert.ok(deckA.includes('UTL-01') || deckA.includes('UTL-02'));
   assert.ok(deckA.includes('NC-010') || deckA.includes('NC-011') || deckA.includes('NC-063'));
+});
+
+test('starter RAM pool now favors low-cost stabilizers and sustained RAM tools', () => {
+  const candidates = getStarterLoadoutPoolCandidates({
+    cards: {
+      'NC-010': { id: 'NC-010', type: 'Utility', tags: [] },
+      'NC-012': { id: 'NC-012', type: 'Utility', tags: [] },
+      'NC-020': { id: 'NC-020', type: 'Utility', tags: [] },
+      'NC-058': { id: 'NC-058', type: 'Support', tags: ['Power', 'RAM'] },
+      'NC-063': { id: 'NC-063', type: 'Support', tags: ['Power', 'RAM'] },
+      'NC-101': { id: 'NC-101', type: 'Support', tags: ['Cleanup', 'Stabilise'] },
+      'NC-011': { id: 'NC-011', type: 'Utility', tags: [] },
+    },
+  }, 'ram');
+
+  assert.deepEqual(candidates, ['NC-010', 'NC-012', 'NC-020', 'NC-058', 'NC-063', 'NC-101']);
 });

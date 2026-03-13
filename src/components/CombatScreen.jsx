@@ -3257,6 +3257,7 @@ function MobilePlayerHud({
                 flexShrink: 0,
                 maxWidth: '100%',
                 whiteSpace: 'nowrap',
+                textAlign: floatLayout.textAlign,
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
               }}
@@ -4880,6 +4881,43 @@ function getEnemyAnimationAnchor(enemyId, enemies) {
   const index = Math.max(0, enemies?.findIndex((enemy) => enemy.id === enemyId) ?? 0);
   const pct = 54 + (((index + 0.5) / count) * 30);
   return { left: `${pct}%`, top: '18%' };
+}
+
+function getCombatFloatLayout(float, enemies, layoutMode = 'desktop') {
+  const isDesktop = layoutMode === 'desktop';
+  const isPortraitPhone = layoutMode === 'phone-portrait';
+  if (float?.anchorEnemyId) {
+    const anchor = getEnemyAnimationAnchor(float.anchorEnemyId, enemies);
+    return {
+      left: anchor.left,
+      top: anchor.top,
+      transform: 'translateX(-50%)',
+      textAlign: 'center',
+    };
+  }
+  if (float?.zone === 'enemy' && float?.targetId) {
+    const anchor = getEnemyAnimationAnchor(float.targetId, enemies);
+    return {
+      left: anchor.left,
+      top: anchor.top,
+      transform: 'translateX(-50%)',
+      textAlign: 'center',
+    };
+  }
+  if (float?.zone === 'player') {
+    return {
+      left: isDesktop ? '5%' : '6%',
+      top: isPortraitPhone ? '74%' : '67%',
+      transform: 'none',
+      textAlign: 'left',
+    };
+  }
+  return {
+    left: '50%',
+    top: float?.zone === 'enemy' ? '18%' : '62%',
+    transform: 'translateX(-50%)',
+    textAlign: 'center',
+  };
 }
 
 function getMutationAnimationInfo(mutationId, data) {
@@ -6742,15 +6780,33 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
     const resolvedPlayerId = player?.id ?? state?.run?.playerId ?? 'player';
 
     const queueReaction = (reaction, { attachToPending = false, sourceId = null } = {}) => {
+      const resolvedSourceId = reaction?.sourceId ?? sourceId ?? (attachToPending ? pendingEnemyAnimation?.enemyId ?? null : null);
+      const sourceEnemyId = resolvedSourceId && !isPlayerEntityId(resolvedSourceId, resolvedPlayerId)
+        ? resolvedSourceId
+        : null;
+      const resolvedReaction = {
+        ...reaction,
+        sourceId: resolvedSourceId,
+        float: reaction?.float
+          ? {
+            ...reaction.float,
+            anchorEnemyId: reaction.float.anchorEnemyId
+              ?? (reaction.zone === 'player'
+                ? sourceEnemyId
+                : reaction.targetId ?? null),
+            targetId: reaction.float.targetId ?? reaction.targetId ?? null,
+          }
+          : null,
+      };
       if (
         attachToPending
         && pendingEnemyAnimation
-        && (!sourceId || !pendingEnemyAnimation.enemyId || sourceId === pendingEnemyAnimation.enemyId)
+        && (!resolvedSourceId || !pendingEnemyAnimation.enemyId || resolvedSourceId === pendingEnemyAnimation.enemyId)
       ) {
-        pendingEnemyAnimation.reactions = [...(pendingEnemyAnimation.reactions || []), reaction];
+        pendingEnemyAnimation.reactions = [...(pendingEnemyAnimation.reactions || []), resolvedReaction];
         return;
       }
-      immediateReactions.push(reaction);
+      immediateReactions.push(resolvedReaction);
     };
 
     for (const entry of newEntries) {
@@ -7551,28 +7607,32 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
 
       {floats.length > 0 && (
         <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 500 }}>
-          {floats.map(f => (
-            <div
-              key={f.id}
-              className={f.cssClass}
-              style={{
-                position: 'absolute',
+          {floats.map((f) => {
+            const floatLayout = getCombatFloatLayout(f, enemies, layoutMode);
+            return (
+              <div
+                key={f.id}
+                className={f.cssClass}
+                style={{
+                  position: 'absolute',
                 // Enemy zone ≈ top 30%, player zone ≈ bottom 35%
-                top: f.zone === 'enemy' ? '18%' : '62%',
-                left: '50%',
-                transform: 'translateX(-50%)',
-                fontFamily: MONO,
-                fontWeight: 900,
-                fontSize: f.cssClass === 'float-dmg' ? 22 : 16,
-                color: f.color,
-                textShadow: `0 0 12px ${f.color}, 0 0 4px #000`,
-                letterSpacing: '0.05em',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {f.text}
-            </div>
-          ))}
+                  top: floatLayout.top,
+                  left: floatLayout.left,
+                  transform: floatLayout.transform,
+                  textAlign: floatLayout.textAlign,
+                  fontFamily: MONO,
+                  fontWeight: 900,
+                  fontSize: f.cssClass === 'float-dmg' ? 22 : 16,
+                  color: f.color,
+                  textShadow: `0 0 12px ${f.color}, 0 0 4px #000`,
+                  letterSpacing: '0.05em',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {f.text}
+              </div>
+            );
+          })}
         </div>
       )}
 

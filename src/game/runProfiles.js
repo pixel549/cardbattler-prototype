@@ -39,6 +39,13 @@ const STARTER_LOADOUT_POOLS = {
     accent: "#00f0ff",
     description: "Resolves into a non-core utility card at run start.",
   },
+  ram: {
+    id: "ram",
+    name: "Random RAM Tool",
+    accent: "#00f0ff",
+    description: "Resolves into an extra RAM-focused utility card at run start.",
+    candidateIds: ["NC-010", "NC-011", "NC-063"],
+  },
   firewall: {
     id: "firewall",
     name: "Random Firewall",
@@ -63,7 +70,7 @@ export const STARTER_PROFILES = {
     shortLabel: "Kernel",
     description: "Balanced intrusion kit with a little damage, a little defense, and enough utility to learn the lane you're drafting into.",
     unlockHint: "Available from the start.",
-    deck: ["C-001", "C-002", "C-003", "C-004", "C-006", "NC-001", "NC-003", "NC-019", "NC-020"],
+    deck: ["C-001", "C-002", "C-003", "C-004", "C-006", "NC-001", "NC-003", "NC-019", "NC-020", "NC-010"],
     loadoutSlots: [
       fixedCard("C-001"),
       fixedCard("C-002"),
@@ -74,6 +81,7 @@ export const STARTER_PROFILES = {
       fixedCard("NC-003"),
       randomCard("support"),
       randomCard("utility"),
+      randomCard("ram"),
     ],
     startingRelicIds: ["NeuralCache"],
     modifiers: {},
@@ -87,7 +95,7 @@ export const STARTER_PROFILES = {
     shortLabel: "Bruteforce",
     description: "Aggressive opener built around cheap hits, explosive finishers, and RAM spikes that reward ending fights fast.",
     unlockHint: "Unlock by finishing 1 run.",
-    deck: ["C-001", "C-001", "C-002", "C-006", "NC-001", "NC-002", "NC-025", "NC-027", "NC-035"],
+    deck: ["C-001", "C-001", "C-002", "C-006", "NC-001", "NC-002", "NC-025", "NC-027", "NC-035", "NC-010"],
     loadoutSlots: [
       fixedCard("C-001"),
       fixedCard("C-001"),
@@ -98,6 +106,7 @@ export const STARTER_PROFILES = {
       fixedCard("NC-025"),
       randomCard("attack"),
       randomCard("attack"),
+      randomCard("ram"),
     ],
     startingRelicIds: ["Overclock"],
     modifiers: { playerMaxHPDelta: -4, startingGoldDelta: -12 },
@@ -111,7 +120,7 @@ export const STARTER_PROFILES = {
     shortLabel: "Ghost",
     description: "Skittish control shell that leans on Scry, hand shaping, and evasive tempo instead of raw damage racing.",
     unlockHint: "Unlock by reaching Act 2.",
-    deck: ["C-001", "C-002", "C-004", "C-006", "NC-040", "NC-041", "NC-043", "NC-045", "NC-057"],
+    deck: ["C-001", "C-002", "C-004", "C-006", "NC-040", "NC-041", "NC-043", "NC-045", "NC-057", "NC-010"],
     loadoutSlots: [
       fixedCard("C-001"),
       fixedCard("C-002"),
@@ -122,6 +131,7 @@ export const STARTER_PROFILES = {
       fixedCard("NC-043"),
       randomCard("utility"),
       randomCard("support"),
+      randomCard("ram"),
     ],
     startingRelicIds: ["LatencyChip"],
     modifiers: { playerMaxHPDelta: -2, startingGoldDelta: 6 },
@@ -135,7 +145,7 @@ export const STARTER_PROFILES = {
     shortLabel: "Architect",
     description: "Firewall-first control deck that snowballs stable turns into impossible board states and safe scaling.",
     unlockHint: "Unlock by winning a run.",
-    deck: ["C-001", "C-002", "C-002", "C-004", "C-006", "NC-003", "NC-014", "NC-016", "NC-059"],
+    deck: ["C-001", "C-002", "C-002", "C-004", "C-006", "NC-003", "NC-014", "NC-016", "NC-059", "NC-010"],
     loadoutSlots: [
       fixedCard("C-001"),
       fixedCard("C-002"),
@@ -146,6 +156,7 @@ export const STARTER_PROFILES = {
       fixedCard("NC-014"),
       randomCard("defense"),
       randomCard("firewall"),
+      randomCard("ram"),
     ],
     startingRelicIds: ["SignalJammer"],
     modifiers: { playerMaxHPDelta: 4, startingGoldDelta: -18 },
@@ -159,7 +170,7 @@ export const STARTER_PROFILES = {
     shortLabel: "Scrapper",
     description: "Mutation-hunting junk diver with cleanup tools, weird sequencing, and the highest ceiling once cards start warping.",
     unlockHint: "Unlock by discovering 10 mutations across runs.",
-    deck: ["C-001", "C-003", "C-006", "NC-005", "NC-021", "NC-044", "NC-048", "NC-053", "NC-099"],
+    deck: ["C-001", "C-003", "C-006", "NC-005", "NC-021", "NC-044", "NC-048", "NC-053", "NC-099", "NC-010"],
     loadoutSlots: [
       fixedCard("C-001"),
       fixedCard("C-003"),
@@ -170,6 +181,7 @@ export const STARTER_PROFILES = {
       fixedCard("NC-048"),
       randomCard("utility"),
       randomCard("support"),
+      randomCard("ram"),
     ],
     startingRelicIds: ["WornToolkit"],
     modifiers: { startingGoldDelta: 10 },
@@ -491,8 +503,12 @@ export function getStarterLoadoutPool(poolId) {
 }
 
 export function getStarterLoadoutPoolCandidates(data, poolId, excludeIds = []) {
-  if (!data?.cards || !STARTER_LOADOUT_POOLS[poolId]) return [];
+  const pool = STARTER_LOADOUT_POOLS[poolId];
+  if (!data?.cards || !pool) return [];
   const excluded = new Set(excludeIds || []);
+  if (Array.isArray(pool.candidateIds) && pool.candidateIds.length) {
+    return pool.candidateIds.filter((cardId) => data.cards?.[cardId]).filter((cardId) => !excluded.has(cardId));
+  }
   return Object.values(data.cards)
     .filter((cardDef) => isStarterPoolCandidate(cardDef, poolId))
     .filter((cardDef) => !excluded.has(cardDef.id))

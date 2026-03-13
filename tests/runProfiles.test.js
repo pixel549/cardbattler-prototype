@@ -49,6 +49,9 @@ test('starter profiles expose themed random loadout slots and resolve them deter
       'C-006': { id: 'C-006', type: 'Attack', tags: ['Core'] },
       'NC-001': { id: 'NC-001', type: 'Attack', tags: [] },
       'NC-003': { id: 'NC-003', type: 'Defense', tags: ['Firewall'] },
+      'NC-010': { id: 'NC-010', type: 'Utility', tags: [] },
+      'NC-011': { id: 'NC-011', type: 'Support', tags: [] },
+      'NC-063': { id: 'NC-063', type: 'Utility', tags: ['RAM'] },
       'SUP-01': { id: 'SUP-01', type: 'Support', tags: [] },
       'SUP-02': { id: 'SUP-02', type: 'Support', tags: [] },
       'UTL-01': { id: 'UTL-01', type: 'Utility', tags: [] },
@@ -57,14 +60,15 @@ test('starter profiles expose themed random loadout slots and resolve them deter
   };
 
   const slots = getStarterProfileLoadoutSlots('kernel');
-  assert.equal(slots.length, 9);
-  assert.equal(slots.filter((slot) => slot.kind === 'random').length, 2);
+  assert.equal(slots.length, 10);
+  assert.equal(slots.filter((slot) => slot.kind === 'random').length, 3);
 
   const deckA = resolveStarterProfileDeck(mockData, 12345, 'kernel');
   const deckB = resolveStarterProfileDeck(mockData, 12345, 'kernel');
 
   assert.deepEqual(deckA, deckB);
-  assert.equal(deckA.length, 9);
+  assert.equal(deckA.length, 10);
   assert.ok(deckA.includes('SUP-01') || deckA.includes('SUP-02'));
   assert.ok(deckA.includes('UTL-01') || deckA.includes('UTL-02'));
+  assert.ok(deckA.includes('NC-010') || deckA.includes('NC-011') || deckA.includes('NC-063'));
 });

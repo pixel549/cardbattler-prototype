@@ -81,6 +81,28 @@ import {
   getAiPlaystyleLabel,
   getAiPlaystyleSlug,
 } from './game/aiPlaystyles.js';
+import {
+  buildRunAnalyticsDashboard,
+  ingestRunRecordAnalytics,
+  readRunAnalytics,
+  writeRunAnalytics,
+} from './game/runTelemetry.js';
+import { getFixerLine } from './game/narrativeDirector.js';
+import {
+  DEBUG_SAVE_SLOT_IDS,
+  buildDebugSavePayload,
+  buildNodeAutosaveToken,
+  clearNodeAutosave,
+  consumeForcedNewRun,
+  getSnapshotContentFingerprint,
+  queueForcedNewRun,
+  readDebugSaveSlots,
+  readNodeAutosave,
+  restorePersistedSnapshot,
+  sanitizeRestoredState,
+  writeDebugSaveSlots,
+  writeNodeAutosave,
+} from './app/persistence.js';
 
 const CombatScreen = lazy(() => import('./components/CombatScreen.jsx'));
 const AIDebugPanel = lazy(() => import('./components/AIDebugPanel.jsx'));
@@ -155,7 +177,6 @@ const MENU_CARD_MIN_W = 156;
 const MENU_CARD_MAX_W = 188;
 
 const TELEMETRY_VERSION = 5;
-const STATE_SNAPSHOT_SCHEMA_VERSION = 2;
 const KNOWN_ENEMY_ACTION_TYPES = new Set(['Attack', 'Defense', 'Buff', 'Debuff']);
 const AI_EXPORT_OPTIONS_DEFAULTS = {
   cards: true,
@@ -171,10 +192,6 @@ const CHALLENGES_STORAGE_KEY = 'cb_selected_challenges_v1';
 const CALLSIGN_STORAGE_KEY = 'cb_selected_callsign_v1';
 const AI_STALL_EXPORT_MS = 15000;
 const AI_STALL_RECOVER_MS = 28000;
-const NODE_AUTOSAVE_KEY = 'cb_node_autosave_v1';
-const DEBUG_SAVE_SLOTS_KEY = 'cb_debug_save_slots_v1';
-const DEBUG_SAVE_SLOT_IDS = ['slot_1', 'slot_2', 'slot_3'];
-const FORCE_NEW_RUN_KEY = 'cb_force_new_run_v1';
 const TUTORIAL_CATALOG = getTutorialCatalog();
 const AI_WATCHDOG_IDLE = {
   active: false,
@@ -183,247 +200,6 @@ const AI_WATCHDOG_IDLE = {
   recoveryTriggered: false,
   lastChangedAt: 0,
 };
-
-function hashString(value) {
-  let hash = 5381;
-  const source = String(value ?? '');
-  for (let i = 0; i < source.length; i += 1) {
-    hash = ((hash << 5) + hash) ^ source.charCodeAt(i);
-  }
-  return (hash >>> 0).toString(16);
-}
-
-function getSnapshotContentFingerprint(data) {
-  if (!data || typeof data !== 'object') return 'unknown';
-  const { builtAt, ...stableData } = data;
-  return `v${data.version ?? 0}:${hashString(JSON.stringify(stableData))}`;
-}
-
-function sanitizeStatuses(statuses) {
-  return Array.isArray(statuses) ? statuses.filter(Boolean) : [];
-}
-
-function sanitizeCombatEntity(entity) {
-  if (!entity || typeof entity !== 'object') return null;
-  return {
-    ...entity,
-    statuses: sanitizeStatuses(entity.statuses),
-  };
-}
-
-function sanitizeRestoredState(rawState) {
-  if (!rawState || typeof rawState !== 'object') return null;
-
-  const next = {
-    ...createInitialState(),
-    ...rawState,
-  };
-
-  next.run = rawState.run && typeof rawState.run === 'object' ? rawState.run : null;
-  next.deck = rawState.deck && typeof rawState.deck === 'object' ? rawState.deck : null;
-  next.map = rawState.map && typeof rawState.map === 'object' ? rawState.map : null;
-  next.reward = rawState.reward && typeof rawState.reward === 'object' ? rawState.reward : null;
-  next.shop = rawState.shop && typeof rawState.shop === 'object' ? rawState.shop : null;
-  next.event = rawState.event && typeof rawState.event === 'object' ? rawState.event : null;
-  next.deckView = rawState.deckView && typeof rawState.deckView === 'object' ? rawState.deckView : null;
-  next.log = Array.isArray(rawState.log) ? rawState.log : [];
-  next.journal = rawState.journal && typeof rawState.journal === 'object'
-    ? {
-        ...rawState.journal,
-        actions: Array.isArray(rawState.journal.actions) ? rawState.journal.actions : [],
-      }
-    : null;
-
-  if (rawState.combat && typeof rawState.combat === 'object') {
-    const combat = rawState.combat;
-    const player = sanitizeCombatEntity(combat.player);
-    if (!player) return null;
-    const piles = player.piles && typeof player.piles === 'object' ? player.piles : {};
-    player.piles = {
-      draw: Array.isArray(piles.draw) ? piles.draw : [],
-      hand: Array.isArray(piles.hand) ? piles.hand : [],
-      discard: Array.isArray(piles.discard) ? piles.discard : [],
-      exhaust: Array.isArray(piles.exhaust) ? piles.exhaust : [],
-      power: Array.isArray(piles.power) ? piles.power : [],
-    };
-
-    next.combat = {
-      ...combat,
-      player,
-      enemies: Array.isArray(combat.enemies)
-        ? combat.enemies.map((enemy) => sanitizeCombatEntity(enemy)).filter(Boolean)
-        : [],
-      cardInstances: combat.cardInstances && typeof combat.cardInstances === 'object' ? combat.cardInstances : {},
-      enemyAI: combat.enemyAI && typeof combat.enemyAI === 'object' ? combat.enemyAI : { cursorByEnemyId: {} },
-      log: Array.isArray(combat.log) ? combat.log : [],
-      relicIds: Array.isArray(combat.relicIds) ? combat.relicIds : [],
-    };
-  } else {
-    next.combat = null;
-  }
-
-  if (next.mode !== 'MainMenu' && !next.run) return null;
-  if (next.mode === 'Combat' && !next.combat) return null;
-
-  return next;
-}
-
-function restorePersistedSnapshot(payload, contentFingerprint = null) {
-  if (!payload || typeof payload !== 'object' || !payload.state) {
-    return { ok: false, reason: 'missing_state', payload: null };
-  }
-  if (Number(payload.schemaVersion ?? 0) !== STATE_SNAPSHOT_SCHEMA_VERSION) {
-    return { ok: false, reason: 'schema_mismatch', payload: null };
-  }
-  if (contentFingerprint && payload.contentFingerprint !== contentFingerprint) {
-    return { ok: false, reason: 'content_mismatch', payload: null };
-  }
-  const sanitizedState = sanitizeRestoredState(payload.state);
-  if (!sanitizedState) {
-    return { ok: false, reason: 'invalid_state', payload: null };
-  }
-  return {
-    ok: true,
-    reason: null,
-    payload: {
-      ...payload,
-      state: sanitizedState,
-    },
-  };
-}
-
-function buildNodeAutosaveToken(state) {
-  if (!state?.run || !state?.map?.currentNodeId) return null;
-  if (!['Combat', 'Shop', 'Event'].includes(state.mode)) return null;
-  return [
-    state.run.seed ?? 'seed',
-    state.run.act ?? 'act',
-    state.run.floor ?? 'floor',
-    state.map.currentNodeId,
-    state.mode,
-    state.event?.eventId ?? '',
-  ].join(':');
-}
-
-function buildNodeAutosaveState(state) {
-  const snapshot = JSON.parse(JSON.stringify(state));
-  snapshot.log = [];
-  snapshot.deckView = null;
-  if (snapshot.journal) {
-    snapshot.journal.actions = [];
-  }
-  return snapshot;
-}
-
-function writeNodeAutosave(state, contentFingerprint = null) {
-  const token = buildNodeAutosaveToken(state);
-  if (!token) return null;
-  const payload = {
-    version: 1,
-    schemaVersion: STATE_SNAPSHOT_SCHEMA_VERSION,
-    contentFingerprint,
-    savedAt: Date.now(),
-    token,
-    state: buildNodeAutosaveState(state),
-  };
-  localStorage.setItem(NODE_AUTOSAVE_KEY, JSON.stringify(payload));
-  return token;
-}
-
-function readNodeAutosave(contentFingerprint = null) {
-  try {
-    const raw = localStorage.getItem(NODE_AUTOSAVE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    const restored = restorePersistedSnapshot(parsed, contentFingerprint);
-    return restored.ok ? restored.payload : null;
-  } catch {
-    return null;
-  }
-}
-
-function clearNodeAutosave() {
-  localStorage.removeItem(NODE_AUTOSAVE_KEY);
-}
-
-function describeDebugSaveState(state) {
-  if (!state?.run) return 'Empty slot';
-  const parts = [
-    `Act ${state.run.act ?? '?'}`,
-    `Floor ${state.run.floor ?? '?'}`,
-    state.mode ?? 'Unknown',
-  ];
-  if (state.mode === 'Combat') {
-    const hp = state.combat?.player?.hp ?? state.run.hp ?? 0;
-    const maxHP = state.combat?.player?.maxHP ?? state.run.maxHP ?? 0;
-    const enemies = (state.combat?.enemies || []).filter((enemy) => enemy.hp > 0);
-    parts.push(`HP ${hp}/${maxHP}`);
-    if (enemies.length > 0) parts.push(enemies.map((enemy) => enemy.name).join(', '));
-  } else {
-    parts.push(`HP ${state.run.hp ?? 0}/${state.run.maxHP ?? 0}`);
-    parts.push(`${state.run.gold ?? 0}g`);
-  }
-  return parts.join(' • ');
-}
-
-function buildDebugSavePayload(slotId, state, contentFingerprint = null) {
-  return {
-    version: 1,
-    schemaVersion: STATE_SNAPSHOT_SCHEMA_VERSION,
-    contentFingerprint,
-    slotId,
-    savedAt: Date.now(),
-    label: describeDebugSaveState(state),
-    state: buildNodeAutosaveState(state),
-  };
-}
-
-function readDebugSaveSlots(contentFingerprint = null) {
-  try {
-    const raw = localStorage.getItem(DEBUG_SAVE_SLOTS_KEY);
-    if (!raw) return {};
-    const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== 'object') return {};
-    if (!contentFingerprint) return parsed;
-    const nextSlots = {};
-    for (const [slotId, payload] of Object.entries(parsed)) {
-      const restored = restorePersistedSnapshot(payload, contentFingerprint);
-      if (restored.ok) nextSlots[slotId] = restored.payload;
-    }
-    return nextSlots;
-  } catch {
-    return {};
-  }
-}
-
-function writeDebugSaveSlots(slots) {
-  localStorage.setItem(DEBUG_SAVE_SLOTS_KEY, JSON.stringify(slots));
-}
-
-function queueForcedNewRun(payload) {
-  if (typeof window === 'undefined') return;
-  try {
-    window.sessionStorage.setItem(FORCE_NEW_RUN_KEY, JSON.stringify({
-      requestedAt: Date.now(),
-      ...payload,
-    }));
-  } catch (error) {
-    console.error('Failed to queue forced new run', error);
-  }
-}
-
-function consumeForcedNewRun() {
-  if (typeof window === 'undefined') return null;
-  try {
-    const raw = window.sessionStorage.getItem(FORCE_NEW_RUN_KEY);
-    if (!raw) return null;
-    window.sessionStorage.removeItem(FORCE_NEW_RUN_KEY);
-    const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === 'object' ? parsed : null;
-  } catch {
-    return null;
-  }
-}
 
 function getFirewallStacksFromEntity(entity) {
   return entity?.statuses?.find((status) => status.id === 'Firewall')?.stacks ?? 0;
@@ -817,12 +593,21 @@ function buildRunRecord({
     debugSeedMode:  debugSeedActive ? (runDbg?._mode ?? seedMode ?? 'wild') : null,
     aiPlaystyle,
     aiPlaystyleLabel: getAiPlaystyleLabel(aiPlaystyle),
+    starterProfileId: state.run?.starterProfileId || 'kernel',
+    starterProfileName: state.run?.starterProfileName || STARTER_PROFILES[state.run?.starterProfileId || 'kernel']?.name || 'Kernel Runner',
+    difficultyId: state.run?.difficultyId || 'standard',
+    difficultyName: DIFFICULTY_PROFILES[state.run?.difficultyId || 'standard']?.name || 'Standard',
+    challengeIds: Array.isArray(state.run?.challengeIds) ? [...state.run.challengeIds] : [],
+    runMode: state.run?.runMode || 'standard',
+    dailyRunId: state.run?.dailyRunId || null,
+    dailyRunLabel: state.run?.dailyRunLabel || null,
     debugOverrides: buildExportDebugOverrides(runDbg),
     relicIds:       finalRelicIds,
     relicNames:     finalRelicIds.map((rid) => data?.relics?.[rid]?.name || rid),
     runRuleMods,
     forcedMutationTier: state.run?.forcedMutationTier ?? null,
     seenMutationIds:    [...(state.run?.seenMutationIds || [])],
+    runTelemetry: { ...(state.run?.telemetry || {}) },
     endTime:        new Date().toISOString(),
     outcome,
     finalAct:       state.run?.act   ?? 1,
@@ -2017,10 +1802,11 @@ function PauseMenuOverlay({
 }
 
 /** Shared top bar showing run stats */
-function RunHeader({ run, data }) {
+function RunHeader({ run, data, mode = 'Map' }) {
   if (!run) return null;
   const MONO = "'JetBrains Mono', 'Fira Code', 'Consolas', monospace";
   const relics = run.relicIds || [];
+  const fixerLine = getFixerLine({ mode, run });
   return (
     <div
       className="safe-area-top"
@@ -2054,6 +1840,19 @@ function RunHeader({ run, data }) {
           <span style={{ color: C.yellow }}>{run.gold}g</span>
           <span style={{ color: C.orange }}>{run.scrap ?? 0}scrap</span>
           <span style={{ color: C.cyan }}>{run.mp}mp</span>
+        </div>
+      </div>
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        paddingLeft: '16px',
+        paddingRight: '16px',
+        paddingBottom: relics.length > 0 ? '6px' : '8px',
+      }}>
+        <div style={{ width: 7, height: 7, borderRadius: '50%', background: C.cyan, boxShadow: `0 0 10px ${C.cyan}` }} />
+        <div style={{ fontFamily: MONO, fontSize: 10, lineHeight: 1.45, color: C.textSecondary }}>
+          {fixerLine}
         </div>
       </div>
       {/* Relic chips */}
@@ -2460,7 +2259,7 @@ function MapScreen({ state, data, onAction, metaProgress = null }) {
 
   return (
     <ScreenShell>
-      <RunHeader run={state.run} data={data} />
+      <RunHeader run={state.run} data={data} mode="Map" />
 
       <div style={{ flex: 1, display: 'flex', justifyContent: 'center', padding: isWideLayout ? '14px 16px 0' : '8px 8px 0', overflowY: 'auto' }}>
         <div
@@ -3638,7 +3437,7 @@ function MinigameScreen({ state, onAction }) {
   if (!def) {
     return (
       <ScreenShell>
-        <RunHeader run={state.run} data={null} />
+        <RunHeader run={state.run} data={null} mode="Event" />
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, gap: 16 }}>
           <div style={{ fontFamily: MONO, fontSize: 18, color: C.cyan, fontWeight: 700 }}>MINIGAME</div>
           <div style={{ fontFamily: MONO, fontSize: 11, color: C.textDim }}>{eventId}</div>
@@ -3664,7 +3463,7 @@ function MinigameScreen({ state, onAction }) {
   if (phase === 'intro') {
     return (
       <ScreenShell>
-        <RunHeader run={state.run} data={null} />
+        <RunHeader run={state.run} data={null} mode="Event" />
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, gap: 20 }}>
           <div style={{ fontSize: 52 }}>{def.icon}</div>
           <div style={{ fontFamily: MONO, fontWeight: 700, fontSize: 20, color: C.cyan, textAlign: 'center' }}>{def.title}</div>
@@ -3695,7 +3494,7 @@ function MinigameScreen({ state, onAction }) {
   if (phase === 'playing') {
     return (
       <ScreenShell>
-        <RunHeader run={state.run} data={null} />
+        <RunHeader run={state.run} data={null} mode="Event" />
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '16px 20px', overflowY: 'auto' }}>
           <div style={{ fontFamily: MONO, fontWeight: 700, fontSize: 16, color: C.cyan, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10 }}>
             <span>{def.icon}</span><span>{def.title}</span>
@@ -3713,7 +3512,7 @@ function MinigameScreen({ state, onAction }) {
   const col = TIER_COLOR[resultTier] || C.text;
   return (
     <ScreenShell>
-      <RunHeader run={state.run} data={null} />
+      <RunHeader run={state.run} data={null} mode="Event" />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, gap: 20 }}>
         <div style={{ fontSize: 52 }}>{def.icon}</div>
         <div style={{ fontFamily: MONO, fontWeight: 700, fontSize: 28, color: col }}>{TIER_LABEL[resultTier]}</div>
@@ -3764,7 +3563,7 @@ function EventScreen({ state, data, onAction, tutorialStep = null }) {
     const restScrap = state.run?.scrap || 0;
     return (
       <ScreenShell>
-        <RunHeader run={state.run} data={data} />
+        <RunHeader run={state.run} data={data} mode="Event" />
         <div style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', paddingTop: 'clamp(72px, 16vh, 176px)', paddingBottom: '96px' }}>
           <div
             className="animate-slide-up"
@@ -3872,7 +3671,7 @@ function EventScreen({ state, data, onAction, tutorialStep = null }) {
   if (eventId === 'CompileStation') {
     return (
       <ScreenShell>
-        <RunHeader run={state.run} data={data} />
+        <RunHeader run={state.run} data={data} mode="Event" />
         <div style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', paddingTop: 'clamp(72px, 16vh, 176px)', paddingBottom: '96px' }}>
           <div
             className="animate-slide-up"
@@ -3975,7 +3774,7 @@ function EventScreen({ state, data, onAction, tutorialStep = null }) {
   if (!eventDef) {
     return (
       <ScreenShell>
-        <RunHeader run={state.run} data={data} />
+        <RunHeader run={state.run} data={data} mode="Event" />
         <div style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ fontFamily: MONO, fontWeight: 700, fontSize: '20px', marginBottom: '8px', color: C.cyan }}>
             UNKNOWN EVENT
@@ -4012,7 +3811,7 @@ function EventScreen({ state, data, onAction, tutorialStep = null }) {
 
   return (
     <ScreenShell>
-      <RunHeader run={state.run} data={data} />
+      <RunHeader run={state.run} data={data} mode="Event" />
       <div style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column' }}>
 
         {/* Event card */}
@@ -6276,6 +6075,7 @@ function App() {
   const [debugSaveSlots, setDebugSaveSlots] = useState(() => readDebugSaveSlots());
   const [playtestMode, setPlaytestMode] = useState(() => readPlaytestModeEnabled());
   const [metaProgress, setMetaProgress] = useState(() => readMetaProgress());
+  const [runAnalytics, setRunAnalytics] = useState(() => readRunAnalytics());
   const [recentUnlocks, setRecentUnlocks] = useState(() => readMetaProgress().lastUnlocks || []);
   const [selectedCallsignId, setSelectedCallsignId] = useState(() => (
     readStoredString(CALLSIGN_STORAGE_KEY, getDefaultCallsignId())
@@ -6304,6 +6104,7 @@ function App() {
   const unlockedChallenges = getUnlockedChallenges(metaProgress);
   const todaysDailyRecord = (metaProgress?.dailyRunRecords || []).find((record) => record.id === dailyRunConfig.id) || null;
   const recentDailyRecords = metaProgress?.dailyRunRecords || [];
+  const runAnalyticsDashboard = buildRunAnalyticsDashboard(runAnalytics);
   const sceneArtManifest = buildSceneArtManifest(state);
 
   // ── Sound mute toggle (persisted to localStorage) ────────────────────────
@@ -6320,6 +6121,20 @@ function App() {
       return next;
     });
   }
+
+  useEffect(() => {
+    const nextMode = state?.mode;
+    if (!nextMode || sceneAudioModeRef.current === nextMode) return;
+    const previousMode = sceneAudioModeRef.current;
+    sceneAudioModeRef.current = nextMode;
+
+    if (nextMode === 'MainMenu') sfx.menuOpen();
+    else if (nextMode === 'Map' && previousMode === 'MainMenu') sfx.runStart();
+    else if (nextMode === 'Reward') sfx.rewardOpen();
+    else if (nextMode === 'Shop') sfx.shopOpen();
+    else if (nextMode === 'Event') sfx.eventOpen();
+    else if (nextMode === 'GameOver') sfx.fixerPing();
+  }, [state?.mode]);
 
   useEffect(() => {
     if (!unlockedStarterProfiles.some((profile) => profile.id === selectedStarterProfileId)) {
@@ -6513,6 +6328,7 @@ function App() {
   const startNewRunRef = useRef(() => {});
   const autosaveTokenRef = useRef(null);
   const backGuardPrimedRef = useRef(false);
+  const sceneAudioModeRef = useRef(null);
   const tutorialNudgeTimerRef = useRef(null);
   const aiStallRef = useRef({
     signature: null,
@@ -6607,6 +6423,16 @@ function App() {
     setShowPauseMenu(false);
     setShowLog(false);
   }
+
+  const appendRunSummary = useCallback((summary) => {
+    if (!summary) return;
+    setRunHistory((prev) => [...prev, summary]);
+    setRunAnalytics((prev) => {
+      const next = ingestRunRecordAnalytics(prev, summary);
+      writeRunAnalytics(next);
+      return next;
+    });
+  }, []);
 
   function adoptState(newState, {
     handoffReason = '',
@@ -7186,9 +7012,9 @@ function App() {
     pendingFloorEventsRef.current = [];
     deckSnapshotsRef.current = [];
     lastFloorRef.current = null;
-    setRunHistory((prev) => [...prev, archived]);
+    appendRunSummary(archived);
     return true;
-  }, [aiPlaystyle, seedMode]);
+  }, [aiPlaystyle, appendRunSummary, seedMode]);
 
   const runAiStepRef = useRef(() => {});
 
@@ -7415,7 +7241,7 @@ function App() {
       pendingFloorEventsRef.current = [];
       deckSnapshotsRef.current = [];
       lastFloorRef.current = null;
-      setRunHistory(prev => [...prev, summary]);
+      appendRunSummary(summary);
 
       let nextDebugSeed = null;
       if (randomizeDebugSeed) {
@@ -7581,6 +7407,7 @@ function App() {
       scheduleAiTick();
     };
   }, [
+    appendRunSummary,
     aiPlaystyle,
     aiSpeed,
     aiStopAfterCombat,
@@ -7924,6 +7751,7 @@ function App() {
           tutorialCatalog={TUTORIAL_CATALOG}
           completedTutorialIds={completedTutorialIds}
           metaProgress={metaProgress}
+          runAnalytics={runAnalyticsDashboard}
           recentUnlocks={recentUnlocks}
           achievements={achievementCatalog}
           dailyRunConfig={dailyRunConfig}
@@ -8144,3 +7972,4 @@ function App() {
 }
 
 export default App;
+

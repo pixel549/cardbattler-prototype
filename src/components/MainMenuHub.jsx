@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import RuntimeArt from './RuntimeArt.jsx';
 import { getCardImage } from '../data/cardImages.js';
+import { sfx } from '../game/sounds.js';
 import {
   composeRunConfig,
   getStarterLoadoutPool,
@@ -18,6 +19,7 @@ import {
   isRelicUnlockedByAchievements,
 } from '../game/achievements.js';
 import { MINIGAME_REGISTRY } from '../game/minigames.js';
+import { getFixerLine } from '../game/narrativeDirector.js';
 
 const C = {
   bg: '#0a0a0f',
@@ -235,6 +237,14 @@ function formatConfigFieldValue(field, value) {
   return String(value);
 }
 
+function formatPercent(value = 0) {
+  return `${Math.round(Math.max(0, Number(value || 0)) * 100)}%`;
+}
+
+function formatAverage(value = 0) {
+  return Number(value || 0).toFixed(1);
+}
+
 function buildModeSummary(runConfig) {
   const summary = [];
   if (runConfig.playerMaxHP !== RUN_BASELINE.playerMaxHP) {
@@ -438,6 +448,7 @@ export default function MainMenuHub({
   tutorialCatalog = [],
   completedTutorialIds = [],
   metaProgress = null,
+  runAnalytics = null,
   recentUnlocks = [],
   achievements = [],
   dailyRunConfig = null,
@@ -501,6 +512,11 @@ export default function MainMenuHub({
   const selectedDifficulty = difficultyProfiles.find((difficulty) => difficulty.id === selectedDifficultyId) || difficultyProfiles[0] || null;
   const selectedRunConfig = composeRunConfig(customConfig || {}, selectedStarterProfileId, selectedDifficultyId, selectedChallengeIds);
   const selectedModeSummary = buildModeSummary(selectedRunConfig);
+  const fixerLine = getFixerLine({
+    mode: activeMenuView === 'intel' ? activeIntelView : activeMenuView,
+    metaProgress,
+    runAnalytics,
+  });
 
   const selectedProfileAccent = selectedProfile?.accent || C.orange;
   const selectedDifficultyAccent = selectedDifficulty?.accent || C.purple;
@@ -633,11 +649,18 @@ export default function MainMenuHub({
     setSelectedLoadoutSlotKey(loadoutPreviewEntries[0]?.key || null);
   }, [selectedProfile?.id]);
 
+  useEffect(() => {
+    if (!fixerLine) return;
+    sfx.fixerPing();
+  }, [fixerLine]);
+
   const handleMenuViewChange = (nextView) => {
     if (forcedPath && nextView !== forcedPath.menuView) {
       onBlockedNavigation?.();
       return;
     }
+    if (nextView === 'intel') sfx.archiveOpen();
+    else sfx.menuOpen();
     setMenuView(nextView);
   };
 
@@ -646,6 +669,7 @@ export default function MainMenuHub({
       onBlockedNavigation?.();
       return;
     }
+    sfx.archiveOpen();
     setMenuView('intel');
     setIntelView(nextView);
   };
@@ -655,6 +679,8 @@ export default function MainMenuHub({
       onBlockedNavigation?.();
       return;
     }
+    if (nextView === 'standard' || nextView === 'daily') sfx.runStart();
+    else sfx.menuOpen();
     setMenuView('new');
     setNewRunView(nextView);
   };
@@ -1680,6 +1706,7 @@ export default function MainMenuHub({
           <MainAction accent={C.red} title="Enemies" body="The active enemy roster and its baseline details." onClick={() => handleIntelViewChange('enemies')} meta="Archive" status={`${Object.keys(data?.enemies || {}).length}`} />
           <MainAction accent={C.orange} title="Minigames" body="All current minigame variants and their act lanes." onClick={() => handleIntelViewChange('minigames')} meta="Archive" status={`${Object.keys(MINIGAME_REGISTRY).length}`} />
           <MainAction accent={C.red} title="Bosses" body="Seen and defeated bosses with composition snapshots." onClick={() => handleIntelViewChange('bosses')} meta="Archive" status={`${bossArchiveEntries.length}/${totalBossCount}`} />
+          <MainAction accent={C.orange} title="Telemetry" body="Starter stress, Heat spikes, scrap spend, and first elite or boss wipe rates." onClick={() => handleIntelViewChange('telemetry')} meta="Archive" status={`${runAnalytics?.totalRuns ?? 0} logs`} />
           <MainAction accent={C.green} title="Achievements" body="Milestones and the unlocks attached to them." onClick={() => handleIntelViewChange('achievements')} meta="Archive" status={`${achievementUnlockCount}/${achievements.length}`} />
           <MainAction accent={activeCallsignAccent} title="Callsigns" body="Cosmetic identity rewards and equipped theme selection." onClick={() => handleIntelViewChange('callsigns')} meta="Archive" status={`${callsignUnlockCount} unlocked`} />
         </div>
@@ -1780,6 +1807,59 @@ export default function MainMenuHub({
       );
     }
 
+    if (activeIntelView === 'telemetry') {
+      const profileRows = runAnalytics?.profileRows || [];
+      return (
+        <div style={{ ...panelStyle(C.orange, 'default', '18px'), display: 'grid', gap: 14 }}>
+          <SectionIntro
+            accent={C.orange}
+            eyebrow="OPS TELEMETRY"
+            title="Balance Pressure Readout"
+            body="This local archive tracks where runs are starving on RAM, overheating, and failing their first elite or boss checks."
+          />
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 8 }}>
+            <StatTile accent={C.text} label="Tracked Runs" value={runAnalytics?.totalRuns ?? 0} />
+            <StatTile accent={C.green} label="Win Rate" value={formatPercent(runAnalytics?.winRate)} />
+            <StatTile accent={C.cyan} label="Avg RAM Starve" value={formatAverage(runAnalytics?.averageRamStarvedTurns)} />
+            <StatTile accent={C.orange} label="Avg Heat Peak" value={formatAverage(runAnalytics?.averagePeakHeat)} />
+            <StatTile accent={C.yellow} label="Avg Scrap Spend" value={formatAverage(runAnalytics?.averageScrapSpent)} />
+            <StatTile accent={C.red} label="1st Elite Loss" value={formatPercent(runAnalytics?.firstEliteLossRate)} />
+            <StatTile accent={C.red} label="1st Boss Loss" value={formatPercent(runAnalytics?.firstBossLossRate)} />
+          </div>
+          <div style={{ ...panelStyle(C.border, 'soft', '14px'), display: 'grid', gap: 6 }}>
+            <div style={{ fontFamily: UI_MONO, fontSize: 10, letterSpacing: '0.14em', color: C.textMuted }}>RECENT SIGNAL</div>
+            <div style={{ fontFamily: UI_MONO, fontSize: 12, lineHeight: 1.6, color: C.text }}>
+              {(runAnalytics?.recentRuns || []).slice(0, 3).map((run) => (
+                `${run.starterProfileName} ${run.victory ? 'won' : 'lost'} Act ${run.actReached} / Floor ${run.floorReached} | RAM ${run.ramStarvedTurns} | Heat ${run.peakHeat}`
+              )).join(' || ') || 'No local telemetry captured yet.'}
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+            {profileRows.length > 0 ? profileRows.map((profile) => (
+              <div key={profile.id} style={{ ...panelStyle(C.orange, 'soft', '14px'), display: 'grid', gap: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
+                  <div style={{ fontFamily: DISPLAY_FONT, fontSize: 22, fontWeight: 700, color: C.text }}>{profile.name}</div>
+                  <DataChip accent={profile.winRate >= 0.5 ? C.green : C.red}>{formatPercent(profile.winRate)} win</DataChip>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
+                  <StatTile accent={C.text} label="Runs" value={profile.runs} compact />
+                  <StatTile accent={C.red} label="Losses" value={profile.losses} compact />
+                  <StatTile accent={C.cyan} label="Avg RAM Starve" value={formatAverage(profile.averageRamStarvedTurns)} compact />
+                  <StatTile accent={C.orange} label="Avg Heat" value={formatAverage(profile.averagePeakHeat)} compact />
+                  <StatTile accent={C.yellow} label="Avg Scrap" value={formatAverage(profile.averageScrapSpent)} compact />
+                  <StatTile accent={C.red} label="1st Elite Loss" value={formatPercent(profile.firstEliteLossRate)} compact />
+                </div>
+              </div>
+            )) : (
+              <div style={{ ...panelStyle(C.orange, 'soft', '14px'), fontFamily: UI_MONO, fontSize: 12, color: C.text }}>
+                Play a few runs and this archive will start highlighting which starter packages are underperforming.
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div style={{ ...panelStyle(activeCallsignAccent, 'default', '18px'), display: 'grid', gap: 14 }}>
         <SectionIntro accent={activeCallsignAccent} eyebrow="CALLSIGNS" title={activeCallsign?.name || 'Kernel Runner'} body={activeCallsign?.description || 'Default runner callsign.'} />
@@ -1870,6 +1950,15 @@ export default function MainMenuHub({
         />
 
         {renderHeader()}
+        <div style={{ ...panelStyle(C.cyan, 'soft', '14px'), display: 'grid', gap: 8, maxWidth: 760 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: C.cyan, boxShadow: `0 0 12px ${C.cyan}` }} />
+            <div style={{ fontFamily: UI_MONO, fontSize: 10, letterSpacing: '0.16em', color: C.cyan }}>FIXER WIRE</div>
+          </div>
+          <div style={{ fontFamily: UI_MONO, fontSize: 12, lineHeight: 1.65, color: C.text }}>
+            {fixerLine}
+          </div>
+        </div>
         {content}
       </div>
     </ScreenShell>

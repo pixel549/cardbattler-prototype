@@ -8,6 +8,16 @@ import { getHeatState } from '../game/combatMeta.js';
 import { getBossDirectiveReadout, getEnemyDirectiveSummaries } from '../game/combatDirectives.js';
 import useDialogAccessibility from '../hooks/useDialogAccessibility.js';
 import usePlaytestRecorder from '../hooks/usePlaytestRecorder.js';
+import {
+  BOSS_PHASE_AUDIO_PATTERN,
+  HEAT_THRESHOLD_MARKERS,
+  SYSTEM_WARNING_AUDIO_PATTERN,
+  getBossReadoutTone,
+  getCombatFloatLayout,
+  getEnemyAnimationAnchor,
+  getHeatBarTextColor,
+  getHeatVisualState,
+} from './combatPresentation.js';
 
 /**
  * CombatScreen - Cyberpunk deckbuilder combat UI
@@ -57,31 +67,6 @@ const EMPTY_ARRAY = [];
 const EMPTY_OBJECT = {};
 const DOUBLE_TAP_WINDOW_MS = 320;
 const PLAYER_TARGET_ID = '__player__';
-const HEAT_THRESHOLD_MARKERS = [
-  { ratio: 0.3, label: 'W', color: C.neonYellow },
-  { ratio: 0.55, label: 'H', color: C.neonOrange },
-  { ratio: 0.8, label: 'C', color: '#ff5b2d' },
-];
-const BOSS_PHASE_AUDIO_PATTERN = /armed Purge Charge|entered a shielded phase|forced a rule rewrite|tightened its combo punish threshold|was exposed:/i;
-const SYSTEM_WARNING_AUDIO_PATTERN = /armed Purge Charge|entered a shielded phase|Trace spike:/i;
-
-function getHeatVisualState(heat = 0, maxHeat = 20) {
-  const heatState = getHeatState(heat, maxHeat);
-  const glow = heatState.alertLevel >= 3
-    ? 'rgba(255,91,45,0.22)'
-    : heatState.alertLevel === 2
-      ? 'rgba(255,107,0,0.18)'
-      : heatState.alertLevel === 1
-        ? 'rgba(255,230,0,0.14)'
-        : 'rgba(0,240,255,0.12)';
-
-  return {
-    color: heatState.color,
-    glow,
-    label: heatState.shortLabel,
-    alertLevel: heatState.alertLevel,
-  };
-}
 
 function HeatBar({ heat = 0, maxHeat = 20, height = 12, showText = true }) {
   const safeMax = Math.max(1, Number(maxHeat || 20));
@@ -117,7 +102,7 @@ function HeatBar({ heat = 0, maxHeat = 20, height = 12, showText = true }) {
         />
       ))}
         {showText && (
-          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: MONO, fontSize: Math.max(8, height - 4), fontWeight: 700, color: C.bgDark, mixBlendMode: 'screen' }}>
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: MONO, fontSize: Math.max(8, height - 4), fontWeight: 700, color: getHeatBarTextColor(), mixBlendMode: 'screen' }}>
             HEAT {safeHeat}/{safeMax}
           </div>
         )}
@@ -173,20 +158,7 @@ function CombatConditionStrip({ heat = 0, maxHeat = 20, arenaModifier = null, co
         </div>
       )}
     </div>
-    );
-  }
-
-function getBossReadoutTone(emphasis = 'neutral') {
-  switch (emphasis) {
-    case 'critical':
-      return { color: C.neonRed, background: `${C.neonRed}12`, border: `${C.neonRed}36` };
-    case 'warning':
-      return { color: C.neonOrange, background: `${C.neonOrange}12`, border: `${C.neonOrange}36` };
-    case 'good':
-      return { color: C.neonGreen, background: `${C.neonGreen}12`, border: `${C.neonGreen}36` };
-    default:
-      return { color: C.neonCyan, background: `${C.neonCyan}12`, border: `${C.neonCyan}30` };
-  }
+  );
 }
 
 function BossProtocolPanel({ readout, compact = false }) {
@@ -4874,50 +4846,6 @@ function getActionCaptionLayout(targetZone) {
         top: '47%',
       };
   }
-}
-
-function getEnemyAnimationAnchor(enemyId, enemies) {
-  const count = Math.max(1, enemies?.length || 0);
-  const index = Math.max(0, enemies?.findIndex((enemy) => enemy.id === enemyId) ?? 0);
-  const pct = 54 + (((index + 0.5) / count) * 30);
-  return { left: `${pct}%`, top: '18%' };
-}
-
-function getCombatFloatLayout(float, enemies, layoutMode = 'desktop') {
-  const isDesktop = layoutMode === 'desktop';
-  const isPortraitPhone = layoutMode === 'phone-portrait';
-  if (float?.anchorEnemyId) {
-    const anchor = getEnemyAnimationAnchor(float.anchorEnemyId, enemies);
-    return {
-      left: anchor.left,
-      top: anchor.top,
-      transform: 'translateX(-50%)',
-      textAlign: 'center',
-    };
-  }
-  if (float?.zone === 'enemy' && float?.targetId) {
-    const anchor = getEnemyAnimationAnchor(float.targetId, enemies);
-    return {
-      left: anchor.left,
-      top: anchor.top,
-      transform: 'translateX(-50%)',
-      textAlign: 'center',
-    };
-  }
-  if (float?.zone === 'player') {
-    return {
-      left: isDesktop ? '5%' : '6%',
-      top: isPortraitPhone ? '74%' : '67%',
-      transform: 'none',
-      textAlign: 'left',
-    };
-  }
-  return {
-    left: '50%',
-    top: float?.zone === 'enemy' ? '18%' : '62%',
-    transform: 'translateX(-50%)',
-    textAlign: 'center',
-  };
 }
 
 function getMutationAnimationInfo(mutationId, data) {

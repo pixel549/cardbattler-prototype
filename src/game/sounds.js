@@ -332,6 +332,70 @@ export const sfx = {
     noise(0.04, g, 0.48);
   },
 
+  menuOpen() {
+    playNoteSequence([392, 494], {
+      type: 'triangle',
+      gainValue: 0.06,
+      noteDuration: 0.16,
+      stepDelay: 0.05,
+    });
+  },
+
+  archiveOpen() {
+    playNoteSequence([262, 330, 392], {
+      type: 'triangle',
+      gainValue: 0.06,
+      noteDuration: 0.14,
+      stepDelay: 0.05,
+    });
+  },
+
+  runStart() {
+    const g = gain(0.12, 0.34);
+    if (!g) return;
+    sweep(120, 280, 'triangle', 0.18, g);
+    playNoteSequence([220, 262, 330], {
+      type: 'sawtooth',
+      gainValue: 0.05,
+      noteDuration: 0.16,
+      stepDelay: 0.055,
+    });
+  },
+
+  rewardOpen() {
+    playNoteSequence([440, 523, 659], {
+      type: 'triangle',
+      gainValue: 0.07,
+      noteDuration: 0.16,
+      stepDelay: 0.055,
+    });
+  },
+
+  shopOpen() {
+    playNoteSequence([196, 247, 294], {
+      type: 'square',
+      gainValue: 0.05,
+      noteDuration: 0.16,
+      stepDelay: 0.06,
+    });
+  },
+
+  eventOpen() {
+    const g = gain(0.08, 0.28);
+    if (!g) return;
+    sweep(520, 240, 'triangle', 0.18, g);
+    noise(0.03, g, 0.72);
+  },
+
+  fixerPing() {
+    playNoteSequence([660, 880], {
+      type: 'sine',
+      gainValue: 0.05,
+      noteDuration: 0.1,
+      stepDelay: 0.045,
+    });
+  },
+
   // Toggle mute
   setMuted(m) { muted = m; },
   isMuted() { return muted; },

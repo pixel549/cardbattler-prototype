@@ -15,9 +15,17 @@ import { getCompilePreview, applyCompileToCardInstance } from "./cardCompile.js"
 import { analyzeDeckState } from "./runInsights.js";
 import {
   createRunAdaptationProfile,
+  getHeatState,
   normalizeRunAdaptationProfile,
   recordCardPlayForAdaptation,
 } from "./combatMeta.js";
+import {
+  createRunTelemetry,
+  ensureRunTelemetry,
+  incrementRunTelemetry,
+  maxRunTelemetry,
+  trackRunScrapSpend,
+} from "./runTelemetry.js";
 import {
   isCardUnlockedByAchievements,
   isRelicUnlockedByAchievements,
@@ -191,11 +199,12 @@ function addRunCurrency(run, amount, currency = "gold") {
   return run.gold;
 }
 
-function spendRunCurrency(run, amount, currency = "gold") {
+function spendRunCurrency(run, amount, currency = "gold", source = "service") {
   const cost = Math.max(0, Number(amount || 0));
   if (!canAffordRunCurrency(run, cost, currency)) return false;
   if (currency === "scrap") {
     run.scrap = Math.max(0, Number(run.scrap || 0) - cost);
+    trackRunScrapSpend(run, cost, source);
     return true;
   }
   run.gold = Math.max(0, Number(run.gold || 0) - cost);
@@ -214,40 +223,6 @@ function salvageRemovedCard(state, ci, log, reason = "salvaged") {
   return 2;
 }
 
-function createRunTelemetry() {
-  return {
-    repairsUsed: 0,
-    compileCount: 0,
-    bricksTriggered: 0,
-    bossesDefeated: 0,
-    highestActReached: 1,
-    currentCurseCount: 0,
-    peakCurseCount: 0,
-    currentCompiledCount: 0,
-    peakCompiledCount: 0,
-    currentBrickedCount: 0,
-    peakBrickedCount: 0,
-  };
-}
-
-function ensureRunTelemetry(run) {
-  if (!run) return createRunTelemetry();
-  if (!run.telemetry || typeof run.telemetry !== "object") {
-    run.telemetry = createRunTelemetry();
-    return run.telemetry;
-  }
-  run.telemetry = {
-    ...createRunTelemetry(),
-    ...run.telemetry,
-  };
-  return run.telemetry;
-}
-
-function incrementRunTelemetry(run, key, amount = 1) {
-  const telemetry = ensureRunTelemetry(run);
-  telemetry[key] = Math.max(0, Number(telemetry[key] || 0) + Number(amount || 0));
-}
-
 function syncRunDeckTelemetry(state, data) {
   if (!state?.run || !state?.deck || !data) return null;
   const telemetry = ensureRunTelemetry(state.run);
@@ -263,6 +238,42 @@ function syncRunDeckTelemetry(state, data) {
     Number(state.run.act || 1),
   );
   return analysis;
+}
+
+function getCardRuntimeCost(cardDef, instance) {
+  return Math.max(0, Number(cardDef?.costRAM || 0) + Number(instance?.ramCostDelta || 0));
+}
+
+function syncRunCombatTelemetry(state) {
+  if (!state?.run || !state?.combat) return ensureRunTelemetry(state?.run);
+  const telemetry = ensureRunTelemetry(state.run);
+  const heatState = getHeatState(state.combat.heat, state.combat.maxHeat);
+  maxRunTelemetry(state.run, "peakHeat", heatState.heat);
+  return telemetry;
+}
+
+function recordRunTurnPressure(state, data) {
+  if (!state?.run || !state?.combat || !data) return null;
+  const player = state.combat.player;
+  if (!player) return null;
+  const telemetry = syncRunCombatTelemetry(state);
+  const currentRam = Math.max(0, Number(player.ram || 0));
+  if (currentRam <= 1) incrementRunTelemetry(state.run, "lowRamTurns", 1);
+  if (getHeatState(state.combat.heat, state.combat.maxHeat).alertLevel >= 3) {
+    incrementRunTelemetry(state.run, "criticalHeatTurns", 1);
+  }
+  const hand = Array.isArray(player.piles?.hand) ? player.piles.hand : [];
+  if (!hand.length) return telemetry;
+
+  const affordableCardExists = hand.some((cardInstanceId) => {
+    const instance = state.combat.cardInstances?.[cardInstanceId];
+    if (!instance) return false;
+    const cardDef = data?.cards?.[instance.defId];
+    if (!cardDef || instance.finalMutationId === "J_BRICK") return false;
+    return getCardRuntimeCost(cardDef, instance) <= currentRam;
+  });
+  if (!affordableCardExists) incrementRunTelemetry(state.run, "ramStarvedTurns", 1);
+  return telemetry;
 }
 
 function getRunUnlockedCardIds(run) {
@@ -1300,6 +1311,9 @@ function resolveCurrentNodeInternal(state, data, log) {
         runAdaptationProfile: state.run.adaptationProfile || null,
       });
     state.combat.player.hp = state.run.hp;
+    if (node.type === "Elite") incrementRunTelemetry(state.run, "eliteCombatsEntered", 1);
+    if (node.type === "Boss") incrementRunTelemetry(state.run, "bossCombatsEntered", 1);
+    syncRunCombatTelemetry(state);
     const debugTag = dbg ? ` [dbg: act${effectiveAct}/${effectiveKind}]` : '';
     log({ t: "Info", msg: `Encounter: ${encounterName}${debugTag}` });
     return state;
@@ -1544,6 +1558,10 @@ export function dispatchGame(stateIn, data, action) {
     case "Combat_ScryResolve": {
       if (state.mode !== "Combat" || !state.combat || !state.run || !state.deck) return state;
 
+      if (action.type === "Combat_EndTurn") {
+        recordRunTurnPressure(state, data);
+      }
+
       const combatAction =
         action.type === "Combat_StartTurn" ? { type: "StartTurn" } :
         action.type === "Combat_EndTurn" ? { type: "EndTurn" } :
@@ -1597,10 +1615,14 @@ export function dispatchGame(stateIn, data, action) {
 
       // sync run HP
       state.run.hp = Math.max(0, state.combat.player.hp);
+      syncRunCombatTelemetry(state);
       syncRunDeckTelemetry(state, data);
 
       if (state.combat.combatOver) {
         if (!state.combat.victory) {
+          const nodeType = state.map?.nodes[state.map.currentNodeId]?.type;
+          if (nodeType === "Elite") incrementRunTelemetry(state.run, "eliteCombatsLost", 1);
+          if (nodeType === "Boss") incrementRunTelemetry(state.run, "bossCombatsLost", 1);
           state.mode = "GameOver";
           log({ t: "Info", msg: "Run ended: defeated" });
           return state;
@@ -1758,7 +1780,7 @@ export function dispatchGame(stateIn, data, action) {
       }
 
       if (offer.kind === "Card") {
-        spendRunCurrency(state.run, offerPrice, offerCurrency);
+        spendRunCurrency(state.run, offerPrice, offerCurrency, "shop");
         const rng = new RNG((state.run.seed ^ state.run.floor ^ 0xC0FFEE) >>> 0);
         addCardToRunDeck(data, state.deck, rng, offer.defId);
         markShopCardOfferSold(state.shop, offer.defId);
@@ -1769,7 +1791,7 @@ export function dispatchGame(stateIn, data, action) {
 
       if (offer.kind === "Relic") {
         if (state.run.relicIds.includes(offer.relicId)) return state; // already owned
-        spendRunCurrency(state.run, offerPrice, offerCurrency);
+        spendRunCurrency(state.run, offerPrice, offerCurrency, "shop");
         state.run.relicIds.push(offer.relicId);
         // Apply run-level stat mods (same logic as Reward_PickRelic)
         const boughtRelic = data.relics?.[offer.relicId];
@@ -1801,7 +1823,7 @@ export function dispatchGame(stateIn, data, action) {
           return state;
         }
         if (!service_HealPlayer(state)) return state;
-        spendRunCurrency(state.run, offerPrice, offerCurrency);
+        spendRunCurrency(state.run, offerPrice, offerCurrency, "shop");
         log({ t: "Info", msg: `Bought service: Heal (+${healPreview.amount} HP, ${formatCurrencyForLog(offerPrice, offerCurrency)})` });
         return state;
       }
@@ -1995,7 +2017,7 @@ export function dispatchGame(stateIn, data, action) {
         if (serviceId === "Forge") ok = service_ForgeCard(state, data);
         if (serviceId === "Compile") ok = service_CompileCard(state, data);
         if (!ok) { log({ t: "Info", msg: `Service failed: ${serviceId}` }); return state; }
-        spendRunCurrency(state.run, servicePrice, serviceCurrency);
+        spendRunCurrency(state.run, servicePrice, serviceCurrency, "service");
         advanceRepeatableShopServiceOffer(state.shop, serviceId, serviceOfferIndex, servicePrice);
         syncRunDeckTelemetry(state, data);
         log({ t: "Info", msg: `Applied service: ${serviceId} (${formatCurrencyForLog(servicePrice, serviceCurrency)})` });
@@ -2028,7 +2050,7 @@ export function dispatchGame(stateIn, data, action) {
         }
         if (!ok) { log({ t: "Info", msg: `Event card op failed: ${op}` }); return state; }
         if (eventPrice > 0) {
-          spendRunCurrency(state.run, eventPrice, eventCurrency);
+        spendRunCurrency(state.run, eventPrice, eventCurrency, "event");
         }
         syncRunDeckTelemetry(state, data);
         log({ t: "Info", msg: `Event: applied card op ${op}${eventPrice > 0 ? ` (${formatCurrencyForLog(eventPrice, eventCurrency)})` : ""}` });

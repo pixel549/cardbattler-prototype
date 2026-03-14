@@ -268,16 +268,21 @@ function buildModeSummary(runConfig) {
 function makeSurface(accent, emphasis = 'default') {
   const backgrounds = {
     default: `
-      radial-gradient(circle at 12% 18%, ${accent}18 0%, transparent 32%),
+      linear-gradient(135deg, rgba(255,255,255,0.028) 0%, transparent 22%, transparent 76%, rgba(255,255,255,0.02) 100%),
+      radial-gradient(circle at 12% 18%, ${accent}20 0%, transparent 32%),
+      radial-gradient(circle at 88% 16%, rgba(255,255,255,0.04) 0%, transparent 16%),
       linear-gradient(160deg, rgba(10, 14, 24, 0.98) 0%, rgba(7, 9, 16, 0.98) 100%)
     `,
     bright: `
-      radial-gradient(circle at 18% 18%, ${accent}24 0%, transparent 34%),
-      radial-gradient(circle at 82% 20%, rgba(255,255,255,0.05) 0%, transparent 18%),
+      linear-gradient(140deg, rgba(255,255,255,0.035) 0%, transparent 18%, transparent 82%, rgba(255,255,255,0.026) 100%),
+      radial-gradient(circle at 18% 18%, ${accent}28 0%, transparent 34%),
+      radial-gradient(circle at 82% 20%, rgba(255,255,255,0.06) 0%, transparent 18%),
+      radial-gradient(circle at 76% 100%, ${accent}0e 0%, transparent 24%),
       linear-gradient(160deg, rgba(12, 18, 28, 0.98) 0%, rgba(6, 8, 14, 0.99) 100%)
     `,
     soft: `
-      radial-gradient(circle at 18% 18%, ${accent}14 0%, transparent 30%),
+      linear-gradient(135deg, rgba(255,255,255,0.022) 0%, transparent 22%, transparent 78%, rgba(255,255,255,0.016) 100%),
+      radial-gradient(circle at 18% 18%, ${accent}16 0%, transparent 30%),
       linear-gradient(180deg, rgba(8, 10, 18, 0.96) 0%, rgba(6, 7, 13, 0.98) 100%)
     `,
   };
@@ -288,7 +293,8 @@ function makeSurface(accent, emphasis = 'default') {
     borderRadius: 24,
     border: `1px solid ${accent}2a`,
     background: backgrounds[emphasis] || backgrounds.default,
-    boxShadow: `0 22px 48px rgba(0,0,0,0.34), inset 0 1px 0 rgba(255,255,255,0.03)`,
+    boxShadow: `0 26px 54px rgba(0,0,0,0.34), inset 0 1px 0 rgba(255,255,255,0.04)`,
+    backdropFilter: 'blur(10px)',
   };
 }
 
@@ -306,21 +312,23 @@ function MainAction({
     <button
       onClick={disabled ? undefined : onClick}
       disabled={disabled}
+      className="panel-chrome"
       style={{
         width: '100%',
         borderRadius: 20,
         padding: '16px 16px 18px',
         border: `1px solid ${solid ? `${accent}00` : `${accent}36`}`,
         background: solid
-          ? `linear-gradient(135deg, ${accent} 0%, ${accent}d0 100%)`
+          ? `linear-gradient(135deg, ${accent} 0%, ${accent}d4 70%, ${accent}b6 100%)`
           : `
+            linear-gradient(135deg, rgba(255,255,255,0.03) 0%, transparent 22%, transparent 78%, rgba(255,255,255,0.018) 100%),
             radial-gradient(circle at 18% 18%, ${accent}18 0%, transparent 30%),
             linear-gradient(160deg, rgba(10, 14, 24, 0.98) 0%, rgba(7, 9, 16, 0.98) 100%)
           `,
         color: solid ? '#041015' : C.text,
         boxShadow: solid
-          ? `0 20px 38px ${accent}2a`
-          : `0 16px 30px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.04)`,
+          ? `0 22px 42px ${accent}32`
+          : `0 18px 34px rgba(0,0,0,0.26), inset 0 1px 0 rgba(255,255,255,0.05)`,
         cursor: disabled ? 'default' : 'pointer',
         textAlign: 'left',
         display: 'grid',
@@ -366,11 +374,12 @@ function MainAction({
 function DataChip({ accent, children, selected = false }) {
   return (
     <div
+      className="signal-chip"
       style={{
         padding: '8px 11px',
         borderRadius: 999,
         border: `1px solid ${selected ? `${accent}72` : `${accent}2c`}`,
-        background: selected ? `${accent}18` : 'rgba(255,255,255,0.03)',
+        background: selected ? `linear-gradient(180deg, ${accent}1a 0%, rgba(8, 12, 18, 0.68) 100%)` : 'linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(8,12,18,0.5) 100%)',
         color: accent,
         fontFamily: UI_MONO,
         fontSize: 10,
@@ -388,11 +397,11 @@ function DataChip({ accent, children, selected = false }) {
 function SectionIntro({ accent, eyebrow, title, body }) {
   return (
     <div style={{ display: 'grid', gap: 8 }}>
-      <div style={{ fontFamily: UI_MONO, fontSize: 10, letterSpacing: '0.18em', color: accent }}>
+      <div style={{ fontFamily: UI_MONO, fontSize: 10, letterSpacing: '0.2em', color: accent, textTransform: 'uppercase' }}>
         {eyebrow}
       </div>
       {title ? (
-        <div style={{ fontFamily: DISPLAY_FONT, fontSize: 26, fontWeight: 700, color: C.text }}>
+        <div style={{ fontFamily: DISPLAY_FONT, fontSize: 28, fontWeight: 700, color: C.text, letterSpacing: '0.03em', lineHeight: 0.98 }}>
           {title}
         </div>
       ) : null}
@@ -810,7 +819,7 @@ export default function MainMenuHub({
   const renderHeader = () => {
     const meta = activeHeaderMeta;
     return (
-      <div style={{ ...panelStyle(meta.accent, 'bright', '22px'), display: 'grid', gap: 18 }}>
+      <div className="panel-chrome" style={{ ...panelStyle(meta.accent, 'bright', '22px'), display: 'grid', gap: 18 }}>
         <div
           style={{
             position: 'absolute',
@@ -833,10 +842,10 @@ export default function MainMenuHub({
           }}
         >
           <div style={{ display: 'grid', gap: 12 }}>
-            <div style={{ fontFamily: UI_MONO, fontSize: 11, letterSpacing: '0.24em', color: C.textDim }}>
+            <div style={{ fontFamily: UI_MONO, fontSize: 11, letterSpacing: '0.24em', color: meta.accent, textTransform: 'uppercase' }}>
               {meta.eyebrow}
             </div>
-            <div style={{ fontFamily: DISPLAY_FONT, fontSize: 48, fontWeight: 700, lineHeight: 0.96, color: C.text }}>
+            <div style={{ fontFamily: DISPLAY_FONT, fontSize: 52, fontWeight: 700, lineHeight: 0.92, letterSpacing: '0.03em', color: C.text, textShadow: `0 0 24px ${meta.accent}18` }}>
               {meta.title}
             </div>
             <div style={{ fontFamily: UI_MONO, fontSize: 13, lineHeight: 1.75, color: C.textDim, maxWidth: 640 }}>
@@ -844,7 +853,7 @@ export default function MainMenuHub({
             </div>
           </div>
 
-          <div style={{ ...panelStyle(activeCallsignAccent, 'soft', '16px'), display: 'grid', gap: 12 }}>
+          <div className="panel-chrome" style={{ ...panelStyle(activeCallsignAccent, 'soft', '16px'), display: 'grid', gap: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
               <div style={{ fontFamily: UI_MONO, fontSize: 10, letterSpacing: '0.16em', color: activeCallsignAccent }}>
                 ACTIVE CALLSIGN
@@ -1917,6 +1926,7 @@ export default function MainMenuHub({
   return (
     <ScreenShell extraStyle={{ alignItems: 'center', justifyContent: 'center', padding: 20 }}>
       <div
+        className="menu-hub-shell"
         style={{
           width: 'min(1120px, 100%)',
           display: 'grid',
@@ -1950,7 +1960,7 @@ export default function MainMenuHub({
         />
 
         {renderHeader()}
-        <div style={{ ...panelStyle(C.cyan, 'soft', '14px'), display: 'grid', gap: 8, maxWidth: 760 }}>
+        <div className="panel-chrome" style={{ ...panelStyle(C.cyan, 'soft', '14px'), display: 'grid', gap: 8, maxWidth: 760 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <div style={{ width: 8, height: 8, borderRadius: '50%', background: C.cyan, boxShadow: `0 0 12px ${C.cyan}` }} />
             <div style={{ fontFamily: UI_MONO, fontSize: 10, letterSpacing: '0.16em', color: C.cyan }}>FIXER WIRE</div>

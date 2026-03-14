@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Rajdhani:wght@500;600;700&display=swap');
 
 /* ============================================================
    CYBERPUNK CARD BATTLER - BASE STYLES
@@ -48,6 +48,31 @@ body {
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
   overscroll-behavior: none;
+  position: relative;
+}
+
+body::before,
+body::after {
+  content: '';
+  position: fixed;
+  inset: -20%;
+  pointer-events: none;
+  z-index: -3;
+}
+
+body::before {
+  background:
+    radial-gradient(circle at 18% 18%, rgba(0, 240, 255, 0.12) 0%, transparent 26%),
+    radial-gradient(circle at 82% 22%, rgba(255, 107, 0, 0.08) 0%, transparent 24%),
+    radial-gradient(circle at 58% 78%, rgba(180, 74, 255, 0.08) 0%, transparent 26%);
+  animation: atmosphere-drift 28s ease-in-out infinite alternate;
+}
+
+body::after {
+  background:
+    linear-gradient(180deg, rgba(4, 6, 12, 0.45) 0%, rgba(4, 6, 12, 0.12) 18%, rgba(4, 6, 12, 0.42) 100%),
+    repeating-linear-gradient(90deg, rgba(255,255,255,0.012) 0px, rgba(255,255,255,0.012) 1px, transparent 1px, transparent 72px);
+  opacity: 0.7;
 }
 
 /* Prevent rubber-banding on iOS */
@@ -97,6 +122,20 @@ a:focus-visible {
 button:focus:not(:focus-visible),
 a:focus:not(:focus-visible) {
   outline: none;
+}
+
+button {
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    border-color 0.18s ease,
+    background 0.18s ease,
+    color 0.18s ease,
+    opacity 0.18s ease;
+}
+
+button:hover:not(:disabled) {
+  transform: translateY(-1px);
 }
 
 /* ============================================================
@@ -152,6 +191,18 @@ a:focus:not(:focus-visible) {
 @keyframes neon-pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.7; }
+}
+
+@keyframes atmosphere-drift {
+  0% { transform: translate3d(-1.5%, -1%, 0) scale(1); }
+  50% { transform: translate3d(1%, 1.6%, 0) scale(1.04); }
+  100% { transform: translate3d(2%, -1.4%, 0) scale(1.02); }
+}
+
+@keyframes chrome-scan {
+  0% { opacity: 0; transform: translateY(-24px); }
+  24% { opacity: 0.38; }
+  100% { opacity: 0; transform: translateY(280px); }
 }
 
 /* ── Enemy action animations ── */
@@ -397,6 +448,141 @@ a:focus:not(:focus-visible) {
     rgba(0,0,0,0.07) 4px
   );
   z-index: 99998;
+}
+
+.atmosphere-shell {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.atmosphere-shell::before,
+.atmosphere-shell::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.atmosphere-shell::before {
+  z-index: 0;
+  background:
+    radial-gradient(circle at 16% 12%, rgba(0, 240, 255, 0.12) 0%, transparent 20%),
+    radial-gradient(circle at 84% 18%, rgba(255, 230, 0, 0.06) 0%, transparent 18%),
+    radial-gradient(circle at 50% 100%, rgba(180, 74, 255, 0.08) 0%, transparent 28%);
+  opacity: 0.9;
+}
+
+.atmosphere-shell::after {
+  z-index: 0;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,0.024) 0%, transparent 18%, transparent 82%, rgba(255,255,255,0.018) 100%),
+    repeating-linear-gradient(90deg, rgba(255,255,255,0.018) 0px, rgba(255,255,255,0.018) 1px, transparent 1px, transparent 92px),
+    repeating-linear-gradient(0deg, rgba(0,240,255,0.024) 0px, rgba(0,240,255,0.024) 1px, transparent 1px, transparent 72px);
+  opacity: 0.45;
+}
+
+.panel-chrome {
+  position: relative;
+  overflow: hidden;
+  backdrop-filter: blur(10px);
+}
+
+.panel-chrome::before,
+.panel-chrome::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+}
+
+.panel-chrome::before {
+  inset: 0;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,0.035) 0%, transparent 24%, transparent 76%, rgba(255,255,255,0.025) 100%);
+  opacity: 0.72;
+}
+
+.panel-chrome::after {
+  top: -30%;
+  left: 12px;
+  right: 12px;
+  height: 140px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.1) 0%, transparent 90%);
+  mix-blend-mode: screen;
+  opacity: 0.22;
+}
+
+.panel-chrome > * {
+  position: relative;
+  z-index: 1;
+}
+
+.menu-hub-shell::before,
+.menu-hub-shell::after,
+.ops-console-shell::before {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+}
+
+.menu-hub-shell::before {
+  inset: -40px auto auto -20px;
+  width: 200px;
+  height: 2px;
+  background: linear-gradient(90deg, rgba(0,240,255,0), rgba(0,240,255,0.72), rgba(0,240,255,0));
+  filter: blur(0.4px);
+  opacity: 0.9;
+}
+
+.menu-hub-shell::after {
+  inset: auto -24px 120px auto;
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.05);
+  opacity: 0.3;
+}
+
+.ops-console-shell::before {
+  top: 10px;
+  left: 14px;
+  right: 14px;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(255,255,255,0), currentColor, rgba(255,255,255,0));
+  opacity: 0.22;
+}
+
+.hud-scanline {
+  position: relative;
+  overflow: hidden;
+}
+
+.hud-scanline::after {
+  content: '';
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  top: -40px;
+  height: 110px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.08) 0%, transparent 85%);
+  opacity: 0;
+  pointer-events: none;
+  animation: chrome-scan 7s ease-in-out infinite;
+}
+
+.signal-chip {
+  position: relative;
+  overflow: hidden;
+}
+
+.signal-chip::after {
+  content: '';
+  position: absolute;
+  inset: auto -20% 0 auto;
+  width: 45%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, currentColor, transparent);
+  opacity: 0.3;
 }
 
 /* ── Glitch text effect ── */

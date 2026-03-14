@@ -51,6 +51,7 @@ const C = {
 };
 
 const MONO = "'JetBrains Mono', 'Fira Code', 'Consolas', monospace";
+const DISPLAY = "'Rajdhani', 'JetBrains Mono', 'Fira Code', 'Consolas', monospace";
 
 const TYPE_COLORS = {
   Attack: C.neonRed,
@@ -4530,27 +4531,36 @@ function CombatOpsConsole({
 
   return (
     <div
+      className="panel-chrome ops-console-shell"
       style={{
         width: 'min(100%, 880px)',
-        padding: '12px 14px',
-        borderRadius: 18,
+        padding: '14px 16px',
+        borderRadius: 20,
         border: `1px solid ${accent}28`,
         background: `
+          linear-gradient(135deg, rgba(255,255,255,0.03) 0%, transparent 18%, transparent 84%, rgba(255,255,255,0.02) 100%),
           radial-gradient(circle at 0% 0%, ${accent}18 0%, transparent 34%),
+          radial-gradient(circle at 100% 12%, rgba(255,255,255,0.05) 0%, transparent 18%),
           linear-gradient(180deg, rgba(10,14,24,0.96) 0%, rgba(7,10,18,0.98) 100%)
         `,
-        boxShadow: `0 18px 36px rgba(0,0,0,0.26), 0 0 18px ${accent}10`,
-        backdropFilter: 'blur(8px)',
+        boxShadow: `0 20px 40px rgba(0,0,0,0.28), 0 0 24px ${accent}12`,
+        color: accent,
         display: 'grid',
-        gap: 10,
+        gap: 12,
       }}
     >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ width: 8, height: 8, borderRadius: '50%', background: accent, boxShadow: `0 0 14px ${accent}` }} />
+        <div style={{ fontFamily: MONO, fontSize: 8, letterSpacing: '0.22em', textTransform: 'uppercase', color: accent }}>
+          Live Tactical Feed
+        </div>
+      </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
         <div style={{ display: 'grid', gap: 4 }}>
           <div style={{ fontFamily: MONO, fontSize: 9, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: accent }}>
             {eyebrow}
           </div>
-          <div style={{ fontFamily: MONO, fontSize: 15, fontWeight: 700, color: C.textPrimary }}>
+          <div style={{ fontFamily: DISPLAY, fontSize: 22, fontWeight: 700, letterSpacing: '0.04em', lineHeight: 0.92, color: C.textPrimary }}>
             {title}
           </div>
           <div style={{ fontFamily: MONO, fontSize: 10, lineHeight: 1.45, color: '#c5cfdb' }}>
@@ -4563,7 +4573,7 @@ function CombatOpsConsole({
             padding: '8px 10px',
             borderRadius: 14,
             border: `1px solid ${accent}34`,
-            background: `${accent}12`,
+            background: `linear-gradient(180deg, ${accent}16 0%, rgba(8, 12, 18, 0.72) 100%)`,
             textAlign: 'right',
           }}
         >

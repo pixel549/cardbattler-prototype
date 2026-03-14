@@ -1150,17 +1150,20 @@ function CardChoiceTile({
 function ScreenShell({ children, extraStyle = {} }) {
   return (
     <div
-      className="scanlines"
+      className="scanlines atmosphere-shell"
       style={{
         minHeight: '100vh',
         display: 'flex',
         flexDirection: 'column',
         backgroundColor: C.bg,
         backgroundImage: `
+          radial-gradient(circle at 18% 14%, ${C.cyan}10 0%, transparent 24%),
+          radial-gradient(circle at 82% 20%, ${C.orange}0b 0%, transparent 22%),
+          linear-gradient(180deg, rgba(7, 10, 18, 0.96) 0%, rgba(4, 6, 12, 1) 100%),
           linear-gradient(${C.cyan}03 1px, transparent 1px),
           linear-gradient(90deg, ${C.cyan}03 1px, transparent 1px)
         `,
-        backgroundSize: '24px 24px',
+        backgroundSize: '100% 100%, 100% 100%, 100% 100%, 24px 24px, 24px 24px',
         ...extraStyle,
       }}
     >
@@ -1805,53 +1808,115 @@ function PauseMenuOverlay({
 function RunHeader({ run, data, mode = 'Map' }) {
   if (!run) return null;
   const MONO = "'JetBrains Mono', 'Fira Code', 'Consolas', monospace";
+  const DISPLAY = "'Rajdhani', 'JetBrains Mono', 'Fira Code', 'Consolas', monospace";
   const relics = run.relicIds || [];
   const fixerLine = getFixerLine({ mode, run });
+  const resourceChips = [
+    { label: 'HP', value: `${run.hp}/${run.maxHP}`, color: C.green },
+    { label: 'Gold', value: `${run.gold}g`, color: C.yellow },
+    { label: 'Scrap', value: `${run.scrap ?? 0}`, color: C.orange },
+    { label: 'RAM', value: `${run.mp}`, color: C.cyan },
+  ];
   return (
     <div
-      className="safe-area-top"
+      className="safe-area-top panel-chrome hud-scanline"
       style={{
-        backgroundColor: C.bgBar,
-        borderBottom: `1px solid ${C.border}`,
+        background: `
+          linear-gradient(180deg, rgba(9, 14, 22, 0.94) 0%, rgba(7, 10, 18, 0.98) 100%),
+          radial-gradient(circle at 0% 0%, ${C.cyan}14 0%, transparent 28%)
+        `,
+        borderBottom: `1px solid ${C.cyan}24`,
+        boxShadow: '0 18px 32px rgba(0,0,0,0.24)',
       }}
     >
+      <div
+        style={{
+          width: 'min(1400px, 100%)',
+          margin: '0 auto',
+          paddingLeft: '16px',
+          paddingRight: '16px',
+          paddingTop: '10px',
+          paddingBottom: relics.length > 0 ? '8px' : '10px',
+          display: 'grid',
+          gap: 10,
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+            flexWrap: 'wrap',
+          }}
+        >
+          <div style={{ display: 'grid', gap: 4 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <div
+                className="signal-chip"
+                style={{
+                  padding: '5px 8px',
+                  borderRadius: 999,
+                  border: `1px solid ${C.cyan}30`,
+                  background: `${C.cyan}10`,
+                  color: C.cyan,
+                  fontFamily: MONO,
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: '0.12em',
+                  textTransform: 'uppercase',
+                }}
+              >
+                {mode}
+              </div>
+              <div style={{ fontFamily: MONO, color: C.textSecondary, fontSize: 10, letterSpacing: '0.18em', textTransform: 'uppercase' }}>
+                Act {run.act} / Floor {run.floor}
+              </div>
+            </div>
+            <div style={{ fontFamily: DISPLAY, color: C.text, fontSize: 22, fontWeight: 700, letterSpacing: '0.03em', lineHeight: 0.92 }}>
+              {run.starterProfileName || 'Runner'}
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            {resourceChips.map((chip) => (
+              <div
+                key={chip.label}
+                className="signal-chip"
+                style={{
+                  minWidth: 78,
+                  padding: '7px 10px',
+                  borderRadius: 14,
+                  border: `1px solid ${chip.color}28`,
+                  background: `linear-gradient(180deg, ${chip.color}12 0%, rgba(9, 14, 22, 0.72) 100%)`,
+                  display: 'grid',
+                  gap: 2,
+                }}
+              >
+                <div style={{ fontFamily: MONO, fontSize: 8, color: C.textDim, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
+                  {chip.label}
+                </div>
+                <div style={{ fontFamily: MONO, fontSize: 13, fontWeight: 700, color: chip.color }}>
+                  {chip.value}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       <div style={{
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingLeft: '16px',
-        paddingRight: '16px',
-        paddingTop: '8px',
-        paddingBottom: relics.length > 0 ? '4px' : '8px',
+        gap: 10,
+        padding: '10px 12px',
+        borderRadius: 16,
+        border: `1px solid ${C.cyan}20`,
+        background: 'linear-gradient(90deg, rgba(0,240,255,0.08) 0%, rgba(7,10,18,0.2) 24%, rgba(7,10,18,0.55) 100%)',
       }}>
-        <div style={{ fontFamily: MONO, color: C.cyan, fontSize: 11 }}>
-          <span style={{ opacity: 0.5 }}>ACT</span> {run.act}
-          <span style={{ marginLeft: '8px', marginRight: '8px', opacity: 0.3 }}>|</span>
-          <span style={{ opacity: 0.5 }}>FLOOR</span> {run.floor}
-          {run.starterProfileName && (
-            <>
-              <span style={{ marginLeft: '8px', marginRight: '8px', opacity: 0.3 }}>|</span>
-              <span style={{ color: C.text }}>{run.starterProfileName}</span>
-            </>
-          )}
+        <div style={{ width: 8, height: 8, borderRadius: '50%', background: C.cyan, boxShadow: `0 0 12px ${C.cyan}` }} />
+        <div style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '0.14em', color: C.cyan, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+          Fixer Wire
         </div>
-        <div style={{ display: 'flex', gap: '12px', fontFamily: MONO, fontSize: 12 }}>
-          <span style={{ color: C.green }}>{run.hp}/{run.maxHP}</span>
-          <span style={{ color: C.yellow }}>{run.gold}g</span>
-          <span style={{ color: C.orange }}>{run.scrap ?? 0}scrap</span>
-          <span style={{ color: C.cyan }}>{run.mp}mp</span>
-        </div>
-      </div>
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 8,
-        paddingLeft: '16px',
-        paddingRight: '16px',
-        paddingBottom: relics.length > 0 ? '6px' : '8px',
-      }}>
-        <div style={{ width: 7, height: 7, borderRadius: '50%', background: C.cyan, boxShadow: `0 0 10px ${C.cyan}` }} />
-        <div style={{ fontFamily: MONO, fontSize: 10, lineHeight: 1.45, color: C.textSecondary }}>
+        <div style={{ fontFamily: MONO, fontSize: 10, lineHeight: 1.45, color: '#cad3de' }}>
           {fixerLine}
         </div>
       </div>
@@ -1860,10 +1925,8 @@ function RunHeader({ run, data, mode = 'Map' }) {
         <div style={{
           display: 'flex',
           flexWrap: 'wrap',
-          gap: '4px',
-          paddingLeft: '16px',
-          paddingRight: '16px',
-          paddingBottom: '6px',
+          gap: '6px',
+          paddingBottom: '2px',
         }}>
           {relics.map(rid => {
             const relic = data?.relics?.[rid];
@@ -1873,17 +1936,18 @@ function RunHeader({ run, data, mode = 'Map' }) {
             return (
               <div
                 key={rid}
+                className="signal-chip"
                 title={`${relic?.name || rid}: ${relic?.description || ''}`}
                 style={{
                   fontFamily: MONO,
                   fontSize: 9,
                   fontWeight: 700,
                   color: col,
-                  backgroundColor: `${col}15`,
-                  border: `1px solid ${col}40`,
-                  borderRadius: '4px',
-                  padding: '2px 6px',
-                  letterSpacing: '0.05em',
+                  background: `linear-gradient(180deg, ${col}16 0%, rgba(8, 12, 18, 0.7) 100%)`,
+                  border: `1px solid ${col}36`,
+                  borderRadius: '999px',
+                  padding: '5px 9px',
+                  letterSpacing: '0.08em',
                   whiteSpace: 'nowrap',
                 }}
               >
@@ -1893,6 +1957,7 @@ function RunHeader({ run, data, mode = 'Map' }) {
           })}
         </div>
       )}
+      </div>
     </div>
   );
 }
@@ -3577,6 +3642,7 @@ function MinigameScreen({ state, onAction }) {
             }}
           >
             <div
+              className="panel-chrome"
               style={{
                 padding: '18px 18px 16px',
                 borderRadius: 24,
@@ -3629,6 +3695,7 @@ function MinigameScreen({ state, onAction }) {
                   </div>
 
                   <div
+                    className="panel-chrome"
                     style={{
                       padding: '12px 14px',
                       borderRadius: 18,
@@ -3646,6 +3713,7 @@ function MinigameScreen({ state, onAction }) {
                 </div>
 
                 <div
+                  className="panel-chrome"
                   style={{
                     padding: '14px 16px',
                     borderRadius: 20,
@@ -3668,6 +3736,7 @@ function MinigameScreen({ state, onAction }) {
                   <div style={{ display: 'grid', gap: 8 }}>
                     {[['gold', C.yellow], ['silver', '#b9c2ce'], ['fail', C.red]].map(([tier, col]) => (
                       <div
+                        className="panel-chrome signal-chip"
                         key={tier}
                         style={{
                           padding: '8px 10px',
@@ -3714,6 +3783,7 @@ function MinigameScreen({ state, onAction }) {
           {backdrop}
           <div style={{ position: 'relative', zIndex: 1, width: 'min(100%, 980px)', display: 'grid', gap: 14, alignContent: 'start', overflowY: 'auto' }}>
             <div
+              className="panel-chrome"
               style={{
                 padding: '14px 16px',
                 borderRadius: 20,
@@ -3756,6 +3826,7 @@ function MinigameScreen({ state, onAction }) {
             </div>
 
             <div
+              className="panel-chrome"
               style={{
                 padding: '16px clamp(12px, 3vw, 20px)',
                 borderRadius: 24,
@@ -3783,6 +3854,7 @@ function MinigameScreen({ state, onAction }) {
       <div style={{ flex: 1, position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px clamp(16px, 4vw, 28px) 32px' }}>
         {backdrop}
         <div
+          className="panel-chrome"
           style={{
             position: 'relative',
             zIndex: 1,

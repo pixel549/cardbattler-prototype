@@ -76,21 +76,22 @@ for ($i = 0; $i -lt $session.ports.Count; $i++) {
     Start-Sleep -Milliseconds 250
 }
 
-Start-Sleep -Seconds 6
+# Give browser-managed downloads time to flush before we kill the windows.
+Start-Sleep -Seconds 12
 
 Write-Host 'Closing browser windows...'
-foreach ($pid in ($session.browserPids | Where-Object { $_ })) {
+foreach ($browserPid in ($session.browserPids | Where-Object { $_ })) {
     try {
-        $proc = Get-Process -Id $pid -ErrorAction SilentlyContinue
+        $proc = Get-Process -Id $browserPid -ErrorAction SilentlyContinue
         if (-not $proc) { continue }
         $proc.CloseMainWindow() | Out-Null
         $proc.WaitForExit(3000) | Out-Null
         if (-not $proc.HasExited) {
             $proc.Kill()
         }
-        Write-Host "Closed PID $pid"
+        Write-Host "Closed PID $browserPid"
     } catch {
-        Write-Host "Failed to close PID $pid"
+        Write-Host "Failed to close PID $browserPid"
     }
 }
 

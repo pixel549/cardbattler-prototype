@@ -26,12 +26,20 @@ test('summarizeSimulationBatch aggregates wins and pressure metrics', () => {
       outcome: 'victory',
       finalFloor: 15,
       runTelemetry: { peakHeat: 10, ramStarvedTurns: 2 },
+      encounters: [
+        { nodeType: 'Combat', floor: 3, hpBefore: 75, hpAfter: 60, turns: 5, encounterName: 'Intro Duel' },
+        { nodeType: 'Combat', floor: 5, hpBefore: 58, hpAfter: 46, turns: 6, encounterName: 'Midgate' },
+      ],
       errors: [],
     },
     {
       outcome: 'defeat',
       finalFloor: 6,
       runTelemetry: { peakHeat: 16, ramStarvedTurns: 4 },
+      encounters: [
+        { nodeType: 'Combat', floor: 4, hpBefore: 75, hpAfter: 33, turns: 10, encounterName: 'Pressure Pair' },
+        { nodeType: 'Combat', floor: 6, hpBefore: 33, hpAfter: 0, turns: 3, encounterName: 'Pressure Pair' },
+      ],
       errors: ['step cap'],
     },
   ]);
@@ -43,5 +51,11 @@ test('summarizeSimulationBatch aggregates wins and pressure metrics', () => {
   assert.equal(summary.averageFloor, 10.5);
   assert.equal(summary.averageHeatPeak, 13);
   assert.equal(summary.averageRamStarve, 3);
+  assert.equal(summary.averageFirstCombatHpAfter, 46.5);
+  assert.equal(summary.averageHpEnteringFloorFive, 45.5);
+  assert.equal(summary.averageEncounterTurns, 6);
+  assert.deepEqual(summary.floorHistogram, { 6: 1, 15: 1 });
+  assert.equal(summary.topDefeatingEncounters[0]?.label, 'Pressure Pair');
+  assert.equal(summary.topDefeatingEncounters[0]?.count, 1);
   assert.equal(summary.erroredRuns, 1);
 });

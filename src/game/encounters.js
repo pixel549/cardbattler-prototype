@@ -58,6 +58,43 @@ function getEncounterRoleCounts(def, data) {
   return counts;
 }
 
+const ROLE_PRESSURE_WEIGHTS = {
+  Attack: 3.2,
+  'Defense/Tank': 2.1,
+  'Support/Heal': 2.2,
+  'Debuff/DoT': 2.6,
+  'Economy pressure': 2.8,
+  Control: 2.7,
+};
+
+function getEncounterPressureScore(def, data) {
+  const roles = getEncounterRoleCounts(def, data);
+  let score = 0;
+
+  for (const [role, count] of Object.entries(roles)) {
+    score += Number(ROLE_PRESSURE_WEIGHTS[role] || 1.25) * Number(count || 0);
+  }
+
+  const attackCount = roles.Attack || 0;
+  const tankCount = roles['Defense/Tank'] || 0;
+  const supportCount = roles['Support/Heal'] || 0;
+  const dotCount = roles['Debuff/DoT'] || 0;
+  const economyCount = roles['Economy pressure'] || 0;
+  const controlCount = roles.Control || 0;
+
+  if (attackCount > 0 && tankCount > 0) score += 1.8 * Math.min(attackCount, tankCount);
+  if (attackCount > 0 && supportCount > 0) score += 1.9 * Math.min(attackCount, supportCount);
+  if (attackCount > 0 && dotCount > 0) score += 1.6 * Math.min(attackCount, dotCount);
+  if (attackCount > 0 && economyCount > 0) score += 1.8 * Math.min(attackCount, economyCount);
+  if (attackCount > 0 && controlCount > 0) score += 1.6 * Math.min(attackCount, controlCount);
+  if (tankCount > 0 && supportCount > 0) score += 1.4 * Math.min(tankCount, supportCount);
+
+  if (getEncounterEnemyCount(def) >= 3) score += 1.3;
+  if (getEncounterMaxEnemyDifficulty(def, data) >= 9.5) score += 0.6;
+
+  return score;
+}
+
 function getEncounterTier(def) {
   const id = String(def?.id || '');
   const explicitTier = id.match(/_N(\d+)_/i);
@@ -68,7 +105,39 @@ function getEncounterTier(def) {
 }
 
 function getEarlyActEncounterBudget(act, kind, floor) {
-  if (act !== 1 || kind !== "normal" || !Number.isFinite(floor) || floor <= 0) return null;
+  if (act !== 1 || !Number.isFinite(floor) || floor <= 0) return null;
+
+  if (kind === "elite") {
+    if (floor <= 7) {
+      return {
+        maxEncounterTier: 1,
+        maxEnemyCount: 1,
+        maxTotalHP: 112,
+        maxDifficulty: 22.5,
+        maxEnemyDifficulty: 22.5,
+        maxPressureScore: 4.8,
+        maxPressureRoles: 1,
+        forbidSupportTankCombo: true,
+      };
+    }
+
+    if (floor <= 9) {
+      return {
+        maxEncounterTier: 2,
+        maxEnemyCount: 2,
+        maxTotalHP: 156,
+        maxDifficulty: 24.5,
+        maxEnemyDifficulty: 15,
+        maxPressureScore: 7.8,
+        maxPressureRoles: 2,
+        forbidSupportTankCombo: false,
+      };
+    }
+
+    return null;
+  }
+
+  if (kind !== "normal") return null;
 
   if (floor <= 2) {
     return {
@@ -77,6 +146,7 @@ function getEarlyActEncounterBudget(act, kind, floor) {
       maxTotalHP: 90,
       maxDifficulty: 9,
       maxEnemyDifficulty: 9,
+      maxPressureScore: 3.6,
       maxPressureRoles: 1,
       forbidSupportTankCombo: true,
     };
@@ -89,6 +159,7 @@ function getEarlyActEncounterBudget(act, kind, floor) {
       maxTotalHP: 104,
       maxDifficulty: 11,
       maxEnemyDifficulty: 8.6,
+      maxPressureScore: 5.2,
       maxPressureRoles: 1,
       forbidSupportTankCombo: true,
     };
@@ -101,6 +172,7 @@ function getEarlyActEncounterBudget(act, kind, floor) {
       maxTotalHP: 118,
       maxDifficulty: 12.5,
       maxEnemyDifficulty: 9.8,
+      maxPressureScore: 6.1,
       maxPressureRoles: 2,
       forbidSupportTankCombo: true,
     };
@@ -113,6 +185,7 @@ function getEarlyActEncounterBudget(act, kind, floor) {
       maxTotalHP: 136,
       maxDifficulty: 15,
       maxEnemyDifficulty: 10.8,
+      maxPressureScore: 6.8,
       maxPressureRoles: 2,
       forbidSupportTankCombo: true,
     };
@@ -125,6 +198,7 @@ function getEarlyActEncounterBudget(act, kind, floor) {
       maxTotalHP: 150,
       maxDifficulty: 16.8,
       maxEnemyDifficulty: 11.8,
+      maxPressureScore: 7.9,
       maxPressureRoles: 2,
       forbidSupportTankCombo: false,
     };
@@ -137,6 +211,7 @@ function getEarlyActEncounterBudget(act, kind, floor) {
       maxTotalHP: 170,
       maxDifficulty: 19.2,
       maxEnemyDifficulty: 12.8,
+      maxPressureScore: 9.6,
       maxPressureRoles: 3,
       forbidSupportTankCombo: false,
     };
@@ -148,6 +223,7 @@ function getEarlyActEncounterBudget(act, kind, floor) {
     maxTotalHP: 184,
     maxDifficulty: 21.5,
     maxEnemyDifficulty: 14.5,
+    maxPressureScore: 11.2,
     maxPressureRoles: 3,
     forbidSupportTankCombo: false,
   };
@@ -159,18 +235,20 @@ function encounterFitsBudget(def, data, budget) {
   const roles = getEncounterRoleCounts(def, data);
   const pressureRoles = (roles['Debuff/DoT'] || 0) + (roles['Control'] || 0) + (roles['Economy pressure'] || 0);
   const supportTankCombo = (roles['Support/Heal'] || 0) > 0 && (roles['Defense/Tank'] || 0) > 0;
+  const pressureScore = getEncounterPressureScore(def, data);
 
   return getEncounterTier(def) <= budget.maxEncounterTier
     && getEncounterEnemyCount(def) <= budget.maxEnemyCount
     && getEncounterTotalHP(def, data) <= budget.maxTotalHP
     && getEncounterDifficulty(def, data) <= budget.maxDifficulty
     && getEncounterMaxEnemyDifficulty(def, data) <= budget.maxEnemyDifficulty
+    && pressureScore <= Number(budget.maxPressureScore ?? Number.POSITIVE_INFINITY)
     && pressureRoles <= budget.maxPressureRoles
     && (!budget.forbidSupportTankCombo || !supportTankCombo);
 }
 
 function filterEarlyActEncounters(defs, data, act, kind, floor) {
-  if (act !== 1 || kind !== "normal") return defs;
+  if (act !== 1 || (kind !== "normal" && kind !== "elite")) return defs;
   if (!Number.isFinite(floor) || floor <= 0) return defs;
 
   const keepIfAny = (predicate) => {

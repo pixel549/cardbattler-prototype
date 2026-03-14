@@ -573,7 +573,8 @@ function replaceRandomType(types, rng, fromType, toType) {
 }
 
 function getRowTypeWeights(row) {
-  if (row === 6 || row === 12) return { Elite: 1 };
+  if (row === 6) return { Combat: 2, Elite: 2, Event: 1, Shop: 1, Rest: 1 };
+  if (row === 12) return { Elite: 1 };
   if (row === 2) return { Combat: 3, Event: 1, Shop: 1, Rest: 2 };
   if (row === 7) return { Rest: 4, Shop: 2 };
   if (row === 5 || row === 10) return { Combat: 3, Event: 1, Shop: 1, Rest: 1, Compile: 2 };
@@ -608,6 +609,19 @@ function rebalanceRowTypes(row, types, rng, allowedTypes) {
     if ((counts.Shop || 0) === 0) replaceRandomType(types, rng, "Rest", "Shop");
   }
 
+  if (row === 6) {
+    let counts = recount();
+    if ((counts.Elite || 0) === 0) {
+      const eliteSource = ["Combat", "Event", "Shop", "Rest", "Compile"].find((type) => (counts[type] || 0) > 0);
+      if (eliteSource) replaceRandomType(types, rng, eliteSource, "Elite");
+      counts = recount();
+    }
+    const nonEliteCount = (counts.Combat || 0) + (counts.Event || 0) + (counts.Shop || 0) + (counts.Rest || 0) + (counts.Compile || 0);
+    if (nonEliteCount === 0) {
+      replaceRandomType(types, rng, "Elite", "Combat");
+    }
+  }
+
   if (new Set(types).size <= 1 && allowedTypes.length > 1) {
     const dominant = types[0];
     const alternatives = allowedTypes.filter((type) => type !== dominant);
@@ -624,6 +638,14 @@ function buildRowTypeTable(seed, cols) {
     const rowRng = new RNG((seed ^ 0xDEADBEEF ^ ((row + 17) * 0x9E3779B1)) >>> 0);
     const rowTypes = Array.from({ length: cols }, () => pickWeighted(rowRng, weights));
     rebalanceRowTypes(row, rowTypes, rowRng, weights.map(([type]) => type));
+    if (row === 6) {
+      if (!rowTypes.includes("Elite")) {
+        rowTypes[rowRng.int(cols)] = "Elite";
+      }
+      if (rowTypes.every((type) => type === "Elite")) {
+        rowTypes[rowRng.int(cols)] = "Combat";
+      }
+    }
     table[row] = rowTypes;
   }
   return table;
@@ -651,6 +673,25 @@ function ensureRecoveryRowType(rowTypeTable, pathCols, row) {
   const chosen = preferred[0] || coverage[0];
   if (!chosen) return;
   rowTypeTable[row][chosen.col] = "Rest";
+}
+
+function ensureOptionalEliteRowType(rowTypeTable, pathCols, row) {
+  const coverage = getRowCoverage(pathCols, row);
+  if (coverage.length <= 1) return;
+
+  const reachableCols = coverage.map(({ col }) => col);
+  const hasReachableElite = reachableCols.some((col) => rowTypeTable[row]?.[col] === "Elite");
+  if (!hasReachableElite) {
+    const preferredEliteLane = coverage.find(({ col }) => rowTypeTable[row]?.[col] === "Combat")
+      || coverage[0];
+    if (preferredEliteLane) rowTypeTable[row][preferredEliteLane.col] = "Elite";
+  }
+
+  const hasReachableSafeLane = reachableCols.some((col) => rowTypeTable[row]?.[col] !== "Elite");
+  if (!hasReachableSafeLane) {
+    const eliteLane = [...coverage].reverse().find(({ col }) => rowTypeTable[row]?.[col] === "Elite");
+    if (eliteLane) rowTypeTable[row][eliteLane.col] = "Combat";
+  }
 }
 
 function getCardPoolEntry(id, card) {
@@ -756,7 +797,7 @@ function getEarlyStabilityRewardPool(data, unlockedCardIds = []) {
 
 function ensureEarlyStabilityRewardChoice(rng, picks, data, act = 1, nodeType = "Combat", options = {}) {
   const floor = Number(options?.floor || 0);
-  if (act !== 1 || nodeType !== "Combat" || !Number.isFinite(floor) || floor > 4 || floor <= 0) {
+  if (act !== 1 || nodeType !== "Combat" || !Number.isFinite(floor) || floor > 6 || floor <= 0) {
     return picks;
   }
   const current = Array.isArray(picks) ? [...picks] : [];
@@ -767,6 +808,27 @@ function ensureEarlyStabilityRewardChoice(rng, picks, data, act = 1, nodeType = 
   if (available.length === 0) return current;
 
   const replacementIndex = current.length > 0 ? current.length - 1 : 0;
+  const picked = weightedPickEntry(rng, available, (entry) => getCardRarityWeight(entry, act));
+  if (!picked) return current;
+
+  if (current.length === 0) return [picked.id];
+  current[replacementIndex] = picked.id;
+  return current;
+}
+
+function ensureEarlyShopStabilityOffer(rng, picks, data, act = 1, options = {}) {
+  const floor = Number(options?.floor || 0);
+  if (act !== 1 || !Number.isFinite(floor) || floor > 6 || floor <= 0) {
+    return picks;
+  }
+  const current = Array.isArray(picks) ? [...picks] : [];
+  const pool = getEarlyStabilityRewardPool(data, options?.unlockedCardIds || []);
+  if (pool.length === 0 || current.some((id) => pool.some((entry) => entry.id === id))) return current;
+
+  const available = pool.filter((entry) => !current.includes(entry.id));
+  if (available.length === 0) return current;
+
+  const replacementIndex = current.length > 1 ? current.length - 1 : 0;
   const picked = weightedPickEntry(rng, available, (entry) => getCardRarityWeight(entry, act));
   if (!picked) return current;
 
@@ -1052,6 +1114,8 @@ export function generateMap(seed) {
   // Ensure the displayed "floor 3" layer always offers at least one true
   // recovery route on an actually used lane before we instantiate the nodes.
   ensureRecoveryRowType(rowTypeTable, pathCols, 2);
+  // The first elite spike should be a decision point, not a hard gate.
+  ensureOptionalEliteRowType(rowTypeTable, pathCols, 6);
 
   // Build edges â€” deduplicated
   const edgeSet = new Set();
@@ -1101,6 +1165,7 @@ export function getEarlyCombatRecovery(run, nodeType) {
   if (act !== 1 || nodeType !== "Combat") return null;
   if (floor <= 2) return { hp: 6 };
   if (floor <= 4) return { hp: 4 };
+  if (floor <= 6) return { hp: 2 };
   return null;
 }
 
@@ -1127,7 +1192,13 @@ function makeShop(data, seed, relicIds = [], act = 1, options = {}) {
     relicOffer = { kind: "Relic", relicId: rid, price: relicPrice };
   }
 
-  const cardOfferIds = makeDistinctCardSelection(rng, pool, getShopCardRarityTables(act), act);
+  const cardOfferIds = ensureEarlyShopStabilityOffer(
+    rng,
+    makeDistinctCardSelection(rng, pool, getShopCardRarityTables(act), act),
+    data,
+    act,
+    options,
+  );
   const cardOffers = cardOfferIds.map((defId) => {
     const meta = getCardBalanceMeta(defId, data?.cards?.[defId]);
     return { kind: "Card", defId, price: p(meta.shopPrice), sold: false };
@@ -1413,6 +1484,7 @@ function resolveCurrentNodeInternal(state, data, log) {
       state.run.relicIds || [],
       getContentActForRun(state.run),
       {
+        floor: resolvedFloor,
         unlockedCardIds: getRunUnlockedCardIds(state.run),
         unlockedRelicIds: getRunUnlockedRelicIds(state.run),
       },

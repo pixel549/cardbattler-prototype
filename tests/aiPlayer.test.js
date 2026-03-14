@@ -76,6 +76,76 @@ test("AI can evaluate combat states that include Heat and arena modifiers", () =
   assert.ok(["Combat_PlayCard", "Combat_EndTurn"].includes(action.type));
 });
 
+test("AI prioritizes immediate defense when lethal incoming damage is projected", () => {
+  const runDeck = createRunDeckFromDefs(data, 98765, ["C-001", "C-002", "C-006"]);
+  const combat = startCombatFromRunDeck({
+    data,
+    seed: 98765,
+    act: 1,
+    floor: 5,
+    runDeck,
+    enemyIds: ["E_HACKER_DRONE", "E_HOLO_SAPPER_CELL"],
+    encounterKind: "normal",
+    playerMaxHP: 75,
+    playerMaxRAM: 8,
+    playerRamRegen: 2,
+  });
+
+  const strikeId = Object.keys(combat.cardInstances).find((instanceId) => combat.cardInstances[instanceId]?.defId === "C-001");
+  const guardId = Object.keys(combat.cardInstances).find((instanceId) => combat.cardInstances[instanceId]?.defId === "C-002");
+  const chargeId = Object.keys(combat.cardInstances).find((instanceId) => combat.cardInstances[instanceId]?.defId === "C-006");
+
+  combat.player.hp = 8;
+  combat.player.ram = 1;
+  combat.player.piles.hand = [strikeId, guardId, chargeId].filter(Boolean);
+  combat.player.piles.draw = [];
+  combat.player.piles.discard = [];
+
+  const action = getAIAction({
+    mode: "Combat",
+    combat,
+  }, data, "balanced");
+
+  assert.ok(action);
+  assert.equal(action.type, "Combat_PlayCard");
+  assert.equal(action.cardInstanceId, guardId);
+});
+
+test("AI avoids low-threat combat stalls by taking a progress action", () => {
+  const runDeck = createRunDeckFromDefs(data, 24680, ["C-001", "C-002"]);
+  const combat = startCombatFromRunDeck({
+    data,
+    seed: 24680,
+    act: 1,
+    floor: 6,
+    runDeck,
+    enemyIds: ["E_HOLO_SNIPER_SHARD"],
+    encounterKind: "normal",
+    playerMaxHP: 75,
+    playerMaxRAM: 8,
+    playerRamRegen: 2,
+  });
+
+  const strikeId = Object.keys(combat.cardInstances).find((instanceId) => combat.cardInstances[instanceId]?.defId === "C-001");
+  const guardId = Object.keys(combat.cardInstances).find((instanceId) => combat.cardInstances[instanceId]?.defId === "C-002");
+
+  combat.turn = 12;
+  combat.player.hp = 75;
+  combat.player.ram = 1;
+  combat.player.piles.hand = [strikeId, guardId].filter(Boolean);
+  combat.player.piles.draw = [];
+  combat.player.piles.discard = [];
+
+  const action = getAIAction({
+    mode: "Combat",
+    combat,
+  }, data, "defensive");
+
+  assert.ok(action);
+  assert.equal(action.type, "Combat_PlayCard");
+  assert.equal(action.cardInstanceId, strikeId);
+});
+
 test("AI skips cards that are locked for the turn", () => {
   const runDeck = createRunDeckFromDefs(data, 12345, ["C-001", "NC-003", "NC-001"]);
   const combat = startCombatFromRunDeck({

@@ -23,7 +23,7 @@ function isStabilityCard(defId) {
 
 test("early act 1 combat rewards always include one stabilizer option", () => {
   for (let seed = 1; seed <= 64; seed += 1) {
-    const reward = makeCardRewards(data, seed, 1, "Combat", { floor: 3 });
+    const reward = makeCardRewards(data, seed, 1, "Combat", { floor: 6 });
     assert.ok(Array.isArray(reward.cardChoices));
     assert.ok(
       reward.cardChoices.some((defId) => isStabilityCard(defId)),
@@ -35,7 +35,8 @@ test("early act 1 combat rewards always include one stabilizer option", () => {
 test("early combat recovery grants extra HP on act 1 normal floors only", () => {
   assert.deepEqual(getEarlyCombatRecovery({ act: 1, floor: 1 }, "Combat"), { hp: 6 });
   assert.deepEqual(getEarlyCombatRecovery({ act: 1, floor: 3 }, "Combat"), { hp: 4 });
-  assert.equal(getEarlyCombatRecovery({ act: 1, floor: 5 }, "Combat"), null);
+  assert.deepEqual(getEarlyCombatRecovery({ act: 1, floor: 5 }, "Combat"), { hp: 2 });
+  assert.equal(getEarlyCombatRecovery({ act: 1, floor: 7 }, "Combat"), null);
   assert.equal(getEarlyCombatRecovery({ act: 1, floor: 3 }, "Elite"), null);
   assert.equal(getEarlyCombatRecovery({ act: 2, floor: 3 }, "Combat"), null);
 });

@@ -4343,13 +4343,20 @@ export function startCombatFromRunDeck(params) {
   const bal = (data.actBalance || []).find(b => b.act === act) || data.actBalance?.[0] || { enemyHpMult: 1, enemyDmgMult: 1 };
 
   const floorTuning = (() => {
-    if (act !== 1 || encounterKind !== "normal" || !Number.isFinite(floor)) {
+    if (act !== 1 || !Number.isFinite(floor)) {
       return { enemyHpMult: 1, enemyDmgMult: 1 };
     }
-    if (floor <= 2) return { enemyHpMult: 0.9, enemyDmgMult: 0.78 };
-    if (floor === 3) return { enemyHpMult: 0.94, enemyDmgMult: 0.84 };
-    if (floor === 4) return { enemyHpMult: 0.97, enemyDmgMult: 0.9 };
-    if (floor <= 5) return { enemyHpMult: 1, enemyDmgMult: 0.95 };
+    if (encounterKind === "normal") {
+      if (floor <= 2) return { enemyHpMult: 0.9, enemyDmgMult: 0.78 };
+      if (floor === 3) return { enemyHpMult: 0.94, enemyDmgMult: 0.84 };
+      if (floor === 4) return { enemyHpMult: 0.97, enemyDmgMult: 0.9 };
+      if (floor <= 5) return { enemyHpMult: 1, enemyDmgMult: 0.95 };
+      return { enemyHpMult: 1, enemyDmgMult: 1 };
+    }
+    if (encounterKind === "elite") {
+      if (floor <= 7) return { enemyHpMult: 0.88, enemyDmgMult: 0.9 };
+      if (floor <= 9) return { enemyHpMult: 0.94, enemyDmgMult: 0.95 };
+    }
     return { enemyHpMult: 1, enemyDmgMult: 1 };
   })();
 

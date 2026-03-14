@@ -401,6 +401,54 @@ function getEnemyThreatScore(enemy, data, livingEnemyCount = 1) {
   return score;
 }
 
+function getProjectedIncomingThreat(enemies = []) {
+  return (enemies || []).reduce((sum, enemy) => {
+    if (!enemy || enemy.hp <= 0) return sum;
+    const intent = enemy.intent || {};
+    switch (intent.type) {
+      case 'Attack':
+        return sum + Math.max(0, Number(intent.amount || 0));
+      case 'Debuff':
+        return sum + 3 + (Math.max(0, Number(intent.amount || 0)) * 0.6);
+      case 'Defense':
+        return sum + 1.5;
+      case 'Buff':
+        return sum + 1;
+      default:
+        return sum + 0.75;
+    }
+  }, 0);
+}
+
+function getProjectedUnblockedThreat(player, enemies = []) {
+  return Math.max(0, getProjectedIncomingThreat(enemies) - getProtection(player));
+}
+
+function getTotalEnemyDurability(enemies = []) {
+  return (enemies || []).reduce((sum, enemy) => {
+    if (!enemy || enemy.hp <= 0) return sum;
+    return sum + Math.max(0, Number(enemy.hp || 0)) + getProtection(enemy);
+  }, 0);
+}
+
+function getCombatProgressDelta(beforeCombat, afterCombat) {
+  const beforePlayer = beforeCombat?.player || {};
+  const afterPlayer = afterCombat?.player || beforePlayer;
+  const beforeEnemies = (beforeCombat?.enemies || []).filter((enemy) => enemy.hp > 0);
+  const afterEnemies = (afterCombat?.enemies || []).filter((enemy) => enemy.hp > 0);
+
+  let progress = 0;
+  progress += Math.max(0, getTotalEnemyDurability(beforeEnemies) - getTotalEnemyDurability(afterEnemies));
+  progress += Math.max(0, beforeEnemies.length - afterEnemies.length) * 80;
+  progress += Math.max(0, Number(afterPlayer.ram || 0) - Number(beforePlayer.ram || 0)) * 2;
+  progress += Math.max(0, (afterPlayer.piles?.hand || []).length - (beforePlayer.piles?.hand || []).length) * 1.5;
+  progress += Math.max(
+    0,
+    ((afterCombat?._delayedCardEffects || []).length - (beforeCombat?._delayedCardEffects || []).length),
+  ) * 6;
+  return progress;
+}
+
 function findMentionedStatus(text) {
   const haystack = String(text || "").toLowerCase();
   for (const rawName of RAW_STATUS_NAMES) {
@@ -835,7 +883,7 @@ function scoreCardForPickup(def, data, playstyle, run = null, deck = null, cardI
       .length;
     if (sameTypeCount >= 5 && def.type === "Attack") score -= 2;
 
-    const earlyAct = (run?.act ?? 1) === 1 && (run?.floor ?? 0) <= 4;
+    const earlyAct = (run?.act ?? 1) === 1 && (run?.floor ?? 0) <= 6;
     if (earlyAct) {
       const profile = getDeckRoleProfile(deck, data);
       if (profile.pressureCount < 5) {
@@ -843,6 +891,7 @@ function scoreCardForPickup(def, data, playstyle, run = null, deck = null, cardI
         else if (offersSustain && profile.sustainCount >= 3 && !offersUtility) score -= 6;
       }
       if (profile.utilityCount < 2 && offersUtility) score += 4;
+      if (profile.sustainCount < 3 && offersSustain) score += 5 + Math.max(0, 3 - profile.sustainCount) * 1.2;
     }
   }
 
@@ -1371,6 +1420,22 @@ function scoreSimulatedCombatAction(beforeCombat, afterCombat, action, playstyle
   const delayedDelta = ((afterCombat?._delayedCardEffects || []).length - (beforeCombat?._delayedCardEffects || []).length);
   if (delayedDelta > 0) score += delayedDelta * 8;
 
+  const beforeThreat = getProjectedUnblockedThreat(beforePlayer, beforeAliveEnemies);
+  const afterThreat = getProjectedUnblockedThreat(afterPlayer, afterAliveEnemies);
+  const beforeHpPct = (beforePlayer.hp || 0) / Math.max(1, beforePlayer.maxHP || 75);
+  const survivalUrgency =
+    beforeThreat >= (beforePlayer.hp || 0) ? 3.2 :
+    beforeHpPct < 0.35 ? 2.3 :
+    beforeHpPct < 0.55 ? 1.6 :
+    1.0;
+  if (!(afterCombat?.combatOver && afterCombat?.victory)) {
+    if (afterThreat < beforeThreat) {
+      score += (beforeThreat - afterThreat) * 4.6 * survivalUrgency;
+    } else if (afterThreat > beforeThreat) {
+      score -= (afterThreat - beforeThreat) * 5.2 * survivalUrgency;
+    }
+  }
+
   const beforeHeatState = getHeatState(beforeCombat?.heat || 0, beforeCombat?.maxHeat || 20);
   const afterHeatState = getHeatState(
     afterCombat?.heat ?? beforeCombat?.heat ?? 0,
@@ -1389,6 +1454,9 @@ function scoreSimulatedCombatAction(beforeCombat, afterCombat, action, playstyle
     }
     if (afterHeatState.alertLevel > beforeHeatState.alertLevel) {
       score -= (afterHeatState.alertLevel - beforeHeatState.alertLevel) * 12 * heatCare;
+    }
+    if (afterHeatState.alertLevel >= 2 && afterAliveEnemies.length > 0) {
+      score -= (6 + (afterHeatState.heat * 0.7)) * heatCare;
     }
   }
 
@@ -1433,6 +1501,15 @@ function scoreSimulatedCombatAction(beforeCombat, afterCombat, action, playstyle
     score += scoreStatusDelta(beforeEnemy, afterEnemy, 'Enemy', enemyContext);
   }
 
+  const afterHandSize = (afterPlayer.piles?.hand || []).length;
+  if (!(afterCombat?.combatOver && afterCombat?.victory)
+    && (afterPlayer.ram || 0) === 0
+    && afterHandSize > 0
+    && !afterCombat?._nextCardFree
+    && afterAliveEnemies.length >= beforeAliveEnemies.length) {
+    score -= 9 * Math.max(0.8, ps.ramWeight);
+  }
+
   return score;
 }
 
@@ -1458,6 +1535,8 @@ function getCombatAction(combat, data, playstyle) {
 
   let bestScore = -Infinity;
   let bestAction = null;
+  let bestProgressScore = -Infinity;
+  let bestProgressAction = null;
   const defaultEnemyId = aliveEnemies[0]?.id ?? null;
 
   for (const cid of (player.piles.hand || [])) {
@@ -1541,6 +1620,7 @@ function getCombatAction(combat, data, playstyle) {
       if (captureCombatDecisionSignature(nextCombat) === beforeSignature) continue;
 
       let score = playBias + scoreSimulatedCombatAction(combat, nextCombat, candidate.action, playstyle, data);
+      const progressScore = getCombatProgressDelta(combat, nextCombat);
 
       if (!candidate.action.targetSelf && candidate.targetEnemy) {
         score += Math.max(0, getEnemyThreatScore(candidate.targetEnemy, data, aliveEnemies.length)) * 0.45;
@@ -1563,6 +1643,11 @@ function getCombatAction(combat, data, playstyle) {
         bestScore = score;
         bestAction = candidate.action;
       }
+
+      if (progressScore > bestProgressScore) {
+        bestProgressScore = progressScore;
+        bestProgressAction = candidate.action;
+      }
     }
   }
 
@@ -1577,7 +1662,15 @@ function getCombatAction(combat, data, playstyle) {
     }
   }
 
-  return bestAction && bestScore > 0 ? bestAction : { type: 'Combat_EndTurn' };
+  if (bestAction && bestScore > 0) return bestAction;
+
+  const incomingThreat = getProjectedUnblockedThreat(player, aliveEnemies);
+  const turnNumber = Math.max(1, Number(combat?.turn || 1));
+  if (bestProgressAction && bestProgressScore > 0 && (incomingThreat <= 1 || turnNumber >= 10)) {
+    return bestProgressAction;
+  }
+
+  return { type: 'Combat_EndTurn' };
 }
 
 // Returns true if an enemy's definition can heal itself.

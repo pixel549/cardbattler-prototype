@@ -92,6 +92,17 @@ process.stdout.write(`Win rate: ${formatPercent(summary.winRate)}\n`);
 process.stdout.write(`Average floor: ${summary.averageFloor.toFixed(2)}\n`);
 process.stdout.write(`Average peak Heat: ${summary.averageHeatPeak.toFixed(2)}\n`);
 process.stdout.write(`Average RAM-starved turns: ${summary.averageRamStarve.toFixed(2)}\n`);
+process.stdout.write(`Average HP after first combat: ${summary.averageFirstCombatHpAfter.toFixed(2)}\n`);
+process.stdout.write(`Average HP entering floor 5+: ${summary.averageHpEnteringFloorFive.toFixed(2)}\n`);
+process.stdout.write(`Average encounter turns: ${summary.averageEncounterTurns.toFixed(2)}\n`);
+if (summary.topDefeatingEncounters.length > 0) {
+  process.stdout.write('Top defeating encounters:\n');
+  for (const encounter of summary.topDefeatingEncounters) {
+    process.stdout.write(
+      `- ${encounter.label}: ${encounter.count} losses (avg floor ${encounter.averageFloor.toFixed(2)}, avg turns ${encounter.averageTurns.toFixed(2)})\n`,
+    );
+  }
+}
 process.stdout.write(`Errored runs: ${summary.erroredRuns}\n`);
 process.stdout.write(`Saved: ${outputPath}\n`);
 

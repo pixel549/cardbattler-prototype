@@ -39,6 +39,14 @@ function getEncounterEnemies(combat) {
     .filter(Boolean);
 }
 
+function getEncounterLabel(encounter) {
+  if (!encounter) return 'Unknown';
+  if (encounter.encounterName) return encounter.encounterName;
+  if (encounter.encounterId) return encounter.encounterId;
+  if (Array.isArray(encounter.enemies) && encounter.enemies.length > 0) return encounter.enemies.join(' + ');
+  return encounter.nodeType || 'Unknown';
+}
+
 function finalizeEncounter(encounter, state, result, lastCombatTurn = 0) {
   if (!encounter) return null;
   return {
@@ -82,6 +90,8 @@ export function runAiSimulation({
         act: state.run?.act ?? 1,
         floor: state.run?.floor ?? 1,
         nodeType: getCurrentNodeType(state),
+        encounterId: state.combat?.encounterId ?? null,
+        encounterName: state.combat?.encounterName ?? null,
         hpBefore: state.run?.hp ?? 0,
         enemies: getEncounterEnemies(state.combat),
         turns: state.combat?.turn ?? 1,
@@ -175,6 +185,9 @@ export function summarizeSimulationBatch(records) {
   const safeRecords = Array.isArray(records) ? records : [];
   const wins = safeRecords.filter((record) => record?.outcome === 'victory').length;
   const completed = safeRecords.filter((record) => record?.outcome === 'victory' || record?.outcome === 'defeat');
+  const completedEncounters = completed
+    .map((record) => Array.isArray(record?.encounters) ? record.encounters : [])
+    .flat();
   const averageFloor = completed.length > 0
     ? completed.reduce((sum, record) => sum + Number(record?.finalFloor || 0), 0) / completed.length
     : 0;
@@ -184,6 +197,59 @@ export function summarizeSimulationBatch(records) {
   const averageRamStarve = completed.length > 0
     ? completed.reduce((sum, record) => sum + Number(record?.runTelemetry?.ramStarvedTurns || 0), 0) / completed.length
     : 0;
+  const firstCombats = completed
+    .map((record) => (record?.encounters || []).find((encounter) => encounter?.nodeType === 'Combat'))
+    .filter(Boolean);
+  const floorFiveEntries = completed
+    .map((record) => (record?.encounters || []).find((encounter) => Number(encounter?.floor || 0) >= 5))
+    .filter(Boolean);
+  const averageFirstCombatHpAfter = firstCombats.length > 0
+    ? firstCombats.reduce((sum, encounter) => sum + Number(encounter?.hpAfter || 0), 0) / firstCombats.length
+    : 0;
+  const averageHpEnteringFloorFive = floorFiveEntries.length > 0
+    ? floorFiveEntries.reduce((sum, encounter) => sum + Number(encounter?.hpBefore || 0), 0) / floorFiveEntries.length
+    : 0;
+  const averageEncounterTurns = completedEncounters.length > 0
+    ? completedEncounters.reduce((sum, encounter) => sum + Number(encounter?.turns || 0), 0) / completedEncounters.length
+    : 0;
+  const floorHistogram = Object.fromEntries(
+    [...completed.reduce((hist, record) => {
+      const floor = Number(record?.finalFloor || 0);
+      hist.set(floor, (hist.get(floor) || 0) + 1);
+      return hist;
+    }, new Map()).entries()].sort((a, b) => a[0] - b[0]),
+  );
+  const defeatingEncounterMap = new Map();
+  for (const record of completed.filter((entry) => entry?.outcome === 'defeat')) {
+    const lastEncounter = (record?.encounters || []).slice(-1)[0];
+    if (!lastEncounter) continue;
+    const key = lastEncounter.encounterId
+      || lastEncounter.encounterName
+      || JSON.stringify(lastEncounter.enemies || [])
+      || 'Unknown';
+    const current = defeatingEncounterMap.get(key) || {
+      label: getEncounterLabel(lastEncounter),
+      count: 0,
+      totalFloor: 0,
+      totalTurns: 0,
+    };
+    current.count += 1;
+    current.totalFloor += Number(lastEncounter.floor || 0);
+    current.totalTurns += Number(lastEncounter.turns || 0);
+    defeatingEncounterMap.set(key, current);
+  }
+  const topDefeatingEncounters = [...defeatingEncounterMap.values()]
+    .sort((a, b) => {
+      if (b.count !== a.count) return b.count - a.count;
+      return b.totalFloor - a.totalFloor;
+    })
+    .slice(0, 5)
+    .map((entry) => ({
+      label: entry.label,
+      count: entry.count,
+      averageFloor: entry.count > 0 ? entry.totalFloor / entry.count : 0,
+      averageTurns: entry.count > 0 ? entry.totalTurns / entry.count : 0,
+    }));
   const erroredRuns = safeRecords.filter((record) => Array.isArray(record?.errors) && record.errors.length > 0).length;
 
   return {
@@ -195,6 +261,11 @@ export function summarizeSimulationBatch(records) {
     averageFloor,
     averageHeatPeak,
     averageRamStarve,
+    averageFirstCombatHpAfter,
+    averageHpEnteringFloorFive,
+    averageEncounterTurns,
+    floorHistogram,
+    topDefeatingEncounters,
     erroredRuns,
   };
 }

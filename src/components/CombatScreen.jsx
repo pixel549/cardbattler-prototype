@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import { getEnemyImage } from '../data/enemyImages.js';
 import { getCardImage } from '../data/cardImages.js';
 import RuntimeArt from './RuntimeArt.jsx';
@@ -668,6 +668,63 @@ function formatStatusEffectDescription(statusId, stacks, verb = 'Apply') {
 
 function isPlayerEntityId(entityId, playerId = 'player') {
   return entityId === 'player' || entityId === playerId;
+}
+
+function cloneStatusesForDisplay(statuses = EMPTY_ARRAY) {
+  return statuses.map((status) => ({
+    id: status.id,
+    stacks: status.stacks,
+  }));
+}
+
+function buildDisplayEntity(baseEntity, snapshot = null) {
+  if (!baseEntity && !snapshot) return null;
+
+  const intent = snapshot
+    ? {
+        ...(baseEntity?.intent || {}),
+        type: snapshot.intentType ?? baseEntity?.intent?.type ?? null,
+        amount: snapshot.intentAmount ?? baseEntity?.intent?.amount ?? null,
+        cardDefId: snapshot.intentCardDefId ?? baseEntity?.intent?.cardDefId ?? null,
+      }
+    : baseEntity?.intent
+      ? { ...baseEntity.intent }
+      : null;
+
+  return {
+    ...(baseEntity || {}),
+    id: snapshot?.id ?? baseEntity?.id ?? null,
+    enemyDefId: snapshot?.enemyDefId ?? baseEntity?.enemyDefId ?? null,
+    name: snapshot?.name ?? baseEntity?.name ?? baseEntity?.id ?? null,
+    hp: snapshot?.hp ?? baseEntity?.hp ?? 0,
+    maxHP: snapshot?.maxHP ?? baseEntity?.maxHP ?? 0,
+    statuses: cloneStatusesForDisplay(snapshot?.statuses ?? baseEntity?.statuses ?? EMPTY_ARRAY),
+    intent,
+  };
+}
+
+function buildCombatDisplayState(
+  combat,
+  playerSnapshot = null,
+  enemySnapshots = EMPTY_ARRAY,
+  metrics = EMPTY_OBJECT,
+) {
+  if (!combat) return null;
+
+  const snapshotByEnemyId = new Map(
+    (enemySnapshots || EMPTY_ARRAY)
+      .filter((snapshot) => snapshot?.id)
+      .map((snapshot) => [snapshot.id, snapshot]),
+  );
+
+  return {
+    player: buildDisplayEntity(combat.player, playerSnapshot),
+    enemies: (combat.enemies || EMPTY_ARRAY).map((enemy) => buildDisplayEntity(enemy, snapshotByEnemyId.get(enemy.id))),
+    ram: metrics.ram ?? combat.player?.ram ?? 0,
+    maxRam: metrics.maxRam ?? combat.player?.maxRAM ?? 0,
+    heat: metrics.heat ?? combat.heat ?? 0,
+    maxHeat: metrics.maxHeat ?? combat.maxHeat ?? 20,
+  };
 }
 
 function getEnemyImpactBackground(type = 'damage') {
@@ -3884,46 +3941,6 @@ function CenterCardDisplay({
           boxShadow: `0 0 18px ${helperTone}10`,
         }}
       >
-        {targetPreview && (
-          <>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-              <span style={{ fontFamily: MONO, fontSize: 7, fontWeight: 700, letterSpacing: '0.14em', color: C.textDim, textTransform: 'uppercase' }}>
-                Cast Route
-              </span>
-              <span style={{ fontFamily: MONO, fontSize: 8, fontWeight: 700, color: targetPreview.tone || helperTone, textTransform: 'uppercase', letterSpacing: '0.08em', textAlign: 'right' }}>
-                {targetPreview.label}
-              </span>
-            </div>
-            {targetPreview.routes?.length > 0 && (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                {targetPreview.routes.map((route) => (
-                  <div
-                    key={`${route.label}-${route.value}`}
-                    style={{
-                      padding: '4px 6px',
-                      borderRadius: 999,
-                      border: `1px solid ${(route.tone || helperTone)}34`,
-                      background: `${route.tone || helperTone}14`,
-                      color: route.tone || helperTone,
-                      fontFamily: MONO,
-                      fontSize: 8,
-                      fontWeight: 700,
-                      letterSpacing: '0.08em',
-                      textTransform: 'uppercase',
-                    }}
-                  >
-                    {route.label}: {route.value}
-                  </div>
-                ))}
-              </div>
-            )}
-            {targetPreview.heatLabel && (
-              <div style={{ fontFamily: MONO, fontSize: 8, lineHeight: 1.4, color: targetPreview.heatTone || C.textSecondary }}>
-                {targetPreview.heatLabel}
-              </div>
-            )}
-          </>
-        )}
         <span style={{ fontFamily: MONO, fontSize: 7, fontWeight: 700, letterSpacing: '0.14em', color: helperTone, textTransform: 'uppercase' }}>
           Targeting
         </span>
@@ -6345,6 +6362,7 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
   const [selectedTargetMode, setSelectedTargetMode] = useState('enemy');
   const [armedTarget, setArmedTarget] = useState({ kind: null, id: null });
   const [enemyInfoOpen, setEnemyInfoOpen] = useState(false);
+  const [displayCombatState, setDisplayCombatState] = useState(null);
   const [animationQueue, setAnimationQueue] = useState([]);
   const [activeAnimation, setActiveAnimation] = useState(null);
   const [endTurnPending, setEndTurnPending] = useState(false);
@@ -6478,6 +6496,13 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
   const heat = combat?.heat ?? 0;
   const maxHeat = combat?.maxHeat ?? 20;
   const arenaModifier = combat?.arenaModifier ?? null;
+  const displayPlayer = displayCombatState?.player ?? player;
+  const displayEnemies = displayCombatState?.enemies ?? enemies;
+  const displayVisibleEnemies = displayEnemies.filter((enemy) => enemy.hp > 0);
+  const displayRam = displayCombatState?.ram ?? ram;
+  const displayMaxRam = displayCombatState?.maxRam ?? maxRam;
+  const displayHeat = displayCombatState?.heat ?? heat;
+  const displayMaxHeat = displayCombatState?.maxHeat ?? maxHeat;
   const hasQueuedAnimations = Boolean(activeAnimation) || animationQueue.length > 0;
   const interactionLocked = endTurnPending || hasQueuedAnimations;
   const layoutMode = viewport.width <= 820
@@ -6502,12 +6527,16 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
   const activeInstance = activeCardId ? cardInstances[activeCardId] : null;
   const activeDef = activeInstance ? data?.cards?.[activeInstance.defId] : null;
   const targetedEnemy = visibleEnemies[targetedEnemyIndex] ?? visibleEnemies[0] ?? null;
-  const targetedIntentCardDef = targetedEnemy ? data?.cards?.[targetedEnemy.intent?.cardDefId] : null;
-  const targetedIntentBadges = targetedEnemy ? getIntentEffectBadges(targetedEnemy, targetedIntentCardDef) : EMPTY_ARRAY;
+  const targetedEnemyId = targetedEnemy?.id ?? null;
+  const displayTargetedEnemy = (targetedEnemyId
+    ? displayVisibleEnemies.find((enemy) => enemy.id === targetedEnemyId)
+    : null) ?? displayVisibleEnemies[targetedEnemyIndex] ?? displayVisibleEnemies[0] ?? null;
+  const targetedIntentCardDef = displayTargetedEnemy ? data?.cards?.[displayTargetedEnemy.intent?.cardDefId] : null;
+  const targetedIntentBadges = displayTargetedEnemy ? getIntentEffectBadges(displayTargetedEnemy, targetedIntentCardDef) : EMPTY_ARRAY;
   const mutatedHandCount = hand.filter((cardId) => (cardInstances[cardId]?.appliedMutations?.length || 0) > 0).length;
-  const targetedBossReadout = targetedEnemy
-    ? getBossDirectiveReadout(targetedEnemy, {
-      aliveAllies: visibleEnemies.filter((enemy) => enemy.id !== targetedEnemy.id).length,
+  const targetedBossReadout = displayTargetedEnemy
+    ? getBossDirectiveReadout(displayTargetedEnemy, {
+      aliveAllies: displayVisibleEnemies.filter((enemy) => enemy.id !== displayTargetedEnemy.id).length,
       mutatedHandCount,
       cardsPlayedThisTurn: combat?._cardsPlayedThisTurn || 0,
     })
@@ -6611,7 +6640,7 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
   latestCombatSnapshotRef.current = buildCombatSnapshot();
   const playtestReadySignature = `${state?.mode || 'unknown'}|${state?.run?.floor ?? state?.run?.floorIndex ?? 'na'}|${visibleEnemies.map((enemy) => enemy.id).join(',')}`;
 
-  useDialogAccessibility(enemyInfoOpen && !!targetedEnemy, {
+  useDialogAccessibility(enemyInfoOpen && !!displayTargetedEnemy, {
     containerRef: enemyDialogRef,
     initialFocusRef: enemyDialogCloseRef,
     onClose: () => setEnemyInfoOpen(false),
@@ -6646,19 +6675,19 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
   }, [activeCardId, activeDef?.name, playtestEnabled, recordPlaytest]);
 
   useEffect(() => {
-    if (!playtestEnabled || !enemyInfoOpen || !targetedEnemy) {
+    if (!playtestEnabled || !enemyInfoOpen || !displayTargetedEnemy) {
       playtestInfoRef.current = null;
       return;
     }
-    const signature = `${targetedEnemy.id}:${activeCardId ?? 'none'}`;
+    const signature = `${displayTargetedEnemy.id}:${activeCardId ?? 'none'}`;
     if (playtestInfoRef.current === signature) return;
     playtestInfoRef.current = signature;
     recordPlaytest('enemy_info_opened', {
-      enemyId: targetedEnemy.id,
-      enemyName: targetedEnemy.name ?? 'Unknown Target',
+      enemyId: displayTargetedEnemy.id,
+      enemyName: displayTargetedEnemy.name ?? 'Unknown Target',
       snapshot: latestCombatSnapshotRef.current,
     });
-  }, [activeCardId, enemyInfoOpen, playtestEnabled, recordPlaytest, targetedEnemy]);
+  }, [activeCardId, displayTargetedEnemy, enemyInfoOpen, playtestEnabled, recordPlaytest]);
 
   useEffect(() => {
     if (!playtestEnabled || !viewingPile) {
@@ -7010,8 +7039,9 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
   }, [viewingPile, scrollPortraitAnchorIntoView]);
 
   // Parse global combat log for floating numbers, sound cues, and card-play animations.
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!combat) {
+      setDisplayCombatState(null);
       logInitRef.current = false;
       lastLogLenRef.current = globalLog.length;
       waitingForEndTurnLogsRef.current = false;
@@ -7043,7 +7073,19 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
     const immediateReactions = [];
     let sawEnemyCard = false;
     let pendingEnemyAnimation = null;
+    let lastEnemyAnimation = null;
     const resolvedPlayerId = player?.id ?? state?.run?.playerId ?? 'player';
+    const buildLoggedDisplayState = (entryData) => buildCombatDisplayState(
+      combat,
+      entryData?.playerBefore ?? null,
+      entryData?.enemiesBefore ?? EMPTY_ARRAY,
+      {
+        ram: entryData?.playerRamBefore,
+        maxRam: entryData?.playerMaxRamBefore,
+        heat: entryData?.heatBefore,
+        maxHeat: entryData?.maxHeatBefore,
+      },
+    );
 
     const queueReaction = (reaction, { attachToPending = false, sourceId = null } = {}) => {
       const resolvedSourceId = reaction?.sourceId ?? sourceId ?? (attachToPending ? pendingEnemyAnimation?.enemyId ?? null : null);
@@ -7088,6 +7130,10 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
       } else if (entry.t === 'EnemyCardPlayed') {
         sawEnemyCard = true;
         sfx.enemyAction(entry.data?.intentType || 'Unknown');
+        const displayBefore = buildLoggedDisplayState(entry.data);
+        if (lastEnemyAnimation && !lastEnemyAnimation.displayAfter) {
+          lastEnemyAnimation.displayAfter = displayBefore;
+        }
         pendingEnemyAnimation = {
           id: ++playAnimationIdRef.current,
           kind: 'cardPlay',
@@ -7098,8 +7144,11 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
           intentType: entry.data?.intentType || 'Unknown',
           effectSummary: entry.data?.effectSummary || null,
           reactions: [],
+          displayBefore,
+          displayAfter: null,
           duration: getPlayAnimationDuration('enemy', entry.data?.intentType),
         };
+        lastEnemyAnimation = pendingEnemyAnimation;
         newAnimations.push(pendingEnemyAnimation);
       } else if (entry.t === 'MutationApplied') {
         sfx.mutation();
@@ -7255,9 +7304,17 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
       }
     }
 
+    if (lastEnemyAnimation && !lastEnemyAnimation.displayAfter) {
+      lastEnemyAnimation.displayAfter = buildCombatDisplayState(combat);
+    }
+
     immediateReactions.forEach((reaction) => emitCombatReaction(reaction));
 
     if (newAnimations.length) {
+      const firstEnemyAnimation = newAnimations.find((animation) => animation.actor === 'enemy' && animation.displayBefore);
+      if (firstEnemyAnimation?.displayBefore) {
+        setDisplayCombatState(firstEnemyAnimation.displayBefore);
+      }
       setAnimationQueue((prev) => [...prev, ...newAnimations]);
     }
 
@@ -7265,7 +7322,7 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
       waitingForEndTurnLogsRef.current = false;
       if (!sawEnemyCard) setEndTurnPending(false);
     }
-  }, [cardInstances, combat, data?.mutations, emitCombatReaction, enemies, globalLog, player?.id, state?.run?.playerId]);
+  }, [cardInstances, combat, data?.mutations, emitCombatReaction, globalLog, player?.id, state?.run?.playerId]);
 
   useEffect(() => {
     if (activeAnimation || animationQueue.length === 0) return;
@@ -7273,6 +7330,27 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
     setAnimationQueue(rest);
     setActiveAnimation(nextAnimation);
   }, [activeAnimation, animationQueue]);
+
+  useLayoutEffect(() => {
+    if (activeAnimation?.actor === 'enemy' && activeAnimation.displayBefore) {
+      setDisplayCombatState(activeAnimation.displayBefore);
+      return;
+    }
+    if (!activeAnimation && animationQueue.length === 0) {
+      setDisplayCombatState(null);
+    }
+  }, [activeAnimation, animationQueue.length]);
+
+  useEffect(() => {
+    if (activeAnimation?.actor !== 'enemy' || !activeAnimation.displayAfter) return undefined;
+
+    const totalDuration = activeAnimation.duration || PLAYER_PLAY_ANIMATION_MS;
+    const revealDelay = Math.max(160, Math.min(totalDuration - 140, Math.round(totalDuration * 0.52)));
+    const timeoutId = setTimeout(() => {
+      setDisplayCombatState(activeAnimation.displayAfter);
+    }, revealDelay);
+    return () => clearTimeout(timeoutId);
+  }, [activeAnimation]);
 
   useEffect(() => {
     if (!activeAnimation?.reactions?.length) return undefined;
@@ -7467,16 +7545,18 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
           padding: '0 4px',
         }}
       >
-        {visibleEnemies.map((enemy, i) => {
+        {displayVisibleEnemies.map((enemy) => {
+          const actualEnemy = visibleEnemies.find((candidate) => candidate.id === enemy.id) ?? enemy;
+          const actualEnemyIndex = visibleEnemies.findIndex((candidate) => candidate.id === enemy.id);
           const enemyPlayability = activeCardId && activeTargetingProfile.canTargetEnemy
-            ? getPlayabilityForTarget(activeCardId, 'enemy', enemy.id)
+            ? getPlayabilityForTarget(activeCardId, 'enemy', actualEnemy.id)
             : null;
           return (
             <EnemyCard
               key={enemy.id}
               enemy={enemy}
-              isTargeted={i === targetedEnemyIndex}
-              onClick={() => handleEnemyTap(enemy, i)}
+              isTargeted={selectedEnemyId === enemy.id}
+              onClick={() => handleEnemyTap(actualEnemy, actualEnemyIndex >= 0 ? actualEnemyIndex : 0)}
               actingType={activeAnimation?.actor === 'enemy' && activeAnimation.enemyId === enemy.id ? activeAnimation.intentType : null}
               data={data}
               compact={isPhoneLayout}
@@ -7494,7 +7574,7 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
   const enemyFocusPanel = (
     <div style={getTutorialFocusFrameStyle(combatTutorialFocus.enemy, C.neonCyan, 8, 20) || undefined}>
       <EnemyFocusPanel
-        enemy={targetedEnemy}
+        enemy={displayTargetedEnemy}
         intentBadges={targetedIntentBadges}
         bossReadout={targetedBossReadout}
         compact={isPhoneLayout}
@@ -7534,12 +7614,12 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
     <CombatOpsConsole
       activeAnimation={activeAnimation}
       activeCardDef={activeDef}
-      targetedEnemy={targetedEnemy}
+      targetedEnemy={displayTargetedEnemy}
       targetedIntentBadges={targetedIntentBadges}
       targetPreview={activeCardTargetPreview}
       heatForecast={activeCardHeatForecast}
-      heat={heat}
-      maxHeat={maxHeat}
+      heat={displayHeat}
+      maxHeat={displayMaxHeat}
       arenaModifier={arenaModifier}
       data={data}
     />
@@ -7579,11 +7659,11 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
           }}
         >
           <MobilePlayerHud
-            player={player}
-            ram={ram}
-            maxRam={maxRam}
-            heat={heat}
-            maxHeat={maxHeat}
+            player={displayPlayer}
+            ram={displayRam}
+            maxRam={displayMaxRam}
+            heat={displayHeat}
+            maxHeat={displayMaxHeat}
             arenaModifier={arenaModifier}
             drawCount={drawPile.length}
             discardCount={discardPile.length}
@@ -7608,11 +7688,11 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
         </div>
       ) : (
         <MobilePlayerHud
-          player={player}
-          ram={ram}
-          maxRam={maxRam}
-          heat={heat}
-          maxHeat={maxHeat}
+          player={displayPlayer}
+          ram={displayRam}
+          maxRam={displayMaxRam}
+          heat={displayHeat}
+          maxHeat={displayMaxHeat}
           arenaModifier={arenaModifier}
           drawCount={drawPile.length}
           discardCount={discardPile.length}
@@ -7686,11 +7766,11 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
       }}
     >
       <CompactPlayerHud
-        player={player}
-        ram={ram}
-        maxRam={maxRam}
-        heat={heat}
-        maxHeat={maxHeat}
+        player={displayPlayer}
+        ram={displayRam}
+        maxRam={displayMaxRam}
+        heat={displayHeat}
+        maxHeat={displayMaxHeat}
         arenaModifier={arenaModifier}
         powerPile={powerPile}
         cardInstances={cardInstances}
@@ -8139,9 +8219,9 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
         </>
       )}
 
-      {enemyInfoOpen && targetedEnemy && (
+      {enemyInfoOpen && displayTargetedEnemy && (
         <EnemyDetailDialog
-          enemy={targetedEnemy}
+          enemy={displayTargetedEnemy}
           data={data}
           intentBadges={targetedIntentBadges}
           intentCardDef={targetedIntentCardDef}

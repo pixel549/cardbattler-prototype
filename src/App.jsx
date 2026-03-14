@@ -4735,6 +4735,212 @@ const DEATH_QUIPS = [
   'Runtime exception: fatal.',
 ];
 
+function escapeTranscriptRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function prettifyTranscriptId(rawId) {
+  if (rawId == null) return null;
+  const cleaned = String(rawId).trim();
+  if (!cleaned) return null;
+  if (/^player$/i.test(cleaned)) return 'Player';
+  return cleaned
+    .replace(/^enemy[_:-]?/i, 'host ')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/[_:-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function replaceTranscriptEntityIds(text, knownNames) {
+  let output = String(text || '');
+  const replacements = [...knownNames.entries()]
+    .filter(([id, name]) => id && name)
+    .sort((a, b) => String(b[0]).length - String(a[0]).length);
+  for (const [id, name] of replacements) {
+    output = output.replace(new RegExp(`\\b${escapeTranscriptRegExp(id)}\\b`, 'g'), name);
+  }
+  return output.replace(/\s+/g, ' ').trim();
+}
+
+function resolveTranscriptEntityLabel(entityId, knownNames, playerId = 'player') {
+  if (!entityId) return 'System';
+  if (entityId === 'player' || entityId === playerId) return 'Player';
+  return knownNames.get(entityId) || prettifyTranscriptId(entityId) || String(entityId);
+}
+
+function buildDeathTranscript(state, causeOfDeath = null) {
+  const log = Array.isArray(state?.log) ? state.log : [];
+  const run = state?.run || {};
+  if (!log.length) return null;
+
+  const playerId = state?.combat?.player?.id ?? 'player';
+  const finalOutcomeIndex = [...log].reverse().findIndex((entry) => {
+    const msg = entry?.msg || '';
+    return entry?.t === 'Info' && (
+      /^Run ended:/i.test(msg)
+      || /Player defeated/i.test(msg)
+      || /Combat victory/i.test(msg)
+    );
+  });
+  const endIndex = finalOutcomeIndex >= 0 ? (log.length - 1 - finalOutcomeIndex) : (log.length - 1);
+
+  let startIndex = -1;
+  for (let i = endIndex; i >= 0; i -= 1) {
+    const entry = log[i];
+    if (entry?.t === 'Info' && /^Combat started\b/i.test(entry.msg || '')) {
+      startIndex = i;
+      break;
+    }
+  }
+  if (startIndex < 0) {
+    for (let i = endIndex; i >= 0; i -= 1) {
+      const entry = log[i];
+      if (entry?.t === 'CardPlayed' || entry?.t === 'EnemyCardPlayed') {
+        startIndex = Math.max(0, i - 6);
+        break;
+      }
+    }
+  }
+  if (startIndex < 0) {
+    startIndex = Math.max(0, endIndex - 42);
+  }
+
+  const combatEntries = log.slice(startIndex, endIndex + 1);
+  const knownNames = new Map([
+    ['player', 'Player'],
+    [playerId, 'Player'],
+  ]);
+  for (const enemy of state?.combat?.enemies || []) {
+    if (enemy?.id) knownNames.set(enemy.id, enemy.name || prettifyTranscriptId(enemy.id));
+  }
+
+  const registerSnapshot = (snapshot) => {
+    if (!snapshot || !snapshot.id) return;
+    knownNames.set(snapshot.id, snapshot.name || prettifyTranscriptId(snapshot.id));
+  };
+  const registerEntryNames = (entryData) => {
+    if (!entryData) return;
+    registerSnapshot(entryData.playerBefore);
+    registerSnapshot(entryData.enemyBefore);
+    registerSnapshot(entryData.targetBefore);
+    for (const snapshot of entryData.enemiesBefore || []) registerSnapshot(snapshot);
+    if (entryData.enemyId && entryData.enemyName) knownNames.set(entryData.enemyId, entryData.enemyName);
+  };
+
+  const lines = [];
+  for (const entry of combatEntries) {
+    const data = entry?.data || null;
+    registerEntryNames(data);
+
+    if (entry?.t === 'CardPlayed' && data) {
+      const targetLabel = data.targetSelf
+        ? 'self'
+        : (data.targetBefore?.name || resolveTranscriptEntityLabel(data.targetEnemyId, knownNames, playerId));
+      const ramBefore = Number.isFinite(Number(data.ramBefore)) ? data.ramBefore : '?';
+      const ramAfter = Number.isFinite(Number(data.ramAfter)) ? data.ramAfter : '?';
+      lines.push({
+        kind: 'player',
+        prefix: 'user',
+        text: `exec ${data.name || data.defId || 'card'} -> ${targetLabel} | ram ${ramBefore}->${ramAfter}`,
+      });
+      continue;
+    }
+
+    if (entry?.t === 'EnemyCardPlayed' && data) {
+      lines.push({
+        kind: 'host',
+        prefix: 'host',
+        text: `${data.enemyName || resolveTranscriptEntityLabel(data.enemyId, knownNames, playerId)} :: ${data.name || data.defId || 'routine'} [${data.intentType || 'Unknown'}]`,
+      });
+      continue;
+    }
+
+    if (entry?.t === 'DamageDealt' && data) {
+      const sourceLabel = resolveTranscriptEntityLabel(data.sourceId, knownNames, playerId);
+      const targetLabel = resolveTranscriptEntityLabel(data.targetId, knownNames, playerId);
+      const absorbed = Number(data.protectionAbsorbed ?? data.firewallAbsorbed ?? data.blocked ?? 0);
+      const damage = Number(data.finalDamage ?? 0);
+      const segments = [];
+      if (damage > 0) segments.push(`hp -${damage}`);
+      if (absorbed > 0) segments.push(`fw ${absorbed} absorbed`);
+      if (!segments.length) segments.push('no penetration');
+      lines.push({
+        kind: damage > 0 ? 'damage' : 'shield',
+        prefix: damage > 0 ? 'dmg' : 'shield',
+        text: `${sourceLabel} -> ${targetLabel} | ${segments.join(' | ')}`,
+      });
+      continue;
+    }
+
+    if (entry?.t === 'MutationApplied') {
+      lines.push({
+        kind: 'mutation',
+        prefix: 'mut',
+        text: `${data?.cardDefId || data?.cardInstanceId || 'card'} <= ${data?.mutationName || data?.mutationId || 'mutation'}`,
+      });
+      continue;
+    }
+
+    if (entry?.t === 'MutPatch') {
+      lines.push({
+        kind: 'mutation',
+        prefix: 'patch',
+        text: replaceTranscriptEntityIds(entry.msg || 'mutation patch queued', knownNames),
+      });
+      continue;
+    }
+
+    if (entry?.t === 'Warn') {
+      lines.push({
+        kind: 'warn',
+        prefix: 'warn',
+        text: replaceTranscriptEntityIds(entry.msg || 'warning', knownNames),
+      });
+      continue;
+    }
+
+    if (entry?.t === 'Info' && entry.msg) {
+      if (/^[A-Za-z0-9_:-]+\s+plays\s+/i.test(entry.msg)) continue;
+      lines.push({
+        kind: /defeated|fatal|killed/i.test(entry.msg) ? 'damage' : 'system',
+        prefix: /^Combat started\b/i.test(entry.msg)
+          ? 'boot'
+          : /^Turn \d+ start$/i.test(entry.msg)
+            ? 'tick'
+            : /^Run ended:/i.test(entry.msg)
+              ? 'exit'
+              : 'sys',
+        text: replaceTranscriptEntityIds(entry.msg, knownNames),
+      });
+    }
+  }
+
+  let transcriptLines = lines.filter((line) => line && line.text);
+  if (transcriptLines.length > 34) {
+    const omitted = transcriptLines.length - 31;
+    transcriptLines = [
+      ...transcriptLines.slice(0, 3),
+      { kind: 'warn', prefix: 'trim', text: `${omitted} earlier events omitted from the terminal tail` },
+      ...transcriptLines.slice(-28),
+    ];
+  }
+
+  if (!transcriptLines.length) {
+    transcriptLines = [{
+      kind: 'system',
+      prefix: 'sys',
+      text: causeOfDeath?.summary || 'No combat transcript could be reconstructed from the terminal log.',
+    }];
+  }
+
+  return {
+    title: causeOfDeath?.category === 'combat' ? 'FINAL COMBAT TRANSCRIPT' : 'INCIDENT TRACE',
+    subtitle: `seed ${run.seed ?? 'unknown'} // act ${run.act ?? '?'} // floor ${run.floor ?? '?'} // ${run.starterProfileName || 'runner unknown'}`,
+    lines: transcriptLines,
+  };
+}
+
 function GameOverScreen({ state, onNewRun, recentUnlocks = [] }) {
   const MONO   = "'JetBrains Mono', 'Fira Code', 'Consolas', monospace";
   const run    = state.run   || {};
@@ -4743,9 +4949,19 @@ function GameOverScreen({ state, onNewRun, recentUnlocks = [] }) {
   const hpPct  = run.maxHP ? Math.round(((run.hp ?? 0) / run.maxHP) * 100) : 0;
   const isVictory = !!run.victory;
   const causeOfDeath = deriveCauseOfDeath(state);
+  const deathTranscript = !isVictory ? buildDeathTranscript(state, causeOfDeath) : null;
   const highestActReached = Math.max(run.act ?? 1, run.telemetry?.highestActReached ?? 1);
   const endlessActive = Array.isArray(run.challengeIds) && run.challengeIds.includes('endless_protocol');
   const dailyScore = run.runMode === 'daily' ? scoreRunForDaily(run) : null;
+  const transcriptToneByKind = {
+    player: C.cyan,
+    host: '#7bffb8',
+    damage: C.red,
+    shield: C.cyan,
+    system: '#9fb6cb',
+    mutation: C.purple,
+    warn: C.yellow,
+  };
 
   const stats = [
     { label: 'ACT',       value: run.act   ?? 1 },
@@ -4758,8 +4974,100 @@ function GameOverScreen({ state, onNewRun, recentUnlocks = [] }) {
   ];
 
   return (
-    <ScreenShell extraStyle={{ alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
-      <div className="animate-slide-up" style={{ textAlign: 'center', width: '100%', maxWidth: 360 }}>
+    <ScreenShell extraStyle={{ alignItems: 'center', justifyContent: 'center', padding: '24px', position: 'relative', overflow: 'hidden' }}>
+      {!isVictory && deathTranscript?.lines?.length > 0 && (
+        <>
+          <div
+            aria-hidden="true"
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background: `
+                radial-gradient(circle at 18% 12%, rgba(0,240,255,0.12) 0%, transparent 30%),
+                radial-gradient(circle at 82% 18%, rgba(0,255,107,0.08) 0%, transparent 28%),
+                linear-gradient(180deg, rgba(4,8,14,0.18) 0%, rgba(4,8,14,0.68) 42%, rgba(4,8,14,0.9) 100%)
+              `,
+              pointerEvents: 'none',
+            }}
+          />
+          <div
+            aria-hidden="true"
+            style={{
+              position: 'absolute',
+              inset: 0,
+              padding: 'clamp(18px, 3vw, 32px)',
+              pointerEvents: 'none',
+              overflow: 'hidden',
+            }}
+          >
+            <div
+              style={{
+                width: 'min(1100px, 100%)',
+                margin: '0 auto',
+                display: 'grid',
+                gap: 6,
+                alignContent: 'start',
+                opacity: 0.92,
+                transform: 'perspective(1100px) rotateX(8deg)',
+                transformOrigin: 'top center',
+              }}
+            >
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'baseline', marginBottom: 4 }}>
+                <span style={{ fontFamily: MONO, fontSize: 11, fontWeight: 700, letterSpacing: '0.2em', color: C.cyan, textShadow: `0 0 20px ${C.cyan}22` }}>
+                  {deathTranscript.title}
+                </span>
+                <span style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.08em', color: 'rgba(191, 213, 229, 0.55)' }}>
+                  {deathTranscript.subtitle}
+                </span>
+              </div>
+              <div style={{ height: 1, background: 'linear-gradient(90deg, rgba(0,240,255,0.3) 0%, rgba(0,255,107,0.18) 52%, transparent 100%)', marginBottom: 4 }} />
+              {deathTranscript.lines.map((line, index) => {
+                const tone = transcriptToneByKind[line.kind] || C.cyan;
+                return (
+                  <div
+                    key={`${line.prefix}-${index}-${line.text}`}
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: '38px 58px minmax(0, 1fr)',
+                      gap: 10,
+                      alignItems: 'baseline',
+                      fontFamily: MONO,
+                      fontSize: 'clamp(10px, 0.95vw, 12px)',
+                      lineHeight: 1.38,
+                      color: 'rgba(225, 235, 242, 0.68)',
+                    }}
+                  >
+                    <span style={{ color: 'rgba(155, 176, 193, 0.42)' }}>
+                      {String(index + 1).padStart(2, '0')}
+                    </span>
+                    <span style={{ color: tone, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', textShadow: `0 0 16px ${tone}20` }}>
+                      {line.prefix}
+                    </span>
+                    <span style={{ color: 'rgba(230, 238, 244, 0.72)', textShadow: '0 0 14px rgba(0,0,0,0.24)' }}>
+                      {line.text}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </>
+      )}
+      <div
+        className="animate-slide-up"
+        style={{
+          position: 'relative',
+          zIndex: 1,
+          textAlign: 'center',
+          width: 'min(420px, 100%)',
+          padding: '24px 22px 28px',
+          borderRadius: 24,
+          border: `1px solid ${(isVictory ? C.green : C.red)}2e`,
+          background: 'linear-gradient(180deg, rgba(8,12,20,0.84) 0%, rgba(5,8,14,0.94) 100%)',
+          boxShadow: '0 26px 60px rgba(0,0,0,0.38), inset 0 1px 0 rgba(255,255,255,0.04)',
+          backdropFilter: 'blur(12px)',
+        }}
+      >
 
         {/* Big title */}
         {isVictory ? (

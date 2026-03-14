@@ -30,3 +30,21 @@ test('getFixerLine reacts to dangerous combat states', () => {
 
   assert.match(line, /Trace|hot|turn/i);
 });
+
+test('getFixerLine frames daily runs and boss intel with specific archive guidance', () => {
+  const dailyLine = getFixerLine({
+    mode: 'daily',
+    metaProgress: {
+      dailyRunRecords: [],
+    },
+  });
+  const bossLine = getFixerLine({
+    mode: 'bosses',
+    metaProgress: {
+      totalRuns: 4,
+    },
+  });
+
+  assert.match(dailyLine, /daily|seed|benchmark/i);
+  assert.match(bossLine, /boss|archive|phase/i);
+});

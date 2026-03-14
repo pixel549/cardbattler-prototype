@@ -301,7 +301,9 @@ function mixSeed(seed) {
 
 export function getArenaModifierMeta(id, context = {}) {
   const act = Math.max(1, Number(context.act || 1));
+  const floor = Math.max(0, Number(context.floor || 0));
   const isBoss = context.encounterKind === "boss";
+  const isEarlyActOneNormal = act === 1 && context.encounterKind === "normal" && floor > 0 && floor <= 3;
 
   if (id === "emp_zone") {
     return {
@@ -321,8 +323,8 @@ export function getArenaModifierMeta(id, context = {}) {
       label: "Firewall Grid",
       summary: "The arena hardens enemy processes with passive Firewall pulses.",
       shortSummary: "Enemies gain Firewall from the arena.",
-      combatStartFirewall: isBoss ? 4 : (act >= 3 ? 3 : 2),
-      turnStartFirewall: isBoss ? 2 : 1,
+      combatStartFirewall: isEarlyActOneNormal ? 1 : (isBoss ? 4 : (act >= 3 ? 3 : 2)),
+      turnStartFirewall: isEarlyActOneNormal ? 0 : (isBoss ? 2 : 1),
       color: "#00f0ff",
     };
   }
@@ -341,12 +343,12 @@ export function getArenaModifierMeta(id, context = {}) {
   return null;
 }
 
-export function pickArenaModifier(seed, act = 1, encounterKind = "normal", encounterId = "") {
+export function pickArenaModifier(seed, act = 1, encounterKind = "normal", encounterId = "", floor = 0) {
   const salt =
     encounterKind === "elite" ? 0xE11E7E :
     encounterKind === "boss" ? 0xB055E5 :
     0x0A0B0C;
   const mixed = mixSeed(((Number(seed || 0) ^ (Math.max(1, Number(act || 1)) * 4099) ^ salt ^ stringHash(encounterId)) >>> 0));
   const id = ARENA_MODIFIER_ORDER[mixed % ARENA_MODIFIER_ORDER.length];
-  return getArenaModifierMeta(id, { act, encounterKind, encounterId });
+  return getArenaModifierMeta(id, { act, floor, encounterKind, encounterId });
 }

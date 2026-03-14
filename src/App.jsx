@@ -84,6 +84,7 @@ import {
 import {
   buildRunAnalyticsDashboard,
   ingestRunRecordAnalytics,
+  recordTutorialAnalyticsEvent,
   readRunAnalytics,
   writeRunAnalytics,
 } from './game/runTelemetry.js';
@@ -3953,6 +3954,16 @@ function EventScreen({ state, data, onAction, tutorialStep = null }) {
   const eventId = state.event?.eventId;
   const highlightedEventAction = getEventTutorialActionId(eventId, tutorialStep);
   const eventTutorialActive = tutorialStep?.mode === 'Event';
+  const eventViewportStyle = {
+    flex: 1,
+    padding: '16px',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    paddingTop: 'clamp(36px, 8vh, 104px)',
+    paddingBottom: 'clamp(28px, 6vh, 72px)',
+  };
 
   if (isMinigameEvent(eventId)) {
     return <MinigameScreen state={state} onAction={onAction} />;
@@ -3963,7 +3974,7 @@ function EventScreen({ state, data, onAction, tutorialStep = null }) {
     return (
       <ScreenShell>
         <RunHeader run={state.run} data={data} mode="Event" />
-        <div style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', paddingTop: 'clamp(72px, 16vh, 176px)', paddingBottom: '96px' }}>
+        <div style={eventViewportStyle}>
           <div
             className="animate-slide-up"
             style={{
@@ -4071,7 +4082,7 @@ function EventScreen({ state, data, onAction, tutorialStep = null }) {
     return (
       <ScreenShell>
         <RunHeader run={state.run} data={data} mode="Event" />
-        <div style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', paddingTop: 'clamp(72px, 16vh, 176px)', paddingBottom: '96px' }}>
+        <div style={eventViewportStyle}>
           <div
             className="animate-slide-up"
             style={{
@@ -5891,9 +5902,9 @@ function getTutorialOverlayLayout(presentationMode = 'Combat') {
       justifyContent: 'center',
       left: 12,
       right: 12,
-      top: 'min(calc(36% + 72px), calc(100% - 228px))',
+      top: 'min(calc(26% + 44px), calc(100% - 214px))',
       bottom: 'auto',
-      width: 'min(440px, 100%)',
+      width: 'min(420px, 100%)',
       pointerSide: 'top',
     };
   }
@@ -5931,7 +5942,7 @@ function getTutorialOverlayLayout(presentationMode = 'Combat') {
     justifyContent: 'center',
     left: 12,
     right: 12,
-    top: 'min(calc(54% + 32px), calc(100% - 240px))',
+    top: 'min(calc(48% + 18px), calc(100% - 228px))',
     bottom: 'auto',
     width: 'min(500px, 100%)',
     pointerSide: 'top',
@@ -6084,6 +6095,74 @@ function TutorialOverlay({ step, nudge = '', onAdvance, onExit, presentationMode
             {step.ctaLabel || 'Continue'}
           </button>
         )}
+      </div>
+    </div>
+  );
+}
+
+function UpdateReadyBanner({
+  updateReady = false,
+  applying = false,
+  hasActiveRun = false,
+  onApply,
+  onForceRefresh,
+}) {
+  if (!updateReady && !applying) return null;
+
+  return (
+    <div
+      className="safe-area-top"
+      style={{
+        position: 'fixed',
+        top: 14,
+        right: 14,
+        zIndex: 975,
+        width: 'min(360px, calc(100% - 28px))',
+      }}
+    >
+      <div
+        className="panel-chrome hud-scanline"
+        style={{
+          borderRadius: 18,
+          border: `1px solid ${C.cyan}34`,
+          background: 'linear-gradient(180deg, rgba(8,12,20,0.96) 0%, rgba(4,6,10,0.99) 100%)',
+          boxShadow: '0 18px 44px rgba(0,0,0,0.42)',
+          padding: '12px 14px',
+          display: 'grid',
+          gap: 10,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
+          <div style={{ fontFamily: UI_MONO, fontSize: 11, letterSpacing: '0.14em', color: C.cyan }}>
+            UPDATE READY
+          </div>
+          <div style={{ fontFamily: UI_MONO, fontSize: 10, color: C.textMuted }}>
+            {applying ? 'Applying' : hasActiveRun ? 'Queued' : 'Standing by'}
+          </div>
+        </div>
+        <div style={{ fontFamily: UI_MONO, fontSize: 12, lineHeight: 1.6, color: C.text }}>
+          {applying
+            ? 'Syncing the newest build now. This should only take a moment.'
+            : hasActiveRun
+              ? 'A fresher build is downloaded. Finish the current run, then apply it here without hard-refresh roulette.'
+              : 'A fresher build is downloaded. Apply it now before the old bundle keeps hanging around.'}
+        </div>
+        {!applying ? (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            <button
+              onClick={onApply}
+              style={getPrimaryActionButtonStyle(C.cyan, { padding: '10px 14px', fontSize: 11 })}
+            >
+              Apply update
+            </button>
+            <button
+              onClick={onForceRefresh}
+              style={getSecondaryActionButtonStyle(C.orange, { padding: '10px 14px', fontSize: 11 })}
+            >
+              Force refresh
+            </button>
+          </div>
+        ) : null}
       </div>
     </div>
   );
@@ -6477,6 +6556,7 @@ function App() {
   const [error, setError] = useState(null);
   const [showLog, setShowLog] = useState(false);
   const [showPauseMenu, setShowPauseMenu] = useState(false);
+  const [autoApplyingUpdate, setAutoApplyingUpdate] = useState(false);
   const [menuAutosave, setMenuAutosave] = useState(null);
   const [debugSaveSlots, setDebugSaveSlots] = useState(() => readDebugSaveSlots());
   const [playtestMode, setPlaytestMode] = useState(() => readPlaytestModeEnabled());
@@ -6660,6 +6740,29 @@ function App() {
     window.history.replaceState(window.history.state, '', currentUrl.toString());
   }, []);
 
+  useEffect(() => {
+    if (!updateReady) {
+      autoUpdateAttemptedRef.current = false;
+      setAutoApplyingUpdate(false);
+      return undefined;
+    }
+    const safeToApply = state?.mode === 'MainMenu' && !state?.run && !showPauseMenu;
+    if (!safeToApply || !updateServiceWorker || autoUpdateAttemptedRef.current) return undefined;
+
+    autoUpdateAttemptedRef.current = true;
+    const timer = window.setTimeout(async () => {
+      setAutoApplyingUpdate(true);
+      try {
+        await updateServiceWorker(true);
+      } catch (error) {
+        console.warn('Unable to auto-apply downloaded update.', error);
+        setAutoApplyingUpdate(false);
+      }
+    }, 1200);
+
+    return () => window.clearTimeout(timer);
+  }, [showPauseMenu, state?.mode, state?.run, updateReady, updateServiceWorker]);
+
   // ── URL params: read from global captured in index.html before React loaded ──
   const _up = (key) => window.__launchParams?.[key] ?? null;
   const visualSceneId = _up('scene');
@@ -6752,6 +6855,8 @@ function App() {
   const dataRef      = useRef(data);
   const contentFingerprintRef = useRef('unknown');
   const metaProgressAwardRef = useRef(null);
+  const tutorialCompletionRef = useRef(null);
+  const autoUpdateAttemptedRef = useRef(false);
   const exportCurrentGameDataRef = useRef(async () => false);
   const startNewRunRef = useRef(() => {});
   const autosaveTokenRef = useRef(null);
@@ -6829,6 +6934,7 @@ function App() {
 
   function showTutorialHint(message) {
     if (!message) return;
+    sfx.systemWarning();
     setTutorialNudge(message);
     if (tutorialNudgeTimerRef.current) clearTimeout(tutorialNudgeTimerRef.current);
     tutorialNudgeTimerRef.current = setTimeout(() => {
@@ -6852,15 +6958,19 @@ function App() {
     setShowLog(false);
   }
 
-  const appendRunSummary = useCallback((summary) => {
-    if (!summary) return;
-    setRunHistory((prev) => [...prev, summary]);
+  const commitRunAnalytics = useCallback((updater) => {
     setRunAnalytics((prev) => {
-      const next = ingestRunRecordAnalytics(prev, summary);
+      const next = typeof updater === 'function' ? updater(prev) : updater;
       writeRunAnalytics(next);
       return next;
     });
   }, []);
+
+  const appendRunSummary = useCallback((summary) => {
+    if (!summary) return;
+    setRunHistory((prev) => [...prev, summary]);
+    commitRunAnalytics((prev) => ingestRunRecordAnalytics(prev, summary));
+  }, [commitRunAnalytics]);
 
   function adoptState(newState, {
     handoffReason = '',
@@ -6903,6 +7013,12 @@ function App() {
     if (!data) return;
     setMenuAutosave(null);
     const tutorialDef = getTutorialDefinition(tutorialId);
+    commitRunAnalytics((prev) => recordTutorialAnalyticsEvent(prev, {
+      type: 'start',
+      tutorialId,
+      title: tutorialDef.title,
+    }));
+    sfx.tutorialAdvance();
     adoptState(createTutorialRunState(data, tutorialId), {
       handoffReason: `${tutorialDef.title} active`,
       pauseAi: true,
@@ -6935,6 +7051,18 @@ function App() {
   }
 
   function returnToMainMenu() {
+    const liveState = stateRef.current;
+    if (liveState?.run?.tutorial?.active) {
+      const tutorialId = liveState.run.tutorial.id;
+      const tutorialDef = getTutorialDefinition(tutorialId);
+      const activeStep = getTutorialStep(liveState);
+      commitRunAnalytics((prev) => recordTutorialAnalyticsEvent(prev, {
+        type: 'exit',
+        tutorialId,
+        title: tutorialDef.title,
+        stepId: activeStep?.id || null,
+      }));
+    }
     clearNodeAutosave();
     setMenuAutosave(null);
     adoptState(createInitialState(), {
@@ -7060,14 +7188,17 @@ function App() {
     setShowPauseMenu(false);
     if (!updateServiceWorker) return;
     try {
+      setAutoApplyingUpdate(true);
       await updateServiceWorker(true);
     } catch (error) {
+      setAutoApplyingUpdate(false);
       console.warn('Unable to apply downloaded update.', error);
     }
   }
 
   async function forceRefreshApp() {
     setShowPauseMenu(false);
+    setAutoApplyingUpdate(true);
     const refreshUrl = new URL(window.location.href);
     refreshUrl.searchParams.set('refresh', String(Date.now()));
 
@@ -7335,6 +7466,17 @@ function App() {
     if (state?.mode !== 'TutorialComplete') return;
     const tutorialId = state?.run?.tutorial?.id;
     if (!tutorialId) return;
+    const completionKey = `${tutorialId}:${state?.run?.tutorial?.outcome || 'complete'}`;
+    if (tutorialCompletionRef.current !== completionKey) {
+      tutorialCompletionRef.current = completionKey;
+      const tutorialDef = getTutorialDefinition(tutorialId);
+      commitRunAnalytics((prev) => recordTutorialAnalyticsEvent(prev, {
+        type: 'complete',
+        tutorialId,
+        title: tutorialDef.title,
+      }));
+      sfx.tutorialComplete();
+    }
     setCompletedTutorialIds((prev) => {
       if (prev.includes(tutorialId)) return prev;
       const next = [...prev, tutorialId];
@@ -7343,7 +7485,12 @@ function App() {
       }
       return next;
     });
-  }, [state?.mode, state?.run?.tutorial?.id]);
+  }, [commitRunAnalytics, state?.mode, state?.run?.tutorial?.id, state?.run?.tutorial?.outcome]);
+
+  useEffect(() => {
+    if (state?.mode === 'TutorialComplete') return;
+    tutorialCompletionRef.current = null;
+  }, [state?.mode]);
 
   useEffect(() => {
     if (state?.mode !== 'GameOver' || !state?.run || state.run?.tutorial?.active) return;
@@ -8369,6 +8516,15 @@ function App() {
   return (
     <>
       {content}
+      {!showPauseMenu && (
+        <UpdateReadyBanner
+          updateReady={updateReady}
+          applying={autoApplyingUpdate}
+          hasActiveRun={hasActiveRun}
+          onApply={applyDownloadedUpdate}
+          onForceRefresh={forceRefreshApp}
+        />
+      )}
       {showFloatingMenuButton && (
         <PauseMenuButton open={showPauseMenu} onClick={() => (showPauseMenu ? closePauseMenu() : openPauseMenu())} />
       )}
@@ -8406,6 +8562,17 @@ function App() {
           nudge={tutorialNudge}
           presentationMode={tutorialStepMode}
           onAdvance={() => {
+            const tutorialId = state?.run?.tutorial?.id;
+            if (tutorialId && tutorialStep?.id) {
+              const tutorialDef = getTutorialDefinition(tutorialId);
+              commitRunAnalytics((prev) => recordTutorialAnalyticsEvent(prev, {
+                type: 'advance',
+                tutorialId,
+                title: tutorialDef.title,
+                stepId: tutorialStep.id,
+              }));
+            }
+            sfx.tutorialAdvance();
             setTutorialNudge('');
             setState((prev) => acknowledgeTutorialStep(prev));
           }}

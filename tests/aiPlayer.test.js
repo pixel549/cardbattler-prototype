@@ -146,6 +146,41 @@ test("AI avoids low-threat combat stalls by taking a progress action", () => {
   assert.equal(action.cardInstanceId, strikeId);
 });
 
+test("AI stops looping self-heal at full HP when a low-threat fight still needs damage", () => {
+  const runDeck = createRunDeckFromDefs(data, 11223, ["C-001", "C-003"]);
+  const combat = startCombatFromRunDeck({
+    data,
+    seed: 11223,
+    act: 1,
+    floor: 6,
+    runDeck,
+    enemyIds: ["E_HOLO_SNIPER_SHARD"],
+    encounterKind: "normal",
+    playerMaxHP: 75,
+    playerMaxRAM: 8,
+    playerRamRegen: 2,
+  });
+
+  const strikeId = Object.keys(combat.cardInstances).find((instanceId) => combat.cardInstances[instanceId]?.defId === "C-001");
+  const patchId = Object.keys(combat.cardInstances).find((instanceId) => combat.cardInstances[instanceId]?.defId === "C-003");
+
+  combat.turn = 12;
+  combat.player.hp = 75;
+  combat.player.ram = 2;
+  combat.player.piles.hand = [strikeId, patchId].filter(Boolean);
+  combat.player.piles.draw = [];
+  combat.player.piles.discard = [];
+
+  const action = getAIAction({
+    mode: "Combat",
+    combat,
+  }, data, "defensive");
+
+  assert.ok(action);
+  assert.equal(action.type, "Combat_PlayCard");
+  assert.equal(action.cardInstanceId, strikeId);
+});
+
 test("AI skips cards that are locked for the turn", () => {
   const runDeck = createRunDeckFromDefs(data, 12345, ["C-001", "NC-003", "NC-001"]);
   const combat = startCombatFromRunDeck({

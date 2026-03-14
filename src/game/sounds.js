@@ -396,6 +396,27 @@ export const sfx = {
     });
   },
 
+  tutorialAdvance() {
+    playNoteSequence([330, 392, 523], {
+      type: 'triangle',
+      gainValue: 0.06,
+      noteDuration: 0.12,
+      stepDelay: 0.045,
+    });
+  },
+
+  tutorialComplete() {
+    const g = gain(0.12, 0.36);
+    if (!g) return;
+    sweep(196, 392, 'triangle', 0.18, g);
+    playNoteSequence([262, 330, 392, 523], {
+      type: 'triangle',
+      gainValue: 0.07,
+      noteDuration: 0.14,
+      stepDelay: 0.05,
+    });
+  },
+
   // Toggle mute
   setMuted(m) { muted = m; },
   isMuted() { return muted; },

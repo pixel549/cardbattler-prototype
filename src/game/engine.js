@@ -4354,8 +4354,8 @@ export function startCombatFromRunDeck(params) {
       return { enemyHpMult: 1, enemyDmgMult: 1 };
     }
     if (encounterKind === "elite") {
-      if (floor <= 7) return { enemyHpMult: 0.88, enemyDmgMult: 0.9 };
-      if (floor <= 9) return { enemyHpMult: 0.94, enemyDmgMult: 0.95 };
+      if (floor <= 7) return { enemyHpMult: 0.84, enemyDmgMult: 0.86 };
+      if (floor <= 9) return { enemyHpMult: 0.92, enemyDmgMult: 0.94 };
     }
     return { enemyHpMult: 1, enemyDmgMult: 1 };
   })();
@@ -4392,7 +4392,7 @@ export function startCombatFromRunDeck(params) {
       });
   const adaptiveDirective = getAdaptiveEncounterDirective(runAdaptationProfile, { act, encounterKind });
   if (adaptiveDirective) encounterDirectives.push(adaptiveDirective);
-  const arenaModifier = pickArenaModifier(seed, act, encounterKind, encounterId || encounterName || "");
+  const arenaModifier = pickArenaModifier(seed, act, encounterKind, encounterId || encounterName || "", floor);
 
   const enemies = enemyIds.map((eid, idx) => {
     const ed = data.enemies[eid];

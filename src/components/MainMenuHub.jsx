@@ -54,6 +54,51 @@ function getCardColor(type) {
   return CARD_TYPE_COLORS[type] || CARD_TYPE_COLORS.default;
 }
 
+const UNLOCK_PROGRESS_KEYS = {
+  totalRuns: {
+    label: 'Runs',
+    getCurrent: (metaProgress) => Math.max(0, Number(metaProgress?.totalRuns || 0)),
+  },
+  totalWins: {
+    label: 'Wins',
+    getCurrent: (metaProgress) => Math.max(0, Number(metaProgress?.totalWins || 0)),
+  },
+  bestActReached: {
+    label: 'Best Act',
+    getCurrent: (metaProgress) => Math.max(1, Number(metaProgress?.bestActReached || 1)),
+  },
+  totalUniqueMutations: {
+    label: 'Mutations',
+    getCurrent: (metaProgress) => Math.max(0, Number(metaProgress?.totalUniqueMutations || 0)),
+  },
+  highestDifficultyRankCleared: {
+    label: 'Highest Rank',
+    getCurrent: (metaProgress) => Math.max(0, Number(metaProgress?.highestDifficultyRankCleared || 0)),
+  },
+};
+
+function getUnlockRequirementRows(unlock = {}, metaProgress = null) {
+  return Object.entries(UNLOCK_PROGRESS_KEYS)
+    .filter(([key]) => Number(unlock?.[key] || 0) > 0)
+    .map(([key, config]) => {
+      const target = Math.max(0, Number(unlock?.[key] || 0));
+      const current = config.getCurrent(metaProgress);
+      return {
+        key,
+        label: config.label,
+        current,
+        target,
+        complete: current >= target,
+      };
+    });
+}
+
+function formatUnlockRequirementSummary(unlock = {}, metaProgress = null) {
+  const rows = getUnlockRequirementRows(unlock, metaProgress);
+  if (!rows.length) return 'Available from the start.';
+  return rows.map((row) => `${row.label} ${Math.min(row.current, row.target)}/${row.target}`).join(' | ');
+}
+
 const MENU_LABELS = {
   home: 'Main Menu',
   load: 'Load Save',
@@ -514,6 +559,11 @@ export default function MainMenuHub({
   const unlockedCallsignSet = new Set(unlockedCallsignIds);
   const selectedChallenges = new Set(selectedChallengeIds);
   const unlockedRewardState = getUnlockedAchievementRewardState(metaProgress?.achievementIdsUnlocked || []);
+  const narrativeMode = activeMenuView === 'intel'
+    ? activeIntelView
+    : activeMenuView === 'new'
+      ? (activeNewRunView === 'daily' ? 'daily' : 'setup')
+      : activeMenuView;
 
   const callsignId = selectedCallsignId || getDefaultCallsignId();
   const activeCallsign = callsignCatalog.find((theme) => theme.id === callsignId) || getCallsignTheme(callsignId);
@@ -522,7 +572,7 @@ export default function MainMenuHub({
   const selectedRunConfig = composeRunConfig(customConfig || {}, selectedStarterProfileId, selectedDifficultyId, selectedChallengeIds);
   const selectedModeSummary = buildModeSummary(selectedRunConfig);
   const fixerLine = getFixerLine({
-    mode: activeMenuView === 'intel' ? activeIntelView : activeMenuView,
+    mode: narrativeMode,
     metaProgress,
     runAnalytics,
   });
@@ -535,6 +585,38 @@ export default function MainMenuHub({
   const activeChallengeSummary = activeChallengeList.length
     ? activeChallengeList.map((challenge) => challenge.name).join(', ')
     : 'No optional challenges active.';
+  const unlockProgressRows = [
+    ...starterProfiles
+      .filter((profile) => !unlockedStarterSet.has(profile.id))
+      .map((profile) => ({
+        id: `starter:${profile.id}`,
+        name: profile.name,
+        category: 'Starter Profile',
+        accent: profile.accent || C.cyan,
+        description: profile.unlockHint,
+        progress: formatUnlockRequirementSummary(profile.unlock, metaProgress),
+      })),
+    ...difficultyProfiles
+      .filter((difficulty) => !unlockedDifficultySet.has(difficulty.id))
+      .map((difficulty) => ({
+        id: `difficulty:${difficulty.id}`,
+        name: difficulty.name,
+        category: 'Difficulty',
+        accent: difficulty.accent || C.purple,
+        description: difficulty.unlockHint,
+        progress: formatUnlockRequirementSummary(difficulty.unlock, metaProgress),
+      })),
+    ...challengeModes
+      .filter((challenge) => !unlockedChallengeSet.has(challenge.id))
+      .map((challenge) => ({
+        id: `challenge:${challenge.id}`,
+        name: challenge.name,
+        category: 'Challenge',
+        accent: challenge.accent || C.orange,
+        description: challenge.unlockHint,
+        progress: formatUnlockRequirementSummary(challenge.unlock, metaProgress),
+      })),
+  ];
 
   const selectedProfileRelics = (selectedProfile?.startingRelicIds || []).map((relicId) => data?.relics?.[relicId]?.name || relicId);
   const selectedProfileLoadoutSlots = getStarterProfileLoadoutSlots(selectedProfile);
@@ -1744,6 +1826,31 @@ export default function MainMenuHub({
               <div style={{ fontFamily: UI_MONO, fontSize: 12, lineHeight: 1.6, color: C.text }}>{selectedDifficulty?.name || 'Standard'} | {activeChallengeSummary}</div>
             </div>
           </div>
+          <div style={{ display: 'grid', gap: 10 }}>
+            <div style={{ fontFamily: UI_MONO, fontSize: 10, letterSpacing: '0.14em', color: C.yellow }}>
+              UNLOCK LADDER
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+              {unlockProgressRows.length > 0 ? unlockProgressRows.map((entry) => (
+                <div key={entry.id} style={{ ...panelStyle(entry.accent, 'soft', '14px'), display: 'grid', gap: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
+                    <div style={{ fontFamily: DISPLAY_FONT, fontSize: 20, fontWeight: 700, color: C.text }}>{entry.name}</div>
+                    <DataChip accent={entry.accent}>{entry.category}</DataChip>
+                  </div>
+                  <div style={{ fontFamily: UI_MONO, fontSize: 12, lineHeight: 1.6, color: C.text }}>
+                    {entry.description}
+                  </div>
+                  <div style={{ fontFamily: UI_MONO, fontSize: 11, lineHeight: 1.6, color: C.textMuted }}>
+                    {entry.progress}
+                  </div>
+                </div>
+              )) : (
+                <div style={{ ...panelStyle(C.yellow, 'soft', '14px'), fontFamily: UI_MONO, fontSize: 12, color: C.text }}>
+                  Every current profile, difficulty, and challenge lane is already unlocked in this local archive.
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       );
     }
@@ -1818,13 +1925,14 @@ export default function MainMenuHub({
 
     if (activeIntelView === 'telemetry') {
       const profileRows = runAnalytics?.profileRows || [];
+      const tutorialRows = runAnalytics?.tutorialRows || [];
       return (
         <div style={{ ...panelStyle(C.orange, 'default', '18px'), display: 'grid', gap: 14 }}>
           <SectionIntro
             accent={C.orange}
             eyebrow="OPS TELEMETRY"
             title="Balance Pressure Readout"
-            body="This local archive tracks where runs are starving on RAM, overheating, and failing their first elite or boss checks."
+            body="This local archive tracks where runs are starving on RAM, overheating, failing their first elite or boss checks, and dropping out of onboarding."
           />
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 8 }}>
             <StatTile accent={C.text} label="Tracked Runs" value={runAnalytics?.totalRuns ?? 0} />
@@ -1834,6 +1942,8 @@ export default function MainMenuHub({
             <StatTile accent={C.yellow} label="Avg Scrap Spend" value={formatAverage(runAnalytics?.averageScrapSpent)} />
             <StatTile accent={C.red} label="1st Elite Loss" value={formatPercent(runAnalytics?.firstEliteLossRate)} />
             <StatTile accent={C.red} label="1st Boss Loss" value={formatPercent(runAnalytics?.firstBossLossRate)} />
+            <StatTile accent={C.cyan} label="Tutorial Clear" value={formatPercent(runAnalytics?.tutorialCompletionRate)} />
+            <StatTile accent={C.orange} label="Tutorial Exit" value={formatPercent(runAnalytics?.tutorialExitRate)} />
           </div>
           <div style={{ ...panelStyle(C.border, 'soft', '14px'), display: 'grid', gap: 6 }}>
             <div style={{ fontFamily: UI_MONO, fontSize: 10, letterSpacing: '0.14em', color: C.textMuted }}>RECENT SIGNAL</div>
@@ -1842,6 +1952,28 @@ export default function MainMenuHub({
                 `${run.starterProfileName} ${run.victory ? 'won' : 'lost'} Act ${run.actReached} / Floor ${run.floorReached} | RAM ${run.ramStarvedTurns} | Heat ${run.peakHeat}`
               )).join(' || ') || 'No local telemetry captured yet.'}
             </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+            {tutorialRows.length > 0 ? tutorialRows.map((tutorial) => (
+              <div key={tutorial.id} style={{ ...panelStyle(C.cyan, 'soft', '14px'), display: 'grid', gap: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
+                  <div style={{ fontFamily: DISPLAY_FONT, fontSize: 22, fontWeight: 700, color: C.text }}>{tutorial.title}</div>
+                  <DataChip accent={tutorial.completionRate >= 0.7 ? C.green : C.orange}>
+                    {formatPercent(tutorial.completionRate)} clear
+                  </DataChip>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
+                  <StatTile accent={C.text} label="Starts" value={tutorial.started} compact />
+                  <StatTile accent={C.red} label="Exits" value={tutorial.exited} compact />
+                  <StatTile accent={C.cyan} label="Avg Steps" value={formatAverage(tutorial.averageStepAdvances)} compact />
+                  <StatTile accent={C.orange} label="Top Drop-Off" value={tutorial.topExitStepId || '--'} compact />
+                </div>
+              </div>
+            )) : (
+              <div style={{ ...panelStyle(C.cyan, 'soft', '14px'), fontFamily: UI_MONO, fontSize: 12, color: C.text }}>
+                Tutorial telemetry starts filling in once local training runs are launched or abandoned.
+              </div>
+            )}
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
             {profileRows.length > 0 ? profileRows.map((profile) => (

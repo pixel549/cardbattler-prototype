@@ -1,5 +1,18 @@
 export const RUN_ANALYTICS_STORAGE_KEY = 'cb_run_analytics_v1';
 
+function createTutorialStats() {
+  return {
+    id: 'combat_basics',
+    title: 'Combat Basics',
+    started: 0,
+    completed: 0,
+    exited: 0,
+    stepAdvances: 0,
+    lastExitStepId: null,
+    exitSteps: {},
+  };
+}
+
 export function createRunTelemetry() {
   return {
     repairsUsed: 0,
@@ -82,7 +95,7 @@ function createStarterProfileStats() {
 
 export function createRunAnalytics() {
   return {
-    version: 1,
+    version: 2,
     totalRuns: 0,
     totalWins: 0,
     totalLosses: 0,
@@ -94,8 +107,34 @@ export function createRunAnalytics() {
     firstEliteLosses: 0,
     firstBossAttempts: 0,
     firstBossLosses: 0,
+    tutorialSessionsStarted: 0,
+    tutorialSessionsCompleted: 0,
+    tutorialSessionsExited: 0,
+    tutorialStepAdvances: 0,
     starterProfiles: {},
+    tutorials: {},
     recentRuns: [],
+  };
+}
+
+function normalizeTutorialStats(raw) {
+  const base = createTutorialStats();
+  const normalizedExitSteps = Object.fromEntries(
+    Object.entries(raw?.exitSteps || {})
+      .filter(([stepId]) => Boolean(stepId))
+      .map(([stepId, count]) => [stepId, Math.max(0, Number(count || 0))]),
+  );
+  return {
+    ...base,
+    ...(raw || {}),
+    id: raw?.id || base.id,
+    title: raw?.title || base.title,
+    started: Math.max(0, Number(raw?.started || 0)),
+    completed: Math.max(0, Number(raw?.completed || 0)),
+    exited: Math.max(0, Number(raw?.exited || 0)),
+    stepAdvances: Math.max(0, Number(raw?.stepAdvances || 0)),
+    lastExitStepId: raw?.lastExitStepId || null,
+    exitSteps: normalizedExitSteps,
   };
 }
 
@@ -149,6 +188,12 @@ export function normalizeRunAnalytics(rawAnalytics) {
       normalizeStarterProfileStats({ ...profile, id: profile?.id || profileId }),
     ]),
   );
+  const tutorials = Object.fromEntries(
+    Object.entries(rawAnalytics.tutorials || {}).map(([tutorialId, tutorial]) => [
+      tutorialId,
+      normalizeTutorialStats({ ...tutorial, id: tutorial?.id || tutorialId }),
+    ]),
+  );
   return {
     ...base,
     ...rawAnalytics,
@@ -163,11 +208,55 @@ export function normalizeRunAnalytics(rawAnalytics) {
     firstEliteLosses: Math.max(0, Number(rawAnalytics.firstEliteLosses || 0)),
     firstBossAttempts: Math.max(0, Number(rawAnalytics.firstBossAttempts || 0)),
     firstBossLosses: Math.max(0, Number(rawAnalytics.firstBossLosses || 0)),
+    tutorialSessionsStarted: Math.max(0, Number(rawAnalytics.tutorialSessionsStarted || 0)),
+    tutorialSessionsCompleted: Math.max(0, Number(rawAnalytics.tutorialSessionsCompleted || 0)),
+    tutorialSessionsExited: Math.max(0, Number(rawAnalytics.tutorialSessionsExited || 0)),
+    tutorialStepAdvances: Math.max(0, Number(rawAnalytics.tutorialStepAdvances || 0)),
     starterProfiles,
+    tutorials,
     recentRuns: Array.isArray(rawAnalytics.recentRuns)
       ? rawAnalytics.recentRuns.slice(0, 18).map(normalizeRecentRun)
       : [],
   };
+}
+
+export function recordTutorialAnalyticsEvent(currentAnalytics, event = {}) {
+  const next = normalizeRunAnalytics(currentAnalytics);
+  const tutorialId = event?.tutorialId || 'combat_basics';
+  const tutorial = normalizeTutorialStats({
+    ...(next.tutorials[tutorialId] || createTutorialStats()),
+    id: tutorialId,
+    title: event?.title || next.tutorials[tutorialId]?.title || tutorialId,
+  });
+  const stepId = event?.stepId || null;
+
+  switch (event?.type) {
+    case 'start':
+      next.tutorialSessionsStarted += 1;
+      tutorial.started += 1;
+      break;
+    case 'complete':
+      next.tutorialSessionsCompleted += 1;
+      tutorial.completed += 1;
+      break;
+    case 'exit':
+      next.tutorialSessionsExited += 1;
+      tutorial.exited += 1;
+      if (stepId) {
+        tutorial.lastExitStepId = stepId;
+        tutorial.exitSteps[stepId] = Math.max(0, Number(tutorial.exitSteps[stepId] || 0)) + 1;
+      }
+      break;
+    case 'advance':
+      next.tutorialStepAdvances += 1;
+      tutorial.stepAdvances += 1;
+      break;
+    default:
+      return next;
+  }
+
+  next.tutorials[tutorialId] = tutorial;
+  return next;
 }
 
 export function summarizeRunRecordForAnalytics(runRecord) {
@@ -252,6 +341,25 @@ export function buildRunAnalyticsDashboard(analytics) {
       if (a.winRate !== b.winRate) return a.winRate - b.winRate;
       return a.name.localeCompare(b.name);
     });
+  const tutorialRows = Object.values(normalized.tutorials)
+    .map((tutorial) => {
+      const exitEntries = Object.entries(tutorial.exitSteps || {}).sort((a, b) => b[1] - a[1]);
+      const [topExitStepId, topExitCount] = exitEntries[0] || [null, 0];
+      return {
+        ...tutorial,
+        completionRate: tutorial.started > 0 ? tutorial.completed / tutorial.started : 0,
+        exitRate: tutorial.started > 0 ? tutorial.exited / tutorial.started : 0,
+        averageStepAdvances: tutorial.started > 0 ? tutorial.stepAdvances / tutorial.started : 0,
+        topExitStepId,
+        topExitCount,
+      };
+    })
+    .sort((a, b) => {
+      if (b.started !== a.started) return b.started - a.started;
+      if (a.completionRate !== b.completionRate) return a.completionRate - b.completionRate;
+      return a.title.localeCompare(b.title);
+    });
+  const safeTutorialStarts = Math.max(1, normalized.tutorialSessionsStarted);
 
   return {
     ...normalized,
@@ -263,6 +371,9 @@ export function buildRunAnalyticsDashboard(analytics) {
     firstEliteLossRate: normalized.firstEliteAttempts > 0 ? normalized.firstEliteLosses / normalized.firstEliteAttempts : 0,
     firstBossLossRate: normalized.firstBossAttempts > 0 ? normalized.firstBossLosses / normalized.firstBossAttempts : 0,
     profileRows,
+    tutorialCompletionRate: normalized.tutorialSessionsCompleted / safeTutorialStarts,
+    tutorialExitRate: normalized.tutorialSessionsExited / safeTutorialStarts,
+    tutorialRows,
   };
 }
 

@@ -1538,6 +1538,10 @@ function getCombatAction(combat, data, playstyle) {
   let bestProgressScore = -Infinity;
   let bestProgressAction = null;
   const defaultEnemyId = aliveEnemies[0]?.id ?? null;
+  const turnNumber = Math.max(1, Number(combat?.turn || 1));
+  const incomingThreat = getProjectedUnblockedThreat(player, aliveEnemies);
+  const playerHpRatio = (player.hp || 0) / Math.max(1, player.maxHP || 75);
+  const lowThreatProgressMode = incomingThreat <= 1 || turnNumber >= 10;
 
   for (const cid of (player.piles.hand || [])) {
     const ci = cardInstances[cid];
@@ -1622,6 +1626,18 @@ function getCombatAction(combat, data, playstyle) {
       let score = playBias + scoreSimulatedCombatAction(combat, nextCombat, candidate.action, playstyle, data);
       const progressScore = getCombatProgressDelta(combat, nextCombat);
 
+      if (lowThreatProgressMode) {
+        if (!candidate.action.targetSelf && progressScore > 0) {
+          score += Math.max(6, Math.min(42, progressScore * 0.22));
+        }
+        if (candidate.action.targetSelf && getProtection(player) >= incomingThreat) {
+          if (playerHpRatio >= 0.9) score -= 28;
+          else if (playerHpRatio >= 0.75) score -= 16;
+          else if (playerHpRatio >= 0.6) score -= 8;
+          if (progressScore <= 0) score -= 6;
+        }
+      }
+
       if (!candidate.action.targetSelf && candidate.targetEnemy) {
         score += Math.max(0, getEnemyThreatScore(candidate.targetEnemy, data, aliveEnemies.length)) * 0.45;
         if (candidate.targetEnemy.intent?.type === 'Attack') score += 6;
@@ -1664,8 +1680,6 @@ function getCombatAction(combat, data, playstyle) {
 
   if (bestAction && bestScore > 0) return bestAction;
 
-  const incomingThreat = getProjectedUnblockedThreat(player, aliveEnemies);
-  const turnNumber = Math.max(1, Number(combat?.turn || 1));
   if (bestProgressAction && bestProgressScore > 0 && (incomingThreat <= 1 || turnNumber >= 10)) {
     return bestProgressAction;
   }

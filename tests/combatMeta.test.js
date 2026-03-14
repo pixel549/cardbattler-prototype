@@ -94,3 +94,12 @@ test("pickArenaModifier is deterministic for a seed and yields a supported modif
   assert.deepEqual(first, second);
   assert.ok(["emp_zone", "firewall_grid", "data_storm"].includes(first.id));
 });
+
+test("early act 1 firewall grid is softened so it does not become a stall wall", () => {
+  const modifier = pickArenaModifier(12345, 1, "normal", "EN-01", 2);
+
+  if (modifier.id === "firewall_grid") {
+    assert.equal(modifier.combatStartFirewall, 1);
+    assert.equal(modifier.turnStartFirewall, 0);
+  }
+});

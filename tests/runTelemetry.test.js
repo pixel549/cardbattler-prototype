@@ -5,6 +5,7 @@ import {
   buildRunAnalyticsDashboard,
   createRunTelemetry,
   ingestRunRecordAnalytics,
+  recordTutorialAnalyticsEvent,
 } from '../src/game/runTelemetry.js';
 
 test('createRunTelemetry exposes the new pressure and scrap metrics', () => {
@@ -75,4 +76,46 @@ test('ingestRunRecordAnalytics aggregates starter pain points and first elite or
   assert.equal(ghost.scrapSpent, 10);
   assert.equal(ghost.firstEliteLosses, 1);
   assert.equal(ghost.firstBossAttempts, 1);
+});
+
+test('recordTutorialAnalyticsEvent tracks tutorial starts, drop-offs, and clears', () => {
+  let analytics = null;
+  analytics = recordTutorialAnalyticsEvent(analytics, {
+    type: 'start',
+    tutorialId: 'pressure_systems',
+    title: 'Pressure Systems',
+  });
+  analytics = recordTutorialAnalyticsEvent(analytics, {
+    type: 'advance',
+    tutorialId: 'pressure_systems',
+    title: 'Pressure Systems',
+    stepId: 'heat_intro',
+  });
+  analytics = recordTutorialAnalyticsEvent(analytics, {
+    type: 'exit',
+    tutorialId: 'pressure_systems',
+    title: 'Pressure Systems',
+    stepId: 'rest_scrap',
+  });
+  analytics = recordTutorialAnalyticsEvent(analytics, {
+    type: 'start',
+    tutorialId: 'pressure_systems',
+    title: 'Pressure Systems',
+  });
+  analytics = recordTutorialAnalyticsEvent(analytics, {
+    type: 'complete',
+    tutorialId: 'pressure_systems',
+    title: 'Pressure Systems',
+  });
+
+  const dashboard = buildRunAnalyticsDashboard(analytics);
+  const tutorial = dashboard.tutorialRows.find((entry) => entry.id === 'pressure_systems');
+
+  assert.equal(dashboard.tutorialSessionsStarted, 2);
+  assert.equal(dashboard.tutorialSessionsExited, 1);
+  assert.equal(dashboard.tutorialSessionsCompleted, 1);
+  assert.equal(tutorial.started, 2);
+  assert.equal(tutorial.exited, 1);
+  assert.equal(tutorial.completed, 1);
+  assert.equal(tutorial.topExitStepId, 'rest_scrap');
 });

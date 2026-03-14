@@ -52,6 +52,29 @@ When a new combat mechanic changes how a run feels, check these files immediatel
 
 Those three surfaces are where new systems most often drift out of sync with the rest of the game.
 
+## Run-mode composition
+
+When you touch launch flow or progression tuning, remember that run config is layered, not flat:
+
+1. [`RUN_BASELINE`](../src/game/runProfiles.js) defines the default economy and combat shell.
+2. Custom run fields seed the editable baseline values.
+3. Starter profile modifiers apply next.
+4. Difficulty modifiers apply after the profile.
+5. Enabled challenge modifiers stack last.
+
+That order lives in [`composeRunConfig`](../src/game/runProfiles.js). If a new mode or modifier source is added, update both the code and the Progress archive so players can see why a profile or unlock state changed.
+
+## Directive ownership
+
+Boss and encounter directive work is split across a few specific homes:
+
+- [`src/game/combatDirectives.js`](../src/game/combatDirectives.js) owns directive definitions, readouts, and counterplay text
+- [`src/game/engine.js`](../src/game/engine.js) owns the runtime behavior and combat flags that make those directives real
+- [`src/game/bossIntel.js`](../src/game/bossIntel.js) owns archive framing and future-planning surfaces
+- [`tests/bossDirectives.test.js`](../tests/bossDirectives.test.js) is the first regression stop whenever directive text or thresholds change
+
+If new boss mechanics land in only one of those surfaces, the archive and combat UI drift apart quickly.
+
 ## Suggested habit
 
 When a mechanic lands, do not ask “is the code done?”

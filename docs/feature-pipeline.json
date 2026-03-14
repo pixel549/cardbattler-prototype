@@ -142,16 +142,16 @@
           "notes": "Completion is persisted in local storage and surfaced in the app."
         },
         "telemetry": {
-          "status": "planned",
-          "notes": "We do not yet log tutorial completion or drop-off points for balancing."
+          "status": "done",
+          "notes": "Tutorial starts, completions, exits, and drop-off steps now feed the telemetry archive for balancing."
         },
         "tests": {
           "status": "done",
           "notes": "Tutorial flow now has direct regression coverage, including the pressure-systems lesson and scripted reforge transition."
         },
         "audio": {
-          "status": "planned",
-          "notes": "Tutorial-specific success/error cues are still missing."
+          "status": "done",
+          "notes": "Tutorial progression, completion, and blocked-action hints now have dedicated audio cues."
         },
         "narrative": {
           "status": "n/a",
@@ -198,8 +198,8 @@
           "notes": "This is the core persistence layer for unlocks and run history."
         },
         "telemetry": {
-          "status": "planned",
-          "notes": "We still need a cleaner debugging/reporting view for why unlock thresholds are firing."
+          "status": "done",
+          "notes": "The Progress archive now surfaces an unlock ladder with live requirement progress for locked profiles, ascensions, and challenges."
         },
         "tests": {
           "status": "done",
@@ -210,12 +210,12 @@
           "notes": "No bespoke audio hooks are required for the underlying rules."
         },
         "narrative": {
-          "status": "planned",
-          "notes": "Future NPC/fixer commentary should react to run-mode history and unlocks."
+          "status": "done",
+          "notes": "Fixer commentary now reacts to run setup, dailies, progress state, and archive pressure."
         },
         "docs": {
-          "status": "planned",
-          "notes": "Contributor docs still need a concise explanation of how mode data composes."
+          "status": "done",
+          "notes": "Contributor docs now describe how baseline, class, difficulty, challenge, and custom modifiers compose."
         }
       }
     },
@@ -256,20 +256,20 @@
           "notes": "Combat logs and encounter history expose the behavior for debugging."
         },
         "tests": {
-          "status": "planned",
-          "notes": "Engine-level tests are still needed for boss and directive behavior."
+          "status": "done",
+          "notes": "Boss directive metadata and readouts now have direct regression coverage."
         },
         "audio": {
-          "status": "planned",
-          "notes": "Boss phases and directive triggers need stronger audio identity."
+          "status": "done",
+          "notes": "Boss phase spikes and directive escalation already trigger dedicated combat audio."
         },
         "narrative": {
-          "status": "planned",
-          "notes": "Event writing exists, but recurring NPC reactions and boss framing are still thin."
+          "status": "done",
+          "notes": "Boss archive and fixer commentary now frame phase planning as part of the run briefing loop."
         },
         "docs": {
-          "status": "planned",
-          "notes": "Contributor docs should capture where new directive logic belongs."
+          "status": "done",
+          "notes": "Contributor docs now call out directive ownership and retrofit surfaces when boss logic grows."
         }
       }
     },
@@ -316,12 +316,12 @@
           "notes": "The new combat-meta helper has direct Node test coverage."
         },
         "audio": {
-          "status": "planned",
-          "notes": "Heat spikes, salvage, and arena hazards still need dedicated feedback."
+          "status": "done",
+          "notes": "Heat alerts and combat escalation cues now give the pressure loop dedicated feedback."
         },
         "narrative": {
-          "status": "planned",
-          "notes": "A fixer or handler should comment on trace heat, salvage loops, and adaptive enemies."
+          "status": "done",
+          "notes": "Fixer commentary now reacts to heat pressure, salvage stockpiles, and opening-run strain."
         },
         "docs": {
           "status": "done",

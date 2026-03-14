@@ -3423,6 +3423,72 @@ function RapidGame({ config, onComplete }) {
 // ── Minigame wrapper (intro → play → result) ──────────────────────────────────
 const TIER_LABEL  = { gold: '⭐ GOLD',  silver: '✦ SILVER', fail: '✗ FAILED', skip: '— SKIPPED' };
 const TIER_COLOR  = { gold: C.yellow,   silver: '#aaa',     fail: C.red,       skip: C.textDim };
+const MINIGAME_TYPE_THEME = {
+  memory:   { accent: C.purple, label: 'Pattern lock', support: 'Match the mirrored nodes before the trace settles.' },
+  timing:   { accent: C.cyan, label: 'Timing window', support: 'Hit the clean lane, not the noise around it.' },
+  sequence: { accent: C.orange, label: 'Signal chain', support: 'Read the route once, then play it back clean.' },
+  rapid:    { accent: C.green, label: 'Overclock burst', support: 'Push throughput before the window hard-closes.' },
+};
+
+function formatMinigameRewardOp(op) {
+  if (op.op === 'GainGold') return `+${op.amount}g`;
+  if (op.op === 'Heal') return `+${op.amount} HP`;
+  if (op.op === 'LoseHP') return `-${op.amount} HP`;
+  if (op.op === 'GainMP') return `+${op.amount} MP`;
+  if (op.op === 'GainMaxHP') return `+${op.amount} Max HP`;
+  if (op.op === 'AccelerateSelectedCard') return 'Accelerate a card';
+  if (op.op === 'StabiliseSelectedCard') return 'Stabilise a card';
+  if (op.op === 'RepairSelectedCard') return 'Repair a card';
+  if (op.op === 'RemoveSelectedCard') return 'Remove a card';
+  return op.op;
+}
+
+function describeMinigameObjective(def) {
+  if (!def) return 'Complete the side-op cleanly.';
+  const cfg = def.config || {};
+  switch (def.type) {
+    case 'memory':
+      return `Match ${cfg.pairs || 3} pairs. Gold holds at ${cfg.goldMisses ?? 1} misses or fewer.`;
+    case 'timing':
+      return `Land ${cfg.goldHits ?? cfg.rounds ?? 3} clean hits across ${cfg.rounds || 3} rounds.`;
+    case 'sequence':
+      return `Replay ${cfg.length || 4} signals in order before the chain breaks.`;
+    case 'rapid':
+      return `Reach ${cfg.goldTaps || 10} taps before ${(Number(cfg.duration || 4000) / 1000).toFixed(1)}s expires.`;
+    default:
+      return def.desc || 'Complete the side-op cleanly.';
+  }
+}
+
+function getMinigameDifficultyLabel(def) {
+  if (!def) return 'Unknown';
+  const cfg = def.config || {};
+  let score = 0;
+  if (def.type === 'memory') {
+    score = Number(cfg.pairs || 3) + Math.max(0, 3 - Number(cfg.silverMisses || 3));
+  } else if (def.type === 'timing') {
+    score = Number(cfg.rounds || 3) + Math.max(0, (24 - Number(cfg.zoneWidth || 24)) / 4);
+  } else if (def.type === 'sequence') {
+    score = Number(cfg.length || 4) + Math.max(0, (2200 - Number(cfg.showMs || 2200)) / 400);
+  } else if (def.type === 'rapid') {
+    score = Math.max(1, Number(cfg.goldTaps || 10) / 4) + Math.max(0, (5000 - Number(cfg.duration || 5000)) / 1000);
+  }
+  if (score >= 6.5) return 'Severe';
+  if (score >= 4.5) return 'High';
+  if (score >= 3) return 'Medium';
+  return 'Low';
+}
+
+function getMinigameTheme(def) {
+  const typeTheme = MINIGAME_TYPE_THEME[def?.type] || MINIGAME_TYPE_THEME.sequence;
+  const actLabel = `Act ${def?.act || 1} side-op`;
+  return {
+    ...typeTheme,
+    actLabel,
+    difficulty: getMinigameDifficultyLabel(def),
+    objective: describeMinigameObjective(def),
+  };
+}
 
 function MinigameScreen({ state, onAction }) {
   const eventId = state.event?.eventId;
@@ -3447,44 +3513,193 @@ function MinigameScreen({ state, onAction }) {
     );
   }
 
-  const rewardLine = (ops) => ops.length === 0 ? 'No reward' : ops.map(o => {
-    if (o.op === 'GainGold') return `+${o.amount}g`;
-    if (o.op === 'Heal')     return `+${o.amount} HP`;
-    if (o.op === 'LoseHP')   return `-${o.amount} HP`;
-    if (o.op === 'GainMP')   return `+${o.amount} MP`;
-    if (o.op === 'GainMaxHP')   return `+${o.amount} Max HP`;
-    if (o.op === 'AccelerateSelectedCard') return 'Accelerate a card';
-    if (o.op === 'StabiliseSelectedCard')  return 'Stabilise a card';
-    if (o.op === 'RepairSelectedCard')     return 'Repair a card';
-    if (o.op === 'RemoveSelectedCard')     return 'Remove a card';
-    return o.op;
-  }).join(' · ');
+  const theme = getMinigameTheme(def);
+  const accent = theme.accent;
+  const bgArt = getEventImage(eventId);
+  const rewardItems = (ops = []) => ops.length === 0 ? ['No reward'] : ops.map(formatMinigameRewardOp);
+  const failHasPenalty = (def.rewards?.fail || []).length > 0;
+  const rewardSummaryLine = rewardItems(def.rewards?.gold || []).join(' · ');
+  const backdrop = (
+    <>
+      {bgArt && (
+        <RuntimeArt
+          src={bgArt}
+          alt={def.title}
+          accent={accent}
+          label={def.title}
+          loading="eager"
+          style={{
+            position: 'absolute',
+            inset: 0,
+            width: '100%',
+            height: '100%',
+            opacity: 0.22,
+            pointerEvents: 'none',
+          }}
+          imageStyle={{
+            objectFit: 'cover',
+            objectPosition: 'center center',
+            filter: 'saturate(0.82) brightness(0.48)',
+          }}
+          fallbackStyle={{
+            background: `radial-gradient(circle at 20% 10%, ${accent}24 0%, transparent 32%), linear-gradient(180deg, rgba(8,10,16,0.94) 0%, rgba(6,8,14,0.98) 100%)`,
+          }}
+        />
+      )}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          background: `
+            linear-gradient(180deg, rgba(4,6,12,0.86) 0%, rgba(4,6,12,0.94) 100%),
+            repeating-linear-gradient(180deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 8px)
+          `,
+          pointerEvents: 'none',
+        }}
+      />
+    </>
+  );
 
   if (phase === 'intro') {
     return (
       <ScreenShell>
         <RunHeader run={state.run} data={null} mode="Event" />
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, gap: 20 }}>
-          <div style={{ fontSize: 52 }}>{def.icon}</div>
-          <div style={{ fontFamily: MONO, fontWeight: 700, fontSize: 20, color: C.cyan, textAlign: 'center' }}>{def.title}</div>
-          <div style={{ fontFamily: MONO, fontSize: 12, color: C.textDim, textAlign: 'center', maxWidth: 280 }}>{def.desc}</div>
-          <div style={{ width: '100%', maxWidth: 280, background: '#12121a', borderRadius: 12, padding: 14, border: '1px solid #2a2a3a' }}>
-            <div style={{ fontFamily: MONO, fontSize: 10, color: C.textMuted, marginBottom: 8, letterSpacing: '0.1em' }}>REWARDS</div>
-            {[['gold', C.yellow], ['silver', '#aaa'], ['fail', C.red]].map(([tier, col]) => (
-              <div key={tier} style={{ fontFamily: MONO, fontSize: 11, color: col, marginBottom: 4 }}>
-                {TIER_LABEL[tier]}: {rewardLine(def.rewards[tier] ?? [])}
+        <div style={{ flex: 1, position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px clamp(16px, 4vw, 28px) 32px' }}>
+          {backdrop}
+          <div
+            style={{
+              position: 'relative',
+              zIndex: 1,
+              width: 'min(100%, 980px)',
+              display: 'grid',
+              gap: 16,
+              alignContent: 'center',
+            }}
+          >
+            <div
+              style={{
+                padding: '18px 18px 16px',
+                borderRadius: 24,
+                border: `1px solid ${accent}28`,
+                background: `radial-gradient(circle at 0% 0%, ${accent}18 0%, transparent 38%), linear-gradient(180deg, rgba(12,14,22,0.92) 0%, rgba(8,10,18,0.98) 100%)`,
+                boxShadow: `0 24px 60px rgba(0,0,0,0.34), 0 0 24px ${accent}12`,
+                display: 'grid',
+                gap: 16,
+              }}
+            >
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {[
+                  theme.actLabel.toUpperCase(),
+                  String(theme.label || '').toUpperCase(),
+                  `DIFFICULTY ${theme.difficulty.toUpperCase()}`,
+                  failHasPenalty ? 'FAILURE HAS BITE' : 'LOW RISK',
+                ].map((chip) => (
+                  <div
+                    key={chip}
+                    style={{
+                      padding: '5px 9px',
+                      borderRadius: 999,
+                      border: `1px solid ${accent}32`,
+                      background: `${accent}12`,
+                      color: chip === 'FAILURE HAS BITE' ? C.red : accent,
+                      fontFamily: MONO,
+                      fontSize: 9,
+                      fontWeight: 700,
+                      letterSpacing: '0.12em',
+                      textTransform: 'uppercase',
+                    }}
+                  >
+                    {chip}
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-          <div style={{ display: 'flex', gap: 12, width: '100%', maxWidth: 280 }}>
+
+              <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))' }}>
+                <div style={{ display: 'grid', gap: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                    <div style={{ fontSize: 52, lineHeight: 1 }}>{def.icon}</div>
+                    <div style={{ display: 'grid', gap: 4 }}>
+                      <div style={{ fontFamily: MONO, fontWeight: 700, fontSize: 26, color: accent }}>
+                        {def.title}
+                      </div>
+                      <div style={{ fontFamily: MONO, fontSize: 12, color: C.text, lineHeight: 1.55, maxWidth: 540 }}>
+                        {def.desc}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      padding: '12px 14px',
+                      borderRadius: 18,
+                      border: `1px solid ${accent}26`,
+                      background: 'rgba(8,12,18,0.72)',
+                    }}
+                  >
+                    <div style={{ fontFamily: MONO, fontSize: 9, color: C.textMuted, marginBottom: 6, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
+                      Objective
+                    </div>
+                    <div style={{ fontFamily: MONO, fontSize: 12, color: C.text, lineHeight: 1.55 }}>
+                      {theme.objective}
+                    </div>
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    padding: '14px 16px',
+                    borderRadius: 20,
+                    border: `1px solid ${accent}30`,
+                    background: 'rgba(8,10,18,0.82)',
+                    display: 'grid',
+                    gap: 10,
+                    alignContent: 'start',
+                  }}
+                >
+                  <div style={{ fontFamily: MONO, fontSize: 10, color: accent, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
+                    Ops Brief
+                  </div>
+                  <div style={{ fontFamily: MONO, fontSize: 12, color: C.text, lineHeight: 1.55 }}>
+                    {theme.support}
+                  </div>
+                  <div style={{ fontFamily: MONO, fontSize: 10, color: C.textMuted, lineHeight: 1.5 }}>
+                    Gold line: {rewardSummaryLine}
+                  </div>
+                  <div style={{ display: 'grid', gap: 8 }}>
+                    {[['gold', C.yellow], ['silver', '#b9c2ce'], ['fail', C.red]].map(([tier, col]) => (
+                      <div
+                        key={tier}
+                        style={{
+                          padding: '8px 10px',
+                          borderRadius: 14,
+                          border: `1px solid ${col}26`,
+                          background: `${col}10`,
+                        }}
+                      >
+                        <div style={{ fontFamily: MONO, fontSize: 8, color: col, marginBottom: 4, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+                          {TIER_LABEL[tier]}
+                        </div>
+                        <div style={{ fontFamily: MONO, fontSize: 10, color: C.text, lineHeight: 1.45 }}>
+                          {rewardItems(def.rewards?.[tier] || []).join(' · ')}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 12, width: '100%', maxWidth: 360, justifySelf: 'center' }}>
             <button onClick={() => setPhase('playing')} style={{
-              flex: 1, padding: '14px 0', borderRadius: 12, fontFamily: MONO, fontWeight: 700, fontSize: 14,
-              background: C.cyan, color: '#000', border: 'none', cursor: 'pointer',
-            }}>PLAY</button>
+              flex: 1, padding: '14px 0', borderRadius: 16, fontFamily: MONO, fontWeight: 700, fontSize: 14,
+              background: accent, color: '#000', border: 'none', cursor: 'pointer',
+              boxShadow: `0 0 24px ${accent}40`,
+            }}>RUN SIDE-OP</button>
             <button onClick={handleSkip} style={{
-              padding: '14px 18px', borderRadius: 12, fontFamily: MONO, fontSize: 12,
-              background: 'transparent', color: C.textDim, border: `1px solid #2a2a3a`, cursor: 'pointer',
-            }}>Skip</button>
+              padding: '14px 18px', borderRadius: 16, fontFamily: MONO, fontSize: 12,
+              background: 'rgba(8,10,18,0.72)', color: C.textDim, border: `1px solid ${C.border}`, cursor: 'pointer',
+            }}>Jack Out</button>
+            </div>
           </div>
         </div>
       </ScreenShell>
@@ -3495,14 +3710,66 @@ function MinigameScreen({ state, onAction }) {
     return (
       <ScreenShell>
         <RunHeader run={state.run} data={null} mode="Event" />
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '16px 20px', overflowY: 'auto' }}>
-          <div style={{ fontFamily: MONO, fontWeight: 700, fontSize: 16, color: C.cyan, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span>{def.icon}</span><span>{def.title}</span>
+        <div style={{ flex: 1, position: 'relative', overflow: 'hidden', display: 'flex', justifyContent: 'center', padding: '18px clamp(14px, 4vw, 24px) 26px' }}>
+          {backdrop}
+          <div style={{ position: 'relative', zIndex: 1, width: 'min(100%, 980px)', display: 'grid', gap: 14, alignContent: 'start', overflowY: 'auto' }}>
+            <div
+              style={{
+                padding: '14px 16px',
+                borderRadius: 20,
+                border: `1px solid ${accent}28`,
+                background: `radial-gradient(circle at 0% 0%, ${accent}18 0%, transparent 34%), linear-gradient(180deg, rgba(12,14,22,0.9) 0%, rgba(8,10,18,0.96) 100%)`,
+                display: 'grid',
+                gap: 10,
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 28 }}>{def.icon}</span>
+                  <div>
+                    <div style={{ fontFamily: MONO, fontWeight: 700, fontSize: 18, color: accent }}>{def.title}</div>
+                    <div style={{ fontFamily: MONO, fontSize: 10, color: C.textMuted, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+                      {theme.label} • {theme.difficulty} pressure
+                    </div>
+                  </div>
+                </div>
+                <button onClick={handleSkip} style={{
+                  padding: '10px 12px', borderRadius: 12, fontFamily: MONO, fontSize: 11,
+                  background: 'rgba(8,10,18,0.72)', color: C.textDim, border: `1px solid ${C.border}`, cursor: 'pointer',
+                }}>Jack Out</button>
+              </div>
+
+              <div style={{ display: 'grid', gap: 10, gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
+                <div style={{ padding: '10px 12px', borderRadius: 16, border: `1px solid ${accent}24`, background: 'rgba(8,12,18,0.72)' }}>
+                  <div style={{ fontFamily: MONO, fontSize: 8, color: C.textMuted, marginBottom: 5, letterSpacing: '0.12em', textTransform: 'uppercase' }}>Objective</div>
+                  <div style={{ fontFamily: MONO, fontSize: 11, color: C.text, lineHeight: 1.5 }}>{theme.objective}</div>
+                </div>
+                <div style={{ padding: '10px 12px', borderRadius: 16, border: `1px solid ${C.yellow}22`, background: 'rgba(8,12,18,0.72)' }}>
+                  <div style={{ fontFamily: MONO, fontSize: 8, color: C.textMuted, marginBottom: 5, letterSpacing: '0.12em', textTransform: 'uppercase' }}>Gold line</div>
+                  <div style={{ fontFamily: MONO, fontSize: 11, color: C.text, lineHeight: 1.5 }}>{rewardItems(def.rewards?.gold || []).join(' · ')}</div>
+                </div>
+                <div style={{ padding: '10px 12px', borderRadius: 16, border: `1px solid ${failHasPenalty ? C.red : '#7b8698'}22`, background: 'rgba(8,12,18,0.72)' }}>
+                  <div style={{ fontFamily: MONO, fontSize: 8, color: C.textMuted, marginBottom: 5, letterSpacing: '0.12em', textTransform: 'uppercase' }}>Failure line</div>
+                  <div style={{ fontFamily: MONO, fontSize: 11, color: C.text, lineHeight: 1.5 }}>{rewardItems(def.rewards?.fail || []).join(' · ')}</div>
+                </div>
+              </div>
+            </div>
+
+            <div
+              style={{
+                padding: '16px clamp(12px, 3vw, 20px)',
+                borderRadius: 24,
+                border: `1px solid ${accent}28`,
+                background: 'linear-gradient(180deg, rgba(10,12,20,0.9) 0%, rgba(8,10,18,0.98) 100%)',
+                boxShadow: `0 24px 56px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.02)`,
+              }}
+            >
+              {def.type === 'memory'   && <MemoryGame   config={def.config} onComplete={handleComplete} />}
+              {def.type === 'timing'   && <TimingGame   config={def.config} onComplete={handleComplete} />}
+              {def.type === 'sequence' && <SequenceGame config={def.config} onComplete={handleComplete} />}
+              {def.type === 'rapid'    && <RapidGame    config={def.config} onComplete={handleComplete} />}
+            </div>
           </div>
-          {def.type === 'memory'   && <MemoryGame   config={def.config} onComplete={handleComplete} />}
-          {def.type === 'timing'   && <TimingGame   config={def.config} onComplete={handleComplete} />}
-          {def.type === 'sequence' && <SequenceGame config={def.config} onComplete={handleComplete} />}
-          {def.type === 'rapid'    && <RapidGame    config={def.config} onComplete={handleComplete} />}
         </div>
       </ScreenShell>
     );
@@ -3513,17 +3780,77 @@ function MinigameScreen({ state, onAction }) {
   return (
     <ScreenShell>
       <RunHeader run={state.run} data={null} mode="Event" />
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, gap: 20 }}>
-        <div style={{ fontSize: 52 }}>{def.icon}</div>
-        <div style={{ fontFamily: MONO, fontWeight: 700, fontSize: 28, color: col }}>{TIER_LABEL[resultTier]}</div>
-        <div style={{ fontFamily: MONO, fontSize: 13, color: C.textDim, textAlign: 'center' }}>
-          {rewardLine(def.rewards[resultTier] ?? [])}
+      <div style={{ flex: 1, position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px clamp(16px, 4vw, 28px) 32px' }}>
+        {backdrop}
+        <div
+          style={{
+            position: 'relative',
+            zIndex: 1,
+            width: 'min(100%, 720px)',
+            padding: '20px 20px 22px',
+            borderRadius: 24,
+            border: `1px solid ${col}30`,
+            background: `radial-gradient(circle at 0% 0%, ${col}16 0%, transparent 36%), linear-gradient(180deg, rgba(12,14,22,0.92) 0%, rgba(8,10,18,0.98) 100%)`,
+            boxShadow: `0 24px 60px rgba(0,0,0,0.34), 0 0 24px ${col}18`,
+            display: 'grid',
+            gap: 16,
+            justifyItems: 'center',
+            textAlign: 'center',
+          }}
+        >
+          <div style={{ fontSize: 56 }}>{def.icon}</div>
+          <div style={{ fontFamily: MONO, fontSize: 10, color: C.textMuted, letterSpacing: '0.16em', textTransform: 'uppercase' }}>
+            Side-op settled
+          </div>
+          <div style={{ fontFamily: MONO, fontWeight: 700, fontSize: 30, color: col }}>{TIER_LABEL[resultTier]}</div>
+          <div style={{ fontFamily: MONO, fontSize: 12, color: C.text, lineHeight: 1.55, maxWidth: 520 }}>
+            {resultTier === 'gold'
+              ? 'Clean extraction. You kept the channel stable and got paid on the premium tier.'
+              : resultTier === 'silver'
+                ? 'Messy, but profitable. The trace noticed, the payout still cleared.'
+                : 'The side-op bit back. Take what survived and move.'}
+          </div>
+
+          <div
+            style={{
+              width: '100%',
+              padding: '14px 16px',
+              borderRadius: 18,
+              border: `1px solid ${col}28`,
+              background: 'rgba(8,12,18,0.74)',
+            }}
+          >
+            <div style={{ fontFamily: MONO, fontSize: 9, color: C.textMuted, marginBottom: 8, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+              Payout
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 8 }}>
+              {rewardItems(def.rewards?.[resultTier] || []).map((entry) => (
+                <div
+                  key={entry}
+                  style={{
+                    padding: '6px 9px',
+                    borderRadius: 999,
+                    border: `1px solid ${col}34`,
+                    background: `${col}12`,
+                    color: col,
+                    fontFamily: MONO,
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: '0.08em',
+                  }}
+                >
+                  {entry}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <button onClick={handleClaim} style={{
+            padding: '14px 48px', borderRadius: 16, fontFamily: MONO, fontWeight: 700, fontSize: 15,
+            background: col, color: '#000', border: 'none', cursor: 'pointer',
+            boxShadow: `0 0 24px ${col}50`,
+          }}>Claim Payout</button>
         </div>
-        <button onClick={handleClaim} style={{
-          padding: '14px 48px', borderRadius: 12, fontFamily: MONO, fontWeight: 700, fontSize: 15,
-          background: col, color: '#000', border: 'none', cursor: 'pointer',
-          boxShadow: `0 0 24px ${col}50`,
-        }}>CLAIM</button>
       </div>
     </ScreenShell>
   );

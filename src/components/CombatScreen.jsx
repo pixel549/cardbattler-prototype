@@ -4,7 +4,7 @@ import { getCardImage } from '../data/cardImages.js';
 import RuntimeArt from './RuntimeArt.jsx';
 import { sfx } from '../game/sounds.js';
 import { getCardPlayability, getCardTargetingProfile } from '../game/engine.js';
-import { getHeatState } from '../game/combatMeta.js';
+import { getCardHeatGain, getHeatState } from '../game/combatMeta.js';
 import { getBossDirectiveReadout, getEnemyDirectiveSummaries } from '../game/combatDirectives.js';
 import useDialogAccessibility from '../hooks/useDialogAccessibility.js';
 import usePlaytestRecorder from '../hooks/usePlaytestRecorder.js';
@@ -725,6 +725,110 @@ function buildAnimationEffectTokens(effectSummary = null, reactions = EMPTY_ARRA
   });
 
   return tokens.slice(0, 4);
+}
+
+function summarizeCardEffectsForOps(cardDef) {
+  const summary = {
+    damage: 0,
+    heal: 0,
+    firewallGain: 0,
+    draw: 0,
+    gainRAM: 0,
+    statuses: [],
+    targetsAllEnemies: false,
+  };
+
+  for (const effect of cardDef?.effects || EMPTY_ARRAY) {
+    if (!effect) continue;
+    if (effect.op === 'DealDamage') {
+      summary.damage += Number(effect.amount || 0);
+      if (effect.target === 'AllEnemies') summary.targetsAllEnemies = true;
+      continue;
+    }
+    if (effect.op === 'GainBlock') {
+      summary.firewallGain += Number(effect.amount || 0);
+      continue;
+    }
+    if (effect.op === 'Heal') {
+      summary.heal += Number(effect.amount || 0);
+      continue;
+    }
+    if (effect.op === 'DrawCards') {
+      summary.draw += Number(effect.amount || 0);
+      continue;
+    }
+    if (effect.op === 'GainRAM') {
+      summary.gainRAM += Number(effect.amount || 0);
+      continue;
+    }
+    if (effect.op === 'ApplyStatus' && effect.statusId) {
+      summary.statuses.push(`${humanizeStatusId(effect.statusId)} ${effect.stacks || 1}`);
+      continue;
+    }
+    if (effect.op === 'RawText') {
+      const text = String(effect.text || '');
+      const damageMatch = text.match(/\bDeal\s+(\d+)\s+damage\b/i);
+      const firewallMatch = text.match(/\bGain\s+(\d+)\s+Firewall\b/i);
+      const healMatch = text.match(/\bHeal\s+(\d+)\b/i);
+      const drawMatch = text.match(/\bDraw\s+(\d+)\b/i);
+      const ramMatch = text.match(/\bGain\s+(\d+)\s+RAM\b/i);
+      const statusMatch = text.match(/\bApply\s+(\d+)\s+([A-Za-z ]+?)\b/i);
+      if (damageMatch) summary.damage += Number(damageMatch[1] || 0);
+      if (firewallMatch) summary.firewallGain += Number(firewallMatch[1] || 0);
+      if (healMatch) summary.heal += Number(healMatch[1] || 0);
+      if (drawMatch) summary.draw += Number(drawMatch[1] || 0);
+      if (ramMatch) summary.gainRAM += Number(ramMatch[1] || 0);
+      if (statusMatch) summary.statuses.push(`${statusMatch[2].trim()} ${statusMatch[1]}`);
+      if (/all enemies/i.test(text)) summary.targetsAllEnemies = true;
+    }
+  }
+
+  return summary;
+}
+
+function buildOpsTokensFromCardSummary(summary = null) {
+  if (!summary) return EMPTY_ARRAY;
+  const tokens = [];
+  if (summary.damage > 0) tokens.push({ label: `-${summary.damage} DMG`, color: C.neonRed });
+  if (summary.firewallGain > 0) tokens.push({ label: `+${summary.firewallGain} FW`, color: C.neonCyan });
+  if (summary.heal > 0) tokens.push({ label: `+${summary.heal} HP`, color: C.neonGreen });
+  if (summary.gainRAM > 0) tokens.push({ label: `+${summary.gainRAM} RAM`, color: C.neonYellow });
+  if (summary.draw > 0) tokens.push({ label: `DRAW ${summary.draw}`, color: C.textPrimary });
+  if (summary.targetsAllEnemies) tokens.push({ label: 'AOE', color: C.neonOrange });
+  for (const status of summary.statuses.slice(0, 2)) {
+    tokens.push({ label: status.toUpperCase(), color: C.neonPurple });
+  }
+  return tokens.slice(0, 5);
+}
+
+function buildCardHeatForecast(cardDef, cardInstance, heat = 0, maxHeat = 20) {
+  if (!cardDef || !cardInstance) return null;
+  const effectSummary = summarizeCardEffectsForOps(cardDef);
+  const gain = getCardHeatGain({
+    cost: Math.max(0, Number(cardDef.costRAM || 0) + Number(cardInstance.ramCostDelta || 0)),
+    effectSummary: {
+      damage: effectSummary.damage,
+      heal: effectSummary.heal,
+      defense: effectSummary.firewallGain,
+      firewallGain: effectSummary.firewallGain,
+      draw: effectSummary.draw,
+      gainRAM: effectSummary.gainRAM,
+      targetsAllEnemies: effectSummary.targetsAllEnemies,
+    },
+    tags: cardDef.tags || EMPTY_ARRAY,
+    type: cardDef.type,
+    compileLevel: Number(cardInstance.compileLevel || 0),
+    appliedMutationCount: Number(cardInstance.appliedMutations?.length || 0),
+  });
+  const nextHeat = Math.min(Math.max(1, Number(maxHeat || 20)), Math.max(0, Number(heat || 0)) + gain);
+  const nextState = getHeatState(nextHeat, maxHeat);
+  return {
+    gain,
+    nextHeat,
+    nextState,
+    effectSummary,
+    tokens: buildOpsTokensFromCardSummary(effectSummary),
+  };
 }
 
 // ============================================================
@@ -3780,14 +3884,44 @@ function CenterCardDisplay({
         }}
       >
         {targetPreview && (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-            <span style={{ fontFamily: MONO, fontSize: 7, fontWeight: 700, letterSpacing: '0.14em', color: C.textDim, textTransform: 'uppercase' }}>
-              Cast Route
-            </span>
-            <span style={{ fontFamily: MONO, fontSize: 8, fontWeight: 700, color: targetPreview.tone || helperTone, textTransform: 'uppercase', letterSpacing: '0.08em', textAlign: 'right' }}>
-              {targetPreview.label}
-            </span>
-          </div>
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+              <span style={{ fontFamily: MONO, fontSize: 7, fontWeight: 700, letterSpacing: '0.14em', color: C.textDim, textTransform: 'uppercase' }}>
+                Cast Route
+              </span>
+              <span style={{ fontFamily: MONO, fontSize: 8, fontWeight: 700, color: targetPreview.tone || helperTone, textTransform: 'uppercase', letterSpacing: '0.08em', textAlign: 'right' }}>
+                {targetPreview.label}
+              </span>
+            </div>
+            {targetPreview.routes?.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {targetPreview.routes.map((route) => (
+                  <div
+                    key={`${route.label}-${route.value}`}
+                    style={{
+                      padding: '4px 6px',
+                      borderRadius: 999,
+                      border: `1px solid ${(route.tone || helperTone)}34`,
+                      background: `${route.tone || helperTone}14`,
+                      color: route.tone || helperTone,
+                      fontFamily: MONO,
+                      fontSize: 8,
+                      fontWeight: 700,
+                      letterSpacing: '0.08em',
+                      textTransform: 'uppercase',
+                    }}
+                  >
+                    {route.label}: {route.value}
+                  </div>
+                ))}
+              </div>
+            )}
+            {targetPreview.heatLabel && (
+              <div style={{ fontFamily: MONO, fontSize: 8, lineHeight: 1.4, color: targetPreview.heatTone || C.textSecondary }}>
+                {targetPreview.heatLabel}
+              </div>
+            )}
+          </>
         )}
         <span style={{ fontFamily: MONO, fontSize: 7, fontWeight: 700, letterSpacing: '0.14em', color: helperTone, textTransform: 'uppercase' }}>
           Targeting
@@ -4296,6 +4430,200 @@ function CenterCardDisplay({
 
       </div>
 
+    </div>
+  );
+}
+
+function CombatOpsConsole({
+  activeAnimation = null,
+  activeCardDef = null,
+  targetedEnemy = null,
+  targetedIntentBadges = EMPTY_ARRAY,
+  targetPreview = null,
+  heatForecast = null,
+  heat = 0,
+  maxHeat = 20,
+  arenaModifier = null,
+  data = null,
+}) {
+  const currentHeatState = getHeatState(heat, maxHeat);
+
+  let accent = arenaModifier?.color || currentHeatState.color || C.neonCyan;
+  let eyebrow = 'COMBAT OPS';
+  let title = arenaModifier?.label || `Trace ${currentHeatState.label}`;
+  let body = arenaModifier?.summary || currentHeatState.summary;
+  let tokens = [];
+  let metrics = [
+    { label: 'Heat', value: `${heat}/${maxHeat}`, tone: currentHeatState.color },
+    targetedEnemy ? { label: 'Focus', value: targetedEnemy.name || 'Enemy', tone: getIntentColor(targetedEnemy.intent?.type) } : null,
+    arenaModifier ? { label: 'Arena', value: arenaModifier.label, tone: arenaModifier.color || C.neonOrange } : null,
+  ].filter(Boolean);
+
+  if (activeAnimation) {
+    const animCardDef = data?.cards?.[activeAnimation.defId];
+    const meta = getPlayAnimationMeta(
+      activeAnimation.actor,
+      activeAnimation.intentType,
+      animCardDef?.type,
+    );
+    const cue = activeAnimation.actor === 'enemy'
+      ? getEnemyActionCue(activeAnimation.intentType, meta.accent)
+      : null;
+
+    accent = meta.accent;
+    eyebrow = activeAnimation.actor === 'enemy' ? 'HOSTILE SIGNAL' : 'CARD ROUTE LIVE';
+    title = activeAnimation.actor === 'enemy'
+      ? `${activeAnimation.enemyName || 'Enemy'} ${meta.label}`
+      : `${animCardDef?.name || 'Card'} ${meta.label}`;
+    body = activeAnimation.actor === 'enemy'
+      ? (cue?.targetLabel || activeAnimation.intentType || 'Resolving action')
+      : formatEffectsLong(animCardDef?.effects).slice(0, 2).join(' • ');
+    tokens = buildAnimationEffectTokens(activeAnimation.effectSummary, activeAnimation.reactions);
+    metrics = [
+      { label: 'Source', value: activeAnimation.actor === 'enemy' ? (activeAnimation.enemyName || 'Enemy') : 'Player', tone: accent },
+      cue ? { label: 'Route', value: cue.shortLabel, tone: accent } : null,
+      { label: 'Heat', value: `${heat}/${maxHeat}`, tone: currentHeatState.color },
+    ].filter(Boolean);
+  } else if (activeCardDef) {
+    const cardAccent = getCardColor(activeCardDef.type);
+    accent = targetPreview?.tone || cardAccent;
+    eyebrow = 'CARD ROUTE';
+    title = activeCardDef.name || 'Selected card';
+    body = targetPreview?.summary
+      || (targetPreview?.label ? `Route armed on ${targetPreview.label}.` : 'Choose a route and cast.');
+    tokens = [
+      ...(heatForecast?.tokens || EMPTY_ARRAY),
+      ...(heatForecast?.gain != null ? [{
+        label: `TRACE +${heatForecast.gain}`,
+        color: heatForecast.nextState?.color || currentHeatState.color,
+      }] : []),
+    ].slice(0, 5);
+    metrics = [
+      targetPreview?.routes?.[0]
+        ? { label: targetPreview.routes[0].label, value: targetPreview.routes[0].value, tone: targetPreview.routes[0].tone }
+        : null,
+      targetPreview?.routes?.[1]
+        ? { label: targetPreview.routes[1].label, value: targetPreview.routes[1].value, tone: targetPreview.routes[1].tone }
+        : null,
+      heatForecast?.nextState
+        ? { label: 'After cast', value: `${heatForecast.nextHeat}/${maxHeat} ${heatForecast.nextState.shortLabel}`, tone: heatForecast.nextState.color }
+        : { label: 'Heat', value: `${heat}/${maxHeat}`, tone: currentHeatState.color },
+    ].filter(Boolean);
+  } else if (targetedEnemy) {
+    const intentColor = getIntentColor(targetedEnemy.intent?.type);
+    accent = intentColor;
+    eyebrow = 'ENEMY Dossier';
+    title = targetedEnemy.name || 'Enemy';
+    body = targetedEnemy.intent?.name
+      ? `Queued action: ${targetedEnemy.intent.name}.`
+      : `Queued action: ${targetedEnemy.intent?.type || 'Unknown intent'}.`;
+    tokens = targetedIntentBadges.slice(0, 4).map((badge) => ({
+      label: badge.value != null ? `${badge.label.toUpperCase()} ${badge.value}` : String(badge.label || '').toUpperCase(),
+      color: badge.color || intentColor,
+    }));
+    metrics = [
+      { label: 'Intent', value: targetedEnemy.intent?.type || 'Unknown', tone: intentColor },
+      { label: 'HP', value: `${targetedEnemy.hp}/${targetedEnemy.maxHP}`, tone: getHealthColor(targetedEnemy.hp, targetedEnemy.maxHP) },
+      { label: 'Heat', value: `${heat}/${maxHeat}`, tone: currentHeatState.color },
+    ];
+  }
+
+  return (
+    <div
+      style={{
+        width: 'min(100%, 880px)',
+        padding: '12px 14px',
+        borderRadius: 18,
+        border: `1px solid ${accent}28`,
+        background: `
+          radial-gradient(circle at 0% 0%, ${accent}18 0%, transparent 34%),
+          linear-gradient(180deg, rgba(10,14,24,0.96) 0%, rgba(7,10,18,0.98) 100%)
+        `,
+        boxShadow: `0 18px 36px rgba(0,0,0,0.26), 0 0 18px ${accent}10`,
+        backdropFilter: 'blur(8px)',
+        display: 'grid',
+        gap: 10,
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+        <div style={{ display: 'grid', gap: 4 }}>
+          <div style={{ fontFamily: MONO, fontSize: 9, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: accent }}>
+            {eyebrow}
+          </div>
+          <div style={{ fontFamily: MONO, fontSize: 15, fontWeight: 700, color: C.textPrimary }}>
+            {title}
+          </div>
+          <div style={{ fontFamily: MONO, fontSize: 10, lineHeight: 1.45, color: '#c5cfdb' }}>
+            {body}
+          </div>
+        </div>
+        <div
+          style={{
+            minWidth: 74,
+            padding: '8px 10px',
+            borderRadius: 14,
+            border: `1px solid ${accent}34`,
+            background: `${accent}12`,
+            textAlign: 'right',
+          }}
+        >
+          <div style={{ fontFamily: MONO, fontSize: 8, color: C.textDim, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+            Trace
+          </div>
+          <div style={{ fontFamily: MONO, fontSize: 16, fontWeight: 700, color: currentHeatState.color }}>
+            {heat}
+            <span style={{ color: C.textDim, fontSize: 11 }}>/</span>
+            {maxHeat}
+          </div>
+        </div>
+      </div>
+
+      {metrics.length > 0 && (
+        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(metrics.length, 3)}, minmax(0, 1fr))`, gap: 8 }}>
+          {metrics.map((metric) => (
+            <div
+              key={`${metric.label}-${metric.value}`}
+              style={{
+                padding: '8px 10px',
+                borderRadius: 14,
+                border: `1px solid ${metric.tone || accent}24`,
+                background: 'rgba(8,12,18,0.72)',
+              }}
+            >
+              <div style={{ fontFamily: MONO, fontSize: 8, color: C.textDim, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 3 }}>
+                {metric.label}
+              </div>
+              <div style={{ fontFamily: MONO, fontSize: 11, fontWeight: 700, color: metric.tone || C.textPrimary, lineHeight: 1.35 }}>
+                {metric.value}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {tokens.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          {tokens.map((token) => (
+            <div
+              key={`${token.label}-${token.color}`}
+              style={{
+                padding: '5px 8px',
+                borderRadius: 999,
+                border: `1px solid ${token.color}40`,
+                background: `${token.color}16`,
+                color: token.color,
+                fontFamily: MONO,
+                fontSize: 8,
+                fontWeight: 700,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+              }}
+            >
+              {token.label}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -7023,18 +7351,65 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
     : canCastActiveOnAnyEnemy || canCastActiveOnSelf
       ? C.neonGreen
       : C.neonOrange;
+  const activeCardHeatForecast = activeCardId && activeDef && activeInstance
+    ? buildCardHeatForecast(activeDef, activeInstance, heat, maxHeat)
+    : null;
   const activeCardTargetPreview = !activeCardId
     ? null
     : selectedTargetMode === 'self'
       ? {
         label: selfTargetArmed ? 'Self armed' : 'Self',
         tone: selfTargetArmed ? C.neonYellow : (canCastActiveOnSelf ? C.neonGreen : C.neonOrange),
+        summary: selfTargetArmed
+          ? 'The self route is armed. Swipe down now to apply the card to yourself.'
+          : canCastActiveOnSelf
+            ? 'Swipe down to resolve on yourself. The up route still uses the selected enemy.'
+            : 'This card cannot currently route to self.',
+        routes: [
+          {
+            label: 'Up',
+            value: canCastActiveOnAnyEnemy ? (targetedEnemy?.name ?? 'Selected enemy') : 'Unavailable',
+            tone: canCastActiveOnAnyEnemy ? C.neonRed : C.textDim,
+          },
+          {
+            label: 'Down',
+            value: 'Self',
+            tone: selfTargetArmed ? C.neonYellow : (canCastActiveOnSelf ? C.neonGreen : C.textDim),
+          },
+        ],
+        heatLabel: activeCardHeatForecast
+          ? `Trace +${activeCardHeatForecast.gain} -> ${activeCardHeatForecast.nextState.label.toUpperCase()} (${activeCardHeatForecast.nextHeat}/${maxHeat})`
+          : null,
+        heatTone: activeCardHeatForecast?.nextState?.color || null,
       }
       : {
         label: enemyTargetArmed
           ? `${targetedEnemy?.name ?? 'Target'} locked`
           : (targetedEnemy?.name ?? 'Select target'),
         tone: enemyTargetArmed ? C.neonYellow : (canCastActiveOnAnyEnemy ? C.neonRed : C.neonOrange),
+        summary: enemyTargetArmed
+          ? 'The enemy route is armed. Swipe up to fire into the selected target.'
+          : canCastActiveOnAnyEnemy
+            ? `Swipe up to cast into ${targetedEnemy?.name ?? 'the selected enemy'}.`
+            : 'No enemy route is valid for this card right now.',
+        routes: [
+          {
+            label: 'Up',
+            value: enemyTargetArmed
+              ? `${targetedEnemy?.name ?? 'Target'} locked`
+              : (targetedEnemy?.name ?? 'Select target'),
+            tone: enemyTargetArmed ? C.neonYellow : (canCastActiveOnAnyEnemy ? C.neonRed : C.textDim),
+          },
+          {
+            label: 'Down',
+            value: canCastActiveOnSelf ? 'Self' : 'Unavailable',
+            tone: canCastActiveOnSelf ? C.neonGreen : C.textDim,
+          },
+        ],
+        heatLabel: activeCardHeatForecast
+          ? `Trace +${activeCardHeatForecast.gain} -> ${activeCardHeatForecast.nextState.label.toUpperCase()} (${activeCardHeatForecast.nextHeat}/${maxHeat})`
+          : null,
+        heatTone: activeCardHeatForecast?.nextState?.color || null,
       };
 
   useEffect(() => {
@@ -7143,6 +7518,21 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
         layoutMode={layoutMode}
       />
     </div>
+  );
+
+  const combatOpsConsole = (
+    <CombatOpsConsole
+      activeAnimation={activeAnimation}
+      activeCardDef={activeDef}
+      targetedEnemy={targetedEnemy}
+      targetedIntentBadges={targetedIntentBadges}
+      targetPreview={activeCardTargetPreview}
+      heatForecast={activeCardHeatForecast}
+      heat={heat}
+      maxHeat={maxHeat}
+      arenaModifier={arenaModifier}
+      data={data}
+    />
   );
 
   const handFan = (
@@ -7594,6 +7984,17 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
             </div>
           </div>
 
+          <div
+            style={{
+              flex: '0 0 auto',
+              display: 'flex',
+              justifyContent: 'center',
+              padding: '0 18px 8px',
+            }}
+          >
+            {combatOpsConsole}
+          </div>
+
           <div style={{
             flex: 1,
             display: 'flex',
@@ -7604,7 +8005,7 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
             minHeight: 0,
             overflow: 'hidden',
           }}>
-            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', minHeight: 0, overflow: 'auto', width: '100%', paddingBottom: desktopCenterCardBottomPad }}>
+            <div style={{ flex: 1, display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end', minHeight: 0, overflow: 'auto', width: '100%', paddingTop: 6, paddingBottom: desktopCenterCardBottomPad }}>
               {centeredCardPanel}
             </div>
           </div>
@@ -7642,9 +8043,20 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
           <div
             style={{
               flex: '0 0 auto',
-              padding: compactTutorialPortrait ? '0 8px 4px' : '0 8px 0',
+              padding: compactTutorialPortrait ? '0 8px 4px' : '0 8px 6px',
               display: 'flex',
-              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            {combatOpsConsole}
+          </div>
+
+          <div
+            style={{
+              flex: '0 0 auto',
+              padding: compactTutorialPortrait ? '0 8px 2px' : '0 8px 0',
+              display: 'flex',
+              alignItems: 'flex-start',
               justifyContent: 'flex-end',
               minHeight: 0,
             }}
@@ -7703,7 +8115,10 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
             </div>
 
             <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 10, justifyContent: 'space-between' }}>
-              <div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+              <div style={{ flex: '0 0 auto', display: 'flex', justifyContent: 'center' }}>
+                {combatOpsConsole}
+              </div>
+              <div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end', paddingTop: 6 }}>
                 {centeredCardPanel}
               </div>
               <div style={{ flex: '0 0 auto' }}>

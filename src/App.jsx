@@ -321,12 +321,151 @@ function readStoredArray(key) {
   }
 }
 
+function compactStatusesForExport(statuses) {
+  if (!Array.isArray(statuses) || statuses.length === 0) return [];
+  return statuses
+    .filter(Boolean)
+    .map((status) => ({
+      id: status.id ?? null,
+      stacks: Number.isFinite(Number(status.stacks)) ? Number(status.stacks) : null,
+    }));
+}
+
+function compactCombatantForExport(entity) {
+  if (!entity || typeof entity !== 'object') return null;
+  return {
+    id: entity.id ?? null,
+    enemyDefId: entity.enemyDefId ?? null,
+    name: entity.name ?? null,
+    hp: Number.isFinite(Number(entity.hp)) ? Number(entity.hp) : null,
+    maxHP: Number.isFinite(Number(entity.maxHP)) ? Number(entity.maxHP) : null,
+    firewall: Number.isFinite(Number(entity.firewall)) ? Number(entity.firewall) : null,
+    protection: Number.isFinite(Number(entity.protection)) ? Number(entity.protection) : null,
+    statuses: compactStatusesForExport(entity.statuses),
+    intentType: entity.intentType ?? null,
+    intentAmount: Number.isFinite(Number(entity.intentAmount)) ? Number(entity.intentAmount) : null,
+    intentCardDefId: entity.intentCardDefId ?? null,
+  };
+}
+
+function compactEffectSummaryForExport(summary) {
+  if (!summary || typeof summary !== 'object') return null;
+  const compact = {
+    type: summary.type ?? null,
+    primaryRole: summary.primaryRole ?? null,
+  };
+  const numericKeys = [
+    'damage',
+    'defense',
+    'heal',
+    'buff',
+    'debuff',
+    'draw',
+    'gainRAM',
+    'loseRAM',
+    'firewallGain',
+    'firewallBreach',
+  ];
+  for (const key of numericKeys) {
+    const value = Number(summary[key]);
+    if (Number.isFinite(value) && value !== 0) compact[key] = value;
+  }
+  if (summary.firewallBreachAll) compact.firewallBreachAll = true;
+  if (summary.firewallSpend) compact.firewallSpend = true;
+  if (summary.targetsAllEnemies) compact.targetsAllEnemies = true;
+  if (summary.xCost) compact.xCost = true;
+  if (Array.isArray(summary.roles) && summary.roles.length > 0) {
+    compact.roles = summary.roles.slice();
+  }
+  return compact;
+}
+
+function compactCardRefForExport(card) {
+  if (!card || typeof card !== 'object') return null;
+  return {
+    instanceId: card.instanceId ?? null,
+    defId: card.defId ?? null,
+    name: card.name ?? null,
+    type: card.type ?? null,
+    cost: Number.isFinite(Number(card.cost)) ? Number(card.cost) : null,
+    affordable: typeof card.affordable === 'boolean' ? card.affordable : null,
+    effectSummary: compactEffectSummaryForExport(card.effectSummary),
+  };
+}
+
+function compactCardPlayTimelineForExport(entries) {
+  if (!Array.isArray(entries) || entries.length === 0) return [];
+  return entries.map((entry) => ({
+    seq: entry.seq ?? null,
+    turn: entry.turn ?? null,
+    cardInstanceId: entry.cardInstanceId ?? null,
+    defId: entry.defId ?? null,
+    name: entry.name ?? null,
+    cost: Number.isFinite(Number(entry.cost)) ? Number(entry.cost) : null,
+    ramBefore: Number.isFinite(Number(entry.ramBefore)) ? Number(entry.ramBefore) : null,
+    ramAfter: Number.isFinite(Number(entry.ramAfter)) ? Number(entry.ramAfter) : null,
+    heatAfter: Number.isFinite(Number(entry.heatAfter)) ? Number(entry.heatAfter) : null,
+    targetEnemyId: entry.targetEnemyId ?? null,
+    targetSelf: Boolean(entry.targetSelf),
+    playerBefore: compactCombatantForExport(entry.playerBefore),
+    targetBefore: compactCombatantForExport(entry.targetBefore),
+    handBefore: Array.isArray(entry.handBefore) ? entry.handBefore.map(compactCardRefForExport).filter(Boolean) : [],
+    effectSummary: compactEffectSummaryForExport(entry.effectSummary),
+    availableRoleCounts: entry.availableRoleCounts ? { ...entry.availableRoleCounts } : null,
+    tacticalFlags: entry.tacticalFlags ? { ...entry.tacticalFlags } : null,
+  }));
+}
+
+function compactEnemyPlayTimelineForExport(entries) {
+  if (!Array.isArray(entries) || entries.length === 0) return [];
+  return entries.map((entry) => ({
+    seq: entry.seq ?? null,
+    turn: entry.turn ?? null,
+    enemyId: entry.enemyId ?? null,
+    enemyName: entry.enemyName ?? null,
+    defId: entry.defId ?? null,
+    name: entry.name ?? null,
+    intentType: entry.intentType ?? null,
+    effectSummary: compactEffectSummaryForExport(entry.effectSummary),
+    playerBefore: compactCombatantForExport(entry.playerBefore),
+    enemyBefore: compactCombatantForExport(entry.enemyBefore),
+    playerRamBefore: Number.isFinite(Number(entry.playerRamBefore)) ? Number(entry.playerRamBefore) : null,
+    playerMaxRamBefore: Number.isFinite(Number(entry.playerMaxRamBefore)) ? Number(entry.playerMaxRamBefore) : null,
+    heatBefore: Number.isFinite(Number(entry.heatBefore)) ? Number(entry.heatBefore) : null,
+    maxHeatBefore: Number.isFinite(Number(entry.maxHeatBefore)) ? Number(entry.maxHeatBefore) : null,
+  }));
+}
+
+function compactHandTimelineForExport(entries) {
+  if (!Array.isArray(entries) || entries.length === 0) return [];
+  return entries.map((entry) => ({
+    seq: entry.seq ?? null,
+    reason: entry.reason ?? null,
+    turn: entry.turn ?? null,
+    ram: Number.isFinite(Number(entry.ram)) ? Number(entry.ram) : null,
+    handSize: Number.isFinite(Number(entry.handSize)) ? Number(entry.handSize) : null,
+    drawCount: Number.isFinite(Number(entry.drawCount)) ? Number(entry.drawCount) : null,
+    discardCount: Number.isFinite(Number(entry.discardCount)) ? Number(entry.discardCount) : null,
+    exhaustCount: Number.isFinite(Number(entry.exhaustCount)) ? Number(entry.exhaustCount) : null,
+    powerCount: Number.isFinite(Number(entry.powerCount)) ? Number(entry.powerCount) : null,
+    source: entry.source ?? null,
+    requested: Number.isFinite(Number(entry.requested)) ? Number(entry.requested) : null,
+    drawnCount: Number.isFinite(Number(entry.drawnCount)) ? Number(entry.drawnCount) : null,
+    reshuffled: Boolean(entry.reshuffled),
+    hand: Array.isArray(entry.hand) ? entry.hand.map(compactCardRefForExport).filter(Boolean) : [],
+    drawn: Array.isArray(entry.drawn) ? entry.drawn.map(compactCardRefForExport).filter(Boolean) : [],
+  }));
+}
+
 function filterEncounterForExport(encounter, options) {
   const out = { ...encounter };
   if (!options.cards) {
     out.cardPlayTimeline = [];
     out.enemyPlayTimeline = [];
     delete out.tacticalSummary;
+  } else {
+    out.cardPlayTimeline = compactCardPlayTimelineForExport(out.cardPlayTimeline);
+    out.enemyPlayTimeline = compactEnemyPlayTimelineForExport(out.enemyPlayTimeline);
   }
   if (!options.hp) {
     delete out.hpBefore;
@@ -342,6 +481,8 @@ function filterEncounterForExport(encounter, options) {
   }
   if (!options.hands) {
     out.handTimeline = [];
+  } else {
+    out.handTimeline = compactHandTimelineForExport(out.handTimeline);
   }
   return out;
 }

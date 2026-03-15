@@ -684,6 +684,7 @@ export default function MainMenuHub({
     padding,
   });
   const tutorialMenuActive = tutorialStep?.mode === 'MainMenu';
+  const isHomeMenu = activeMenuView === 'home';
   const tutorialPaneLabel = activeMenuView === 'intel'
     ? `Intel / ${activeIntelView === 'root' ? 'Index' : activeIntelView}`
     : activeMenuView === 'new'
@@ -900,6 +901,60 @@ export default function MainMenuHub({
 
   const renderHeader = () => {
     const meta = activeHeaderMeta;
+    if (isHomeMenu) {
+      return (
+        <div className="panel-chrome" style={{ ...panelStyle(meta.accent, 'bright', '24px'), display: 'grid', gap: 16 }}>
+          <div
+            style={{
+              position: 'absolute',
+              inset: 'auto -80px -80px auto',
+              width: 220,
+              height: 220,
+              borderRadius: '50%',
+              background: `${meta.accent}12`,
+              filter: 'blur(20px)',
+              pointerEvents: 'none',
+            }}
+          />
+          <div style={{ display: 'grid', gap: 12 }}>
+            <div style={{ fontFamily: UI_MONO, fontSize: 11, letterSpacing: '0.24em', color: meta.accent, textTransform: 'uppercase' }}>
+              {meta.eyebrow}
+            </div>
+            <div style={{ fontFamily: DISPLAY_FONT, fontSize: 52, fontWeight: 700, lineHeight: 0.92, letterSpacing: '0.03em', color: C.text, textShadow: `0 0 24px ${meta.accent}18` }}>
+              {meta.title}
+            </div>
+            <div style={{ fontFamily: UI_MONO, fontSize: 13, lineHeight: 1.75, color: C.textDim, maxWidth: 720 }}>
+              {meta.body}
+            </div>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            <DataChip accent={C.cyan}>Five top-level options</DataChip>
+            {canContinue ? <DataChip accent={C.green}>Autosave ready</DataChip> : null}
+          </div>
+          {tutorialMenuActive ? (
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '10px 12px',
+                borderRadius: 16,
+                border: `1px solid ${meta.accent}32`,
+                background: `${meta.accent}10`,
+                fontFamily: UI_MONO,
+                fontSize: 11,
+                lineHeight: 1.5,
+                color: C.textDim,
+              }}
+            >
+              <span style={{ color: meta.accent, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Briefing focus</span>
+              <span style={{ color: C.text }}>{tutorialPaneLabel}</span>
+            </div>
+          ) : null}
+        </div>
+      );
+    }
+
     return (
       <div className="panel-chrome" style={{ ...panelStyle(meta.accent, 'bright', '22px'), display: 'grid', gap: 18 }}>
         <div
@@ -1225,9 +1280,9 @@ export default function MainMenuHub({
   const renderHomeView = () => (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))', gap: 12 }}>
       <MainAction accent={C.green} title="Load Save" body="Continue the last autosave, import a run snapshot, or open buried recovery tools." onClick={() => handleMenuViewChange('load')} meta="Menu" status={canContinue ? 'Autosave' : 'No save'} />
-      <MainAction accent={C.yellow} title="New Run" body="Standard runs, daily runs, and deeper configuration now branch from here." onClick={() => handleNewRunViewChange('root')} meta="Menu" status={selectedProfile?.name || 'Ready'} solid />
-      <MainAction accent={C.green} title="Intel" body="Relics, cards, enemies, minigames, bosses, and progression live in the archive." onClick={() => { handleIntelViewChange('root'); handleMenuViewChange('intel'); }} meta="Menu" status={`${recentUnlockLabels.length || 0} recent`} />
-      <MainAction accent={C.cyan} title="Tutorial" body="Beginner and advanced lessons are split so you only see the lane you asked for." onClick={() => { handleTutorialViewChange('root'); handleMenuViewChange('tutorial'); }} meta="Menu" status={`${tutorialCatalog.length} modules`} />
+      <MainAction accent={C.yellow} title="New Run" body="Standard runs, daily runs, and deeper configuration branch from here once you open the run menu." onClick={() => handleNewRunViewChange('root')} meta="Menu" status="Launch" solid />
+      <MainAction accent={C.green} title="Intel" body="Relics, cards, enemies, minigames, bosses, and progression stay tucked behind the archive." onClick={() => { handleIntelViewChange('root'); handleMenuViewChange('intel'); }} meta="Menu" status="Archive" />
+      <MainAction accent={C.cyan} title="Tutorial" body="Beginner and advanced lessons stay hidden until you deliberately open the training lane." onClick={() => { handleTutorialViewChange('root'); handleMenuViewChange('tutorial'); }} meta="Menu" status="Lessons" />
       <MainAction accent={C.purple} title="Settings" body="Open the existing settings and utility controls without polluting the front page." onClick={() => handleMenuViewChange('settings')} meta="Menu" status="Control room" />
     </div>
   );
@@ -2092,15 +2147,17 @@ export default function MainMenuHub({
         />
 
         {renderHeader()}
-        <div className="panel-chrome" style={{ ...panelStyle(C.cyan, 'soft', '14px'), display: 'grid', gap: 8, maxWidth: 760 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ width: 8, height: 8, borderRadius: '50%', background: C.cyan, boxShadow: `0 0 12px ${C.cyan}` }} />
-            <div style={{ fontFamily: UI_MONO, fontSize: 10, letterSpacing: '0.16em', color: C.cyan }}>FIXER WIRE</div>
+        {!isHomeMenu ? (
+          <div className="panel-chrome" style={{ ...panelStyle(C.cyan, 'soft', '14px'), display: 'grid', gap: 8, maxWidth: 760 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: C.cyan, boxShadow: `0 0 12px ${C.cyan}` }} />
+              <div style={{ fontFamily: UI_MONO, fontSize: 10, letterSpacing: '0.16em', color: C.cyan }}>FIXER WIRE</div>
+            </div>
+            <div style={{ fontFamily: UI_MONO, fontSize: 12, lineHeight: 1.65, color: C.text }}>
+              {fixerLine}
+            </div>
           </div>
-          <div style={{ fontFamily: UI_MONO, fontSize: 12, lineHeight: 1.65, color: C.text }}>
-            {fixerLine}
-          </div>
-        </div>
+        ) : null}
         {content}
       </div>
     </ScreenShell>

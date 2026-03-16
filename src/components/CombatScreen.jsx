@@ -3924,17 +3924,17 @@ function CenterCardDisplay({
   if (isMobileLayout) {
     const isPhonePortrait = layoutMode === 'phone-portrait';
     const mobileCardWidth = isPhonePortrait
-      ? 'min(41vw, 156px)'
-      : 'clamp(122px, 18vw, 156px)';
-    const utilityRailWidth = isPhonePortrait ? 62 : 0;
+      ? 'min(38vw, 148px)'
+      : 'clamp(116px, 17vw, 148px)';
+    const utilityRailWidth = isPhonePortrait ? 54 : 0;
     const helperPanel = activateHint ? (
       <div
         style={{
-          width: 'min(100%, 340px)',
+          width: 'min(100%, 300px)',
           display: 'flex',
           flexDirection: 'column',
-          gap: 4,
-          padding: '8px 10px',
+          gap: 3,
+          padding: '7px 9px',
           borderRadius: 12,
           background: 'rgba(5,9,16,0.84)',
           border: `1px solid ${helperTone}2f`,
@@ -4153,9 +4153,9 @@ function CenterCardDisplay({
           display: 'flex',
           flexDirection: 'column',
           alignItems: isPhonePortrait ? 'stretch' : 'flex-end',
-          gap: 6,
+          gap: 4,
           padding: isPhonePortrait ? '0' : '4px 0',
-          marginTop: isPhonePortrait ? -22 : 0,
+          marginTop: isPhonePortrait ? -32 : -4,
         }}
       >
         {isPhonePortrait ? (
@@ -4164,7 +4164,7 @@ function CenterCardDisplay({
               width: '100%',
               display: 'grid',
               gridTemplateColumns: `minmax(0, 1fr) auto ${utilityRailWidth}px`,
-              columnGap: 10,
+              columnGap: 8,
               justifyContent: 'flex-end',
               alignItems: 'start',
             }}
@@ -4177,7 +4177,7 @@ function CenterCardDisplay({
                 flexDirection: 'column',
                 gap: 8,
                 alignItems: 'stretch',
-                paddingTop: 34,
+                paddingTop: 24,
               }}
             >
               <button
@@ -4186,7 +4186,7 @@ function CenterCardDisplay({
                 style={{
                   ...utilityButtonBaseStyle,
                   width: utilityRailWidth,
-                  height: 58,
+                  height: 50,
                 }}
               >
                 Hide
@@ -4226,7 +4226,7 @@ function CenterCardDisplay({
             }}
           >
             {mutations.map((mid, index) => (
-              <div key={`${mid}-mobile-${index}`} style={{ flex: '0 0 min(180px, 60vw)' }}>
+              <div key={`${mid}-mobile-${index}`} style={{ flex: '0 0 min(156px, 54vw)' }}>
                 <MutationDetailPanel
                   mid={mid}
                   data={data}

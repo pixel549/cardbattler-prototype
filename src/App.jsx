@@ -393,6 +393,47 @@ function compactCardRefForExport(card) {
   };
 }
 
+function compactCardPreviewListForExport(cards, limit = 5) {
+  if (!Array.isArray(cards) || cards.length === 0) return [];
+  const compacted = cards
+    .slice(0, limit)
+    .map(compactCardRefForExport)
+    .filter(Boolean);
+  if (cards.length > limit) {
+    compacted.push({
+      omittedCount: cards.length - limit,
+    });
+  }
+  return compacted;
+}
+
+function compactMutationTriggerChecksForExport(entries) {
+  if (!Array.isArray(entries) || entries.length === 0) return [];
+  return entries.map((entry) => ({
+    seq: entry.seq ?? null,
+    turn: entry.turn ?? null,
+    instanceId: entry.instanceId ?? null,
+    defId: entry.defId ?? null,
+    name: entry.name ?? null,
+    useCounter: Number.isFinite(Number(entry.useCounter)) ? Number(entry.useCounter) : null,
+    finalMutationCountdown: Number.isFinite(Number(entry.finalMutationCountdown)) ? Number(entry.finalMutationCountdown) : null,
+    appliedMutationCount: Number.isFinite(Number(entry.appliedMutationCount)) ? Number(entry.appliedMutationCount) : null,
+    triggerChance: Number.isFinite(Number(entry.triggerChance)) ? Number(entry.triggerChance) : null,
+    roll: Number.isFinite(Number(entry.roll)) ? Number(entry.roll) : null,
+    guaranteed: Boolean(entry.guaranteed),
+    forcedTier: entry.forcedTier ?? null,
+    rolledTier: entry.rolledTier ?? null,
+    appliedTier: entry.appliedTier ?? null,
+    mutationId: entry.mutationId ?? null,
+    outcome: entry.outcome ?? null,
+    triggered: Boolean(entry.triggered),
+    thresholdReached: Boolean(entry.thresholdReached),
+    timingMode: entry.timingMode ?? null,
+    effectiveMutationStep: Number.isFinite(Number(entry.effectiveMutationStep)) ? Number(entry.effectiveMutationStep) : null,
+    effectiveFinalCountdownStep: Number.isFinite(Number(entry.effectiveFinalCountdownStep)) ? Number(entry.effectiveFinalCountdownStep) : null,
+  }));
+}
+
 function compactCardPlayTimelineForExport(entries) {
   if (!Array.isArray(entries) || entries.length === 0) return [];
   return entries.map((entry) => ({
@@ -409,7 +450,8 @@ function compactCardPlayTimelineForExport(entries) {
     targetSelf: Boolean(entry.targetSelf),
     playerBefore: compactCombatantForExport(entry.playerBefore),
     targetBefore: compactCombatantForExport(entry.targetBefore),
-    handBefore: Array.isArray(entry.handBefore) ? entry.handBefore.map(compactCardRefForExport).filter(Boolean) : [],
+    handSizeBefore: Array.isArray(entry.handBefore) ? entry.handBefore.length : null,
+    handBefore: compactCardPreviewListForExport(entry.handBefore),
     effectSummary: compactEffectSummaryForExport(entry.effectSummary),
     availableRoleCounts: entry.availableRoleCounts ? { ...entry.availableRoleCounts } : null,
     tacticalFlags: entry.tacticalFlags ? { ...entry.tacticalFlags } : null,
@@ -452,8 +494,8 @@ function compactHandTimelineForExport(entries) {
     requested: Number.isFinite(Number(entry.requested)) ? Number(entry.requested) : null,
     drawnCount: Number.isFinite(Number(entry.drawnCount)) ? Number(entry.drawnCount) : null,
     reshuffled: Boolean(entry.reshuffled),
-    hand: Array.isArray(entry.hand) ? entry.hand.map(compactCardRefForExport).filter(Boolean) : [],
-    drawn: Array.isArray(entry.drawn) ? entry.drawn.map(compactCardRefForExport).filter(Boolean) : [],
+    hand: compactCardPreviewListForExport(entry.hand),
+    drawn: compactCardPreviewListForExport(entry.drawn),
   }));
 }
 
@@ -478,6 +520,8 @@ function filterEncounterForExport(encounter, options) {
     out.mutationEvents = [];
     out.mutationTriggerChecks = [];
     delete out.forcedMutationTier;
+  } else {
+    out.mutationTriggerChecks = compactMutationTriggerChecksForExport(out.mutationTriggerChecks);
   }
   if (!options.hands) {
     out.handTimeline = [];
@@ -540,6 +584,96 @@ function getSecondaryActionButtonStyle(accent = C.cyan, overrides = {}) {
     cursor: 'pointer',
     ...overrides,
   };
+}
+
+function getPrimaryActionButtonStyle(accent = C.cyan, overrides = {}) {
+  return {
+    width: '100%',
+    padding: '14px 16px',
+    borderRadius: '12px',
+    fontFamily: UI_MONO,
+    fontWeight: 700,
+    fontSize: 12,
+    letterSpacing: '0.08em',
+    textTransform: 'uppercase',
+    transition: 'all 0.15s ease',
+    background: `linear-gradient(135deg, ${accent} 0%, ${accent}d0 100%)`,
+    border: `1px solid ${accent}00`,
+    boxShadow: `0 16px 30px ${accent}22`,
+    color: '#041015',
+    cursor: 'pointer',
+    ...overrides,
+  };
+}
+
+function getNodeScenePanelStyle(accent = C.cyan, overrides = {}) {
+  return {
+    borderRadius: 20,
+    border: `1px solid ${accent}2c`,
+    background: `
+      linear-gradient(135deg, rgba(255,255,255,0.025) 0%, transparent 22%, transparent 78%, rgba(255,255,255,0.018) 100%),
+      radial-gradient(circle at 18% 18%, ${accent}16 0%, transparent 30%),
+      linear-gradient(180deg, rgba(9, 13, 22, 0.96) 0%, rgba(5, 8, 14, 0.99) 100%)
+    `,
+    boxShadow: '0 20px 42px rgba(0,0,0,0.34), inset 0 1px 0 rgba(255,255,255,0.04)',
+    padding: 18,
+    ...overrides,
+  };
+}
+
+function NodeSceneChip({ accent = C.cyan, children }) {
+  return (
+    <span
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 6,
+        padding: '6px 10px',
+        borderRadius: 999,
+        border: `1px solid ${accent}2f`,
+        background: `${accent}12`,
+        color: accent,
+        fontFamily: UI_MONO,
+        fontSize: 10,
+        fontWeight: 700,
+        letterSpacing: '0.08em',
+        textTransform: 'uppercase',
+      }}
+    >
+      {children}
+    </span>
+  );
+}
+
+function NodeSceneIntro({
+  accent = C.cyan,
+  eyebrow = 'NODE',
+  title = '',
+  body = '',
+  chips = [],
+}) {
+  return (
+    <div style={{ display: 'grid', gap: 12 }}>
+      <div style={{ fontFamily: UI_MONO, fontSize: 11, letterSpacing: '0.18em', color: accent, textTransform: 'uppercase' }}>
+        {eyebrow}
+      </div>
+      <div style={{ fontFamily: "'Rajdhani', 'JetBrains Mono', 'Fira Code', 'Consolas', monospace", fontSize: 34, fontWeight: 700, lineHeight: 0.94, color: C.text }}>
+        {title}
+      </div>
+      <div style={{ fontFamily: UI_MONO, fontSize: 12, lineHeight: 1.7, color: C.textDim, maxWidth: 760 }}>
+        {body}
+      </div>
+      {chips.length > 0 ? (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {chips.map((chip) => (
+            <NodeSceneChip key={`${chip.accent}-${chip.label}`} accent={chip.accent}>
+              {chip.label}
+            </NodeSceneChip>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 function buildExportDebugOverrides(runDbg) {
@@ -2765,14 +2899,30 @@ function RewardScreen({ state, data, onAction }) {
   const choices = state.reward?.cardChoices || [];
   const relicChoices = state.reward?.relicChoices || [];
   const hasRelics = relicChoices.length > 0;
-  const MONO = "'JetBrains Mono', 'Fira Code', 'Consolas', monospace";
+  const rewardAccent = hasRelics ? C.yellow : C.green;
+  const rewardChips = [
+    { accent: rewardAccent, label: hasRelics ? `${relicChoices.length} relic routes` : 'Card reward' },
+    { accent: C.green, label: `${choices.length} card options` },
+  ];
+  const MONO = UI_MONO;
 
   return (
     <ScreenShell>
-      <div style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column' }}>
-        {/* Header */}
-        <div style={{ textAlign: 'center', paddingTop: '24px', paddingBottom: '24px' }}>
-          <div
+      <RunHeader run={state.run} data={data} mode="Reward" />
+      <div style={{ flex: 1, padding: '18px 16px 24px', overflowY: 'auto', display: 'flex', justifyContent: 'center' }}>
+        <div style={{ width: 'min(1120px, 100%)', display: 'grid', gap: 16, alignContent: 'start' }}>
+          <div className="animate-slide-up" style={getNodeScenePanelStyle(rewardAccent, { padding: 20 })}>
+            <NodeSceneIntro
+              accent={rewardAccent}
+              eyebrow="Victory Cache"
+              title={hasRelics ? 'Secure The Relic, Then Patch The Deck' : 'Route One Reward Into The Deck'}
+              body={hasRelics
+                ? 'This node resolved cleanly. Lock in one relic package first, then select the card payload that best stabilises the next floor.'
+                : 'This node resolved cleanly. Choose one card package before dropping back onto the route grid.'}
+              chips={rewardChips}
+            />
+          </div>
+          {/*
             className="animate-slide-up"
             style={{
               fontFamily: MONO,
@@ -2787,13 +2937,16 @@ function RewardScreen({ state, data, onAction }) {
           <div style={{ fontFamily: MONO, color: C.textMuted, fontSize: 13 }}>
             {hasRelics ? 'Select a relic — then choose a card' : 'Select a card reward'}
           </div>
-        </div>
+          */}
 
         {/* Relic choices (shown above card choices when available) */}
         {hasRelics && (
-          <div style={{ marginBottom: '16px' }}>
-            <div style={{ fontFamily: MONO, fontSize: 11, color: C.yellow, letterSpacing: '0.1em', marginBottom: '8px', textAlign: 'center' }}>
+          <div style={getNodeScenePanelStyle(C.yellow, { padding: 18, display: 'grid', gap: 12 })}>
+            <div style={{ fontFamily: UI_MONO, fontSize: 11, color: C.yellow, letterSpacing: '0.14em', marginBottom: '4px', textTransform: 'uppercase' }}>
               ◈ RELIC REWARD — pick one
+            </div>
+            <div style={{ fontFamily: UI_MONO, fontSize: 12, lineHeight: 1.6, color: C.textDim }}>
+              Pick one relic package before moving on to the card reward.
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {relicChoices.map(rid => {
@@ -2832,42 +2985,51 @@ function RewardScreen({ state, data, onAction }) {
           </div>
         )}
 
-        {/* Card choices */}
-        <div
-          style={{
-            flex: 1,
-            display: 'grid',
-            gridTemplateColumns: `repeat(auto-fit, minmax(${MENU_CARD_MIN_W}px, ${MENU_CARD_MAX_W}px))`,
-            gap: '12px',
-            alignContent: 'start',
-            justifyContent: 'center',
-          }}
-        >
-          {choices.map(defId => {
-            const card = data.cards?.[defId];
+          <div style={getNodeScenePanelStyle(C.green, { padding: 18, display: 'grid', gap: 14 })}>
+            <div style={{ display: 'grid', gap: 4 }}>
+              <div style={{ fontFamily: UI_MONO, fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', color: C.green, textTransform: 'uppercase' }}>
+                Card Reward
+              </div>
+              <div style={{ fontFamily: UI_MONO, fontSize: 12, lineHeight: 1.6, color: C.textDim }}>
+                Select one card package to take forward into the next node.
+              </div>
+            </div>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: `repeat(auto-fit, minmax(${MENU_CARD_MIN_W}px, ${MENU_CARD_MAX_W}px))`,
+                gap: '12px',
+                alignContent: 'start',
+                justifyContent: 'center',
+              }}
+            >
+              {choices.map((defId) => {
+                const card = data.cards?.[defId];
 
-            return (
-              <CardChoiceTile
-                key={defId}
-                cardId={defId}
-                card={card}
-                onClick={() => onAction({ type: 'Reward_PickCard', defId })}
-              />
-            );
-          })}
+                return (
+                  <CardChoiceTile
+                    key={defId}
+                    cardId={defId}
+                    card={card}
+                    onClick={() => onAction({ type: 'Reward_PickCard', defId })}
+                  />
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="safe-area-bottom" style={{ display: 'flex', justifyContent: 'center', paddingBottom: 4 }}>
+            <button
+              onClick={() => onAction({ type: 'Reward_Skip' })}
+              style={getSecondaryActionButtonStyle(C.green, {
+                width: 'min(280px, 100%)',
+                fontSize: 13,
+              })}
+            >
+              Skip Reward
+            </button>
+          </div>
         </div>
-
-        {/* Skip button */}
-        <button
-          onClick={() => onAction({ type: 'Reward_Skip' })}
-          className="safe-area-bottom"
-          style={getSecondaryActionButtonStyle(C.green, {
-            marginTop: '16px',
-            fontSize: 13,
-          })}
-        >
-          Skip Reward
-        </button>
       </div>
     </ScreenShell>
   );
@@ -2937,6 +3099,9 @@ function ShopScreen({ state, data, onAction }) {
   const gold = state.run?.gold || 0;
   const scrap = state.run?.scrap || 0;
   const MONO = "'JetBrains Mono', 'Fira Code', 'Consolas', monospace";
+  const cardOfferCount = offers.filter((offer) => offer.kind === 'Card').length;
+  const serviceOfferCount = offers.filter((offer) => offer.kind === 'Service').length;
+  const relicOfferCount = offers.filter((offer) => offer.kind === 'Relic').length;
 
   return (
     <ScreenShell>
@@ -2972,6 +3137,21 @@ function ShopScreen({ state, data, onAction }) {
       </div>
 
       <div style={{ flex: 1, padding: '16px', paddingBottom: '8px', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ ...getNodeScenePanelStyle(C.yellow, { padding: 18, marginBottom: 18 }) }}>
+          <NodeSceneIntro
+            accent={C.yellow}
+            eyebrow="Market Access"
+            title="Scan Offers, Services, And Patch Kits"
+            body="Tune the deck here before the next route branch. Cards, services, and relics all use the same market lane now, so the key question is whether you are buying stability, damage, or a long-run engine."
+            chips={[
+              { accent: C.yellow, label: `${gold}g on hand` },
+              { accent: C.orange, label: `${scrap} scrap` },
+              { accent: C.cyan, label: `${cardOfferCount} cards` },
+              { accent: C.green, label: `${serviceOfferCount} services` },
+              { accent: C.purple, label: `${relicOfferCount} relics` },
+            ]}
+          />
+        </div>
 
         {/* Cards section */}
         {offers.some(o => o.kind === 'Card') && (
@@ -3639,15 +3819,28 @@ const MINIGAME_TYPE_THEME = {
 
 function formatMinigameRewardOp(op) {
   if (op.op === 'GainGold') return `+${op.amount}g`;
+  if (op.op === 'LoseGold') return `-${op.amount}g`;
   if (op.op === 'Heal') return `+${op.amount} HP`;
   if (op.op === 'LoseHP') return `-${op.amount} HP`;
   if (op.op === 'GainMP') return `+${op.amount} MP`;
+  if (op.op === 'GainScrap') return `+${op.amount} scrap`;
   if (op.op === 'GainMaxHP') return `+${op.amount} Max HP`;
+  if (op.op === 'GainCard') return 'Gain a card';
+  if (op.op === 'DuplicateSelectedCard') return 'Duplicate a card';
+  if (op.op === 'CompileSelectedCard') return 'Compile a card';
   if (op.op === 'AccelerateSelectedCard') return 'Accelerate a card';
   if (op.op === 'StabiliseSelectedCard') return 'Stabilise a card';
   if (op.op === 'RepairSelectedCard') return 'Repair a card';
   if (op.op === 'RemoveSelectedCard') return 'Remove a card';
-  return op.op;
+  return String(op.op || 'Effect').replace(/([a-z])([A-Z])/g, '$1 $2');
+}
+
+function summarizeEventChoiceOps(ops = []) {
+  if (!Array.isArray(ops) || ops.length === 0) return 'Leave without changing your run.';
+  return ops
+    .slice(0, 3)
+    .map(formatMinigameRewardOp)
+    .join(' · ');
 }
 
 function describeMinigameObjective(def) {
@@ -4497,7 +4690,12 @@ function EventScreen({ state, data, onAction, tutorialStep = null }) {
                       : '▶'}
                   </div>
                 )}
-                <span>{choice.label}</span>
+                <div style={{ display: 'grid', gap: 4, flex: 1, minWidth: 0 }}>
+                  <span>{choice.label}</span>
+                  <span style={{ fontFamily: UI_MONO, fontSize: 10, lineHeight: 1.45, color: isLeave ? C.textSecondary : C.textDim }}>
+                    {summarizeEventChoiceOps(choice.ops)}
+                  </span>
+                </div>
               </button>
             );
           })}

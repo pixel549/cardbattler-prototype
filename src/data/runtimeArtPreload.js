@@ -14,6 +14,11 @@ function markRuntimeArtStatus(url, status) {
   return status;
 }
 
+function waitForImageDecode(img) {
+  if (!img || typeof img.decode !== 'function') return Promise.resolve();
+  return img.decode().catch(() => {});
+}
+
 function preloadRuntimeArtUrl(url, { timeoutMs = 4500 } = {}) {
   if (!url) return Promise.resolve(markRuntimeArtStatus(url, 'skipped'));
   if (typeof Image === 'undefined') return Promise.resolve(markRuntimeArtStatus(url, 'skipped'));
@@ -29,6 +34,7 @@ function preloadRuntimeArtUrl(url, { timeoutMs = 4500 } = {}) {
   const promise = new Promise((resolve) => {
     const img = new Image();
     let settled = false;
+    let decodeQueued = false;
     let timeoutId = null;
 
     const finish = (status) => {
@@ -39,7 +45,13 @@ function preloadRuntimeArtUrl(url, { timeoutMs = 4500 } = {}) {
       resolve(markRuntimeArtStatus(url, status));
     };
 
-    img.onload = () => finish('loaded');
+    const markLoaded = () => {
+      if (decodeQueued || settled) return;
+      decodeQueued = true;
+      waitForImageDecode(img).finally(() => finish('loaded'));
+    };
+
+    img.onload = markLoaded;
     img.onerror = () => finish('error');
 
     try {
@@ -55,10 +67,15 @@ function preloadRuntimeArtUrl(url, { timeoutMs = 4500 } = {}) {
     }
 
     timeoutId = setTimeout(() => finish('timeout'), Math.max(500, timeoutMs));
+    try {
+      img.loading = 'eager';
+    } catch {
+      // Ignore browser environments that do not expose loading on Image.
+    }
     img.src = url;
 
     if (img.complete && img.naturalWidth > 0) {
-      finish('loaded');
+      markLoaded();
     }
   });
 

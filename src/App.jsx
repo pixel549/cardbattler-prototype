@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useState, useEffect, useRef, useCallback } from 'react';
+import React, { Suspense, lazy, startTransition, useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import { loadGameData } from './data/loadData.js';
 import {
@@ -5566,6 +5566,15 @@ function collectUniqueArtUrls(urls = []) {
   return [...new Set((Array.isArray(urls) ? urls : []).filter((url) => typeof url === 'string' && url.trim()))];
 }
 
+function getCardArtUrlsFromInstanceIds(instanceIds = [], cardInstances = {}) {
+  const defIds = new Set();
+  for (const instanceId of instanceIds) {
+    const defId = cardInstances?.[instanceId]?.defId;
+    if (defId) defIds.add(defId);
+  }
+  return collectUniqueArtUrls([...defIds].map((defId) => getCardImage(defId)));
+}
+
 function getRunDeckArtUrls(state) {
   const cardDefIds = new Set();
 
@@ -5579,6 +5588,19 @@ function getRunDeckArtUrls(state) {
   }
 
   return collectUniqueArtUrls([...cardDefIds].map((defId) => getCardImage(defId)));
+}
+
+function getCombatVisibleArtUrls(state) {
+  const combatCardInstances = state?.combat?.cardInstances || {};
+  const playerPiles = state?.combat?.player?.piles || {};
+  const visibleInstanceIds = [
+    ...(playerPiles.hand || []),
+    ...(playerPiles.power || []),
+    ...(playerPiles.draw || []).slice(0, 6),
+    ...(playerPiles.discard || []).slice(-4),
+    ...(playerPiles.exhaust || []).slice(-2),
+  ];
+  return getCardArtUrlsFromInstanceIds(visibleInstanceIds, combatCardInstances);
 }
 
 function getShopOfferArtUrls(state) {
@@ -5619,8 +5641,10 @@ function buildSceneArtManifest(state) {
   if (state.mode === 'Combat') {
     const enemyIds = (state.combat?.enemies || []).map((enemy) => enemy?.enemyDefId ?? 'enemy');
     const enemyUrls = collectUniqueArtUrls(enemyIds.map((enemyDefId) => getEnemyImage(enemyDefId)));
-    const cardUrls = getRunDeckArtUrls(state);
-    const urls = collectUniqueArtUrls([...enemyUrls, ...cardUrls]);
+    const immediateCardUrls = getCombatVisibleArtUrls(state);
+    const deckCardUrls = getRunDeckArtUrls(state);
+    const backgroundUrls = deckCardUrls.filter((url) => !immediateCardUrls.includes(url));
+    const urls = collectUniqueArtUrls([...enemyUrls, ...immediateCardUrls]);
     if (!urls.length) return null;
     return {
       key: `combat:${seed}:${act}:${floor}:${state.map?.currentNodeId ?? (enemyIds.join(',') || 'node')}`,
@@ -5628,6 +5652,7 @@ function buildSceneArtManifest(state) {
       message: 'Loading enemy and action card art...',
       accent: C.orange,
       urls,
+      backgroundUrls,
     };
   }
 
@@ -7242,17 +7267,47 @@ function App() {
     if (typeof window === 'undefined') return [];
     return parseCompletedTutorialIds(window.localStorage.getItem(TUTORIAL_COMPLETED_STORAGE_KEY));
   });
-  const achievementCatalog = getAchievementCatalog();
-  const callsignCatalog = getCallsignCatalog();
-  const dailyRunConfig = getDailyRunConfig(new Date());
-  const unlockedAchievementRewardState = getUnlockedAchievementRewardState(metaProgress?.achievementIdsUnlocked || []);
-  const unlockedStarterProfiles = getUnlockedStarterProfiles(metaProgress);
-  const unlockedDifficulties = getUnlockedDifficulties(metaProgress);
-  const unlockedChallenges = getUnlockedChallenges(metaProgress);
-  const todaysDailyRecord = (metaProgress?.dailyRunRecords || []).find((record) => record.id === dailyRunConfig.id) || null;
-  const recentDailyRecords = metaProgress?.dailyRunRecords || [];
-  const runAnalyticsDashboard = buildRunAnalyticsDashboard(runAnalytics);
-  const sceneArtManifest = buildSceneArtManifest(state);
+  const achievementCatalog = useMemo(() => getAchievementCatalog(), []);
+  const callsignCatalog = useMemo(() => getCallsignCatalog(), []);
+  const dailyConfigDateKey = new Date().toDateString();
+  const dailyRunConfig = useMemo(() => getDailyRunConfig(new Date(dailyConfigDateKey)), [dailyConfigDateKey]);
+  const unlockedAchievementRewardState = useMemo(
+    () => getUnlockedAchievementRewardState(metaProgress?.achievementIdsUnlocked || []),
+    [metaProgress?.achievementIdsUnlocked],
+  );
+  const unlockedStarterProfiles = useMemo(() => getUnlockedStarterProfiles(metaProgress), [metaProgress]);
+  const unlockedDifficulties = useMemo(() => getUnlockedDifficulties(metaProgress), [metaProgress]);
+  const unlockedChallenges = useMemo(() => getUnlockedChallenges(metaProgress), [metaProgress]);
+  const todaysDailyRecord = useMemo(
+    () => (metaProgress?.dailyRunRecords || []).find((record) => record.id === dailyRunConfig.id) || null,
+    [dailyRunConfig.id, metaProgress?.dailyRunRecords],
+  );
+  const recentDailyRecords = useMemo(
+    () => metaProgress?.dailyRunRecords || [],
+    [metaProgress?.dailyRunRecords],
+  );
+  const runAnalyticsDashboard = useMemo(
+    () => buildRunAnalyticsDashboard(runAnalytics),
+    [runAnalytics],
+  );
+  const sceneArtManifest = useMemo(() => buildSceneArtManifest(state), [
+    state?.combat?.enemies,
+    state?.combat?.player?.piles,
+    state?.combat?.cardInstances,
+    state?.deck?.cardInstances,
+    state?.deck?.master,
+    state?.deckView,
+    state?.event?.eventId,
+    state?.event?.pendingSelectOp,
+    state?.map?.currentNodeId,
+    state?.mode,
+    state?.reward?.cardChoices,
+    state?.run?.act,
+    state?.run?.floor,
+    state?.run?.seed,
+    state?.shop?.offers,
+    state?.shop?.pendingService,
+  ]);
 
   // ── Sound mute toggle (persisted to localStorage) ────────────────────────
   const [soundMuted, setSoundMuted] = useState(() => {
@@ -7310,18 +7365,54 @@ function App() {
   useEffect(() => {
     if (!sceneArtManifest?.key) return undefined;
     if (areRuntimeArtUrlsSettled(sceneArtManifest.urls)) {
-      setSceneArtReadyKey((prev) => (prev === sceneArtManifest.key ? prev : sceneArtManifest.key));
+      startTransition(() => {
+        setSceneArtReadyKey((prev) => (prev === sceneArtManifest.key ? prev : sceneArtManifest.key));
+      });
       return undefined;
     }
 
     let cancelled = false;
     preloadRuntimeArtUrls(sceneArtManifest.urls, { timeoutMs: 4500 }).finally(() => {
       if (cancelled) return;
-      setSceneArtReadyKey(sceneArtManifest.key);
+      startTransition(() => {
+        setSceneArtReadyKey(sceneArtManifest.key);
+      });
     });
 
     return () => {
       cancelled = true;
+    };
+  }, [sceneArtManifest?.key]);
+
+  useEffect(() => {
+    if (!sceneArtManifest?.backgroundUrls?.length) return undefined;
+    let cancelled = false;
+
+    const warmBackgroundArt = () => {
+      preloadRuntimeArtUrls(sceneArtManifest.backgroundUrls, { timeoutMs: 4500 }).catch(() => {});
+    };
+
+    if (typeof window === 'undefined') {
+      warmBackgroundArt();
+      return undefined;
+    }
+
+    if (typeof window.requestIdleCallback === 'function') {
+      const idleId = window.requestIdleCallback(() => {
+        if (!cancelled) warmBackgroundArt();
+      }, { timeout: 1200 });
+      return () => {
+        cancelled = true;
+        window.cancelIdleCallback?.(idleId);
+      };
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      if (!cancelled) warmBackgroundArt();
+    }, 280);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
     };
   }, [sceneArtManifest?.key]);
 

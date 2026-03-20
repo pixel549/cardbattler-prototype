@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import RuntimeArt from './RuntimeArt.jsx';
 import { getCardImage } from '../data/cardImages.js';
+import { preloadRuntimeArtUrls } from '../data/runtimeArtPreload.js';
 import { sfx } from '../game/sounds.js';
 import {
   composeRunConfig,
@@ -552,13 +553,16 @@ export default function MainMenuHub({
   const activeConfigureView = forcedPath?.configureView ?? configureView;
   const activeTutorialView = forcedPath?.tutorialView ?? tutorialView;
   const activeIntelView = forcedPath?.intelView ?? intelView;
-  const completedSet = new Set(completedTutorialIds);
-  const unlockedStarterSet = new Set(unlockedStarterProfileIds);
-  const unlockedDifficultySet = new Set(unlockedDifficultyIds);
-  const unlockedChallengeSet = new Set(unlockedChallengeIds);
-  const unlockedCallsignSet = new Set(unlockedCallsignIds);
-  const selectedChallenges = new Set(selectedChallengeIds);
-  const unlockedRewardState = getUnlockedAchievementRewardState(metaProgress?.achievementIdsUnlocked || []);
+  const completedSet = useMemo(() => new Set(completedTutorialIds), [completedTutorialIds]);
+  const unlockedStarterSet = useMemo(() => new Set(unlockedStarterProfileIds), [unlockedStarterProfileIds]);
+  const unlockedDifficultySet = useMemo(() => new Set(unlockedDifficultyIds), [unlockedDifficultyIds]);
+  const unlockedChallengeSet = useMemo(() => new Set(unlockedChallengeIds), [unlockedChallengeIds]);
+  const unlockedCallsignSet = useMemo(() => new Set(unlockedCallsignIds), [unlockedCallsignIds]);
+  const selectedChallenges = useMemo(() => new Set(selectedChallengeIds), [selectedChallengeIds]);
+  const unlockedRewardState = useMemo(
+    () => getUnlockedAchievementRewardState(metaProgress?.achievementIdsUnlocked || []),
+    [metaProgress?.achievementIdsUnlocked],
+  );
   const narrativeMode = activeMenuView === 'intel'
     ? activeIntelView
     : activeMenuView === 'new'
@@ -566,26 +570,41 @@ export default function MainMenuHub({
       : activeMenuView;
 
   const callsignId = selectedCallsignId || getDefaultCallsignId();
-  const activeCallsign = callsignCatalog.find((theme) => theme.id === callsignId) || getCallsignTheme(callsignId);
-  const selectedProfile = starterProfiles.find((profile) => profile.id === selectedStarterProfileId) || starterProfiles[0] || null;
-  const selectedDifficulty = difficultyProfiles.find((difficulty) => difficulty.id === selectedDifficultyId) || difficultyProfiles[0] || null;
-  const selectedRunConfig = composeRunConfig(customConfig || {}, selectedStarterProfileId, selectedDifficultyId, selectedChallengeIds);
-  const selectedModeSummary = buildModeSummary(selectedRunConfig);
-  const fixerLine = getFixerLine({
+  const activeCallsign = useMemo(
+    () => callsignCatalog.find((theme) => theme.id === callsignId) || getCallsignTheme(callsignId),
+    [callsignCatalog, callsignId],
+  );
+  const selectedProfile = useMemo(
+    () => starterProfiles.find((profile) => profile.id === selectedStarterProfileId) || starterProfiles[0] || null,
+    [selectedStarterProfileId, starterProfiles],
+  );
+  const selectedDifficulty = useMemo(
+    () => difficultyProfiles.find((difficulty) => difficulty.id === selectedDifficultyId) || difficultyProfiles[0] || null,
+    [difficultyProfiles, selectedDifficultyId],
+  );
+  const selectedRunConfig = useMemo(
+    () => composeRunConfig(customConfig || {}, selectedStarterProfileId, selectedDifficultyId, selectedChallengeIds),
+    [customConfig, selectedChallengeIds, selectedDifficultyId, selectedStarterProfileId],
+  );
+  const selectedModeSummary = useMemo(() => buildModeSummary(selectedRunConfig), [selectedRunConfig]);
+  const fixerLine = useMemo(() => getFixerLine({
     mode: narrativeMode,
     metaProgress,
     runAnalytics,
-  });
+  }), [metaProgress, narrativeMode, runAnalytics]);
 
   const selectedProfileAccent = selectedProfile?.accent || C.orange;
   const selectedDifficultyAccent = selectedDifficulty?.accent || C.purple;
   const activeCallsignAccent = activeCallsign?.accent || C.cyan;
 
-  const activeChallengeList = challengeModes.filter((challenge) => selectedChallenges.has(challenge.id));
+  const activeChallengeList = useMemo(
+    () => challengeModes.filter((challenge) => selectedChallenges.has(challenge.id)),
+    [challengeModes, selectedChallenges],
+  );
   const activeChallengeSummary = activeChallengeList.length
     ? activeChallengeList.map((challenge) => challenge.name).join(', ')
     : 'No optional challenges active.';
-  const unlockProgressRows = [
+  const unlockProgressRows = useMemo(() => ([
     ...starterProfiles
       .filter((profile) => !unlockedStarterSet.has(profile.id))
       .map((profile) => ({
@@ -616,12 +635,29 @@ export default function MainMenuHub({
         description: challenge.unlockHint,
         progress: formatUnlockRequirementSummary(challenge.unlock, metaProgress),
       })),
-  ];
+  ]), [
+    challengeModes,
+    difficultyProfiles,
+    metaProgress,
+    starterProfiles,
+    unlockedChallengeSet,
+    unlockedDifficultySet,
+    unlockedStarterSet,
+  ]);
 
-  const selectedProfileRelics = (selectedProfile?.startingRelicIds || []).map((relicId) => data?.relics?.[relicId]?.name || relicId);
-  const selectedProfileLoadoutSlots = getStarterProfileLoadoutSlots(selectedProfile);
-  const selectedProfileDeckSize = getStarterProfileDeckSize(selectedProfile);
-  const loadoutPreviewEntries = selectedProfileLoadoutSlots.map((slot, index) => {
+  const selectedProfileRelics = useMemo(
+    () => (selectedProfile?.startingRelicIds || []).map((relicId) => data?.relics?.[relicId]?.name || relicId),
+    [data?.relics, selectedProfile],
+  );
+  const selectedProfileLoadoutSlots = useMemo(
+    () => getStarterProfileLoadoutSlots(selectedProfile),
+    [selectedProfile],
+  );
+  const selectedProfileDeckSize = useMemo(
+    () => getStarterProfileDeckSize(selectedProfile),
+    [selectedProfile],
+  );
+  const loadoutPreviewEntries = useMemo(() => selectedProfileLoadoutSlots.map((slot, index) => {
     const key = buildLoadoutSlotKey(slot, index);
     if (slot?.kind === 'random') {
       const pool = getStarterLoadoutPool(slot.poolId);
@@ -652,29 +688,68 @@ export default function MainMenuHub({
       body: formatCardDescription(cardDef),
       tags: cardDef?.tags || EMPTY_ARRAY,
     };
-  });
-  const selectedProfileDeckNames = loadoutPreviewEntries.map((entry) => entry.title);
+  }), [data, selectedProfileLoadoutSlots]);
+  const selectedProfileDeckNames = useMemo(
+    () => loadoutPreviewEntries.map((entry) => entry.title),
+    [loadoutPreviewEntries],
+  );
+  const loadoutPreviewArtUrls = useMemo(
+    () => loadoutPreviewEntries
+      .filter((entry) => entry.kind === 'card' && entry.cardId)
+      .map((entry) => getCardImage(entry.cardId)),
+    [loadoutPreviewEntries],
+  );
 
-  const featuredTutorial = tutorialCatalog.find((tutorial) => tutorial.recommended && !completedSet.has(tutorial.id)) || tutorialCatalog[0] || null;
-  const beginnerTutorials = tutorialCatalog.filter((tutorial) => isBeginnerTutorial(tutorial));
-  const advancedTutorials = tutorialCatalog.filter((tutorial) => !isBeginnerTutorial(tutorial));
-  const availableDebugSlots = debugSaveSlotIds
-    .map((slotId, index) => ({ slotId, index, slot: debugSaveSlots?.[slotId] }))
-    .filter((entry) => entry.slot);
+  const featuredTutorial = useMemo(
+    () => tutorialCatalog.find((tutorial) => tutorial.recommended && !completedSet.has(tutorial.id)) || tutorialCatalog[0] || null,
+    [completedSet, tutorialCatalog],
+  );
+  const beginnerTutorials = useMemo(
+    () => tutorialCatalog.filter((tutorial) => isBeginnerTutorial(tutorial)),
+    [tutorialCatalog],
+  );
+  const advancedTutorials = useMemo(
+    () => tutorialCatalog.filter((tutorial) => !isBeginnerTutorial(tutorial)),
+    [tutorialCatalog],
+  );
+  const availableDebugSlots = useMemo(
+    () => debugSaveSlotIds
+      .map((slotId, index) => ({ slotId, index, slot: debugSaveSlots?.[slotId] }))
+      .filter((entry) => entry.slot),
+    [debugSaveSlotIds, debugSaveSlots],
+  );
   const hasRecovery = availableDebugSlots.length > 0;
 
-  const recentUnlockLabels = recentUnlocks.map((unlock) => unlock?.name).filter(Boolean);
-  const achievementUnlockCount = achievements.filter((achievement) => unlockedRewardState.unlockedAchievementIds.includes(achievement.id)).length;
-  const callsignUnlockCount = callsignCatalog.filter((theme) => unlockedCallsignSet.has(theme.id)).length;
+  const recentUnlockLabels = useMemo(
+    () => recentUnlocks.map((unlock) => unlock?.name).filter(Boolean),
+    [recentUnlocks],
+  );
+  const achievementUnlockCount = useMemo(
+    () => achievements.filter((achievement) => unlockedRewardState.unlockedAchievementIds.includes(achievement.id)).length,
+    [achievements, unlockedRewardState.unlockedAchievementIds],
+  );
+  const callsignUnlockCount = useMemo(
+    () => callsignCatalog.filter((theme) => unlockedCallsignSet.has(theme.id)).length,
+    [callsignCatalog, unlockedCallsignSet],
+  );
   const currentSeedSummary = getSeedSummary(debugSeed, seedMode, randomizeDebugSeed);
-  const activeOverrideFields = CONFIGURABLE_RUN_FIELDS.filter(({ key }) => customConfig?.[key] != null && customConfig[key] !== '');
+  const activeOverrideFields = useMemo(
+    () => CONFIGURABLE_RUN_FIELDS.filter(({ key }) => customConfig?.[key] != null && customConfig[key] !== ''),
+    [customConfig],
+  );
   const activeOverrideSummary = activeOverrideFields.length
     ? activeOverrideFields.map((field) => `${field.label}: ${formatConfigFieldValue(field, customConfig[field.key])}`).join(' | ')
     : 'No direct overrides active.';
   const [selectedLoadoutSlotKey, setSelectedLoadoutSlotKey] = useState(loadoutPreviewEntries[0]?.key || null);
-  const activeLoadoutEntry = loadoutPreviewEntries.find((entry) => entry.key === selectedLoadoutSlotKey) || loadoutPreviewEntries[0] || null;
+  const activeLoadoutEntry = useMemo(
+    () => loadoutPreviewEntries.find((entry) => entry.key === selectedLoadoutSlotKey) || loadoutPreviewEntries[0] || null,
+    [loadoutPreviewEntries, selectedLoadoutSlotKey],
+  );
 
-  const bossArchiveEntries = data ? getBossArchiveEntries(data, metaProgress, 6) : [];
+  const bossArchiveEntries = useMemo(
+    () => (data ? getBossArchiveEntries(data, metaProgress, 6) : []),
+    [data, metaProgress],
+  );
   const totalBossCount = Object.values(data?.encounters || {}).filter((encounter) => encounter?.kind === 'boss').length;
   const seenBossCount = metaProgress?.bossEncounterIdsSeen?.length ?? 0;
   const defeatedBossCount = metaProgress?.bossEncounterIdsDefeated?.length ?? 0;
@@ -690,6 +765,11 @@ export default function MainMenuHub({
     : activeMenuView === 'new'
       ? `New Run / ${activeNewRunView === 'configure' ? `Configure / ${activeConfigureView}` : activeNewRunView}`
       : MENU_LABELS[activeMenuView] || 'Main Menu';
+
+  useEffect(() => {
+    if (activeMenuView !== 'new' || activeNewRunView !== 'standard' || loadoutPreviewArtUrls.length === 0) return;
+    void preloadRuntimeArtUrls(loadoutPreviewArtUrls, { timeoutMs: 3500 });
+  }, [activeMenuView, activeNewRunView, loadoutPreviewArtUrls]);
 
   const pillButtonStyle = (accent, active = false, disabled = false) => ({
     appearance: 'none',

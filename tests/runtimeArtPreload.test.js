@@ -12,6 +12,7 @@ test("runtime art preloader deduplicates urls and settles loaded art", async () 
   __resetRuntimeArtPreloadCacheForTests();
   const originalImage = global.Image;
   const requestedUrls = [];
+  let decodeCount = 0;
 
   class MockImage {
     constructor() {
@@ -27,6 +28,11 @@ test("runtime art preloader deduplicates urls and settles loaded art", async () 
         this.onload?.();
       });
     }
+
+    decode() {
+      decodeCount += 1;
+      return Promise.resolve();
+    }
   }
 
   global.Image = MockImage;
@@ -40,6 +46,7 @@ test("runtime art preloader deduplicates urls and settles loaded art", async () 
     await preloadRuntimeArtUrls(urls, { timeoutMs: 50 });
 
     assert.deepEqual(requestedUrls, ["card-a.png", "enemy-b.png"]);
+    assert.equal(decodeCount, 2);
     assert.equal(areRuntimeArtUrlsSettled(urls), true);
     assert.deepEqual(getPendingRuntimeArtUrls(urls), []);
   } finally {

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } from 'react';
 import { getEnemyImage } from '../data/enemyImages.js';
 import { getCardImage } from '../data/cardImages.js';
 import RuntimeArt from './RuntimeArt.jsx';
@@ -66,8 +66,24 @@ const TYPE_COLORS = {
 
 const EMPTY_ARRAY = [];
 const EMPTY_OBJECT = {};
+const EMPTY_SET = new Set();
 const DOUBLE_TAP_WINDOW_MS = 320;
 const PLAYER_TARGET_ID = '__player__';
+const EMPTY_TARGETING_PROFILE = Object.freeze({
+  canTargetEnemy: false,
+  canTargetSelf: false,
+  targetHints: EMPTY_ARRAY,
+  preferredTargetMode: 'enemy',
+});
+
+function isLiteFxEnabled() {
+  if (typeof document === 'undefined') return false;
+  return document.documentElement?.dataset?.fxMode === 'lite';
+}
+
+function getBackdropFilter(blurPx) {
+  return isLiteFxEnabled() ? 'none' : `blur(${blurPx}px)`;
+}
 
 function HeatBar({ heat = 0, maxHeat = 20, height = 12, showText = true }) {
   const safeMax = Math.max(1, Number(maxHeat || 20));
@@ -1799,7 +1815,7 @@ function EnemyCard({
               border: `1px solid ${actingColor}58`,
               background: `linear-gradient(90deg, ${actingColor}18 0%, rgba(5,8,14,0.82) 42%, rgba(5,8,14,0.68) 100%)`,
               boxShadow: `0 0 18px ${actingColor}24`,
-              backdropFilter: 'blur(4px)',
+              backdropFilter: getBackdropFilter(4),
               pointerEvents: 'none',
             }}
           >
@@ -1882,7 +1898,7 @@ function EnemyCard({
             background: 'rgba(4,8,14,0.68)',
             border: `1px solid ${intentColor}35`,
             boxShadow: `0 6px 16px rgba(0,0,0,0.26), 0 0 10px ${intentColor}10`,
-            backdropFilter: compact ? 'blur(2px)' : 'blur(4px)',
+            backdropFilter: getBackdropFilter(compact ? 2 : 4),
           }}
         >
           {cardIntentBadges.map((badge, index) => (
@@ -2506,7 +2522,7 @@ function EnemyDetailDialog({
         inset: 0,
         zIndex: 320,
         background: 'rgba(2,6,12,0.94)',
-        backdropFilter: 'blur(10px)',
+        backdropFilter: getBackdropFilter(10),
       }}
       onClick={onClose}
     >
@@ -4105,7 +4121,7 @@ function CenterCardDisplay({
             background: shellInfoBackground,
             border: `1px solid ${shellInfoBorder}`,
             boxShadow: '0 8px 20px rgba(0,0,0,0.24)',
-            backdropFilter: 'blur(4px)',
+            backdropFilter: getBackdropFilter(4),
             display: 'flex',
             flexDirection: 'column',
             gap: 6,
@@ -4407,7 +4423,7 @@ function CenterCardDisplay({
               background: shellInfoBackground,
               border: `1px solid ${shellInfoBorder}`,
               boxShadow: '0 10px 24px rgba(0,0,0,0.24)',
-              backdropFilter: 'blur(4px)',
+              backdropFilter: getBackdropFilter(4),
               display: 'flex',
               flexDirection: 'column',
               gap: 8,
@@ -4973,7 +4989,7 @@ function HandCard({ cardInstance, cardDef, isSelected, onSelect, canPlay, compac
         background: compact ? 'linear-gradient(180deg, rgba(8,10,16,0.18) 0%, rgba(8,10,16,0.74) 12%, rgba(8,10,16,0.92) 100%)' : 'transparent',
         border: compact ? `1px solid ${color}22` : 'none',
         boxShadow: compact ? '0 8px 20px rgba(0,0,0,0.24)' : 'none',
-        backdropFilter: compact ? 'blur(4px)' : 'none',
+        backdropFilter: compact ? getBackdropFilter(4) : 'none',
         justifyContent: compact ? 'flex-end' : 'flex-start',
       }}>
         {/* Name */}
@@ -5239,7 +5255,7 @@ function MutationDiscoveryOverlay({ animation, data }) {
           border: `1px solid ${color}70`,
           background: `linear-gradient(180deg, rgba(9,10,18,0.96) 0%, rgba(12,14,24,0.98) 100%)`,
           boxShadow: `0 0 30px ${color}28, 0 20px 44px rgba(0,0,0,0.55)`,
-          backdropFilter: 'blur(12px)',
+          backdropFilter: getBackdropFilter(12),
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
@@ -5416,7 +5432,7 @@ function MutationRepeatOverlay({ animation, data, cardInstances }) {
             background: 'linear-gradient(180deg, rgba(8,10,16,0.16) 0%, rgba(8,10,16,0.74) 14%, rgba(8,10,16,0.92) 100%)',
             border: `1px solid ${cardColor}22`,
             boxShadow: '0 10px 24px rgba(0,0,0,0.24)',
-            backdropFilter: 'blur(4px)',
+            backdropFilter: getBackdropFilter(4),
             display: 'flex',
             flexDirection: 'column',
             gap: 8,
@@ -5550,7 +5566,7 @@ function CombatPlayAnimationLayer({ animation, data, enemies = EMPTY_ARRAY, card
               border: `1px solid ${accent}4a`,
               background: `linear-gradient(180deg, ${accent}18 0%, rgba(6,9,15,0.92) 28%, rgba(6,9,15,0.98) 100%)`,
               boxShadow: `0 0 20px ${accent}18, 0 10px 24px rgba(0,0,0,0.34)`,
-              backdropFilter: 'blur(6px)',
+              backdropFilter: getBackdropFilter(6),
               pointerEvents: 'none',
               '--play-duration': `${playDuration}ms`,
               ...(cueCaptionLayout || EMPTY_OBJECT),
@@ -6057,7 +6073,7 @@ function ArcHand({
   data,
   activeCardId,
   onFocusCard,
-  canPlayCard,
+  playableCardIds = EMPTY_SET,
   locked = false,
   aiPaused,
   onHover,
@@ -6324,7 +6340,7 @@ function ArcHand({
                 cardInstance={ci}
                 cardDef={def}
                 isSelected={isActive}
-                canPlay={canPlayCard(cid)}
+                canPlay={playableCardIds.has(cid)}
                 onSelect={() => {
                   onFocusCard(cid);
                   if (!isActive) centerCard(cid, 'auto');
@@ -6484,7 +6500,17 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
   const globalLog = state?.log ?? EMPTY_ARRAY;
   const player = combat?.player;
   const enemies = combat?.enemies ?? EMPTY_ARRAY;
-  const visibleEnemies = enemies.filter((enemy) => enemy.hp > 0);
+  const visibleEnemies = useMemo(
+    () => enemies.filter((enemy) => enemy.hp > 0),
+    [enemies],
+  );
+  const visibleEnemyModels = useMemo(() => {
+    const byId = new Map();
+    visibleEnemies.forEach((enemy, index) => {
+      byId.set(enemy.id, { enemy, index });
+    });
+    return byId;
+  }, [visibleEnemies]);
   const cardInstances = combat?.cardInstances || EMPTY_OBJECT;
   const hand = player?.piles?.hand ?? EMPTY_ARRAY;
   const drawPile = player?.piles?.draw ?? EMPTY_ARRAY;
@@ -6498,7 +6524,17 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
   const arenaModifier = combat?.arenaModifier ?? null;
   const displayPlayer = displayCombatState?.player ?? player;
   const displayEnemies = displayCombatState?.enemies ?? enemies;
-  const displayVisibleEnemies = displayEnemies.filter((enemy) => enemy.hp > 0);
+  const displayVisibleEnemies = useMemo(
+    () => displayEnemies.filter((enemy) => enemy.hp > 0),
+    [displayEnemies],
+  );
+  const displayVisibleEnemyById = useMemo(() => {
+    const byId = new Map();
+    displayVisibleEnemies.forEach((enemy) => {
+      byId.set(enemy.id, enemy);
+    });
+    return byId;
+  }, [displayVisibleEnemies]);
   const displayRam = displayCombatState?.ram ?? ram;
   const displayMaxRam = displayCombatState?.maxRam ?? maxRam;
   const displayHeat = displayCombatState?.heat ?? heat;
@@ -6526,109 +6562,181 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
 
   const activeInstance = activeCardId ? cardInstances[activeCardId] : null;
   const activeDef = activeInstance ? data?.cards?.[activeInstance.defId] : null;
+  const targetingProfileCache = useMemo(() => new Map(), [data, state?.combat]);
+  const getTargetingProfileForCard = useCallback((cardId) => {
+    if (!cardId || !state?.combat || !data) return EMPTY_TARGETING_PROFILE;
+    if (targetingProfileCache.has(cardId)) {
+      return targetingProfileCache.get(cardId);
+    }
+    const profile = getCardTargetingProfile(state.combat, data, cardId);
+    targetingProfileCache.set(cardId, profile);
+    return profile;
+  }, [data, state?.combat, targetingProfileCache]);
   const targetedEnemy = visibleEnemies[targetedEnemyIndex] ?? visibleEnemies[0] ?? null;
   const targetedEnemyId = targetedEnemy?.id ?? null;
   const displayTargetedEnemy = (targetedEnemyId
-    ? displayVisibleEnemies.find((enemy) => enemy.id === targetedEnemyId)
+    ? displayVisibleEnemyById.get(targetedEnemyId)
     : null) ?? displayVisibleEnemies[targetedEnemyIndex] ?? displayVisibleEnemies[0] ?? null;
   const targetedIntentCardDef = displayTargetedEnemy ? data?.cards?.[displayTargetedEnemy.intent?.cardDefId] : null;
-  const targetedIntentBadges = displayTargetedEnemy ? getIntentEffectBadges(displayTargetedEnemy, targetedIntentCardDef) : EMPTY_ARRAY;
-  const mutatedHandCount = hand.filter((cardId) => (cardInstances[cardId]?.appliedMutations?.length || 0) > 0).length;
-  const targetedBossReadout = displayTargetedEnemy
-    ? getBossDirectiveReadout(displayTargetedEnemy, {
-      aliveAllies: displayVisibleEnemies.filter((enemy) => enemy.id !== displayTargetedEnemy.id).length,
-      mutatedHandCount,
-      cardsPlayedThisTurn: combat?._cardsPlayedThisTurn || 0,
-    })
-    : null;
-  const activeTargetingProfile = activeCardId
-    ? getCardTargetingProfile(state.combat, data, activeCardId)
-    : { canTargetEnemy: false, canTargetSelf: false, targetHints: EMPTY_ARRAY };
-  const defaultEnemyTargetId = targetedEnemy?.id ?? visibleEnemies[0]?.id ?? enemies.find((enemy) => enemy.hp > 0)?.id ?? null;
-  const selectedEnemyId = targetedEnemy?.id ?? defaultEnemyTargetId;
-  const canCastActiveOnSelf = Boolean(
-    activeCardId
-    && activeTargetingProfile.canTargetSelf
-    && getCardPlayability(state.combat, data, activeCardId, defaultEnemyTargetId, true).playable,
+  const targetedIntentBadges = useMemo(
+    () => (displayTargetedEnemy ? getIntentEffectBadges(displayTargetedEnemy, targetedIntentCardDef) : EMPTY_ARRAY),
+    [displayTargetedEnemy, targetedIntentCardDef],
   );
+  const mutatedHandCount = useMemo(
+    () => hand.filter((cardId) => (cardInstances[cardId]?.appliedMutations?.length || 0) > 0).length,
+    [cardInstances, hand],
+  );
+  const targetedBossReadout = useMemo(() => (
+    displayTargetedEnemy
+      ? getBossDirectiveReadout(displayTargetedEnemy, {
+        aliveAllies: displayVisibleEnemies.filter((enemy) => enemy.id !== displayTargetedEnemy.id).length,
+        mutatedHandCount,
+        cardsPlayedThisTurn: combat?._cardsPlayedThisTurn || 0,
+      })
+      : null
+  ), [combat?._cardsPlayedThisTurn, displayTargetedEnemy, displayVisibleEnemies, mutatedHandCount]);
+  const activeTargetingProfile = activeCardId
+    ? getTargetingProfileForCard(activeCardId)
+    : EMPTY_TARGETING_PROFILE;
+  const defaultEnemyTargetId = targetedEnemy?.id ?? visibleEnemies[0]?.id ?? null;
+  const selectedEnemyId = targetedEnemy?.id ?? defaultEnemyTargetId;
+  const playabilityCache = useMemo(() => new Map(), [data, defaultEnemyTargetId, state?.combat]);
+  const getPlayabilityForTarget = useCallback((cardId, targetMode = 'enemy', enemyId = defaultEnemyTargetId) => {
+    if (!cardId || !state?.combat || !data) {
+      return { playable: false, reason: 'missing_card' };
+    }
+    const resolvedEnemyId = enemyId ?? defaultEnemyTargetId ?? null;
+    const cacheKey = `${cardId}|${targetMode}|${resolvedEnemyId ?? 'none'}`;
+    if (playabilityCache.has(cacheKey)) {
+      return playabilityCache.get(cacheKey);
+    }
+    const playability = getCardPlayability(
+      state.combat,
+      data,
+      cardId,
+      resolvedEnemyId,
+      targetMode === 'self',
+    );
+    playabilityCache.set(cacheKey, playability);
+    return playability;
+  }, [data, defaultEnemyTargetId, playabilityCache, state?.combat]);
+  const activeEnemyPlayabilityById = useMemo(() => {
+    const byId = new Map();
+    if (!activeCardId || !activeTargetingProfile.canTargetEnemy) return byId;
+    visibleEnemies.forEach((enemy) => {
+      byId.set(enemy.id, getPlayabilityForTarget(activeCardId, 'enemy', enemy.id));
+    });
+    return byId;
+  }, [activeCardId, activeTargetingProfile.canTargetEnemy, getPlayabilityForTarget, visibleEnemies]);
+  const selfTargetPlayability = activeCardId && activeTargetingProfile.canTargetSelf
+    ? getPlayabilityForTarget(activeCardId, 'self', defaultEnemyTargetId)
+    : { playable: false, reason: null };
+  const canCastActiveOnSelf = Boolean(activeCardId && activeTargetingProfile.canTargetSelf && selfTargetPlayability.playable);
   const canCastActiveOnEnemy = Boolean(
     activeCardId
     && activeTargetingProfile.canTargetEnemy
-    && getCardPlayability(state.combat, data, activeCardId, defaultEnemyTargetId, false).playable,
+    && defaultEnemyTargetId
+    && activeEnemyPlayabilityById.get(defaultEnemyTargetId)?.playable,
   );
-  const canCastActiveOnAnyEnemy = Boolean(
-    activeCardId
-    && activeTargetingProfile.canTargetEnemy
-    && visibleEnemies.some((enemy) => getCardPlayability(state.combat, data, activeCardId, enemy.id, false).playable),
+  const canCastActiveOnAnyEnemy = useMemo(
+    () => Array.from(activeEnemyPlayabilityById.values()).some((playability) => playability?.playable),
+    [activeEnemyPlayabilityById],
   );
-  const buildCombatSnapshot = useCallback(() => ({
-    layoutMode,
-    viewport,
-    activeCard: activeCardId
-      ? {
-          id: activeCardId,
-          name: activeDef?.name ?? activeCardId,
-        }
-      : null,
-    selectedTargetMode,
-    armedTarget,
-    deckMenuOpen,
-    viewingPile,
-    enemyInfoOpen,
-    canCastActiveOnSelf,
-    canCastActiveOnEnemy: canCastActiveOnAnyEnemy,
-    player: {
-      hp: player?.hp ?? 0,
-      maxHP: player?.maxHP ?? 0,
-      firewall: player?.statuses?.find((status) => status.id === 'Firewall')?.stacks ?? 0,
-      ram,
-      maxRam,
-      heat,
-      maxHeat,
-    },
-    arenaModifier: arenaModifier?.label ?? null,
-    target: targetedEnemy
-      ? {
-          id: targetedEnemy.id,
-          name: targetedEnemy.name ?? 'Unknown Target',
-          hp: targetedEnemy.hp,
-          maxHP: targetedEnemy.maxHP,
-        }
-      : null,
-    hand: hand.slice(0, 8).map((cardId) => {
-      const instance = cardInstances[cardId];
-      const def = instance ? data?.cards?.[instance.defId] : null;
-      return {
-        id: cardId,
-        name: def?.name ?? cardId,
-      };
-    }),
-    enemies: visibleEnemies.map((enemy) => ({
-      id: enemy.id,
-      name: enemy.name ?? 'Unknown Target',
-      hp: enemy.hp,
-      maxHP: enemy.maxHP,
-      firewall: enemy?.statuses?.find((status) => status.id === 'Firewall')?.stacks ?? 0,
-      intent: enemy.intent?.type ?? null,
-    })),
-    recentLog: globalLog.slice(-6).map((entry) => ({
-      t: entry.t,
-      msg: entry.msg,
-    })),
-  }), [
+  const playableCardIds = useMemo(() => {
+    if (interactionLocked || !state?.combat || !data) return EMPTY_SET;
+    const nextPlayable = new Set();
+    hand.forEach((cardId) => {
+      const profile = getTargetingProfileForCard(cardId);
+      if (profile.canTargetEnemy && getPlayabilityForTarget(cardId, 'enemy').playable) {
+        nextPlayable.add(cardId);
+        return;
+      }
+      if (profile.canTargetSelf && getPlayabilityForTarget(cardId, 'self').playable) {
+        nextPlayable.add(cardId);
+        return;
+      }
+      if (!profile.canTargetEnemy && !profile.canTargetSelf && getPlayabilityForTarget(cardId, 'enemy').playable) {
+        nextPlayable.add(cardId);
+      }
+    });
+    return nextPlayable;
+  }, [data, getPlayabilityForTarget, getTargetingProfileForCard, hand, interactionLocked, state?.combat]);
+  const canPlayActiveCard = Boolean(activeCardId && playableCardIds.has(activeCardId));
+  const combatSnapshot = useMemo(() => {
+    if (!playtestEnabled) return null;
+    return {
+      layoutMode,
+      viewport,
+      activeCard: activeCardId
+        ? {
+            id: activeCardId,
+            name: activeDef?.name ?? activeCardId,
+          }
+        : null,
+      selectedTargetMode,
+      armedTarget,
+      deckMenuOpen,
+      viewingPile,
+      enemyInfoOpen,
+      canCastActiveOnSelf,
+      canCastActiveOnEnemy: canCastActiveOnAnyEnemy,
+      player: {
+        hp: player?.hp ?? 0,
+        maxHP: player?.maxHP ?? 0,
+        firewall: player?.statuses?.find((status) => status.id === 'Firewall')?.stacks ?? 0,
+        ram,
+        maxRam,
+        heat,
+        maxHeat,
+      },
+      arenaModifier: arenaModifier?.label ?? null,
+      target: targetedEnemy
+        ? {
+            id: targetedEnemy.id,
+            name: targetedEnemy.name ?? 'Unknown Target',
+            hp: targetedEnemy.hp,
+            maxHP: targetedEnemy.maxHP,
+          }
+        : null,
+      hand: hand.slice(0, 8).map((cardId) => {
+        const instance = cardInstances[cardId];
+        const def = instance ? data?.cards?.[instance.defId] : null;
+        return {
+          id: cardId,
+          name: def?.name ?? cardId,
+        };
+      }),
+      enemies: visibleEnemies.map((enemy) => ({
+        id: enemy.id,
+        name: enemy.name ?? 'Unknown Target',
+        hp: enemy.hp,
+        maxHP: enemy.maxHP,
+        firewall: enemy?.statuses?.find((status) => status.id === 'Firewall')?.stacks ?? 0,
+        intent: enemy.intent?.type ?? null,
+      })),
+      recentLog: globalLog.slice(-6).map((entry) => ({
+        t: entry.t,
+        msg: entry.msg,
+      })),
+    };
+  }, [
     activeCardId,
     activeDef?.name,
     armedTarget,
+    arenaModifier?.label,
     canCastActiveOnAnyEnemy,
     canCastActiveOnSelf,
     cardInstances,
-    data,
+    data?.cards,
     deckMenuOpen,
     enemyInfoOpen,
     globalLog,
     hand,
+    heat,
     layoutMode,
+    maxHeat,
     maxRam,
+    playtestEnabled,
     player,
     ram,
     selectedTargetMode,
@@ -6637,7 +6745,7 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
     viewport,
     visibleEnemies,
   ]);
-  latestCombatSnapshotRef.current = buildCombatSnapshot();
+  latestCombatSnapshotRef.current = combatSnapshot;
   const playtestReadySignature = `${state?.mode || 'unknown'}|${state?.run?.floor ?? state?.run?.floorIndex ?? 'na'}|${visibleEnemies.map((enemy) => enemy.id).join(',')}`;
 
   useDialogAccessibility(enemyInfoOpen && !!displayTargetedEnemy, {
@@ -6758,39 +6866,16 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
     }, DOUBLE_TAP_WINDOW_MS);
   }, [clearArmedTarget]);
 
-  const getPlayabilityForTarget = useCallback((cardId, targetMode = 'enemy', enemyId = defaultEnemyTargetId) => {
-    if (!cardId || !state?.combat || !data) {
-      return { playable: false, reason: 'missing_card' };
-    }
-    return getCardPlayability(
-      state.combat,
-      data,
-      cardId,
-      enemyId ?? defaultEnemyTargetId,
-      targetMode === 'self',
-    );
-  }, [data, defaultEnemyTargetId, state?.combat]);
-
-  const canPlayCard = useCallback((cardId) => {
-    if (!cardId || !state?.combat || !data) return false;
-    const profile = getCardTargetingProfile(state.combat, data, cardId);
-    if (profile.canTargetEnemy && getPlayabilityForTarget(cardId, 'enemy').playable) return true;
-    if (profile.canTargetSelf && getPlayabilityForTarget(cardId, 'self').playable) return true;
-    return !profile.canTargetEnemy && !profile.canTargetSelf
-      ? getPlayabilityForTarget(cardId, 'enemy').playable
-      : false;
-  }, [data, getPlayabilityForTarget, state?.combat]);
-
   const getPreferredTargetMode = useCallback((cardId) => {
     if (!cardId || !state?.combat || !data) return 'enemy';
-    const profile = getCardTargetingProfile(state.combat, data, cardId);
+    const profile = getTargetingProfileForCard(cardId);
     const preferred = profile.preferredTargetMode === 'self' ? 'self' : 'enemy';
     const fallback = preferred === 'self' ? 'enemy' : 'self';
     const preferredPlayable = getPlayabilityForTarget(cardId, preferred).playable;
     const fallbackPlayable = getPlayabilityForTarget(cardId, fallback).playable;
     if (preferredPlayable || !fallbackPlayable) return preferred;
     return fallback;
-  }, [data, getPlayabilityForTarget, state?.combat]);
+  }, [data, getPlayabilityForTarget, getTargetingProfileForCard, state?.combat]);
 
   const playCardToTarget = useCallback((cardId = activeCardId, targetMode = 'enemy', enemyId = defaultEnemyTargetId) => {
     const playability = getPlayabilityForTarget(cardId, targetMode, enemyId);
@@ -6804,7 +6889,7 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
       })(),
       targetMode,
       targetEnemyId: enemyId ?? null,
-      snapshot: buildCombatSnapshot(),
+      snapshot: latestCombatSnapshotRef.current,
     });
     sfx.unlock();
     sfx.cardPlay();
@@ -6817,7 +6902,7 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
     clearTapTarget();
     setSelectedTargetMode(targetMode === 'self' ? 'self' : 'enemy');
     return true;
-  }, [activeCardId, buildCombatSnapshot, cardInstances, clearTapTarget, data, defaultEnemyTargetId, getPlayabilityForTarget, interactionLocked, onAction, recordPlaytest]);
+  }, [activeCardId, cardInstances, clearTapTarget, data, defaultEnemyTargetId, getPlayabilityForTarget, interactionLocked, onAction, recordPlaytest]);
 
   const focusActiveCard = useCallback((cardId) => {
     clearTapTarget();
@@ -6837,7 +6922,7 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
     const canUseOnEnemy = Boolean(
       activeCardId
       && activeTargetingProfile.canTargetEnemy
-      && getPlayabilityForTarget(activeCardId, 'enemy', enemy.id).playable
+      && activeEnemyPlayabilityById.get(enemy.id)?.playable
     );
 
     setTargetedEnemyIndex(enemyIndex);
@@ -6852,7 +6937,7 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
         recordPlaytest('enemy_double_tap_cast', {
           enemyId: enemy.id,
           enemyName: enemy.name ?? 'Unknown Target',
-          snapshot: buildCombatSnapshot(),
+          snapshot: latestCombatSnapshotRef.current,
         });
         playCardToTarget(activeCardId, 'enemy', enemy.id);
         return;
@@ -6864,7 +6949,7 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
           enemyName: enemy.name ?? 'Unknown Target',
           playable: canUseOnEnemy,
           openedInfo: true,
-          snapshot: buildCombatSnapshot(),
+          snapshot: latestCombatSnapshotRef.current,
         });
         setEnemyInfoOpen(true);
         clearArmedTarget();
@@ -6876,16 +6961,15 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
       enemyId: enemy.id,
       enemyName: enemy.name ?? 'Unknown Target',
       playable: canUseOnEnemy,
-      snapshot: buildCombatSnapshot(),
+      snapshot: latestCombatSnapshotRef.current,
     });
     primeTapTarget('enemy', enemy.id, canUseOnEnemy, now);
   }, [
     activeCardId,
+    activeEnemyPlayabilityById,
     activeTargetingProfile.canTargetEnemy,
-    buildCombatSnapshot,
     clearArmedTarget,
     enemyInfoOpen,
-    getPlayabilityForTarget,
     interactionLocked,
     playCardToTarget,
     primeTapTarget,
@@ -6898,14 +6982,14 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
     const now = Date.now();
     const sameTarget = tapTargetRef.current.kind === 'self' && tapTargetRef.current.id === PLAYER_TARGET_ID;
     const withinDoubleTap = sameTarget && (now - tapTargetRef.current.timestamp) <= DOUBLE_TAP_WINDOW_MS;
-    const canUseOnSelf = getPlayabilityForTarget(activeCardId, 'self', defaultEnemyTargetId).playable;
+    const canUseOnSelf = selfTargetPlayability.playable;
 
     setSelectedTargetMode('self');
     sfx.targetLock();
 
     if (sameTarget && canUseOnSelf && withinDoubleTap) {
       recordPlaytest('self_double_tap_cast', {
-        snapshot: buildCombatSnapshot(),
+        snapshot: latestCombatSnapshotRef.current,
       });
       playCardToTarget(activeCardId, 'self', defaultEnemyTargetId);
       return;
@@ -6913,19 +6997,18 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
 
     recordPlaytest(canUseOnSelf ? 'self_target_armed' : 'self_target_tapped', {
       playable: canUseOnSelf,
-      snapshot: buildCombatSnapshot(),
+      snapshot: latestCombatSnapshotRef.current,
     });
     primeTapTarget('self', PLAYER_TARGET_ID, canUseOnSelf, now);
   }, [
     activeCardId,
     activeTargetingProfile.canTargetSelf,
-    buildCombatSnapshot,
     defaultEnemyTargetId,
-    getPlayabilityForTarget,
     interactionLocked,
     playCardToTarget,
     primeTapTarget,
     recordPlaytest,
+    selfTargetPlayability.playable,
   ]);
 
   const handleCenterCardSwipeCast = useCallback((targetMode) => {
@@ -7386,10 +7469,7 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
   }, [activeAnimation, animationQueue.length, endTurnPending]);
 
   const focusedEnemyPlayability = activeCardId && targetedEnemy && activeTargetingProfile.canTargetEnemy
-    ? getPlayabilityForTarget(activeCardId, 'enemy', targetedEnemy.id)
-    : { playable: false, reason: null };
-  const selfTargetPlayability = activeCardId && activeTargetingProfile.canTargetSelf
-    ? getPlayabilityForTarget(activeCardId, 'self', defaultEnemyTargetId)
+    ? (activeEnemyPlayabilityById.get(targetedEnemy.id) ?? { playable: false, reason: null })
     : { playable: false, reason: null };
   const enemyTargetArmed = Boolean(
     activeCardId
@@ -7439,13 +7519,14 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
     : canCastActiveOnAnyEnemy || canCastActiveOnSelf
       ? C.neonGreen
       : C.neonOrange;
-  const activeCardHeatForecast = activeCardId && activeDef && activeInstance
-    ? buildCardHeatForecast(activeDef, activeInstance, heat, maxHeat)
-    : null;
-  const activeCardTargetPreview = !activeCardId
-    ? null
-    : selectedTargetMode === 'self'
-      ? {
+  const activeCardHeatForecast = useMemo(
+    () => (activeCardId && activeDef && activeInstance ? buildCardHeatForecast(activeDef, activeInstance, heat, maxHeat) : null),
+    [activeCardId, activeDef, activeInstance, heat, maxHeat],
+  );
+  const activeCardTargetPreview = useMemo(() => {
+    if (!activeCardId) return null;
+    if (selectedTargetMode === 'self') {
+      return {
         label: selfTargetArmed ? 'Self armed' : 'Self',
         tone: selfTargetArmed ? C.neonYellow : (canCastActiveOnSelf ? C.neonGreen : C.neonOrange),
         summary: selfTargetArmed
@@ -7469,36 +7550,48 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
           ? `Trace +${activeCardHeatForecast.gain} -> ${activeCardHeatForecast.nextState.label.toUpperCase()} (${activeCardHeatForecast.nextHeat}/${maxHeat})`
           : null,
         heatTone: activeCardHeatForecast?.nextState?.color || null,
-      }
-      : {
-        label: enemyTargetArmed
-          ? `${targetedEnemy?.name ?? 'Target'} locked`
-          : (targetedEnemy?.name ?? 'Select target'),
-        tone: enemyTargetArmed ? C.neonYellow : (canCastActiveOnAnyEnemy ? C.neonRed : C.neonOrange),
-        summary: enemyTargetArmed
-          ? 'The enemy route is armed. Swipe up to fire into the selected target.'
-          : canCastActiveOnAnyEnemy
-            ? `Swipe up to cast into ${targetedEnemy?.name ?? 'the selected enemy'}.`
-            : 'No enemy route is valid for this card right now.',
-        routes: [
-          {
-            label: 'Up',
-            value: enemyTargetArmed
-              ? `${targetedEnemy?.name ?? 'Target'} locked`
-              : (targetedEnemy?.name ?? 'Select target'),
-            tone: enemyTargetArmed ? C.neonYellow : (canCastActiveOnAnyEnemy ? C.neonRed : C.textDim),
-          },
-          {
-            label: 'Down',
-            value: canCastActiveOnSelf ? 'Self' : 'Unavailable',
-            tone: canCastActiveOnSelf ? C.neonGreen : C.textDim,
-          },
-        ],
-        heatLabel: activeCardHeatForecast
-          ? `Trace +${activeCardHeatForecast.gain} -> ${activeCardHeatForecast.nextState.label.toUpperCase()} (${activeCardHeatForecast.nextHeat}/${maxHeat})`
-          : null,
-        heatTone: activeCardHeatForecast?.nextState?.color || null,
       };
+    }
+    return {
+      label: enemyTargetArmed
+        ? `${targetedEnemy?.name ?? 'Target'} locked`
+        : (targetedEnemy?.name ?? 'Select target'),
+      tone: enemyTargetArmed ? C.neonYellow : (canCastActiveOnAnyEnemy ? C.neonRed : C.neonOrange),
+      summary: enemyTargetArmed
+        ? 'The enemy route is armed. Swipe up to fire into the selected target.'
+        : canCastActiveOnAnyEnemy
+          ? `Swipe up to cast into ${targetedEnemy?.name ?? 'the selected enemy'}.`
+          : 'No enemy route is valid for this card right now.',
+      routes: [
+        {
+          label: 'Up',
+          value: enemyTargetArmed
+            ? `${targetedEnemy?.name ?? 'Target'} locked`
+            : (targetedEnemy?.name ?? 'Select target'),
+          tone: enemyTargetArmed ? C.neonYellow : (canCastActiveOnAnyEnemy ? C.neonRed : C.textDim),
+        },
+        {
+          label: 'Down',
+          value: canCastActiveOnSelf ? 'Self' : 'Unavailable',
+          tone: canCastActiveOnSelf ? C.neonGreen : C.textDim,
+        },
+      ],
+      heatLabel: activeCardHeatForecast
+        ? `Trace +${activeCardHeatForecast.gain} -> ${activeCardHeatForecast.nextState.label.toUpperCase()} (${activeCardHeatForecast.nextHeat}/${maxHeat})`
+        : null,
+      heatTone: activeCardHeatForecast?.nextState?.color || null,
+    };
+  }, [
+    activeCardHeatForecast,
+    activeCardId,
+    canCastActiveOnAnyEnemy,
+    canCastActiveOnSelf,
+    enemyTargetArmed,
+    maxHeat,
+    selectedTargetMode,
+    selfTargetArmed,
+    targetedEnemy?.name,
+  ]);
 
   useEffect(() => {
     const alertLevel = getHeatState(heat, maxHeat).alertLevel;
@@ -7515,13 +7608,31 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
   const handleEndTurn = () => {
     if (interactionLocked) return;
     recordPlaytest('end_turn_pressed', {
-      snapshot: buildCombatSnapshot(),
+      snapshot: latestCombatSnapshotRef.current,
     });
     sfx.endTurn();
     waitingForEndTurnLogsRef.current = true;
     setEndTurnPending(true);
     onAction?.({ type: 'Combat_EndTurn' });
   };
+  const displayEnemyCards = useMemo(() => displayVisibleEnemies.map((enemy) => {
+    const actualEnemyModel = visibleEnemyModels.get(enemy.id);
+    const actualEnemy = actualEnemyModel?.enemy ?? enemy;
+    return {
+      displayEnemy: enemy,
+      actualEnemy,
+      actualEnemyIndex: actualEnemyModel?.index ?? 0,
+      enemyPlayability: activeCardId && activeTargetingProfile.canTargetEnemy
+        ? activeEnemyPlayabilityById.get(actualEnemy.id) ?? null
+        : null,
+    };
+  }), [
+    activeCardId,
+    activeEnemyPlayabilityById,
+    activeTargetingProfile.canTargetEnemy,
+    displayVisibleEnemies,
+    visibleEnemyModels,
+  ]);
 
   const enemyCardsStrip = (
     <div
@@ -7545,25 +7656,20 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
           padding: '0 4px',
         }}
       >
-        {displayVisibleEnemies.map((enemy) => {
-          const actualEnemy = visibleEnemies.find((candidate) => candidate.id === enemy.id) ?? enemy;
-          const actualEnemyIndex = visibleEnemies.findIndex((candidate) => candidate.id === enemy.id);
-          const enemyPlayability = activeCardId && activeTargetingProfile.canTargetEnemy
-            ? getPlayabilityForTarget(activeCardId, 'enemy', actualEnemy.id)
-            : null;
+        {displayEnemyCards.map(({ displayEnemy, actualEnemy, actualEnemyIndex, enemyPlayability }) => {
           return (
             <EnemyCard
-              key={enemy.id}
-              enemy={enemy}
-              isTargeted={selectedEnemyId === enemy.id}
+              key={displayEnemy.id}
+              enemy={displayEnemy}
+              isTargeted={selectedEnemyId === displayEnemy.id}
               onClick={() => handleEnemyTap(actualEnemy, actualEnemyIndex >= 0 ? actualEnemyIndex : 0)}
-              actingType={activeAnimation?.actor === 'enemy' && activeAnimation.enemyId === enemy.id ? activeAnimation.intentType : null}
+              actingType={activeAnimation?.actor === 'enemy' && activeAnimation.enemyId === displayEnemy.id ? activeAnimation.intentType : null}
               data={data}
               compact={isPhoneLayout}
-              impact={enemyImpactMap[enemy.id] ?? null}
+              impact={enemyImpactMap[displayEnemy.id] ?? null}
               hasActiveCard={Boolean(activeCardId)}
               canActivate={Boolean(enemyPlayability?.playable)}
-              isArmed={armedTarget.kind === 'enemy' && armedTarget.id === enemy.id}
+              isArmed={armedTarget.kind === 'enemy' && armedTarget.id === displayEnemy.id}
             />
           );
         })}
@@ -7600,7 +7706,7 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
         onDismiss={() => setCenterCardDismissed(true)}
         onActivate={() => playCardToTarget(activeCardId, selectedTargetMode, defaultEnemyTargetId)}
         onSwipeCast={handleCenterCardSwipeCast}
-        canActivate={!interactionLocked && !!activeCardId && canPlayCard(activeCardId)}
+        canActivate={!interactionLocked && !!activeCardId && canPlayActiveCard}
         activateHint={interactionLocked ? 'Resolving action' : activeCardHint}
         helperNote={interactionLocked ? 'Actions are resolving. Target input will unlock in a moment.' : activeCardHelperNote}
         targetPreview={activeCardTargetPreview}
@@ -7632,7 +7738,7 @@ export default function CombatScreen({ state, data, onAction, aiPaused = false, 
       data={data}
       activeCardId={activeCardId}
       onFocusCard={focusActiveCard}
-      canPlayCard={(cid) => !interactionLocked && canPlayCard(cid)}
+      playableCardIds={playableCardIds}
       locked={interactionLocked}
       aiPaused={aiPaused}
       onHover={(cd, x, y) => setTooltip({ cardDef: cd, x, y })}

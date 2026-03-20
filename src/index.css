@@ -75,6 +75,17 @@ body::after {
   opacity: 0.7;
 }
 
+html[data-fx-mode='lite'] body::before {
+  animation: none;
+  opacity: 0.42;
+}
+
+html[data-fx-mode='lite'] body::after {
+  opacity: 0.3;
+  background:
+    linear-gradient(180deg, rgba(4, 6, 12, 0.52) 0%, rgba(4, 6, 12, 0.22) 24%, rgba(4, 6, 12, 0.44) 100%);
+}
+
 /* Prevent rubber-banding on iOS */
 html {
   overflow: hidden;
@@ -246,6 +257,10 @@ button:hover:not(:disabled) {
   will-change: transform, opacity, filter;
   transform-origin: center center;
   backdrop-filter: blur(10px);
+}
+
+html[data-fx-mode='lite'] .play-card-overlay {
+  backdrop-filter: none;
 }
 
 @keyframes play-card-player {
@@ -450,6 +465,10 @@ button:hover:not(:disabled) {
   z-index: 99998;
 }
 
+html[data-fx-mode='lite'] .scanlines::after {
+  display: none;
+}
+
 .atmosphere-shell {
   position: relative;
   isolation: isolate;
@@ -482,10 +501,19 @@ button:hover:not(:disabled) {
   opacity: 0.45;
 }
 
+html[data-fx-mode='lite'] .atmosphere-shell::before,
+html[data-fx-mode='lite'] .atmosphere-shell::after {
+  opacity: 0.24;
+}
+
 .panel-chrome {
   position: relative;
   overflow: hidden;
   backdrop-filter: blur(10px);
+}
+
+html[data-fx-mode='lite'] .panel-chrome {
+  backdrop-filter: none;
 }
 
 .panel-chrome::before,
@@ -570,6 +598,10 @@ button:hover:not(:disabled) {
   animation: chrome-scan 7s ease-in-out infinite;
 }
 
+html[data-fx-mode='lite'] .hud-scanline::after {
+  display: none;
+}
+
 .signal-chip {
   position: relative;
   overflow: hidden;
@@ -636,6 +668,13 @@ button:hover:not(:disabled) {
   50%      { box-shadow: 0 0 20px currentColor, 0 0 40px currentColor; }
 }
 .mut-glow { animation: mut-glow 1.5s ease-in-out infinite; }
+
+html[data-fx-mode='lite'] .animate-pulse-glow,
+html[data-fx-mode='lite'] .animate-neon-pulse,
+html[data-fx-mode='lite'] .animate-pulse,
+html[data-fx-mode='lite'] .mut-glow {
+  animation: none;
+}
 
 /* ============================================================
    SAFE AREA (for notched phones)

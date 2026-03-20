@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { getRuntimeArtPreviewUrl } from '../data/runtimeArtCatalog.js';
 
 function buildDefaultFallbackContent(label, accent) {
   return (
@@ -50,6 +51,7 @@ function buildDefaultFallbackContent(label, accent) {
 
 export default function RuntimeArt({
   src,
+  previewSrc = null,
   alt = '',
   style = {},
   imageStyle = {},
@@ -61,13 +63,22 @@ export default function RuntimeArt({
   loading = 'lazy',
   draggable = false,
 }) {
+  const resolvedPreviewSrc = useMemo(
+    () => previewSrc || getRuntimeArtPreviewUrl(src),
+    [previewSrc, src]
+  );
   const [loadFailed, setLoadFailed] = useState(!src);
+  const [previewFailed, setPreviewFailed] = useState(!resolvedPreviewSrc);
+  const [fullLoaded, setFullLoaded] = useState(!src || src === resolvedPreviewSrc);
 
   useEffect(() => {
     setLoadFailed(!src);
-  }, [src]);
+    setPreviewFailed(!resolvedPreviewSrc);
+    setFullLoaded(!src || src === resolvedPreviewSrc);
+  }, [resolvedPreviewSrc, src]);
 
-  if (!src || loadFailed) {
+  const hasPreview = Boolean(resolvedPreviewSrc) && !previewFailed;
+  if ((!src && !hasPreview) || (loadFailed && !hasPreview)) {
     return (
       <div
         aria-label={alt || label || 'Missing art'}
@@ -88,18 +99,59 @@ export default function RuntimeArt({
   }
 
   return (
-    <img
-      src={src}
-      alt={alt}
+    <div
       className={className}
-      loading={loading}
-      decoding="async"
-      draggable={draggable}
-      onError={() => setLoadFailed(true)}
+      aria-label={alt || label || 'Runtime art'}
       style={{
         ...style,
-        ...imageStyle,
+        display: style.display ?? 'block',
+        overflow: style.overflow ?? 'hidden',
+        position: style.position ?? 'relative',
       }}
-    />
+    >
+      {hasPreview ? (
+        <img
+          src={resolvedPreviewSrc}
+          alt=""
+          aria-hidden="true"
+          loading="eager"
+          decoding="async"
+          draggable={false}
+          fetchPriority="high"
+          onError={() => setPreviewFailed(true)}
+          style={{
+            position: 'absolute',
+            inset: 0,
+            width: '100%',
+            height: '100%',
+            ...imageStyle,
+          }}
+        />
+      ) : null}
+      {src ? (
+        <img
+          src={src}
+          alt={alt}
+          loading={loading}
+          decoding="async"
+          draggable={draggable}
+          fetchPriority={loading === 'eager' ? 'high' : 'auto'}
+          onLoad={() => {
+            setLoadFailed(false);
+            setFullLoaded(true);
+          }}
+          onError={() => setLoadFailed(true)}
+          style={{
+            position: 'absolute',
+            inset: 0,
+            width: '100%',
+            height: '100%',
+            opacity: hasPreview ? (fullLoaded ? 1 : 0) : 1,
+            transition: hasPreview ? 'opacity 140ms ease-out' : undefined,
+            ...imageStyle,
+          }}
+        />
+      ) : null}
+    </div>
   );
 }

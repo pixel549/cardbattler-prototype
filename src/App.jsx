@@ -30,6 +30,7 @@ import {
   getPendingRuntimeArtUrls,
   preloadRuntimeArtUrls,
 } from './data/runtimeArtPreload.js';
+import { getRuntimeArtPreviewUrls } from './data/runtimeArtCatalog.js';
 import useDialogAccessibility from './hooks/useDialogAccessibility.js';
 import {
   buildPlaytestUrl,
@@ -5357,12 +5358,14 @@ function buildSceneArtManifest(state) {
     const pendingOp = state.shop?.pendingService ?? state.event?.pendingSelectOp ?? 'deck';
     const urls = getRunDeckArtUrls(state);
     if (!urls.length) return null;
+    const blockUrls = getRuntimeArtPreviewUrls(urls);
     return {
       key: `deck:${seed}:${act}:${floor}:${pendingOp}:${(state.deck?.master || []).join(',')}`,
       title: 'SYNCING DECK',
       message: 'Loading deck card art...',
       accent: C.orange,
       urls,
+      blockUrls,
     };
   }
 
@@ -5374,12 +5377,14 @@ function buildSceneArtManifest(state) {
     const backgroundUrls = deckCardUrls.filter((url) => !immediateCardUrls.includes(url));
     const urls = collectUniqueArtUrls([...enemyUrls, ...immediateCardUrls]);
     if (!urls.length) return null;
+    const blockUrls = getRuntimeArtPreviewUrls(urls);
     return {
       key: `combat:${seed}:${act}:${floor}:${state.map?.currentNodeId ?? (enemyIds.join(',') || 'node')}`,
       title: 'SYNCING ENCOUNTER',
       message: 'Loading enemy and action card art...',
       accent: C.orange,
       urls,
+      blockUrls,
       backgroundUrls,
     };
   }
@@ -5388,36 +5393,42 @@ function buildSceneArtManifest(state) {
     const cardIds = state.reward?.cardChoices || [];
     const urls = collectUniqueArtUrls(cardIds.map((cardId) => getCardImage(cardId)));
     if (!urls.length) return null;
+    const blockUrls = getRuntimeArtPreviewUrls(urls);
     return {
       key: `reward:${seed}:${act}:${floor}:${cardIds.join(',')}`,
       title: 'SYNCING REWARDS',
       message: 'Loading reward card art...',
       accent: C.cyan,
       urls,
+      blockUrls,
     };
   }
 
   if (state.mode === 'Shop') {
     const urls = getShopOfferArtUrls(state);
     if (!urls.length) return null;
+    const blockUrls = getRuntimeArtPreviewUrls(urls);
     return {
       key: `shop:${seed}:${act}:${floor}:${(state.shop?.offers || []).map((offer) => `${offer.kind}:${offer.defId ?? offer.relicId ?? offer.serviceId ?? '?'}`).join(',')}`,
       title: 'SYNCING MARKET',
       message: 'Loading market card art...',
       accent: C.yellow,
       urls,
+      blockUrls,
     };
   }
 
   if (state.mode === 'Event') {
     const urls = getEventArtUrls(state);
     if (!urls.length) return null;
+    const blockUrls = getRuntimeArtPreviewUrls(urls);
     return {
       key: `event:${seed}:${act}:${floor}:${state.event?.eventId ?? 'event'}`,
       title: 'SYNCING NODE',
       message: 'Loading event art...',
       accent: C.cyan,
       urls,
+      blockUrls,
     };
   }
 
@@ -6085,7 +6096,8 @@ function App() {
 
   useEffect(() => {
     if (!sceneArtManifest?.key) return undefined;
-    if (areRuntimeArtUrlsSettled(sceneArtManifest.urls)) {
+    const blockUrls = sceneArtManifest.blockUrls?.length ? sceneArtManifest.blockUrls : sceneArtManifest.urls;
+    if (areRuntimeArtUrlsSettled(blockUrls)) {
       startTransition(() => {
         setSceneArtReadyKey((prev) => (prev === sceneArtManifest.key ? prev : sceneArtManifest.key));
       });
@@ -6093,7 +6105,7 @@ function App() {
     }
 
     let cancelled = false;
-    preloadRuntimeArtUrls(sceneArtManifest.urls, { timeoutMs: 4500 }).finally(() => {
+    preloadRuntimeArtUrls(blockUrls, { timeoutMs: 4500 }).finally(() => {
       if (cancelled) return;
       startTransition(() => {
         setSceneArtReadyKey(sceneArtManifest.key);
@@ -7756,18 +7768,19 @@ function App() {
     return <LoadingScreen />;
   }
 
-  const pendingSceneArtCount = sceneArtManifest ? getPendingRuntimeArtUrls(sceneArtManifest.urls).length : 0;
+  const sceneArtBlockUrls = sceneArtManifest?.blockUrls?.length ? sceneArtManifest.blockUrls : (sceneArtManifest?.urls || []);
+  const pendingSceneArtCount = sceneArtManifest ? getPendingRuntimeArtUrls(sceneArtBlockUrls).length : 0;
   const shouldBlockSceneArt = Boolean(sceneArtManifest)
     && sceneArtReadyKey !== sceneArtManifest.key
     && pendingSceneArtCount > 0;
 
   if (shouldBlockSceneArt) {
-    const readyCount = Math.max(0, sceneArtManifest.urls.length - pendingSceneArtCount);
+    const readyCount = Math.max(0, sceneArtBlockUrls.length - pendingSceneArtCount);
     return (
       <LoadingScreen
         title={sceneArtManifest.title}
         message={sceneArtManifest.message}
-        detail={`${readyCount}/${sceneArtManifest.urls.length} art assets ready`}
+        detail={`${readyCount}/${sceneArtBlockUrls.length} preview assets ready`}
         accent={sceneArtManifest.accent}
       />
     );

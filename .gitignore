@@ -19,6 +19,7 @@ playtest_sessions/
 artifacts/visual-smoke/
 sim-output.txt
 sim-result.json
+src/generated/runtime-art-previews/
 
 # Zip archives
 *.zip

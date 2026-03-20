@@ -5,6 +5,10 @@ const rootDir = process.cwd();
 const cardsDir = path.join(rootDir, 'src', 'assets', 'runtime-art', 'cards');
 const enemiesDir = path.join(rootDir, 'src', 'assets', 'runtime-art', 'enemies');
 const eventsDir = path.join(rootDir, 'src', 'assets', 'runtime-art', 'events');
+const previewRootDir = path.join(rootDir, 'src', 'generated', 'runtime-art-previews');
+const cardPreviewsDir = path.join(previewRootDir, 'cards');
+const enemyPreviewsDir = path.join(previewRootDir, 'enemies');
+const eventPreviewsDir = path.join(previewRootDir, 'events');
 const enemyImagesSourcePath = path.join(rootDir, 'src', 'data', 'enemyImages.js');
 const eventImagesSourcePath = path.join(rootDir, 'src', 'data', 'eventImages.js');
 
@@ -16,6 +20,25 @@ function ensureDir(dirPath, label) {
 
 function listFiles(dirPath, pattern) {
   return fs.readdirSync(dirPath).filter((file) => pattern.test(file));
+}
+
+function listFilesRecursive(dirPath, pattern, baseDir = dirPath) {
+  const results = [];
+  for (const entry of fs.readdirSync(dirPath, { withFileTypes: true })) {
+    const fullPath = path.join(dirPath, entry.name);
+    if (entry.isDirectory()) {
+      results.push(...listFilesRecursive(fullPath, pattern, baseDir));
+      continue;
+    }
+    if (pattern.test(entry.name)) {
+      results.push(path.relative(baseDir, fullPath).split(path.sep).join('/'));
+    }
+  }
+  return results;
+}
+
+function toPreviewKey(filename) {
+  return filename.replace(/\.(png|jpe?g|webp)$/i, '');
 }
 
 function swapExtension(filename, nextExtension) {
@@ -118,10 +141,30 @@ function validateEventArt() {
   };
 }
 
+function validatePreviewCoverage(sourceDir, previewDir, sourcePattern, label) {
+  ensureDir(previewDir, `${label} preview`);
+  const sourceKeys = [...new Set(listFilesRecursive(sourceDir, sourcePattern).map(toPreviewKey))];
+  const previewKeys = [...new Set(listFilesRecursive(previewDir, /\.webp$/i).map(toPreviewKey))];
+  const previewSet = new Set(previewKeys);
+  const missing = sourceKeys.filter((key) => !previewSet.has(key));
+
+  if (missing.length) {
+    throw new Error(`${label} preview set is missing generated previews for: ${missing.slice(0, 12).join(', ')}`);
+  }
+
+  return {
+    sourceCount: sourceKeys.length,
+    previewCount: previewKeys.length,
+  };
+}
+
 try {
   const cardSummary = validateCardArt();
   const enemySummary = validateEnemyArt();
   const eventSummary = validateEventArt();
+  const cardPreviewSummary = validatePreviewCoverage(cardsDir, cardPreviewsDir, /\.png$/i, 'Card art');
+  const enemyPreviewSummary = validatePreviewCoverage(enemiesDir, enemyPreviewsDir, /\.(png|jpe?g)$/i, 'Enemy art');
+  const eventPreviewSummary = validatePreviewCoverage(eventsDir, eventPreviewsDir, /\.(png|jpe?g)$/i, 'Event art');
 
   console.log(
     [
@@ -129,6 +172,9 @@ try {
       `${cardSummary.cardIds} card IDs / ${cardSummary.cardFiles} card files`,
       `${enemySummary.enemyMapped} enemy mappings / ${enemySummary.enemyFiles} enemy files`,
       `${eventSummary.eventReferenced} event references / ${eventSummary.eventFiles} event files`,
+      `${cardPreviewSummary.previewCount}/${cardPreviewSummary.sourceCount} card previews`,
+      `${enemyPreviewSummary.previewCount}/${enemyPreviewSummary.sourceCount} enemy previews`,
+      `${eventPreviewSummary.previewCount}/${eventPreviewSummary.sourceCount} event previews`,
     ].join(' ')
   );
 } catch (error) {

@@ -17,6 +17,7 @@ import {
   getNodeScenePanelStyle,
   getSecondaryActionButtonStyle,
 } from './AppScenePrimitives.jsx';
+import { summarizeEventChoiceOps } from './AppMinigameScreens.jsx';
 
 const EVENT_REG_UI = createBasicEventRegistry();
 const MONO = UI_MONO;
@@ -69,32 +70,6 @@ function getCurrencyBadgeStyle(color) {
     color,
     fontSize: 14,
   };
-}
-
-function formatMinigameRewardOp(op) {
-  if (op.op === 'GainGold') return `+${op.amount}g`;
-  if (op.op === 'LoseGold') return `-${op.amount}g`;
-  if (op.op === 'Heal') return `+${op.amount} HP`;
-  if (op.op === 'LoseHP') return `-${op.amount} HP`;
-  if (op.op === 'GainMP') return `+${op.amount} MP`;
-  if (op.op === 'GainScrap') return `+${op.amount} scrap`;
-  if (op.op === 'GainMaxHP') return `+${op.amount} Max HP`;
-  if (op.op === 'GainCard') return 'Gain a card';
-  if (op.op === 'DuplicateSelectedCard') return 'Duplicate a card';
-  if (op.op === 'CompileSelectedCard') return 'Compile a card';
-  if (op.op === 'AccelerateSelectedCard') return 'Accelerate a card';
-  if (op.op === 'StabiliseSelectedCard') return 'Stabilise a card';
-  if (op.op === 'RepairSelectedCard') return 'Repair a card';
-  if (op.op === 'RemoveSelectedCard') return 'Remove a card';
-  return String(op.op || 'Effect').replace(/([a-z])([A-Z])/g, '$1 $2');
-}
-
-function summarizeEventChoiceOps(ops = []) {
-  if (!Array.isArray(ops) || ops.length === 0) return 'Leave without changing your run.';
-  return ops
-    .slice(0, 3)
-    .map(formatMinigameRewardOp)
-    .join(' · ');
 }
 
 function getEventTutorialActionId(eventId, tutorialStep) {
@@ -1528,3 +1503,4 @@ export function GameOverScreen({ state, onNewRun, recentUnlocks = [] }) {
     </ScreenShell>
   );
 }
+

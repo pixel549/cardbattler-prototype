@@ -3001,7 +3001,7 @@ function CenterCardDisplay({
         <RuntimeArt
           src={imgSrc}
           alt={cardDef?.name || 'Selected card'}
-          accent={shellAccent}
+          accent={color}
           label={cardDef?.name || 'Selected card'}
           loading="eager"
           style={{
@@ -3303,7 +3303,7 @@ function CenterCardDisplay({
           <RuntimeArt
             src={imgSrc}
             alt={cardDef?.name || 'Selected card'}
-            accent={shellAccent}
+            accent={color}
             label={cardDef?.name || 'Selected card'}
             loading="eager"
             style={{
